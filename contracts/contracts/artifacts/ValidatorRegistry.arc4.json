@@ -1,0 +1,77 @@
+{
+  "name": "ValidatorRegistry",
+  "desc": "",
+  "methods": [
+    {
+      "name": "createApplication",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "getNumValidators",
+      "desc": "Returns the current number of validators",
+      "readonly": true,
+      "args": [],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
+      "name": "getValidatorInfo",
+      "readonly": true,
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "(uint64,address,address,uint64,(uint64,uint64,uint64,uint64),(uint64,uint64,uint64))"
+      }
+    },
+    {
+      "name": "addValidator",
+      "desc": "Adds a new validator",
+      "args": [
+        {
+          "name": "owner",
+          "type": "address",
+          "desc": "The account (presumably cold-wallet) that owns the validator set"
+        },
+        {
+          "name": "manager",
+          "type": "address",
+          "desc": "The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys"
+        },
+        {
+          "name": "nfdAppID",
+          "type": "uint64",
+          "desc": "Optional NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found."
+        },
+        {
+          "name": "config",
+          "type": "(uint64,uint64,uint64,uint64)",
+          "desc": "ValidatorConfig struct"
+        }
+      ],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
+      "name": "addPool",
+      "desc": "Adds a new pool to a validator's pool set.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "(uint64,uint64)"
+      }
+    }
+  ]
+}
