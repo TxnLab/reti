@@ -1,19 +1,19 @@
 import { Contract } from '@algorandfoundation/tealscript';
 
-const MAX_POOLS = 256; // 256 seems good ? (so 256/4 = 64 nodes max?)
-const MAX_POOLS_PER_NODE = 8; // max number of pools per node - more than 4 gets dicey, but let them push it?
-const MIN_PAYOUT_DAYS = 1;
-const MAX_PAYOUT_DAYS = 30;
-const MIN_PCT_TO_VALIDATOR = 100; // 1% w/ two decimals - MUST
-const MAX_PCT_TO_VALIDATOR = 1000; // 10% w/ two decimals
-const MAX_NODES_PER_VALIDATOR = 100;
+const MAX_POOLS: uint16 = 256; // 256 seems good ? (so 256/4 = 64 nodes max?)
+const MAX_POOLS_PER_NODE: uint8 = 8; // max number of pools per node - more than 4 gets dicey, but let them push it?
+const MIN_PAYOUT_DAYS: uint16 = 1;
+const MAX_PAYOUT_DAYS: uint16 = 30;
+const MIN_PCT_TO_VALIDATOR: uint16 = 100; // 1% w/ two decimals - MUST
+const MAX_PCT_TO_VALIDATOR: uint16 = 1000; // 10% w/ two decimals
+const MAX_NODES_PER_VALIDATOR: uint16 = 100;
 const MAX_ALGO_PER_POOL = 100e6 * 1e6; // 100m (micro)Algo
 
 type ValidatorID = uint64;
 type ValidatorPoolKey = {
     ID: ValidatorID;
-    PoolID: uint64; // sequential pool id
-    // PoolID: uint16; // sequential pool id
+    // PoolID: uint64; // sequential pool id
+    PoolID: uint16; // sequential pool id
 };
 
 type ValidatorPoolSlotKey = {
@@ -23,19 +23,14 @@ type ValidatorPoolSlotKey = {
 };
 
 type ValidatorConfig = {
-    PayoutEveryXDays: uint64; // Payout frequency - ie: 7, 30, etc.
-    PercentToValidator: uint64; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
-    PoolsPerNode: uint64; // Number of pools to allow per node (max of 4 is recommended)
-    MaxNodes: uint64; // Maximum number of nodes the validator is stating they'll allow
-    // PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
-    // PercentToValidator: uint16; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
-    // PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
-    // MaxNodes: uint16; // Maximum number of nodes the validator is stating they'll allow
+    PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
+    PercentToValidator: uint16; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
+    PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
+    MaxNodes: uint16; // Maximum number of nodes the validator is stating they'll allow
 };
 
 type ValidatorCurState = {
-    NumPools: uint64; // current number of pools this validator has - capped at MaxPools
-    // NumPools: uint16; // current number of pools this validator has - capped at MaxPools
+    NumPools: uint16; // current number of pools this validator has - capped at MaxPools
     TotalStakers: uint64; // total number of stakers across all pools
     TotalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
 };
@@ -71,16 +66,16 @@ type PoolInfo = {
 // eslint-disable-next-line no-unused-vars
 class ValidatorRegistry extends Contract {
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
-    numValidators = GlobalStateKey<uint64>({key: 'numV'});
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
 
     // Validator list - simply incremental id - direct access to info for validator
-    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({prefix: 'v'});
+    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
 
-    // Information for each pool
-    ValidatorPools = BoxMap<ValidatorPoolKey, PoolInfo>({prefix: 'p'});
+    // Information for each pool - can iterate per validator but at what cost?
+    ValidatorPools = BoxMap<ValidatorPoolKey, PoolInfo>({ prefix: 'p' });
 
     // For given staker address, which of up to 4 validator/pools are they in
-    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({prefix: 'sp'});
+    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'sp' });
 
     createApplication(): void {
         this.numValidators.value = 0;
@@ -148,7 +143,7 @@ class ValidatorRegistry extends Contract {
         numPools += 1;
         // TODO this.ValidatorList(validatorID).value.State.NumPools = numPools;
 
-        const poolKey: ValidatorPoolKey = {ID: validatorID, PoolID: numPools};
+        const poolKey: ValidatorPoolKey = { ID: validatorID, PoolID: numPools };
         this.ValidatorPools(poolKey).create();
         // All other values being '0' is correct.
         // TotalStakers, MaxStakers, TotalAlgloStaked, FreeSlot, Stakers[]
@@ -159,20 +154,22 @@ class ValidatorRegistry extends Contract {
         // see if user is already staked to this validator?
         const neverStaked = this.StakerPoolList(this.txn.sender).exists;
         let poolKey: ValidatorPoolKey;
-        let slot: uint8 = 0;
-        if (neverStaked) {
-            this.canAddToPool(validatorID, amountToStake);
-            poolKey = {ID: validatorID, PoolID: neverStaked};
-        } else {
+        const slot: uint8 = 0;
+        // if (neverStaked) {
+        // TODO - implement
+        //     this.canAddToPool(validatorID, amountToStake);
+        poolKey = { ID: validatorID, PoolID: 0 };
+        // } else {
 
-        }
+        // }
         // return {PoolKey: poolKey,  Slot: slot} as ValidatorPoolSlotKey;
+        return { PoolKey: poolKey, Slot: slot };
     }
 
-    private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
-        // Iterate through this validators pools - does it have any free pools to add to or can one be added?
-        this.ValidatorPools(validatorID)
-    }
+    // private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
+    //     Iterate through this validators pools - does it have any free pools to add to or can one be added?
+    // this.ValidatorPools(validatorID)
+    // }
 
     // private findSlotFor;
 

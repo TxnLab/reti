@@ -26,4 +26,14 @@
     * If found - then adds more in that existing pool and slot
 
 * Pool tracking
-  * Knows how much 
+  * Validator info - tracks pool with most available 'free' (how, across many pools? - needs to resort by free?)
+    * This limits total number of pools 
+  * Knows how much in each pool - a
+
+* node runners
+  * configure sidecar - specify validator id - only owner or manager can do stuff - manager is hotwallet configured w/ sidecar
+    * Does user specify explicit node id at configuration time?
+    * What triggers **adding pools**?
+    * How are pools assigned to nodes?
+  * watcher
+    * looks for 
