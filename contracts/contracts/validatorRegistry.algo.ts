@@ -1,19 +1,18 @@
 import { Contract } from '@algorandfoundation/tealscript';
 
-const MAX_POOLS: uint16 = 256; // 256 seems good ? (so 256/4 = 64 nodes max?)
+const MAX_POOLS: uint16 = 100;  // need to be careful of max size of ValidatorList and embedded PoolInfo
 const MAX_POOLS_PER_NODE: uint8 = 8; // max number of pools per node - more than 4 gets dicey, but let them push it?
 const MIN_PAYOUT_DAYS: uint16 = 1;
 const MAX_PAYOUT_DAYS: uint16 = 30;
 const MIN_PCT_TO_VALIDATOR: uint16 = 100; // 1% w/ two decimals - MUST
 const MAX_PCT_TO_VALIDATOR: uint16 = 1000; // 10% w/ two decimals
 const MAX_NODES_PER_VALIDATOR: uint16 = 100;
-const MAX_ALGO_PER_POOL = 100e6 * 1e6; // 100m (micro)Algo
+const MAX_ALGO_PER_POOL = 100000000 * 1000000; // 100m (micro)Algo
 
 type ValidatorID = uint64;
 type ValidatorPoolKey = {
     ID: ValidatorID;
-    // PoolID: uint64; // sequential pool id
-    PoolID: uint16; // sequential pool id
+    PoolID: uint16; // 0 means INVALID ! - so 1 is index, technically of [0]
 };
 
 type ValidatorPoolSlotKey = {
@@ -42,40 +41,36 @@ type ValidatorInfo = {
     NFDForInfo: uint64; // Optional NFD App ID which the validator uses for describe their validator pool
     Config: ValidatorConfig;
     State: ValidatorCurState;
-};
-
-type StakedInfo = {
-    Account: Address;
-    Balance: number;
+    Pools: StaticArray<PoolInfo, 100>;
 };
 
 type PoolInfo = {
+    PoolAppID: uint64; // The App ID of this staking pool contract instance
     TotalStakers: uint16;
-    MaxStakers: uint16;
     TotalAlgoStaked: uint64;
     // The index into StakedPoolInfo with next free slot - set when a user unstakes everything and their slot
-    // is cleared, or when adding and all slots were taken - freeslot would be end index.
-    FreeSlot: uint8;
+    // is cleared, or when adding and all slots were taken - FreeSlot would be end index.
+    // FreeSlot: uint8;
     // Stakers is the list of accounts that have staked into this pool
     // It's treated like a fixed-size set - where a ZeroAddress account is an 'empty' slot
     // This list is iterated to do payouts so ALL have to be accessible from one box.
     // The list is also iterated to find a 'free' slot.
-    Stakers: StaticArray<StakedInfo, 100>;
+    // Stakers: StaticArray<StakedInfo, 100>;
 };
 
 // eslint-disable-next-line no-unused-vars
 class ValidatorRegistry extends Contract {
+    programVersion = 9;
+
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
-    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
+    numValidators = GlobalStateKey<uint64>({key: 'numV'});
 
     // Validator list - simply incremental id - direct access to info for validator
-    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
+    // and also contains all pool information (but not user-account ledger per pool)
+    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({prefix: 'v'});
 
-    // Information for each pool - can iterate per validator but at what cost?
-    ValidatorPools = BoxMap<ValidatorPoolKey, PoolInfo>({ prefix: 'p' });
-
-    // For given staker address, which of up to 4 validator/pools are they in
-    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'sp' });
+    // For given user staker address, which of up to 4 validator/pools are they in
+    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({prefix: 'spl'});
 
     createApplication(): void {
         this.numValidators.value = 0;
@@ -110,29 +105,37 @@ class ValidatorRegistry extends Contract {
         const validatorID = this.numValidators.value + 1;
         this.numValidators.value = validatorID;
 
-        this.ValidatorList(validatorID).value = {
-            ID: validatorID,
-            Owner: owner,
-            Manager: manager,
-            NFDForInfo: nfdAppID,
-            Config: config,
-            State: {
-                NumPools: 0,
-                TotalAlgoStaked: 0,
-                TotalStakers: 0,
-            },
-        };
+        this.ValidatorList(validatorID).create();
+        this.ValidatorList(validatorID).value.ID = validatorID;
+        this.ValidatorList(validatorID).value.Owner = owner;
+        this.ValidatorList(validatorID).value.Manager = manager;
+        this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
+        this.ValidatorList(validatorID).value.Config = config;
+
+        // this.ValidatorList(validatorID).value = {
+        //     ID: validatorID,
+        //     Owner: owner,
+        //     Manager: manager,
+        //     NFDForInfo: nfdAppID,
+        //     Config: config,
+        //     State: {
+        //         NumPools: 0,
+        //         TotalAlgoStaked: 0,
+        //         TotalStakers: 0,
+        //     },
+        //     Pools: [],
+        // };
         return validatorID;
     }
 
-    /** Adds a new pool to a validator's pool set.
+    /** Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
      */
     addPool(validatorID: ValidatorID): ValidatorPoolKey {
-        // assert(this.txn.sender)
         assert(this.ValidatorList(validatorID).exists);
 
         const owner = this.ValidatorList(validatorID).value.Owner;
         const manager = this.ValidatorList(validatorID).value.Manager;
+
         // Must be called by the owner or manager of the validator.
         assert(this.txn.sender === owner || this.txn.sender === manager);
 
@@ -141,34 +144,62 @@ class ValidatorRegistry extends Contract {
             throw Error('already at max pool size');
         }
         numPools += 1;
-        // TODO this.ValidatorList(validatorID).value.State.NumPools = numPools;
 
-        const poolKey: ValidatorPoolKey = { ID: validatorID, PoolID: numPools };
-        this.ValidatorPools(poolKey).create();
-        // All other values being '0' is correct.
-        // TotalStakers, MaxStakers, TotalAlgloStaked, FreeSlot, Stakers[]
-        return poolKey;
+        this.ValidatorList(validatorID).value.State.NumPools = numPools;
+        // We don't need to manipulate anything in the Pools array as the '0' values are all correct for PoolInfo
+        // No stakers, no algo staked
+
+        // PoolID is 1-based, 0 is invalid id
+        return {ID: validatorID, PoolID: numPools};
     }
 
     addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolSlotKey {
-        // see if user is already staked to this validator?
-        const neverStaked = this.StakerPoolList(this.txn.sender).exists;
+        // The prior transaction should be a payment to this pool for the amount specified
+        // plus enough to cover our itxn fee to send to the staking pool
+        verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
+            sender: this.txn.sender,
+            receiver: this.app.address,
+            amount: amountToStake + 1000,
+        });
         let poolKey: ValidatorPoolKey;
+        // see if user is already staked to this validator?
+        // but first - see if they've staked - ever...
+        const neverStaked = this.StakerPoolList(this.txn.sender).exists;
         const slot: uint8 = 0;
-        // if (neverStaked) {
-        // TODO - implement
-        //     this.canAddToPool(validatorID, amountToStake);
-        poolKey = { ID: validatorID, PoolID: 0 };
-        // } else {
-
-        // }
+        if (neverStaked) {
+            // this is first time - just find first free pool for stake
+            poolKey = this.findPoolForStake(validatorID, amountToStake)
+            if (poolKey.PoolID == 0) {
+                // need to create pool if not already at max
+                // this.addStake(validatorID, poolKey);
+            }
+            // TODO - implement
+            //     this.canAddToPool(validatorID, amountToStake);
+            poolKey = {ID: validatorID, PoolID: 0};
+        } else {
+        }
         // return {PoolKey: poolKey,  Slot: slot} as ValidatorPoolSlotKey;
-        return { PoolKey: poolKey, Slot: slot };
+        return {PoolKey: {ID: 0, PoolID: 0}, Slot: slot};
+        // return { PoolKey: poolKey, Slot: slot };
+    }
+
+    private findPoolForStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
+        const pools = clone(this.ValidatorList(validatorID).value.Pools);
+        const numPools = this.ValidatorList(validatorID).value.State.NumPools;
+        for (let i: uint16 = 0; i < numPools; i += 1) {
+            if (pools[i].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
+                return {ID: validatorID, PoolID: i + 1};
+            }
+        }
+        this.ValidatorList(validatorID).value.Pools = pools;
+        // Not found is poolID 0
+        return {ID: validatorID, PoolID: 0};
     }
 
     // private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
     //     Iterate through this validators pools - does it have any free pools to add to or can one be added?
     // this.ValidatorPools(validatorID)
+
     // }
 
     // private findSlotFor;

@@ -28,7 +28,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,(uint64,uint64,uint64,uint64),(uint64,uint64,uint64))"
+        "type": "(uint64,address,address,uint64,(uint16,uint16,uint8,uint16),(uint16,uint64,uint64),(uint64,uint16,uint64)[100])"
       }
     },
     {
@@ -52,7 +52,7 @@
         },
         {
           "name": "config",
-          "type": "(uint64,uint64,uint64,uint64)",
+          "type": "(uint16,uint16,uint8,uint16)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -62,7 +62,7 @@
     },
     {
       "name": "addPool",
-      "desc": "Adds a new pool to a validator's pool set.",
+      "desc": "Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.",
       "args": [
         {
           "name": "validatorID",
@@ -70,7 +70,23 @@
         }
       ],
       "returns": {
-        "type": "(uint64,uint64)"
+        "type": "(uint64,uint16)"
+      }
+    },
+    {
+      "name": "addStake",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        },
+        {
+          "name": "amountToStake",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "((uint64,uint16),uint8)"
       }
     }
   ]

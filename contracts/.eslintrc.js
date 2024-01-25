@@ -4,11 +4,13 @@ module.exports = {
         es2021: true,
     },
     extends: [
+        'eslint:recommended',
         'airbnb-base',
         'plugin:import/errors',
         'plugin:import/warnings',
         'plugin:import/typescript',
         'plugin:prettier/recommended',
+        'plugin:typescript/recommended'
     ],
     parser: '@typescript-eslint/parser',
     parserOptions: {

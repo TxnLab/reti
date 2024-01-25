@@ -9,12 +9,12 @@
 ## Methods
 
 * addValidator(owner, manager, nfdAppID, validatorConfig{payoutDays, validatorPct, poolsPerNode, maxNodes)
-  * returns a validator id
+  * returns a validator id - adds/initializes new ValidatorList entry
 
 ### Validator actions
 * addPool(validatorId)
   * returns ValidatorPoolKey {ID, PoolID}
-  * Must be called by owner or manager of validator - adds a new pool up to max pools
+  * Must be called by owner or manager of validator - adds a new pool up to max pools in ValidatorList for validator
 
 ### User action
 * Wants to stake to a validator
@@ -34,6 +34,8 @@
   * configure sidecar - specify validator id - only owner or manager can do stuff - manager is hotwallet configured w/ sidecar
     * Does user specify explicit node id at configuration time?
     * What triggers **adding pools**?
+      * Does runner have to explicitly allocate the pools?
+      * what links them to partkeys?  add pool - get data - adds to "purely local data" ??
     * How are pools assigned to nodes?
   * watcher
     * looks for 

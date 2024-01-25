@@ -1,0 +1,45 @@
+{
+  "name": "StakingPool",
+  "desc": "",
+  "methods": [
+    {
+      "name": "addStake",
+      "args": [
+        {
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "name": "amountToStake",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "removeStake",
+      "args": [
+        {
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "name": "amountToUnstake",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "createApplication",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    }
+  ]
+}
