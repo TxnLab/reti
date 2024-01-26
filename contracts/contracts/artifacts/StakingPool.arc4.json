@@ -3,19 +3,50 @@
   "desc": "",
   "methods": [
     {
-      "name": "addStake",
+      "name": "createApplication",
+      "desc": "Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.",
       "args": [
         {
-          "name": "account",
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "id of validator we're a staking pool of"
+        },
+        {
+          "name": "poolID",
+          "type": "uint64",
+          "desc": "which pool id are we"
+        },
+        {
+          "name": "owner",
           "type": "address"
         },
         {
-          "name": "amountToStake",
-          "type": "uint64"
+          "name": "manager",
+          "type": "address"
         }
       ],
       "returns": {
         "type": "void"
+      }
+    },
+    {
+      "name": "addStake",
+      "desc": "Adds stake to the given account.",
+      "args": [
+        {
+          "name": "account",
+          "type": "address",
+          "desc": "The account to add stake to."
+        },
+        {
+          "name": "amountToStake",
+          "type": "uint64",
+          "desc": "The amount to stake."
+        }
+      ],
+      "returns": {
+        "type": "uint64",
+        "desc": "{uint64}timestamp in seconds of stake add."
       }
     },
     {
@@ -35,7 +66,46 @@
       }
     },
     {
-      "name": "createApplication",
+      "name": "payStakers",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "GoOnline",
+      "args": [
+        {
+          "name": "votePK",
+          "type": "byte[]"
+        },
+        {
+          "name": "selectionPK",
+          "type": "byte[]"
+        },
+        {
+          "name": "stateProofPK",
+          "type": "byte[]"
+        },
+        {
+          "name": "voteFirst",
+          "type": "uint64"
+        },
+        {
+          "name": "voteLast",
+          "type": "uint64"
+        },
+        {
+          "name": "voteKeyDilution",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "GoOffline",
       "args": [],
       "returns": {
         "type": "void"

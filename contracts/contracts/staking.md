@@ -31,7 +31,20 @@
   * Knows how much in each pool - a
 
 * node runners
-  * configure sidecar - specify validator id - only owner or manager can do stuff - manager is hotwallet configured w/ sidecar
+  * configure sidecar process
+    * Add validator - needs done through some type of UI where user can sign w/ arbitrary wallet?
+    * cli for management - add / configure validator
+      * add validator - need to sign w/ owner keys somehow?  walletconnect paste URL ?
+      * Need hotwallet for manager address
+    * for each node - add new 'node' - it allocates a sequential id for that node 
+  * watcher process
+    * Sees new node for its configured validator id get added by watching chain via node its running on?
+      * Checks status of pools - if none exist - adds first.  If one at 95% - adds new pool - up to 3 per node
+      * only allow new pools no more than X days apart ??
+    * monitors all pools and their part keys - keeping them refreshed/online by telling pool to go online against it.
+  * 
+  * 
+  * specify validator id - only owner or manager can do stuff - manager is hotwallet configured w/ sidecar
     * Does user specify explicit node id at configuration time?
     * What triggers **adding pools**?
       * Does runner have to explicitly allocate the pools?
@@ -39,3 +52,5 @@
     * How are pools assigned to nodes?
   * watcher
     * looks for 
+
+

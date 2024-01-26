@@ -1,13 +1,16 @@
 import { Contract } from '@algorandfoundation/tealscript';
 
-const MAX_POOLS: uint16 = 100;  // need to be careful of max size of ValidatorList and embedded PoolInfo
-const MAX_POOLS_PER_NODE: uint8 = 8; // max number of pools per node - more than 4 gets dicey, but let them push it?
-const MIN_PAYOUT_DAYS: uint16 = 1;
-const MAX_PAYOUT_DAYS: uint16 = 30;
-const MIN_PCT_TO_VALIDATOR: uint16 = 100; // 1% w/ two decimals - MUST
-const MAX_PCT_TO_VALIDATOR: uint16 = 1000; // 10% w/ two decimals
-const MAX_NODES_PER_VALIDATOR: uint16 = 100;
-const MAX_ALGO_PER_POOL = 100000000 * 1000000; // 100m (micro)Algo
+import { MAX_ALGO_PER_POOL } from "./constants.algo";
+
+const MAX_NODES = 3; // need to be careful of max size of ValidatorList and embedded PoolInfo
+const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3
+// const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
+const MAX_POOLS = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
+const MIN_PAYOUT_DAYS = 1;
+const MAX_PAYOUT_DAYS = 30;
+const MIN_PCT_TO_VALIDATOR = 10000; // 1% w/ four decimals - (this allows .0001%)
+const MAX_PCT_TO_VALIDATOR = 100000; // 10% w/ four decimals
+const MAX_NODES_PER_VALIDATOR = 8;
 
 type ValidatorID = uint64;
 type ValidatorPoolKey = {
@@ -21,9 +24,9 @@ type ValidatorPoolSlotKey = {
     Slot: uint8;
 };
 
-type ValidatorConfig = {
+export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
-    PercentToValidator: uint16; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
+    PercentToValidator: uint32; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
     MaxNodes: uint16; // Maximum number of nodes the validator is stating they'll allow
 };
@@ -34,6 +37,18 @@ type ValidatorCurState = {
     TotalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
 };
 
+type PoolInfo = {
+    NodeID: uint16;
+    PoolAppID: uint64; // The App ID of this staking pool contract instance
+    TotalStakers: uint16;
+    TotalAlgoStaked: uint64;
+};
+
+type NodeInfo = {
+    ID: uint16; // just sequentially assigned... can only be a few anyway..
+    Name: StaticArray<byte, 32>;
+}
+
 type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
@@ -41,21 +56,8 @@ type ValidatorInfo = {
     NFDForInfo: uint64; // Optional NFD App ID which the validator uses for describe their validator pool
     Config: ValidatorConfig;
     State: ValidatorCurState;
-    Pools: StaticArray<PoolInfo, 100>;
-};
-
-type PoolInfo = {
-    PoolAppID: uint64; // The App ID of this staking pool contract instance
-    TotalStakers: uint16;
-    TotalAlgoStaked: uint64;
-    // The index into StakedPoolInfo with next free slot - set when a user unstakes everything and their slot
-    // is cleared, or when adding and all slots were taken - FreeSlot would be end index.
-    // FreeSlot: uint8;
-    // Stakers is the list of accounts that have staked into this pool
-    // It's treated like a fixed-size set - where a ZeroAddress account is an 'empty' slot
-    // This list is iterated to do payouts so ALL have to be accessible from one box.
-    // The list is also iterated to find a 'free' slot.
-    // Stakers: StaticArray<StakedInfo, 100>;
+    Nodes: StaticArray<NodeInfo, typeof MAX_NODES>;
+    Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
 };
 
 // eslint-disable-next-line no-unused-vars
@@ -89,6 +91,11 @@ class ValidatorRegistry extends Contract {
         return this.ValidatorList(validatorID).value;
     }
 
+    @abi.readonly
+    getValidatorConfig(validatorID: ValidatorID): ValidatorConfig {
+        return this.ValidatorList(validatorID).value.Config;
+    }
+
     /** Adds a new validator
      * @param owner The account (presumably cold-wallet) that owns the validator set
      * @param manager The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys
@@ -111,20 +118,8 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Manager = manager;
         this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
         this.ValidatorList(validatorID).value.Config = config;
-
-        // this.ValidatorList(validatorID).value = {
-        //     ID: validatorID,
-        //     Owner: owner,
-        //     Manager: manager,
-        //     NFDForInfo: nfdAppID,
-        //     Config: config,
-        //     State: {
-        //         NumPools: 0,
-        //         TotalAlgoStaked: 0,
-        //         TotalStakers: 0,
-        //     },
-        //     Pools: [],
-        // };
+        // TODO - what about nodes ?
+        this.ValidatorList(validatorID).value.Nodes[0].Name = "foo";
         return validatorID;
     }
 
@@ -140,7 +135,7 @@ class ValidatorRegistry extends Contract {
         assert(this.txn.sender === owner || this.txn.sender === manager);
 
         let numPools = this.ValidatorList(validatorID).value.State.NumPools;
-        if (numPools >= MAX_POOLS) {
+        if (numPools as uint64 >= MAX_POOLS) {
             throw Error('already at max pool size');
         }
         numPools += 1;
@@ -155,11 +150,11 @@ class ValidatorRegistry extends Contract {
 
     addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolSlotKey {
         // The prior transaction should be a payment to this pool for the amount specified
-        // plus enough to cover our itxn fee to send to the staking pool
+        // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
         verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
             sender: this.txn.sender,
             receiver: this.app.address,
-            amount: amountToStake + 1000,
+            amount: amountToStake,
         });
         let poolKey: ValidatorPoolKey;
         // see if user is already staked to this validator?
@@ -168,7 +163,7 @@ class ValidatorRegistry extends Contract {
         const slot: uint8 = 0;
         if (neverStaked) {
             // this is first time - just find first free pool for stake
-            poolKey = this.findPoolForStake(validatorID, amountToStake)
+            poolKey = this.findPoolForStake(validatorID, amountToStake);
             if (poolKey.PoolID == 0) {
                 // need to create pool if not already at max
                 // this.addStake(validatorID, poolKey);
@@ -181,6 +176,30 @@ class ValidatorRegistry extends Contract {
         // return {PoolKey: poolKey,  Slot: slot} as ValidatorPoolSlotKey;
         return {PoolKey: {ID: 0, PoolID: 0}, Slot: slot};
         // return { PoolKey: poolKey, Slot: slot };
+    }
+
+    /**
+     * stakerRemoved is called by Staking Pools to inform the validator that a particular amount of total stake has been removed
+     * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
+     * The calling App ID is validated against our pool list as well.
+     * @param validatorID
+     * @param poolID - 1-index based index into list of pools for this validator
+     * @param staker
+     * @param amountRemoved
+     * @param stakerRemoved
+     */
+    stakeRemoved(validatorID: uint64, poolID: uint64, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
+        assert(this.ValidatorList(validatorID).exists);
+        assert(poolID < 2**16); // since we limit max pools but keep the interface broad
+        assert(poolID > 0 && poolID as uint16 <= this.ValidatorList(validatorID).value.State.NumPools);
+        // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
+        // the contract address of the pool app id they represent.
+        assert(this.txn.sender == Application.fromID(this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID).address);
+        // Remove the specified amount of stake
+        this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalAlgoStaked -= amountRemoved;
+        if (stakerRemoved) {
+            this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalStakers -= 1;
+        }
     }
 
     private findPoolForStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {

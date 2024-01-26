@@ -28,7 +28,20 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,(uint16,uint16,uint8,uint16),(uint16,uint64,uint64),(uint64,uint16,uint64)[100])"
+        "type": "(uint64,address,address,uint64,(uint16,uint32,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[3],(uint16,uint64,uint16,uint64)[12])"
+      }
+    },
+    {
+      "name": "getValidatorConfig",
+      "readonly": true,
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "(uint16,uint32,uint8,uint16)"
       }
     },
     {
@@ -52,7 +65,7 @@
         },
         {
           "name": "config",
-          "type": "(uint16,uint16,uint8,uint16)",
+          "type": "(uint16,uint32,uint8,uint16)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -87,6 +100,36 @@
       ],
       "returns": {
         "type": "((uint64,uint16),uint8)"
+      }
+    },
+    {
+      "name": "stakeRemoved",
+      "desc": "stakerRemoved is called by Staking Pools to inform the validator that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        },
+        {
+          "name": "poolID",
+          "type": "uint64",
+          "desc": "1-index based index into list of pools for this validator"
+        },
+        {
+          "name": "staker",
+          "type": "address"
+        },
+        {
+          "name": "amountRemoved",
+          "type": "uint64"
+        },
+        {
+          "name": "stakerRemoved",
+          "type": "bool"
+        }
+      ],
+      "returns": {
+        "type": "void"
       }
     }
   ]
