@@ -19,8 +19,10 @@ class StakingPool extends Contract {
     // TODO switch to static for size here once supported in tealscript
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({key: 'stakers'});
 
-    ValidatorID = GlobalStateKey<uint64>({key: 'validatorID'})
+    ValidatorID = GlobalStateKey<uint64>({key: 'validatorID'});
+
     PoolID = GlobalStateKey<uint64>({key: 'nodeID'});
+
     Owner = GlobalStateKey<Address>({key: 'owner'});
 
     Manager = GlobalStateKey<Address>({key: 'manager'});
@@ -152,45 +154,75 @@ class StakingPool extends Contract {
     }
 
     payStakers(): void {
+        // we should only be callable by owner or manager of validator.
         assert(this.txn.sender == this.Owner.value || this.txn.sender === this.Manager.value);
 
-        const rewardAvailable = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
-        const payoutConfig = sendMethodCall<[uint64], [uint16, uint32, uint8, uint16]>({
+        // call the validator contract to get our payout data
+        const payoutConfig = sendMethodCall<[uint64], [uint16, uint32, Address, uint8, uint16]>({
             applicationID: Application.fromID(this.VALIDATOR_REGISTRY_APP_ID),
             name: 'getValidatorConfig',
             methodArgs: [this.ValidatorID.value],
         });
-        // first two member of return is:
-        //     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
-        //     PercentToValidator: uint32; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
+        // first two members of the return value is:
+        //  PayoutEveryXDays - Payout frequency - ie: 7, 30, etc.
+        //  PercentToValidator- Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005
         const payoutDays = payoutConfig[0] as uint64;
         const pctToValidator = payoutConfig[1] as uint64;
+        const validatorCommissionAddress = payoutConfig[2];
 
+        // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
+        // [not counting MBR which would be included in base balance anyway but - have to be safe...]
+        let rewardAvailable = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
+        // determine the % that goes to validator...
+        let validatorPay = wideRatio([rewardAvailable, pctToValidator], [1000000]);
+        // and adjust reward for entire pool accordingly
+        rewardAvailable -= validatorPay;
+
+        // ---
+        // pay the validator first their cut
+        sendPayment({
+            amount: validatorPay,
+            receiver: validatorCommissionAddress,
+            note: 'validator reward',
+        });
+
+        // -- now we pay the stakers the remainder based on their % of pool and time in this epoch.
+
+        // Since we're being told to payout - treat this as epoch end
         // We're at epoch 'end' presumably - or close enough
+        // but what if we're told to pay really early?  it should just mean
+        // the reward is smaller.  It shouldn't be an issue.
         const curTime = globals.latestTimestamp;
         // How many seconds in an epoch..
         const payoutDaysInSecs = payoutDays * 24 * 60 * 60;
 
-        for (let i = 0; i < MAX_STAKERS_PER_POOL; i += 1) {
-            if (this.Stakers.value[i].Account !== Address.zeroAddress) {
+        this.Stakers.value.forEach((staker) => {
+            if (staker.Account !== Address.zeroAddress) {
                 // Reward is % of users stake in pool
                 // but we deduct based on time in pool
-                const timeInPool = curTime - this.Stakers.value[i].EntryTime;
-                let timePercentage:uint64;
+                const timeInPool = curTime - staker.EntryTime;
+                let timePercentage: uint64;
                 // get % of time in pool
                 if (timeInPool >= payoutDaysInSecs) {
                     timePercentage = 1000; // == 1.000%
                 } else {
                     timePercentage = (timeInPool * 1000) / payoutDaysInSecs;
                 }
-                const stakerReward = (this.Stakers.value[i].Balance * rewardAvailable) / this.TotalAlgoStaked.value * timePercentage / 1000;
+                // ie: 200(000000) algo staked out of 1000(000000) algo
+                // and reward is 15(000000) algo
+                // (200000000 * 15000000 * 1000) / 1000000000 / 1000
+                // or - 3 algo (20% of 15 algo)
+                const stakerReward = wideRatio(
+                    [staker.Balance, rewardAvailable, timePercentage],
+                    [this.TotalAlgoStaked.value, 1000]
+                );
                 sendPayment({
                     amount: stakerReward,
-                    receiver: this.Stakers.value[i].Account,
+                    receiver: staker.Account,
                     note: 'staker reward',
                 });
             }
-        }
+        });
     }
 
     GoOnline(

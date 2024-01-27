@@ -1,6 +1,6 @@
 import { Contract } from '@algorandfoundation/tealscript';
 
-import { MAX_ALGO_PER_POOL } from "./constants.algo";
+import { MAX_ALGO_PER_POOL } from './constants.algo';
 
 const MAX_NODES = 3; // need to be careful of max size of ValidatorList and embedded PoolInfo
 const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3
@@ -10,7 +10,6 @@ const MIN_PAYOUT_DAYS = 1;
 const MAX_PAYOUT_DAYS = 30;
 const MIN_PCT_TO_VALIDATOR = 10000; // 1% w/ four decimals - (this allows .0001%)
 const MAX_PCT_TO_VALIDATOR = 100000; // 10% w/ four decimals
-const MAX_NODES_PER_VALIDATOR = 8;
 
 type ValidatorID = uint64;
 type ValidatorPoolKey = {
@@ -26,7 +25,8 @@ type ValidatorPoolSlotKey = {
 
 export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
-    PercentToValidator: uint32; // Payout percentage expressed w/ two decimals - ie: 500 = 5% -> .05 -
+    PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
+    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
     MaxNodes: uint16; // Maximum number of nodes the validator is stating they'll allow
 };
@@ -47,7 +47,7 @@ type PoolInfo = {
 type NodeInfo = {
     ID: uint16; // just sequentially assigned... can only be a few anyway..
     Name: StaticArray<byte, 32>;
-}
+};
 
 type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
@@ -65,14 +65,14 @@ class ValidatorRegistry extends Contract {
     programVersion = 9;
 
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
-    numValidators = GlobalStateKey<uint64>({key: 'numV'});
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
 
     // Validator list - simply incremental id - direct access to info for validator
     // and also contains all pool information (but not user-account ledger per pool)
-    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({prefix: 'v'});
+    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
 
     // For given user staker address, which of up to 4 validator/pools are they in
-    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({prefix: 'spl'});
+    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'spl' });
 
     createApplication(): void {
         this.numValidators.value = 0;
@@ -119,7 +119,7 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
         this.ValidatorList(validatorID).value.Config = config;
         // TODO - what about nodes ?
-        this.ValidatorList(validatorID).value.Nodes[0].Name = "foo";
+        this.ValidatorList(validatorID).value.Nodes[0].Name = 'foo';
         return validatorID;
     }
 
@@ -135,7 +135,7 @@ class ValidatorRegistry extends Contract {
         assert(this.txn.sender === owner || this.txn.sender === manager);
 
         let numPools = this.ValidatorList(validatorID).value.State.NumPools;
-        if (numPools as uint64 >= MAX_POOLS) {
+        if ((numPools as uint64) >= MAX_POOLS) {
             throw Error('already at max pool size');
         }
         numPools += 1;
@@ -145,7 +145,7 @@ class ValidatorRegistry extends Contract {
         // No stakers, no algo staked
 
         // PoolID is 1-based, 0 is invalid id
-        return {ID: validatorID, PoolID: numPools};
+        return { ID: validatorID, PoolID: numPools };
     }
 
     addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolSlotKey {
@@ -170,16 +170,16 @@ class ValidatorRegistry extends Contract {
             }
             // TODO - implement
             //     this.canAddToPool(validatorID, amountToStake);
-            poolKey = {ID: validatorID, PoolID: 0};
+            poolKey = { ID: validatorID, PoolID: 0 };
         } else {
         }
         // return {PoolKey: poolKey,  Slot: slot} as ValidatorPoolSlotKey;
-        return {PoolKey: {ID: 0, PoolID: 0}, Slot: slot};
+        return { PoolKey: { ID: 0, PoolID: 0 }, Slot: slot };
         // return { PoolKey: poolKey, Slot: slot };
     }
 
     /**
-     * stakerRemoved is called by Staking Pools to inform the validator that a particular amount of total stake has been removed
+     * stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
      * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
      * @param validatorID
@@ -188,13 +188,22 @@ class ValidatorRegistry extends Contract {
      * @param amountRemoved
      * @param stakerRemoved
      */
-    stakeRemoved(validatorID: uint64, poolID: uint64, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
+    stakeRemoved(
+        validatorID: uint64,
+        poolID: uint64,
+        staker: Address,
+        amountRemoved: uint64,
+        stakerRemoved: boolean
+    ): void {
         assert(this.ValidatorList(validatorID).exists);
-        assert(poolID < 2**16); // since we limit max pools but keep the interface broad
-        assert(poolID > 0 && poolID as uint16 <= this.ValidatorList(validatorID).value.State.NumPools);
+        assert(poolID < 2 ** 16); // since we limit max pools but keep the interface broad
+        assert(poolID > 0 && (poolID as uint16) <= this.ValidatorList(validatorID).value.State.NumPools);
         // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
-        assert(this.txn.sender == Application.fromID(this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID).address);
+        assert(
+            this.txn.sender ==
+                Application.fromID(this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID).address
+        );
         // Remove the specified amount of stake
         this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalAlgoStaked -= amountRemoved;
         if (stakerRemoved) {
@@ -207,12 +216,12 @@ class ValidatorRegistry extends Contract {
         const numPools = this.ValidatorList(validatorID).value.State.NumPools;
         for (let i: uint16 = 0; i < numPools; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                return {ID: validatorID, PoolID: i + 1};
+                return { ID: validatorID, PoolID: i + 1 };
             }
         }
         this.ValidatorList(validatorID).value.Pools = pools;
         // Not found is poolID 0
-        return {ID: validatorID, PoolID: 0};
+        return { ID: validatorID, PoolID: 0 };
     }
 
     // private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
@@ -228,9 +237,9 @@ class ValidatorRegistry extends Contract {
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the value in the ValidatorConfig are correct
         assert(config.PayoutEveryXDays >= MIN_PAYOUT_DAYS && config.PayoutEveryXDays <= MAX_PAYOUT_DAYS);
-        // Percent has two decimals, so 100 = 1.00% - min is 1%, max is 10%
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
+        assert(config.ValidatorCommissionAddress !== Address.zeroAddress);
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
-        assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES_PER_VALIDATOR);
+        assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES);
     }
 }
