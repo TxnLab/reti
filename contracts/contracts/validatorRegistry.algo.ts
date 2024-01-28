@@ -65,14 +65,14 @@ class ValidatorRegistry extends Contract {
     programVersion = 9;
 
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
-    numValidators = GlobalStateKey<uint64>({key: 'numV'});
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
 
     // Validator list - simply incremental id - direct access to info for validator
     // and also contains all pool information (but not user-account ledger per pool)
-    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({prefix: 'v'});
+    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
 
     // For given user staker address, which of up to 4 validator/pools are they in
-    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({prefix: 'spl'});
+    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'spl' });
 
     // The app id of a staking pool contract instance to use as template for newly created pools
     StakingPoolTemplateAppID = TemplateVar<uint64>();
@@ -165,9 +165,16 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
 
         // PoolID is 1-based, 0 is invalid id
-        return {ID: validatorID, PoolID: numPools};
+        return { ID: validatorID, PoolID: numPools };
     }
 
+        /**
+     * Adds stake to a validator pool.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator.
+     * @param {uint64} amountToStake - The amount to stake.
+     * @returns {ValidatorPoolKey} - The key of the validator pool.
+     */
     addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
         // The prior transaction should be a payment to this pool for the amount specified
         // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
@@ -209,14 +216,19 @@ class ValidatorRegistry extends Contract {
         assert(poolID > 0 && (poolID as uint16) <= this.ValidatorList(validatorID).value.State.NumPools);
         // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
-        assert(
-            this.txn.sender ==
-            Application.fromID(this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID).address
-        );
-        // Remove the specified amount of stake
+        const poolAppID = this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID;
+        // Sender has to match the pool app id passed in.
+        assert(this.txn.sender == Application.fromID(poolAppID).address);
+        // verify its state is right as well
+        assert(validatorID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
+        assert(poolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
+
+        // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalAlgoStaked -= amountRemoved;
+        this.ValidatorList(validatorID).value.State.TotalAlgoStaked = amountRemoved;
         if (stakerRemoved) {
             this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalStakers -= 1;
+            this.ValidatorList(validatorID).value.State.TotalStakers -= 1;
         }
     }
 
@@ -224,12 +236,12 @@ class ValidatorRegistry extends Contract {
         let i = 1;
         this.ValidatorList(validatorID).value.Pools.forEach((pool) => {
             if (pool.TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                return {ID: validatorID, PoolID: i};
+                return { ID: validatorID, PoolID: i };
             }
             i += 1;
         });
         // Not found is poolID 0
-        return {ID: validatorID, PoolID: 0};
+        return { ID: validatorID, PoolID: 0 };
     }
 
     // private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
@@ -251,13 +263,27 @@ class ValidatorRegistry extends Contract {
         assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES);
     }
 
+    /**
+     * Adds a stakers amount of algo to a validator pool, transfering the algo we received from them (already verified
+     * by our caller) to the staking pool account, and then telling it about the amount being add for the specified
+     * staker.
+     *
+     * @param {ValidatorPoolKey} poolKey - The key of the validator pool.
+     * @param {Address} staker - The address of the staker.
+     * @param {uint64} amountToStake - The amount to stake.
+     * @returns {void}
+     */
     private callPoolAddStake(poolKey: ValidatorPoolKey, staker: Address, amountToStake: uint64) {
-        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID
+        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         // forward the payment on to the pool
         sendPayment({
             amount: amountToStake,
             receiver: Application.fromID(poolAppID).address,
         });
+
+        const priorStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
+        const priorStaked = Application.fromID(poolAppID).globalState('staked') as uint64;
+
         // now tell the pool to add the stake
         sendMethodCall<[Address, uint64], uint64>({
             applicationID: Application.fromID(poolAppID),
@@ -265,8 +291,15 @@ class ValidatorRegistry extends Contract {
             methodArgs: [staker, amountToStake],
         });
 
-        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
-        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = Application.fromID(poolAppID).globalState('staked') as uint64;
-
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = Application.fromID(
+            poolAppID
+        ).globalState('numStakers') as uint64;
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = Application.fromID(
+            poolAppID
+        ).globalState('staked') as uint64;
+        // now update our global totals based on delta (if new staker was added, new amount - can only have gone up or stayed same)
+        this.ValidatorList(poolKey.ID).value.State.TotalStakers +=
+            (Application.fromID(poolAppID).globalState('numStakers') as uint64) - priorStakers;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToStake;
     }
 }

@@ -36,7 +36,7 @@
     },
     {
       "name": "addStake",
-      "desc": "Adds stake to the given account.",
+      "desc": "Adds stake to the given account.Can ONLY be called by the validator contract that created usMust receive payment from the validator contract for amount being staked.",
       "args": [
         {
           "name": "account",
@@ -51,7 +51,7 @@
       ],
       "returns": {
         "type": "uint64",
-        "desc": "{uint64}new 'entry time' in seconds of stake add."
+        "desc": "{uint64,}new 'entry time' in seconds of stake add."
       }
     },
     {

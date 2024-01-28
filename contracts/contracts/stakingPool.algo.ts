@@ -18,7 +18,7 @@ class StakingPool extends Contract {
 
     ValidatorID = GlobalStateKey<uint64>({key: 'validatorID'});
 
-    PoolID = GlobalStateKey<uint64>({key: 'nodeID'});
+    PoolID = GlobalStateKey<uint64>({key: 'poolID'});
 
     Owner = GlobalStateKey<Address>({key: 'owner'});
 
@@ -54,16 +54,18 @@ class StakingPool extends Contract {
 
     /**
      * Adds stake to the given account.
+     * Can ONLY be called by the validator contract that created us
+     * Must receive payment from the validator contract for amount being staked.
      *
      * @param {Address} account - The account adding new stake
      * @param {uint64} amountToStake - The amount to stake.
      * @throws {Error} - Throws an error if the staking pool is full.
-     * @returns {uint64} new 'entry time' in seconds of stake add.
+     * @returns {uint64,} new 'entry time' in seconds of stake add.
      */
     addStake(account: Address, amountToStake: uint64): uint64 {
-        // account calling us has to be account adding stake
+        // account calling us has to be our creating validator contract
         assert(account !== Account.zeroAddress);
-        assert(this.txn.sender === account);
+        assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
 
         // Now, is the required amount actually being paid to US (this contract account - the staking pool)
         // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
@@ -107,6 +109,14 @@ class StakingPool extends Contract {
         return entryTime;
     }
 
+    /**
+     * Removes stake on behalf of a particular staker.  Also notifies the validator contract for this pools
+     * validaotr of the staker / balance changes.
+     *
+     * @param {Address} account - The address of the account removing stake.
+     * @param {uint64} amountToUnstake - The amount of stake to be removed.
+     * @throws {Error} If the account has insufficient balance or if the account is not found.
+     */
     removeStake(account: Address, amountToUnstake: uint64): void {
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
         // It makes it a bit awkward this way to update the state in the validator but it's safer
