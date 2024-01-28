@@ -65,14 +65,17 @@ class ValidatorRegistry extends Contract {
     programVersion = 9;
 
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
-    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
+    numValidators = GlobalStateKey<uint64>({key: 'numV'});
 
     // Validator list - simply incremental id - direct access to info for validator
     // and also contains all pool information (but not user-account ledger per pool)
-    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
+    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({prefix: 'v'});
 
     // For given user staker address, which of up to 4 validator/pools are they in
-    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'spl' });
+    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({prefix: 'spl'});
+
+    // The app id of a staking pool contract instance to use as template for newly created pools
+    StakingPoolTemplateAppID = TemplateVar<uint64>();
 
     createApplication(): void {
         this.numValidators.value = 0;
@@ -140,15 +143,32 @@ class ValidatorRegistry extends Contract {
         }
         numPools += 1;
 
+        // Create the actual staker pool contract instance
+        sendAppCall({
+            onCompletion: OnCompletion.NoOp,
+            approvalProgram: Application.fromID(this.StakingPoolTemplateAppID).approvalProgram,
+            globalNumUint: Application.fromID(this.StakingPoolTemplateAppID).globalNumUint,
+            globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID).globalNumByteSlice,
+            extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID).extraProgramPages,
+            applicationArgs: [
+                itob(this.app.id),
+                itob(validatorID),
+                itob(numPools),
+                rawBytes(this.ValidatorList(validatorID).value.Owner),
+                rawBytes(this.ValidatorList(validatorID).value.Manager),
+            ],
+        });
+
         this.ValidatorList(validatorID).value.State.NumPools = numPools;
         // We don't need to manipulate anything in the Pools array as the '0' values are all correct for PoolInfo
         // No stakers, no algo staked
+        this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
 
         // PoolID is 1-based, 0 is invalid id
-        return { ID: validatorID, PoolID: numPools };
+        return {ID: validatorID, PoolID: numPools};
     }
 
-    addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolSlotKey {
+    addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
         // The prior transaction should be a payment to this pool for the amount specified
         // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
         verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
@@ -156,26 +176,15 @@ class ValidatorRegistry extends Contract {
             receiver: this.app.address,
             amount: amountToStake,
         });
+
         let poolKey: ValidatorPoolKey;
-        // see if user is already staked to this validator?
-        // but first - see if they've staked - ever...
-        const neverStaked = this.StakerPoolList(this.txn.sender).exists;
-        const slot: uint8 = 0;
-        if (neverStaked) {
-            // this is first time - just find first free pool for stake
-            poolKey = this.findPoolForStake(validatorID, amountToStake);
-            if (poolKey.PoolID == 0) {
-                // need to create pool if not already at max
-                // this.addStake(validatorID, poolKey);
-            }
-            // TODO - implement
-            //     this.canAddToPool(validatorID, amountToStake);
-            poolKey = { ID: validatorID, PoolID: 0 };
-        } else {
+        poolKey = this.findPoolForStake(validatorID, amountToStake);
+        if (poolKey.PoolID == 0) {
+            // need to create pool if not already at max
+            poolKey = this.addPool(validatorID);
         }
-        // return {PoolKey: poolKey,  Slot: slot} as ValidatorPoolSlotKey;
-        return { PoolKey: { ID: 0, PoolID: 0 }, Slot: slot };
-        // return { PoolKey: poolKey, Slot: slot };
+        this.callPoolAddStake(poolKey, this.txn.sender, amountToStake);
+        return poolKey;
     }
 
     /**
@@ -202,7 +211,7 @@ class ValidatorRegistry extends Contract {
         // the contract address of the pool app id they represent.
         assert(
             this.txn.sender ==
-                Application.fromID(this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID).address
+            Application.fromID(this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID).address
         );
         // Remove the specified amount of stake
         this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalAlgoStaked -= amountRemoved;
@@ -212,16 +221,15 @@ class ValidatorRegistry extends Contract {
     }
 
     private findPoolForStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
-        const pools = clone(this.ValidatorList(validatorID).value.Pools);
-        const numPools = this.ValidatorList(validatorID).value.State.NumPools;
-        for (let i: uint16 = 0; i < numPools; i += 1) {
-            if (pools[i].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                return { ID: validatorID, PoolID: i + 1 };
+        let i = 1;
+        this.ValidatorList(validatorID).value.Pools.forEach((pool) => {
+            if (pool.TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
+                return {ID: validatorID, PoolID: i};
             }
-        }
-        this.ValidatorList(validatorID).value.Pools = pools;
+            i += 1;
+        });
         // Not found is poolID 0
-        return { ID: validatorID, PoolID: 0 };
+        return {ID: validatorID, PoolID: 0};
     }
 
     // private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
@@ -241,5 +249,24 @@ class ValidatorRegistry extends Contract {
         assert(config.ValidatorCommissionAddress !== Address.zeroAddress);
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
         assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES);
+    }
+
+    private callPoolAddStake(poolKey: ValidatorPoolKey, staker: Address, amountToStake: uint64) {
+        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID
+        // forward the payment on to the pool
+        sendPayment({
+            amount: amountToStake,
+            receiver: Application.fromID(poolAppID).address,
+        });
+        // now tell the pool to add the stake
+        sendMethodCall<[Address, uint64], uint64>({
+            applicationID: Application.fromID(poolAppID),
+            name: 'addStake',
+            methodArgs: [staker, amountToStake],
+        });
+
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = Application.fromID(poolAppID).globalState('staked') as uint64;
+
     }
 }

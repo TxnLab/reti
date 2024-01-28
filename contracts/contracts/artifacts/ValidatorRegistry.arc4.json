@@ -99,7 +99,7 @@
         }
       ],
       "returns": {
-        "type": "((uint64,uint16),uint8)"
+        "type": "(uint64,uint16)"
       }
     },
     {

@@ -14,10 +14,7 @@ type StakedInfo = {
 class StakingPool extends Contract {
     programVersion = 9;
 
-    VALIDATOR_REGISTRY_APP_ID = TemplateVar<uint64>();
-
-    // TODO switch to static for size here once supported in tealscript
-    Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({key: 'stakers'});
+    CreatingValidatorContractAppID = GlobalStateKey<uint64>({key:'creatorApp'});
 
     ValidatorID = GlobalStateKey<uint64>({key: 'validatorID'});
 
@@ -33,17 +30,18 @@ class StakingPool extends Contract {
 
     MaxAlgo = GlobalStateKey<uint64>({key: 'maxStake'});
 
+    Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({key: 'stakers'});
+
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
+     * @param creatingContractID - id of contract that constructed us - the validator application (single global instance)
      * @param validatorID - id of validator we're a staking pool of
      * @param poolID - which pool id are we
      * @param owner
      * @param manager
      */
-    createApplication(validatorID: uint64, poolID: uint64, owner: Address, manager: Address): void {
-        // We should be created by the validator contract
-        assert(this.txn.sender == Application.fromID(this.VALIDATOR_REGISTRY_APP_ID).address);
-
+    createApplication(creatingContractID:uint64,  validatorID: uint64, poolID: uint64, owner: Address, manager: Address): void {
+        this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID; // Which valida
         this.PoolID.value = poolID;
         this.Owner.value = owner;
@@ -57,10 +55,10 @@ class StakingPool extends Contract {
     /**
      * Adds stake to the given account.
      *
-     * @param {Address} account - The account to add stake to.
+     * @param {Address} account - The account adding new stake
      * @param {uint64} amountToStake - The amount to stake.
      * @throws {Error} - Throws an error if the staking pool is full.
-     * @returns {uint64} timestamp in seconds of stake add.
+     * @returns {uint64} new 'entry time' in seconds of stake add.
      */
     addStake(account: Address, amountToStake: uint64): uint64 {
         // account calling us has to be account adding stake
@@ -70,7 +68,7 @@ class StakingPool extends Contract {
         // Now, is the required amount actually being paid to US (this contract account - the staking pool)
         // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
         verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
-            sender: Application.fromID(this.VALIDATOR_REGISTRY_APP_ID).address,
+            sender: Application.fromID(this.CreatingValidatorContractAppID.value).address,
             receiver: this.app.address,
             amount: amountToStake,
         });
@@ -80,18 +78,20 @@ class StakingPool extends Contract {
         let firstEmpty = 0;
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
-        // TODO for (let i = 0; i < this.Stakers.value.length; i += 1) {
-        for (let i = 0; i < MAX_STAKERS_PER_POOL; i += 1) {
-            if (this.Stakers.value[i].Account === account) {
-                this.Stakers.value[i].Balance += amountToStake;
-                this.Stakers.value[i].EntryTime = entryTime;
+        let i = 0;
+        this.Stakers.value.forEach(staker => {
+            if (staker.Account === account) {
+                staker.Balance += amountToStake;
+                staker.EntryTime = entryTime;
                 this.TotalAlgoStaked.value += amountToStake;
                 return entryTime;
             }
-            if (firstEmpty != 0 && this.Stakers.value[i].Account === Address.zeroAddress) {
+            if (firstEmpty != 0 && staker.Account === Address.zeroAddress) {
                 firstEmpty = i + 1;
             }
-        }
+            i += 1;
+        });
+
         if (firstEmpty == 0) {
             // nothing was found - pool is full and this staker can't fit
             throw Error('Staking pool full');
@@ -108,9 +108,6 @@ class StakingPool extends Contract {
     }
 
     removeStake(account: Address, amountToUnstake: uint64): void {
-        // Our we being called by validator ?
-        // assert(globals.callerApplicationID.id === this.VALIDATOR_APP_ID);
-
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
         // It makes it a bit awkward this way to update the state in the validator but it's safer
 
@@ -118,12 +115,12 @@ class StakingPool extends Contract {
         assert(account !== Account.zeroAddress);
         assert(this.txn.sender === account);
 
-        for (let i = 0; i < MAX_STAKERS_PER_POOL; i += 1) {
-            if (this.Stakers.value[i].Account === account) {
-                if (this.Stakers.value[i].Balance < amountToUnstake) {
+        this.Stakers.value.forEach(staker => {
+            if (staker.Account === account) {
+                if (staker.Balance < amountToUnstake) {
                     throw Error('Insufficient balance');
                 }
-                this.Stakers.value[i].Balance -= amountToUnstake;
+                staker.Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
 
                 // Pay the staker back
@@ -133,23 +130,23 @@ class StakingPool extends Contract {
                     note: 'unstaked',
                 });
                 let stakerRemoved = false;
-                if (this.Stakers.value[i].Balance === 0) {
+                if (staker.Balance === 0) {
                     // Staker has been 'removed'
                     this.NumStakers.value -= 1;
-                    this.Stakers.value[i].Account = Address.zeroAddress;
+                    staker.Account = Address.zeroAddress;
                     stakerRemoved = true;
                 }
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id ?
                 sendMethodCall<[uint64, uint64, Address, uint64, boolean], void>({
-                    applicationID: Application.fromID(this.VALIDATOR_REGISTRY_APP_ID),
+                    applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
                     name: 'stakeRemoved',
                     methodArgs: [this.ValidatorID.value, this.PoolID.value, account, amountToUnstake, stakerRemoved],
                 });
                 // Now we need to tell the validator contract to remove
                 return;
             }
-        }
+        });
         throw Error('Account not found');
     }
 
@@ -159,7 +156,7 @@ class StakingPool extends Contract {
 
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<[uint64], [uint16, uint32, Address, uint8, uint16]>({
-            applicationID: Application.fromID(this.VALIDATOR_REGISTRY_APP_ID),
+            applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
             name: 'getValidatorConfig',
             methodArgs: [this.ValidatorID.value],
         });
@@ -174,7 +171,7 @@ class StakingPool extends Contract {
         // [not counting MBR which would be included in base balance anyway but - have to be safe...]
         let rewardAvailable = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
         // determine the % that goes to validator...
-        let validatorPay = wideRatio([rewardAvailable, pctToValidator], [1000000]);
+        const validatorPay = wideRatio([rewardAvailable, pctToValidator], [1000000]);
         // and adjust reward for entire pool accordingly
         rewardAvailable -= validatorPay;
 
