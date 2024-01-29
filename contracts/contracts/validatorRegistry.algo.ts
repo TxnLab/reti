@@ -2,10 +2,9 @@ import { Contract } from '@algorandfoundation/tealscript';
 
 import { MAX_ALGO_PER_POOL } from './constants.algo';
 
-const MAX_NODES = 3; // need to be careful of max size of ValidatorList and embedded PoolInfo
-const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3
-// const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
-const MAX_POOLS = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
+const MAX_NODES = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
+const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
+const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
 const MIN_PAYOUT_DAYS = 1;
 const MAX_PAYOUT_DAYS = 30;
 const MIN_PCT_TO_VALIDATOR = 10000; // 1% w/ four decimals - (this allows .0001%)
@@ -14,7 +13,7 @@ const MAX_PCT_TO_VALIDATOR = 100000; // 10% w/ four decimals
 type ValidatorID = uint64;
 type ValidatorPoolKey = {
     ID: ValidatorID;
-    PoolID: uint16; // 0 means INVALID ! - so 1 is index, technically of [0]
+    PoolID: uint64; // 0 means INVALID ! - so 1 is index, technically of [0]
 };
 
 type ValidatorPoolSlotKey = {
@@ -72,7 +71,7 @@ class ValidatorRegistry extends Contract {
     ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
 
     // For given user staker address, which of up to 4 validator/pools are they in
-    StakerPoolList = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'spl' });
+    StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'sps' });
 
     // The app id of a staking pool contract instance to use as template for newly created pools
     StakingPoolTemplateAppID = TemplateVar<uint64>();
@@ -153,7 +152,7 @@ class ValidatorRegistry extends Contract {
             applicationArgs: [
                 itob(this.app.id),
                 itob(validatorID),
-                itob(numPools),
+                itob(numPools as uint64),
                 rawBytes(this.ValidatorList(validatorID).value.Owner),
                 rawBytes(this.ValidatorList(validatorID).value.Manager),
             ],
@@ -165,10 +164,10 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
 
         // PoolID is 1-based, 0 is invalid id
-        return { ID: validatorID, PoolID: numPools };
+        return { ID: validatorID, PoolID: numPools as uint64};
     }
 
-        /**
+    /**
      * Adds stake to a validator pool.
      *
      * @param {ValidatorID} validatorID - The ID of the validator.
@@ -176,21 +175,25 @@ class ValidatorRegistry extends Contract {
      * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
     addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
+        const staker = this.txn.sender;
         // The prior transaction should be a payment to this pool for the amount specified
         // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
         verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
-            sender: this.txn.sender,
+            sender: staker,
             receiver: this.app.address,
             amount: amountToStake,
         });
 
         let poolKey: ValidatorPoolKey;
-        poolKey = this.findPoolForStake(validatorID, amountToStake);
+        poolKey = this.findPoolForStaker(validatorID, staker, amountToStake);
         if (poolKey.PoolID == 0) {
+            throw Error('No pool available with free stake.  Validator needs to add another pool');
             // need to create pool if not already at max
-            poolKey = this.addPool(validatorID);
+            // poolKey = this.addPool(validatorID);
         }
-        this.callPoolAddStake(poolKey, this.txn.sender, amountToStake);
+        // Update StakerPoolList for this found pool (new or existing)
+        this.updateStakerPoolSet(staker, poolKey);
+        this.callPoolAddStake(poolKey, staker, amountToStake);
         return poolKey;
     }
 
@@ -198,45 +201,59 @@ class ValidatorRegistry extends Contract {
      * stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
      * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
-     * @param validatorID
-     * @param poolID - 1-index based index into list of pools for this validator
+     // * @param validatorID
+     // * @param poolID - 1-index based index into list of pools for this validator
+     * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
      * @param staker
      * @param amountRemoved
      * @param stakerRemoved
      */
     stakeRemoved(
-        validatorID: uint64,
-        poolID: uint64,
+        poolKey: ValidatorPoolKey,
         staker: Address,
         amountRemoved: uint64,
         stakerRemoved: boolean
     ): void {
-        assert(this.ValidatorList(validatorID).exists);
-        assert(poolID < 2 ** 16); // since we limit max pools but keep the interface broad
-        assert(poolID > 0 && (poolID as uint16) <= this.ValidatorList(validatorID).value.State.NumPools);
+        assert(this.ValidatorList(poolKey.ID).exists);
+        assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
+        assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
         // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
-        const poolAppID = this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID;
+        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         // Sender has to match the pool app id passed in.
         assert(this.txn.sender == Application.fromID(poolAppID).address);
         // verify its state is right as well
-        assert(validatorID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
-        assert(poolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
+        assert(poolKey.ID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
+        assert(poolKey.PoolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
-        this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalAlgoStaked -= amountRemoved;
-        this.ValidatorList(validatorID).value.State.TotalAlgoStaked = amountRemoved;
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked = amountRemoved;
         if (stakerRemoved) {
-            this.ValidatorList(validatorID).value.Pools[poolID - 1].TotalStakers -= 1;
-            this.ValidatorList(validatorID).value.State.TotalStakers -= 1;
+            this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1;
+            this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1;
+            this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{ID: poolKey.ID, PoolID: poolKey.PoolID})
         }
     }
 
-    private findPoolForStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
+    private findPoolForStaker(validatorID: ValidatorID, staker: Address, amountToStake: uint64): ValidatorPoolKey {
+        // If there's already a stake list for this account, walk that first, so if the staker is already in this
+        // validator, then go to the stakers existing pool(s) w/ that validator first.
+        if (this.StakerPoolSet(staker).exists) {
+            this.StakerPoolSet(staker).value.forEach((pool) => {
+                if (pool.ID == validatorID ){
+                    // This staker already has stake with this validator - if room left, start there first
+                    if (this.ValidatorList(validatorID).value.Pools[pool.PoolID-1].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
+                        return pool;
+                    }
+                }
+            })
+        }
+
         let i = 1;
         this.ValidatorList(validatorID).value.Pools.forEach((pool) => {
             if (pool.TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                return { ID: validatorID, PoolID: i };
+                return <ValidatorPoolKey>{ ID: validatorID, PoolID: i };
             }
             i += 1;
         });
@@ -301,5 +318,35 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(poolKey.ID).value.State.TotalStakers +=
             (Application.fromID(poolAppID).globalState('numStakers') as uint64) - priorStakers;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToStake;
+    }
+
+    private updateStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {
+        if (!this.StakerPoolSet(staker).exists) {
+            this.StakerPoolSet(staker).create();
+        }
+        let i = 0;
+        this.StakerPoolSet(staker).value.forEach((pool) => {
+            if (pool == poolKey) {
+                return;
+            }
+            if (pool.ID === 0) {
+                this.StakerPoolSet(staker).value[i] = poolKey;
+                return;
+            }
+            i += 1;
+        });
+        throw Error('No empty slot available in the staker pool set');
+    }
+
+    private removeFromStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {
+        let i = 0;
+        this.StakerPoolSet(staker).value.forEach((pool) => {
+            if (pool == poolKey) {
+                // Zero out this slot
+                this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0 };
+                return;
+            }
+            i += 1;
+        });
     }
 }

@@ -56,14 +56,17 @@
     },
     {
       "name": "removeStake",
+      "desc": "Removes stake on behalf of a particular staker.  Also notifies the validator contract for this poolsvalidaotr of the staker / balance changes.",
       "args": [
         {
           "name": "account",
-          "type": "address"
+          "type": "address",
+          "desc": "The address of the account removing stake."
         },
         {
           "name": "amountToUnstake",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The amount of stake to be removed."
         }
       ],
       "returns": {

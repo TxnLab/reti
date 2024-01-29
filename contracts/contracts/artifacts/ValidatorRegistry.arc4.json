@@ -28,7 +28,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,(uint16,uint32,address,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[3],(uint16,uint64,uint16,uint64)[12])"
+        "type": "(uint64,address,address,uint64,(uint16,uint32,address,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[48])"
       }
     },
     {
@@ -83,37 +83,36 @@
         }
       ],
       "returns": {
-        "type": "(uint64,uint16)"
+        "type": "(uint64,uint64)"
       }
     },
     {
       "name": "addStake",
+      "desc": "Adds stake to a validator pool.",
       "args": [
         {
           "name": "validatorID",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The ID of the validator."
         },
         {
           "name": "amountToStake",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The amount to stake."
         }
       ],
       "returns": {
-        "type": "(uint64,uint16)"
+        "type": "(uint64,uint64)",
+        "desc": "{ValidatorPoolKey}- The key of the validator pool."
       }
     },
     {
       "name": "stakeRemoved",
-      "desc": "stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
+      "desc": "stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.// *",
       "args": [
         {
-          "name": "validatorID",
-          "type": "uint64"
-        },
-        {
-          "name": "poolID",
-          "type": "uint64",
-          "desc": "1-index based index into list of pools for this validator"
+          "name": "poolKey",
+          "type": "(uint64,uint64)"
         },
         {
           "name": "staker",
