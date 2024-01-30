@@ -9,6 +9,7 @@ const AVG_BLOCK_TIME_SECS = 30; // in tenths - 30 = 3.0
 type StakedInfo = {
     Account: Address;
     Balance: uint64;
+    TotalRewarded: uint64;
     EntryTime: uint64;
 };
 
@@ -57,7 +58,6 @@ class StakingPool extends Contract {
         this.NumStakers.value = 0;
         this.TotalAlgoStaked.value = 0;
         this.MaxAlgo.value = MAX_ALGO_PER_POOL;
-        this.Stakers.create();
     }
 
     /**
@@ -71,6 +71,9 @@ class StakingPool extends Contract {
      * @returns {uint64,} new 'entry time' in seconds of stake add.
      */
     addStake(account: Address, amountToStake: uint64): uint64 {
+        if (!this.Stakers.exists) {
+            this.Stakers.create();
+        }
         // account calling us has to be our creating validator contract
         assert(account !== Account.zeroAddress);
         assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
@@ -93,6 +96,8 @@ class StakingPool extends Contract {
             if (staker.Account === account) {
                 staker.Balance += amountToStake;
                 staker.EntryTime = entryTime;
+                // Update the box w/ the new data
+                this.Stakers.value[i] = staker;
                 this.TotalAlgoStaked.value += amountToStake;
                 return entryTime;
             }
@@ -110,6 +115,7 @@ class StakingPool extends Contract {
         this.Stakers.value[firstEmpty - 1] = {
             Account: account,
             Balance: amountToStake,
+            TotalRewarded: 0,
             EntryTime: entryTime,
         };
         this.NumStakers.value += 1;
@@ -128,11 +134,11 @@ class StakingPool extends Contract {
     removeStake(account: Address, amountToUnstake: uint64): void {
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
         // It makes it a bit awkward this way to update the state in the validator but it's safer
-
         // account calling us has to be account removing stake
         assert(account !== Account.zeroAddress);
         assert(this.txn.sender === account);
 
+        let i = 0;
         this.Stakers.value.forEach((staker) => {
             if (staker.Account === account) {
                 if (staker.Balance < amountToUnstake) {
@@ -149,21 +155,25 @@ class StakingPool extends Contract {
                 });
                 let stakerRemoved = false;
                 if (staker.Balance === 0) {
-                    // Staker has been 'removed'
+                    // Staker has been 'removed' - zero out record
                     this.NumStakers.value -= 1;
                     staker.Account = Address.zeroAddress;
+                    staker.TotalRewarded = 0;
                     stakerRemoved = true;
                 }
+                // Update the box w/ the new staker data
+                this.Stakers.value[i] = staker;
+
                 // Call the validator contract and tell it we're removing stake
-                // It'll verify we're a valid staking pool id ?
+                // It'll verify we're a valid staking pool id and update it
                 // stakeRemoved((uint64,uint64),address,uint64,bool)void
                 sendMethodCall<[[uint64, uint64], Address, uint64, boolean], void>({
                     applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
                     name: 'stakeRemoved',
                     methodArgs: [[this.ValidatorID.value, this.PoolID.value], account, amountToUnstake, stakerRemoved],
                 });
-                // Now we need to tell the validator contract to remove
             }
+            i += 1;
         });
         throw Error('Account not found');
     }
@@ -187,12 +197,12 @@ class StakingPool extends Contract {
 
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which would be included in base balance anyway but - have to be safe...]
-        let rewardAvailable = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
+        const origBalance = this.app.address.balance;
+        let rewardAvailable = origBalance - this.TotalAlgoStaked.value - this.app.address.minBalance;
 
-        // Reward available needs to be high enough to justify even paying out !
-        // assume 16 transactions in atomic txn group + 1 txn per staker(+1 to validator) to pay them
+        // Reward available needs to be high enough to cover our various txns
         assert(
-            rewardAvailable >= globals.minTxnFee * (this.NumStakers.value + 1) + globals.minTxnFee * 16,
+            rewardAvailable > globals.minTxnFee * 2,
             'Reward to payout not high enough to cover txn costs of paying it out'
         );
 
@@ -202,14 +212,15 @@ class StakingPool extends Contract {
         rewardAvailable -= validatorPay;
 
         // ---
-        // pay the validator first their cut
+        // pay the validator their cut...
         sendPayment({
             amount: validatorPay,
             receiver: validatorCommissionAddress,
             note: 'validator reward',
         });
 
-        // -- now we pay the stakers the remainder based on their % of pool and time in this epoch.
+        // Now we "pay" (but really just update their tracked balance) the stakers the remainder based on their % of
+        // pool and time in this epoch.
 
         // Since we're being told to payout - treat this as epoch end
         // We're at epoch 'end' presumably - or close enough
@@ -242,6 +253,7 @@ class StakingPool extends Contract {
         // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
         // remaining participants.
         let partialStakersTotalStake = 0;
+        let i = 0;
         this.Stakers.value.forEach((staker) => {
             if (staker.Account !== Address.zeroAddress) {
                 if (staker.EntryTime > curTime) {
@@ -262,20 +274,27 @@ class StakingPool extends Contract {
                             [staker.Balance, rewardAvailable, timePercentage],
                             [this.TotalAlgoStaked.value / 1000]
                         );
+                        // reduce the reward available (that we're accounting for) so that the subsequent
+                        // 'full' pays are based on what's left
                         rewardAvailable -= stakerReward;
-                        sendPayment({
-                            amount: stakerReward,
-                            receiver: staker.Account,
-                            note: 'staker reward',
-                        });
+                        // instead of sending them algo now - just increase their ledger balance so they can claim
+                        // it at any time.
+                        staker.Balance += stakerReward;
+                        staker.TotalRewarded += stakerReward;
+
+                        // Update the box w/ the new data
+                        this.Stakers.value[i] = staker;
                     }
                 }
             }
+            i += 1;
         });
+
         // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
         // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
         const newPoolTotalStake = this.TotalAlgoStaked.value - partialStakersTotalStake;
         // Now go back through the list AGAIN and pay out the full-timers their rewards + excess
+        i = 0;
         this.Stakers.value.forEach((staker) => {
             if (staker.Account !== Address.zeroAddress && staker.EntryTime < curTime) {
                 const timeInPool = curTime - staker.EntryTime;
@@ -286,24 +305,30 @@ class StakingPool extends Contract {
                 // we're in for 100% so it's just % of stakers balance vs 'new total' for their
                 // payment
                 const stakerReward = wideRatio([staker.Balance, rewardAvailable], [newPoolTotalStake]);
-                sendPayment({
-                    amount: stakerReward,
-                    receiver: staker.Account,
-                    note: 'staker reward',
-                });
+                // instead of sending them algo now - just increase their ledger balance so they can claim
+                // it at any time.
+                staker.Balance += stakerReward;
+                staker.TotalRewarded += stakerReward;
+
+                // Update the box w/ the new data
+                this.Stakers.value[i] = staker;
             }
+            i += 1;
         });
-        /**
-         *
-         * outer txn
-         * [0] dummy 'noop' calls to staker pool w/ references:
-         *     ie: txn 0 would have box references needed for payout
-         * [1] 8 foreign account references to first 8 stakers
-         * [2] 8 foreign account references to next 8 stakers
-         * [3] 8 foreign account references to next 8 stakers
-         * ...
-         * [15] -> call to staker pool, payStakers()
-         */
+
+        // We've paid out the validator and updated the stakers new balances to reflect the rewards, now update
+        // our 'total staked' value as well (in our pool and in the validator)
+        const increasedStake = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
+        this.TotalAlgoStaked.value += increasedStake;
+
+        // Call the validator contract and tell it we've got new stake added
+        // It'll verify we're a valid staking pool id and update it
+        // stakeUpdatedViaRewards((uint64,uint64),uint64)void
+        sendMethodCall<[[uint64, uint64], uint64], void>({
+            applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
+            name: 'stakeUpdatedViaRewards',
+            methodArgs: [[this.ValidatorID.value, this.PoolID.value], increasedStake],
+        });
     }
 
     GoOnline(

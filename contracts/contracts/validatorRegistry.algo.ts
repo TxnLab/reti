@@ -83,17 +83,17 @@ class ValidatorRegistry extends Contract {
     /**
      * Returns the current number of validators
      */
-    @abi.readonly
+    //@abi.readonly
     getNumValidators(): uint64 {
         return this.numValidators.value;
     }
 
-    @abi.readonly
+    //@abi.readonly
     getValidatorInfo(validatorID: ValidatorID): ValidatorInfo {
         return this.ValidatorList(validatorID).value;
     }
 
-    @abi.readonly
+    //@abi.readonly
     getValidatorConfig(validatorID: ValidatorID): ValidatorConfig {
         return this.ValidatorList(validatorID).value.Config;
     }
@@ -146,10 +146,12 @@ class ValidatorRegistry extends Contract {
         sendAppCall({
             onCompletion: OnCompletion.NoOp,
             approvalProgram: Application.fromID(this.StakingPoolTemplateAppID).approvalProgram,
+            clearStateProgram: Application.fromID(this.StakingPoolTemplateAppID).clearStateProgram,
             globalNumUint: Application.fromID(this.StakingPoolTemplateAppID).globalNumUint,
             globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID).globalNumByteSlice,
             extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID).extraProgramPages,
             applicationArgs: [
+                method("createApplication(uint64,uint64,uint64,address,address)void"),
                 itob(this.app.id),
                 itob(validatorID),
                 itob(numPools as uint64),
@@ -164,7 +166,7 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
 
         // PoolID is 1-based, 0 is invalid id
-        return { ID: validatorID, PoolID: numPools as uint64};
+        return { ID: validatorID, PoolID: numPools as uint64 };
     }
 
     /**
@@ -198,22 +200,40 @@ class ValidatorRegistry extends Contract {
     }
 
     /**
+     * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
+     * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
+     * The calling App ID is validated against our pool list as well.
+     * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
+     * @param amountToAdd
+     */
+    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, amountToAdd: uint64): void {
+        assert(this.ValidatorList(poolKey.ID).exists);
+        assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
+        assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
+        // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
+        // the contract address of the pool app id they represent.
+        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
+        // Sender has to match the pool app id passed in.
+        assert(this.txn.sender == Application.fromID(poolAppID).address);
+        // verify its state is right as well
+        assert(poolKey.ID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
+        assert(poolKey.PoolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
+
+        // Remove the specified amount of stake - update pool stats, then total validator stats
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToAdd;
+    }
+
+    /**
      * stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
      * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
-     // * @param validatorID
-     // * @param poolID - 1-index based index into list of pools for this validator
      * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
      * @param staker
      * @param amountRemoved
      * @param stakerRemoved
      */
-    stakeRemoved(
-        poolKey: ValidatorPoolKey,
-        staker: Address,
-        amountRemoved: uint64,
-        stakerRemoved: boolean
-    ): void {
+    stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
         assert(this.ValidatorList(poolKey.ID).exists);
         assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
         assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
@@ -228,11 +248,11 @@ class ValidatorRegistry extends Contract {
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
-        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked = amountRemoved;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked -= amountRemoved;
         if (stakerRemoved) {
             this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1;
             this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1;
-            this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{ID: poolKey.ID, PoolID: poolKey.PoolID})
+            this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{ ID: poolKey.ID, PoolID: poolKey.PoolID });
         }
     }
 
@@ -241,13 +261,16 @@ class ValidatorRegistry extends Contract {
         // validator, then go to the stakers existing pool(s) w/ that validator first.
         if (this.StakerPoolSet(staker).exists) {
             this.StakerPoolSet(staker).value.forEach((pool) => {
-                if (pool.ID == validatorID ){
+                if (pool.ID == validatorID) {
                     // This staker already has stake with this validator - if room left, start there first
-                    if (this.ValidatorList(validatorID).value.Pools[pool.PoolID-1].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
+                    if (
+                        this.ValidatorList(validatorID).value.Pools[pool.PoolID - 1].TotalAlgoStaked + amountToStake <
+                        MAX_ALGO_PER_POOL
+                    ) {
                         return pool;
                     }
                 }
-            })
+            });
         }
 
         let i = 1;
