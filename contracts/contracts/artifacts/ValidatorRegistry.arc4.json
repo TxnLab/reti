@@ -84,7 +84,7 @@
       }
     },
     {
-      "name": "getPoolApp",
+      "name": "getPoolAppID",
       "args": [
         {
           "name": "poolKey",
@@ -157,18 +157,6 @@
       ],
       "returns": {
         "type": "void"
-      }
-    },
-    {
-      "name": "getPoolAppId",
-      "args": [
-        {
-          "name": "poolKey",
-          "type": "(uint64,uint64)"
-        }
-      ],
-      "returns": {
-        "type": "uint64"
       }
     },
     {

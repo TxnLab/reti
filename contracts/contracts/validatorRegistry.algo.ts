@@ -16,12 +16,6 @@ type ValidatorPoolKey = {
     PoolID: uint64; // 0 means INVALID ! - so 1 is index, technically of [0]
 };
 
-type ValidatorPoolSlotKey = {
-    PoolKey: ValidatorPoolKey;
-    // Slot inside stakers array for an accounts stake - so don't have to iterate array can just directly access
-    Slot: uint8;
-};
-
 export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
@@ -169,7 +163,7 @@ class ValidatorRegistry extends Contract {
         return { ID: validatorID, PoolID: numPools as uint64 };
     }
 
-    getPoolApp(poolKey: ValidatorPoolKey): uint64 {
+    getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
         return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
     }
 
@@ -190,9 +184,8 @@ class ValidatorRegistry extends Contract {
             amount: amountToStake,
         });
 
-        let poolKey: ValidatorPoolKey;
-        poolKey = this.findPoolForStaker(validatorID, staker, amountToStake);
-        if (poolKey.PoolID == 0) {
+        const poolKey = this.findPoolForStaker(validatorID, staker, amountToStake);
+        if (poolKey.PoolID === 0) {
             throw Error('No pool available with free stake.  Validator needs to add another pool');
             // need to create pool if not already at max
             // poolKey = this.addPool(validatorID);
@@ -219,7 +212,7 @@ class ValidatorRegistry extends Contract {
         // the contract address of the pool app id they represent.
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         // Sender has to match the pool app id passed in.
-        assert(this.txn.sender == Application.fromID(poolAppID).address);
+        assert(this.txn.sender === Application.fromID(poolAppID).address);
         // verify its state is right as well
         assert(poolKey.ID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
         assert(poolKey.PoolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
@@ -246,7 +239,7 @@ class ValidatorRegistry extends Contract {
         // the contract address of the pool app id they represent.
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         // Sender has to match the pool app id passed in.
-        assert(this.txn.sender == Application.fromID(poolAppID).address);
+        assert(this.txn.sender === Application.fromID(poolAppID).address);
         // verify its state is right as well
         assert(poolKey.ID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
         assert(poolKey.PoolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
@@ -261,50 +254,36 @@ class ValidatorRegistry extends Contract {
         }
     }
 
-    getPoolAppId(poolKey: ValidatorPoolKey): uint64 {
-        return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
-    }
-
     findPoolForStaker(validatorID: ValidatorID, staker: Address, amountToStake: uint64): ValidatorPoolKey {
+        // expensive loops - buy it up right now
         increaseOpcodeBudget();
         // If there's already a stake list for this account, walk that first, so if the staker is already in this
         // validator, then go to the stakers existing pool(s) w/ that validator first.
         if (this.StakerPoolSet(staker).exists) {
-            log('Staker already exists');
-            this.StakerPoolSet(staker).value.forEach((pool) => {
-                if (pool.ID == validatorID) {
+            const poolSet = clone(this.StakerPoolSet(staker).value);
+            for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
+                if (poolSet[i].ID === validatorID) {
                     // This staker already has stake with this validator - if room left, start there first
                     if (
-                        this.ValidatorList(validatorID).value.Pools[pool.PoolID - 1].TotalAlgoStaked + amountToStake <
+                        this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
+                            amountToStake <
                         MAX_ALGO_PER_POOL
                     ) {
-                        return pool;
+                        return poolSet[i];
                     }
                 }
-            });
+            }
         }
 
-        let i = 0;
-        let foundAt = 0;
-        this.ValidatorList(validatorID).value.Pools.forEach((pool) => {
-            if (foundAt == 0 && pool.TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                foundAt = i + 1;
+        const pools = clone(this.ValidatorList(validatorID).value.Pools);
+        for (let i = 0; i < MAX_POOLS; i += 1) {
+            if (pools[i].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
+                return { ID: validatorID, PoolID: i + 1 };
             }
-            i += 1;
-        });
+        }
         // Not found is poolID 0
-        return { ID: validatorID, PoolID: foundAt };
+        return { ID: validatorID, PoolID: 0 };
     }
-
-    // private canAddToPool(validatorID: ValidatorID, amountToStake: uint64): uint64 {
-    //     Iterate through this validators pools - does it have any free pools to add to or can one be added?
-    // this.ValidatorPools(validatorID)
-
-    // }
-
-    // private findSlotFor;
-
-    // ===========
 
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the value in the ValidatorConfig are correct
@@ -359,37 +338,27 @@ class ValidatorRegistry extends Contract {
         if (!this.StakerPoolSet(staker).exists) {
             this.StakerPoolSet(staker).create();
         }
-        let i = 0;
-        let found = false;
-        this.StakerPoolSet(staker).value.forEach((pool) => {
-            if (found) {
+        const poolSet = clone(this.StakerPoolSet(staker).value);
+        for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
+            if (poolSet[i] === poolKey) {
+                // already in pool set
                 return;
             }
-            if (pool == poolKey) {
-                found = true;
-                return;
-            }
-            if (pool.ID === 0) {
+            if (poolSet[i].ID === 0) {
                 this.StakerPoolSet(staker).value[i] = poolKey;
-                found = true;
                 return;
             }
-            i += 1;
-        });
-        if (!found) {
-            throw Error('No empty slot available in the staker pool set');
         }
+        throw Error('No empty slot available in the staker pool set');
     }
 
     private removeFromStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {
-        let i = 0;
-        this.StakerPoolSet(staker).value.forEach((pool) => {
-            if (pool == poolKey) {
-                // Zero out this slot
+        const poolSet = clone(this.StakerPoolSet(staker).value);
+        for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
+            if (poolSet[i] === poolKey) {
                 this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0 };
                 return;
             }
-            i += 1;
-        });
+        }
     }
 }

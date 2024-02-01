@@ -91,23 +91,24 @@ class StakingPool extends Contract {
         let firstEmpty = 0;
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
-        let i = 0;
-        this.Stakers.value.forEach((staker) => {
-            if (staker.Account === account) {
-                staker.Balance += amountToStake;
-                staker.EntryTime = entryTime;
+        const stakers = clone(this.Stakers.value);
+        for (let i = 0; i < stakers.length; i+=1) {
+            if (stakers[i].Account === account) {
+                stakers[i].Balance += amountToStake;
+                stakers[i].EntryTime = entryTime;
                 // Update the box w/ the new data
-                this.Stakers.value[i] = staker;
+                this.Stakers.value[i] = stakers[i];
                 this.TotalAlgoStaked.value += amountToStake;
                 return entryTime;
             }
-            if (firstEmpty != 0 && staker.Account === Address.zeroAddress) {
+            if (firstEmpty !== 0 && stakers[i].Account === Address.zeroAddress) {
                 firstEmpty = i + 1;
+                break;
             }
             i += 1;
-        });
+        }
 
-        if (firstEmpty == 0) {
+        if (firstEmpty === 0) {
             // nothing was found - pool is full and this staker can't fit
             throw Error('Staking pool full');
         }
