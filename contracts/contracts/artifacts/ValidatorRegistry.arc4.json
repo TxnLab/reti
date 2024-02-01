@@ -84,6 +84,18 @@
       }
     },
     {
+      "name": "getPoolApp",
+      "args": [
+        {
+          "name": "poolKey",
+          "type": "(uint64,uint64)"
+        }
+      ],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
       "name": "addStake",
       "desc": "Adds stake to a validator pool.",
       "args": [
@@ -145,6 +157,38 @@
       ],
       "returns": {
         "type": "void"
+      }
+    },
+    {
+      "name": "getPoolAppId",
+      "args": [
+        {
+          "name": "poolKey",
+          "type": "(uint64,uint64)"
+        }
+      ],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
+      "name": "findPoolForStaker",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        },
+        {
+          "name": "staker",
+          "type": "address"
+        },
+        {
+          "name": "amountToStake",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "(uint64,uint64)"
       }
     }
   ]
