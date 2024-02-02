@@ -14,6 +14,7 @@ type ValidatorID = uint64;
 type ValidatorPoolKey = {
     ID: ValidatorID;
     PoolID: uint64; // 0 means INVALID ! - so 1 is index, technically of [0]
+    PoolAppID: uint64;
 };
 
 export type ValidatorConfig = {
@@ -58,6 +59,17 @@ type MbrAmounts = {
     PerPoolMbr: uint64;
 };
 
+const ALGORAND_ACCOUNT_MIN_BALANCE = 100000;
+
+// values taken from: https://developer.algorand.org/docs/features/asc1/stateful/#minimum-balance-requirement-for-a-smart-contract
+const APPLICATION_BASE_FEE = 100000; // base fee for creating or opt-in to application
+const ASSET_HOLDING_FEE = 100000; // creation fee for asset
+const SSC_VALUE_UINT = 28500; // cost for value as uint64
+const SSC_VALUE_BYTES = 50000; // cost for value as bytes
+
+const SCBOX_PERBOX = 2500;
+const SCBOX_PERBYTE = 400;
+
 // eslint-disable-next-line no-unused-vars
 class ValidatorRegistry extends Contract {
     programVersion = 9;
@@ -85,12 +97,40 @@ class ValidatorRegistry extends Contract {
      */
     gas(): void {}
 
-    // getMbrAmounts(): MbrAmounts {
-    //     return {
-    //         OwnMbr: minBalanceForAccount(MAX_POOLS, 0, 0, 0, 0, 2, 0),
-    //         PerPoolMbr: minBalanceForAccount(0, 0, 0, 0, 0, 6, 2) + costForBoxStorage('sps'.length + 32 + 16 * 4), // size of key + all values
-    //     };
-    // }
+    private minBalanceForAccount(
+        contracts: number,
+        extraPages: number,
+        assets: number,
+        localInts: number,
+        localBytes: number,
+        globalInts: number,
+        globalBytes: number
+    ): uint64 {
+        let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
+        minBal += contracts * APPLICATION_BASE_FEE;
+        minBal += extraPages * APPLICATION_BASE_FEE;
+        minBal += assets * ASSET_HOLDING_FEE;
+        minBal += localInts * SSC_VALUE_UINT;
+        minBal += globalInts * SSC_VALUE_UINT;
+        minBal += localBytes * SSC_VALUE_BYTES;
+        minBal += globalBytes * SSC_VALUE_BYTES;
+        return minBal;
+    }
+
+    private costForBoxStorage(totalNumBytes: number): uint64 {
+        return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
+    }
+
+    getMbrAmounts(): MbrAmounts {
+        return {
+            OwnMbr:
+                this.minBalanceForAccount(MAX_POOLS, 0, 0, 0, 0, 2, 0) +
+                this.costForBoxStorage(1 /* v prefix */ + 1507 /* ValidatorInfo struct size */),
+            PerPoolMbr:
+                this.minBalanceForAccount(0, 0, 0, 0, 0, 6, 2) +
+                this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
+        };
+    }
 
     /**
      * Returns the current number of validators
@@ -178,7 +218,7 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
 
         // PoolID is 1-based, 0 is invalid id
-        return { ID: validatorID, PoolID: numPools as uint64 };
+        return { ID: validatorID, PoolID: numPools as uint64, PoolAppID: this.itxn!.createdApplicationID.id };
     }
 
     getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
@@ -267,7 +307,11 @@ class ValidatorRegistry extends Contract {
         if (stakerRemoved) {
             this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1;
             this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1;
-            this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{ ID: poolKey.ID, PoolID: poolKey.PoolID });
+            this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
+                ID: poolKey.ID,
+                PoolID: poolKey.PoolID,
+                PoolAppID: 0,
+            });
         }
     }
 
@@ -295,11 +339,11 @@ class ValidatorRegistry extends Contract {
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
         for (let i = 0; i < MAX_POOLS; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                return { ID: validatorID, PoolID: i + 1 };
+                return { ID: validatorID, PoolID: i + 1, PoolAppID: 0 };
             }
         }
         // Not found is poolID 0
-        return { ID: validatorID, PoolID: 0 };
+        return { ID: validatorID, PoolID: 0, PoolAppID: 0 };
     }
 
     private validateConfig(config: ValidatorConfig): void {
@@ -337,7 +381,7 @@ class ValidatorRegistry extends Contract {
 
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = Application.fromID(
             poolAppID
-        ).globalState('numStakers') as uint64;
+        ).globalState('numStakers') as uint64 as uint16;
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = Application.fromID(
             poolAppID
         ).globalState('staked') as uint64;
@@ -369,7 +413,7 @@ class ValidatorRegistry extends Contract {
         const poolSet = clone(this.StakerPoolSet(staker).value);
         for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
             if (poolSet[i] === poolKey) {
-                this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0 };
+                this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0, PoolAppID: 0 };
                 return;
             }
         }

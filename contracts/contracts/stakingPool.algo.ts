@@ -2,7 +2,7 @@ import { Contract } from '@algorandfoundation/tealscript';
 // import { ValidatorConfig } from "./validatorRegistry.algo";
 import { MAX_ALGO_PER_POOL } from './constants.algo';
 
-const MAX_STAKERS_PER_POOL = 73; // 3,840
+const MAX_STAKERS_PER_POOL = 73; // *56 (size of StakeInfo) = 4,088 bytes
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
 const AVG_BLOCK_TIME_SECS = 30; // in tenths - 30 = 3.0
 

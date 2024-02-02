@@ -163,9 +163,7 @@ async function addStake(vldtrId: number, staker: Account, algoAmount: AlgoAmount
         // we need a dummy 'gas' call to the staking pool to buy up references as well
         // const gasAndRefs = poolClient.compose().gas({}, {});
         await validatorClient
-            // .StakingPoolCallFactory.gas({},{})
             .compose()
-            // .addTransaction(gasCall)
             .gas(
                 {},
                 {
@@ -208,51 +206,12 @@ async function addStake(vldtrId: number, staker: Account, algoAmount: AlgoAmount
     }
 }
 
-const ALGORAND_ACCOUNT_MIN_BALANCE = 100000;
-
-// values taken from: https://developer.algorand.org/docs/features/asc1/stateful/#minimum-balance-requirement-for-a-smart-contract
-const APPLICATION_BASE_FEE = 100000; // base fee for creating or opt-in to application
-const ASSET_HOLDING_FEE = 100000; // creation fee for asset
-const SSC_VALUE_UINT = 28500; // cost for value as uint64
-const SSC_VALUE_BYTES = 50000; // cost for value as bytes
-
-const SCBOX_PERBOX = 2500;
-const SCBOX_PERBYTE = 400;
-
-function minBalanceForAccount(
-    contracts: number,
-    extraPages: number,
-    assets: number,
-    localInts: number,
-    localBytes: number,
-    globalInts: number,
-    globalBytes: number
-): number {
-    let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
-    minBal += contracts * APPLICATION_BASE_FEE;
-    minBal += extraPages * APPLICATION_BASE_FEE;
-    minBal += assets * ASSET_HOLDING_FEE;
-    minBal += localInts * SSC_VALUE_UINT;
-    minBal += globalInts * SSC_VALUE_UINT;
-    minBal += localBytes * SSC_VALUE_BYTES;
-    minBal += globalBytes * SSC_VALUE_BYTES;
-    return minBal;
-}
-
-function costForBoxStorage(totalNumBytes: number): number {
-    return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
-}
-
-// Now we need to fund the validator contract itself to cover its MBR !
-// await validatorClient.appClient.fundAppAccount(AlgoAmount.Algos(0.2));
-const MAX_POOLS = 48;
-const validatorMbr = minBalanceForAccount(MAX_POOLS, 0, 0, 0, 0, 2, 0);
-const perPoolMbr = minBalanceForAccount(0, 0, 0, 0, 0, 6, 2) + costForBoxStorage('sps'.length + 32 + 16 * 4); // size of key + all values
-
 describe('ValidatorRegistry', () => {
     beforeEach(fixture.beforeEach);
     beforeEach(logs.beforeEach);
     afterEach(logs.afterEach);
+
+    // let perPoolMbr: bigint;
 
     beforeAll(async () => {
         await fixture.beforeEach();
@@ -281,20 +240,30 @@ describe('ValidatorRegistry', () => {
         );
 
         const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppID: tmplPool.appId });
-
-        // Add jest checks to verify that the constructed validator contract is initialized as expected
+        // verify that the constructed validator contract is initialized as expected
         expect(validatorApp.appId).toBeDefined();
         expect(validatorApp.appAddress).toBeDefined();
         const validatorState = await validatorClient.appClient.getGlobalState();
         expect(validatorState.numV.value).toBe(0);
         expect(validatorState.foo).toBeUndefined(); // sanity check that undefines states doesn't match 0.
 
+        // Now get MBR amounts via simulate from the contract
+        const mbrAmounts = (
+            await validatorClient
+                .compose()
+                .getMbrAmounts({}, { sendParams: { populateAppCallResources: true } })
+                .simulate()
+        ).returns![0];
+        const validatorMbr = mbrAmounts[0];
+        const perPoolMbr = mbrAmounts[1];
+
         // Need to cover the cost of box storage in validator for ValidatorList and StakerPoolSet
         // and in each staking pool (need to fund up front)
         consoleLogger.info(validatorMbr.toString());
         consoleLogger.info(perPoolMbr.toString());
 
-        await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(validatorMbr));
+        // Before validator can add pools it needs funded
+        await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(validatorMbr)));
     });
 
     test('addValidator', async () => {

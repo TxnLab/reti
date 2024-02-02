@@ -23,6 +23,13 @@
       }
     },
     {
+      "name": "getMbrAmounts",
+      "args": [],
+      "returns": {
+        "type": "(uint64,uint64)"
+      }
+    },
+    {
       "name": "getNumValidators",
       "desc": "Returns the current number of validators",
       "args": [],
@@ -93,7 +100,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,uint64)"
+        "type": "(uint64,uint64,uint64)"
       }
     },
     {
@@ -101,7 +108,7 @@
       "args": [
         {
           "name": "poolKey",
-          "type": "(uint64,uint64)"
+          "type": "(uint64,uint64,uint64)"
         }
       ],
       "returns": {
@@ -124,7 +131,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,uint64)",
+        "type": "(uint64,uint64,uint64)",
         "desc": "{ValidatorPoolKey}- The key of the validator pool."
       }
     },
@@ -134,7 +141,7 @@
       "args": [
         {
           "name": "poolKey",
-          "type": "(uint64,uint64)",
+          "type": "(uint64,uint64,uint64)",
           "desc": "ValidatorPoolKey type - [validatorID, PoolID] compound type"
         },
         {
@@ -152,7 +159,7 @@
       "args": [
         {
           "name": "poolKey",
-          "type": "(uint64,uint64)",
+          "type": "(uint64,uint64,uint64)",
           "desc": "ValidatorPoolKey type - [validatorID, PoolID] compound type"
         },
         {
@@ -189,7 +196,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,uint64)"
+        "type": "(uint64,uint64,uint64)"
       }
     }
   ]
