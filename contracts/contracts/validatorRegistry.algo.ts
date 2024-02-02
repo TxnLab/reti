@@ -55,8 +55,9 @@ type ValidatorInfo = {
 };
 
 type MbrAmounts = {
-    OwnMbr: uint64;
-    PerPoolMbr: uint64;
+    AddValidatorMbr: uint64;
+    AddPoolMbr: uint64;
+    AddStakerMbr: uint64;
 };
 
 const ALGORAND_ACCOUNT_MIN_BALANCE = 100000;
@@ -97,7 +98,7 @@ class ValidatorRegistry extends Contract {
      */
     gas(): void {}
 
-    private minBalanceForAccount(
+    private     minBalanceForAccount(
         contracts: number,
         extraPages: number,
         assets: number,
@@ -123,11 +124,12 @@ class ValidatorRegistry extends Contract {
 
     getMbrAmounts(): MbrAmounts {
         return {
-            OwnMbr:
-                this.minBalanceForAccount(MAX_POOLS, 0, 0, 0, 0, 2, 0) +
+            AddValidatorMbr:
+                this.minBalanceForAccount(0, 0, 0, 0, 0, 2, 0) +
                 this.costForBoxStorage(1 /* v prefix */ + 1507 /* ValidatorInfo struct size */),
-            PerPoolMbr:
-                this.minBalanceForAccount(0, 0, 0, 0, 0, 6, 2) +
+            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 6, 2),
+            AddStakerMbr:
+                // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
         };
     }
@@ -178,15 +180,22 @@ class ValidatorRegistry extends Contract {
     }
 
     /** Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
+     * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
+     * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of valiator pool + staking pool
+     * @param {uint64} validatorID is ID of validator to pool to (must be owner or manager)
+     * @returns {ValidatorPoolKey} pool key to created pool
+     *
      */
-    addPool(validatorID: ValidatorID): ValidatorPoolKey {
+    addPool(mbrPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr });
+
         assert(this.ValidatorList(validatorID).exists);
 
-        const owner = this.ValidatorList(validatorID).value.Owner;
-        const manager = this.ValidatorList(validatorID).value.Manager;
-
         // Must be called by the owner or manager of the validator.
-        assert(this.txn.sender === owner || this.txn.sender === manager);
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Manager
+        );
 
         let numPools = this.ValidatorList(validatorID).value.State.NumPools;
         if ((numPools as uint64) >= MAX_POOLS) {
@@ -244,13 +253,21 @@ class ValidatorRegistry extends Contract {
         const poolKey = this.findPoolForStaker(validatorID, staker, stakedAmountPayment.amount);
         if (poolKey.PoolID === 0) {
             throw Error('No pool available with free stake.  Validator needs to add another pool');
-            // need to create pool if not already at max
-            // poolKey = this.addPool(validatorID);
         }
+        let mbrAmtLeftBehind: uint64 = 0;
+        // determine if this is FIRST time this user has staked with this pool
+        if (!this.StakerPoolSet(staker).exists) {
+            // We'll deduct the required MBR from what the user is depositing by telling callPoolAddState to leave
+            // that amount behind and subtract from their depositing stake.
+            mbrAmtLeftBehind = this.getMbrAmounts().AddStakerMbr;
+            this.StakerPoolSet(staker).create();
+        }
+
         // Update StakerPoolList for this found pool (new or existing)
         this.updateStakerPoolSet(staker, poolKey);
         increaseOpcodeBudget();
-        this.callPoolAddStake(stakedAmountPayment, poolKey);
+        // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool
+        this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind);
         return poolKey;
     }
 
@@ -265,14 +282,17 @@ class ValidatorRegistry extends Contract {
         assert(this.ValidatorList(poolKey.ID).exists);
         assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
         assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
-        // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
+        // validator id, pool id, pool app id might still be kind of spoofed but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
-        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
-        // Sender has to match the pool app id passed in.
-        assert(this.txn.sender === Application.fromID(poolAppID).address);
-        // verify its state is right as well
-        assert(poolKey.ID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
-        assert(poolKey.PoolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
+        assert(
+            poolKey.PoolAppID === this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID,
+            "The passed in app id doesn't match the passed in ids"
+        );
+        // Sender has to match the pool app id passed in as well.
+        assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address);
+        // verify its state matches as well
+        assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64));
+        assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64));
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd;
@@ -292,14 +312,17 @@ class ValidatorRegistry extends Contract {
         assert(this.ValidatorList(poolKey.ID).exists);
         assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
         assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
-        // validator id and pool id might still be kind of spoofed but they can't spoof us verifying they called us from
+        // validator id, pool id, pool app id might still be kind of spoofed but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
-        const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
-        // Sender has to match the pool app id passed in.
-        assert(this.txn.sender === Application.fromID(poolAppID).address);
+        assert(
+            poolKey.PoolAppID === this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID,
+            "The passed in app id doesn't match the passed in ids"
+        );
+        // Sender has to match the pool app id passed in as well.
+        assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address);
         // verify its state is right as well
-        assert(poolKey.ID === (Application.fromID(poolAppID).globalState('validatorID') as uint64));
-        assert(poolKey.PoolID === (Application.fromID(poolAppID).globalState('poolID') as uint64));
+        assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64));
+        assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64));
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
@@ -310,7 +333,7 @@ class ValidatorRegistry extends Contract {
             this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
                 ID: poolKey.ID,
                 PoolID: poolKey.PoolID,
-                PoolAppID: 0,
+                PoolAppID: poolKey.PoolAppID,
             });
         }
     }
@@ -339,7 +362,7 @@ class ValidatorRegistry extends Contract {
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
         for (let i = 0; i < MAX_POOLS; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake < MAX_ALGO_PER_POOL) {
-                return { ID: validatorID, PoolID: i + 1, PoolAppID: 0 };
+                return { ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID };
             }
         }
         // Not found is poolID 0
@@ -362,9 +385,10 @@ class ValidatorRegistry extends Contract {
      *
      * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
      * @param {ValidatorPoolKey} poolKey - The key of the validator pool.
+     * @param {uint64} mbrAmtPaid - Amount the user is leaving behind in the validator to pay for their Staker MBR cost
      * @returns {void}
      */
-    private callPoolAddStake(stakedAmountPayment: PayTxn, poolKey: ValidatorPoolKey) {
+    private callPoolAddStake(stakedAmountPayment: PayTxn, poolKey: ValidatorPoolKey, mbrAmtPaid: uint64) {
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         const priorStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
 
@@ -374,7 +398,10 @@ class ValidatorRegistry extends Contract {
             name: 'addStake',
             applicationID: Application.fromID(poolAppID),
             methodArgs: [
-                { amount: stakedAmountPayment.amount, receiver: Application.fromID(poolAppID).address },
+                // =======
+                // THIS IS A SEND of the amount received right back out and into the staking pool contract account.
+                { amount: stakedAmountPayment.amount - mbrAmtPaid, receiver: Application.fromID(poolAppID).address },
+                // =======
                 stakedAmountPayment.sender,
             ],
         });
@@ -388,7 +415,7 @@ class ValidatorRegistry extends Contract {
         // now update our global totals based on delta (if new staker was added, new amount - can only have gone up or stayed same)
         this.ValidatorList(poolKey.ID).value.State.TotalStakers +=
             (Application.fromID(poolAppID).globalState('numStakers') as uint64) - priorStakers;
-        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid;
     }
 
     private updateStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {

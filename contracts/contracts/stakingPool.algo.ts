@@ -332,10 +332,10 @@ class StakingPool extends Contract {
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it
         // stakeUpdatedViaRewards((uint64,uint64),uint64)void
-        sendMethodCall<[[uint64, uint64], uint64], void>({
+        sendMethodCall<[[uint64, uint64,uint64], uint64], void>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
             name: 'stakeUpdatedViaRewards',
-            methodArgs: [[this.ValidatorID.value, this.PoolID.value], increasedStake],
+            methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake],
         });
     }
 

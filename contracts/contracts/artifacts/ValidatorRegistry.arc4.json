@@ -26,7 +26,7 @@
       "name": "getMbrAmounts",
       "args": [],
       "returns": {
-        "type": "(uint64,uint64)"
+        "type": "(uint64,uint64,uint64)"
       }
     },
     {
@@ -92,15 +92,22 @@
     },
     {
       "name": "addPool",
-      "desc": "Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.",
+      "desc": "Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.",
       "args": [
         {
+          "name": "mbrPayment",
+          "type": "pay",
+          "desc": "payment from caller which covers mbr increase of valiator pool + staking pool"
+        },
+        {
           "name": "validatorID",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "is ID of validator to pool to (must be owner or manager)"
         }
       ],
       "returns": {
-        "type": "(uint64,uint64,uint64)"
+        "type": "(uint64,uint64,uint64)",
+        "desc": "{ValidatorPoolKey}pool key to created pool"
       }
     },
     {

@@ -1330,15 +1330,15 @@ forEach_2_end:
 	app_global_put
 
 	// contracts/stakingPool.algo.ts:335
-	// sendMethodCall<[[uint64, uint64], uint64], void>({
+	// sendMethodCall<[[uint64, uint64,uint64], uint64], void>({
 	//             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
 	//             name: 'stakeUpdatedViaRewards',
-	//             methodArgs: [[this.ValidatorID.value, this.PoolID.value], increasedStake],
+	//             methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake],
 	//         })
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "stakeUpdatedViaRewards((uint64,uint64),uint64)void"
+	method "stakeUpdatedViaRewards((uint64,uint64,uint64),uint64)void"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:336
@@ -1348,12 +1348,15 @@ forEach_2_end:
 	itxn_field ApplicationID
 
 	// contracts/stakingPool.algo.ts:338
-	// methodArgs: [[this.ValidatorID.value, this.PoolID.value], increasedStake]
+	// methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake]
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
 	itob
 	byte 0x706f6f6c4944 // "poolID"
 	app_global_get
+	itob
+	concat
+	txna Applications 0
 	itob
 	concat
 	itxn_field ApplicationArgs
