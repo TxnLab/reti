@@ -42,7 +42,7 @@ type NodeInfo = {
     Name: StaticArray<byte, 32>;
 };
 
-export type ValidatorInfo = {
+type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
     Manager: Address; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
@@ -51,6 +51,11 @@ export type ValidatorInfo = {
     State: ValidatorCurState;
     Nodes: StaticArray<NodeInfo, typeof MAX_NODES>;
     Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
+};
+
+type MbrAmounts = {
+    OwnMbr: uint64;
+    PerPoolMbr: uint64;
 };
 
 // eslint-disable-next-line no-unused-vars
@@ -68,11 +73,24 @@ class ValidatorRegistry extends Contract {
     StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'sps' });
 
     // The app id of a staking pool contract instance to use as template for newly created pools
-    StakingPoolTemplateAppID = TemplateVar<uint64>();
+    StakingPoolTemplateAppID = GlobalStateKey<uint64>({ key: 'poolTemplateAppID' });
 
-    createApplication(): void {
+    createApplication(poolTemplateAppID: uint64): void {
         this.numValidators.value = 0;
+        this.StakingPoolTemplateAppID.value = poolTemplateAppID;
     }
+
+    /**
+     * gas is a dummy no-op call that can be used to pool-up resource references and opcode cost
+     */
+    gas(): void {}
+
+    // getMbrAmounts(): MbrAmounts {
+    //     return {
+    //         OwnMbr: minBalanceForAccount(MAX_POOLS, 0, 0, 0, 0, 2, 0),
+    //         PerPoolMbr: minBalanceForAccount(0, 0, 0, 0, 0, 6, 2) + costForBoxStorage('sps'.length + 32 + 16 * 4), // size of key + all values
+    //     };
+    // }
 
     /**
      * Returns the current number of validators
@@ -139,11 +157,11 @@ class ValidatorRegistry extends Contract {
         // Create the actual staker pool contract instance
         sendAppCall({
             onCompletion: OnCompletion.NoOp,
-            approvalProgram: Application.fromID(this.StakingPoolTemplateAppID).approvalProgram,
-            clearStateProgram: Application.fromID(this.StakingPoolTemplateAppID).clearStateProgram,
-            globalNumUint: Application.fromID(this.StakingPoolTemplateAppID).globalNumUint,
-            globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID).globalNumByteSlice,
-            extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID).extraProgramPages,
+            approvalProgram: Application.fromID(this.StakingPoolTemplateAppID.value).approvalProgram,
+            clearStateProgram: Application.fromID(this.StakingPoolTemplateAppID.value).clearStateProgram,
+            globalNumUint: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumUint,
+            globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
+            extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
                 method('createApplication(uint64,uint64,uint64,address,address)void'),
                 itob(this.app.id),
@@ -170,21 +188,20 @@ class ValidatorRegistry extends Contract {
     /**
      * Adds stake to a validator pool.
      *
+     * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
      * @param {ValidatorID} validatorID - The ID of the validator.
-     * @param {uint64} amountToStake - The amount to stake.
      * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
-    addStake(validatorID: ValidatorID, amountToStake: uint64): ValidatorPoolKey {
+    addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
         const staker = this.txn.sender;
         // The prior transaction should be a payment to this pool for the amount specified
         // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
-        verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
+        verifyPayTxn(stakedAmountPayment, {
             sender: staker,
             receiver: this.app.address,
-            amount: amountToStake,
         });
 
-        const poolKey = this.findPoolForStaker(validatorID, staker, amountToStake);
+        const poolKey = this.findPoolForStaker(validatorID, staker, stakedAmountPayment.amount);
         if (poolKey.PoolID === 0) {
             throw Error('No pool available with free stake.  Validator needs to add another pool');
             // need to create pool if not already at max
@@ -193,7 +210,7 @@ class ValidatorRegistry extends Contract {
         // Update StakerPoolList for this found pool (new or existing)
         this.updateStakerPoolSet(staker, poolKey);
         increaseOpcodeBudget();
-        this.callPoolAddStake(poolKey, staker, amountToStake);
+        this.callPoolAddStake(stakedAmountPayment, poolKey);
         return poolKey;
     }
 
@@ -299,28 +316,24 @@ class ValidatorRegistry extends Contract {
      * by our caller) to the staking pool account, and then telling it about the amount being add for the specified
      * staker.
      *
+     * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
      * @param {ValidatorPoolKey} poolKey - The key of the validator pool.
-     * @param {Address} staker - The address of the staker.
-     * @param {uint64} amountToStake - The amount to stake.
      * @returns {void}
      */
-    private callPoolAddStake(poolKey: ValidatorPoolKey, staker: Address, amountToStake: uint64) {
+    private callPoolAddStake(stakedAmountPayment: PayTxn, poolKey: ValidatorPoolKey) {
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         const priorStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
 
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call
-        this.pendingGroup.addPayment({
-            amount: amountToStake,
-            receiver: Application.fromID(poolAppID).address,
-        });
-        // now tell the pool to add the stake
-        this.pendingGroup.addMethodCall<[Address, uint64], uint64>({
-            applicationID: Application.fromID(poolAppID),
+        sendMethodCall<[InnerPayment, Address], uint64>({
             name: 'addStake',
-            methodArgs: [staker, amountToStake],
+            applicationID: Application.fromID(poolAppID),
+            methodArgs: [
+                { amount: stakedAmountPayment.amount, receiver: Application.fromID(poolAppID).address },
+                stakedAmountPayment.sender,
+            ],
         });
-        this.pendingGroup.submit();
 
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = Application.fromID(
             poolAppID
@@ -331,7 +344,7 @@ class ValidatorRegistry extends Contract {
         // now update our global totals based on delta (if new staker was added, new amount - can only have gone up or stayed same)
         this.ValidatorList(poolKey.ID).value.State.TotalStakers +=
             (Application.fromID(poolAppID).globalState('numStakers') as uint64) - priorStakers;
-        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToStake;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount;
     }
 
     private updateStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {

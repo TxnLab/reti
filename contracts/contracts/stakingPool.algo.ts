@@ -2,7 +2,7 @@ import { Contract } from '@algorandfoundation/tealscript';
 // import { ValidatorConfig } from "./validatorRegistry.algo";
 import { MAX_ALGO_PER_POOL } from './constants.algo';
 
-const MAX_STAKERS_PER_POOL = 80; // 3,840
+const MAX_STAKERS_PER_POOL = 73; // 3,840
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
 const AVG_BLOCK_TIME_SECS = 30; // in tenths - 30 = 3.0
 
@@ -61,29 +61,34 @@ class StakingPool extends Contract {
     }
 
     /**
+     * gas is a dummy no-op call that can be used to pool-up resource references and opcode cost
+     */
+    gas(): void {}
+
+    /**
      * Adds stake to the given account.
      * Can ONLY be called by the validator contract that created us
      * Must receive payment from the validator contract for amount being staked.
      *
-     * @param {Address} account - The account adding new stake
-     * @param {uint64} amountToStake - The amount to stake.
+     * @param {PayTxn} stakedAmountPayment prior payment coming from validator contract to us on behalf of staker.
+     * @param {Address} staker - The account adding new stake
      * @throws {Error} - Throws an error if the staking pool is full.
-     * @returns {uint64,} new 'entry time' in seconds of stake add.
+     * @returns {uint64} new 'entry time' in seconds of stake add.
      */
-    addStake(account: Address, amountToStake: uint64): uint64 {
+    addStake(stakedAmountPayment: PayTxn, staker: Address): uint64 {
         if (!this.Stakers.exists) {
             this.Stakers.create();
         }
         // account calling us has to be our creating validator contract
-        assert(account !== Account.zeroAddress);
+        assert(staker !== Account.zeroAddress);
         assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
 
         // Now, is the required amount actually being paid to US (this contract account - the staking pool)
         // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
-        verifyPayTxn(this.txnGroup[this.txn.groupIndex - 1], {
+        verifyPayTxn(stakedAmountPayment, {
             sender: Application.fromID(this.CreatingValidatorContractAppID.value).address,
             receiver: this.app.address,
-            amount: amountToStake,
+            amount: stakedAmountPayment.amount,
         });
         // See if the account staking is already in our ledger of Stakers - if so, they're just adding to their stake
         // track first empty slot as we go along as well.
@@ -92,16 +97,16 @@ class StakingPool extends Contract {
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
         const stakers = clone(this.Stakers.value);
-        for (let i = 0; i < stakers.length; i+=1) {
-            if (stakers[i].Account === account) {
-                stakers[i].Balance += amountToStake;
+        for (let i = 0; i < MAX_STAKERS_PER_POOL; i += 1) {
+            if (stakers[i].Account === staker) {
+                stakers[i].Balance += stakedAmountPayment.amount;
                 stakers[i].EntryTime = entryTime;
                 // Update the box w/ the new data
                 this.Stakers.value[i] = stakers[i];
-                this.TotalAlgoStaked.value += amountToStake;
+                this.TotalAlgoStaked.value += stakedAmountPayment.amount;
                 return entryTime;
             }
-            if (firstEmpty !== 0 && stakers[i].Account === Address.zeroAddress) {
+            if (stakers[i].Account === Address.zeroAddress) {
                 firstEmpty = i + 1;
                 break;
             }
@@ -112,15 +117,17 @@ class StakingPool extends Contract {
             // nothing was found - pool is full and this staker can't fit
             throw Error('Staking pool full');
         }
-        assert(this.Stakers.value[firstEmpty - 1].Account == Address.zeroAddress);
+        // This is a new staker to the pool, so initialize slot and add to the stakers.
+        // our caller will see stakers increase in state and increase in their state as well.
+        assert(this.Stakers.value[firstEmpty - 1].Account === Address.zeroAddress);
         this.Stakers.value[firstEmpty - 1] = {
-            Account: account,
-            Balance: amountToStake,
+            Account: staker,
+            Balance: stakedAmountPayment.amount,
             TotalRewarded: 0,
             EntryTime: entryTime,
         };
         this.NumStakers.value += 1;
-        this.TotalAlgoStaked.value += amountToStake;
+        this.TotalAlgoStaked.value += stakedAmountPayment.amount;
         return entryTime;
     }
 
@@ -181,7 +188,7 @@ class StakingPool extends Contract {
 
     payStakers(): void {
         // we should only be callable by owner or manager of validator.
-        assert(this.txn.sender == this.Owner.value || this.txn.sender === this.Manager.value);
+        assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value);
 
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<[uint64], [uint16, uint32, Address, uint8, uint16]>({
@@ -332,7 +339,7 @@ class StakingPool extends Contract {
         });
     }
 
-    GoOnline(
+    goOnline(
         votePK: bytes,
         selectionPK: bytes,
         stateProofPK: bytes,
@@ -340,7 +347,7 @@ class StakingPool extends Contract {
         voteLast: uint64,
         voteKeyDilution: uint64
     ): void {
-        assert(this.txn.sender == this.Owner.value || this.txn.sender === this.Manager.value);
+        assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value);
         sendOnlineKeyRegistration({
             votePK: votePK,
             selectionPK: selectionPK,
@@ -351,8 +358,8 @@ class StakingPool extends Contract {
         });
     }
 
-    GoOffline(): void {
-        assert(this.txn.sender == this.Owner.value || this.txn.sender === this.Manager.value);
+    goOffline(): void {
+        assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value);
         sendOfflineKeyRegistration({});
     }
 

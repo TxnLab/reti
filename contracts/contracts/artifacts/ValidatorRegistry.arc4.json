@@ -4,6 +4,19 @@
   "methods": [
     {
       "name": "createApplication",
+      "args": [
+        {
+          "name": "poolTemplateAppID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "gas",
+      "desc": "gas is a dummy no-op call that can be used to pool-up resource references and opcode cost",
       "args": [],
       "returns": {
         "type": "void"
@@ -100,14 +113,14 @@
       "desc": "Adds stake to a validator pool.",
       "args": [
         {
+          "name": "stakedAmountPayment",
+          "type": "pay",
+          "desc": "payment coming from staker to place into a pool"
+        },
+        {
           "name": "validatorID",
           "type": "uint64",
           "desc": "The ID of the validator."
-        },
-        {
-          "name": "amountToStake",
-          "type": "uint64",
-          "desc": "The amount to stake."
         }
       ],
       "returns": {

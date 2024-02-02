@@ -35,23 +35,31 @@
       }
     },
     {
+      "name": "gas",
+      "desc": "gas is a dummy no-op call that can be used to pool-up resource references and opcode cost",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "addStake",
       "desc": "Adds stake to the given account.Can ONLY be called by the validator contract that created usMust receive payment from the validator contract for amount being staked.",
       "args": [
         {
-          "name": "account",
-          "type": "address",
-          "desc": "The account adding new stake"
+          "name": "stakedAmountPayment",
+          "type": "pay",
+          "desc": "prior payment coming from validator contract to us on behalf of staker."
         },
         {
-          "name": "amountToStake",
-          "type": "uint64",
-          "desc": "The amount to stake."
+          "name": "staker",
+          "type": "address",
+          "desc": "The account adding new stake"
         }
       ],
       "returns": {
         "type": "uint64",
-        "desc": "{uint64,}new 'entry time' in seconds of stake add."
+        "desc": "{uint64}new 'entry time' in seconds of stake add."
       }
     },
     {
@@ -81,7 +89,7 @@
       }
     },
     {
-      "name": "GoOnline",
+      "name": "goOnline",
       "args": [
         {
           "name": "votePK",
@@ -113,7 +121,7 @@
       }
     },
     {
-      "name": "GoOffline",
+      "name": "goOffline",
       "args": [],
       "returns": {
         "type": "void"

@@ -4,9 +4,9 @@ import * as algokit from '@algorandfoundation/algokit-utils';
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import {
+    Account,
     decodeAddress,
     encodeUint64,
-    Account,
     makePaymentTxnWithSuggestedParamsFromObject,
     SuggestedParams,
 } from 'algosdk';
@@ -92,25 +92,34 @@ async function addValidator(config: ValidatorConfig, vldtrAcct: Account, nextVal
 }
 
 async function addStakingPool(vldtrId: number, nextValidator: number, vldtrAcct: Account) {
+    // const coverMbr = makePaymentTxnWithSuggestedParamsFromObject({
+    //     from: fixture.context.testAccount,
+    //     to: appRef.appAddress,
+    //     amount: algoAmount.microAlgos,
+    //     suggestedParams,
+    // });
+
     try {
         // Now add a staking pool
-        return (
-            await validatorClient.addPool(
+        const results = await validatorClient
+            .compose()
+            .addPool(
                 { validatorID: vldtrId },
                 {
                     sendParams: {
                         fee: AlgoAmount.MicroAlgos(2000),
-                        populateAppCallResources: true,
+                        // populateAppCallResources: true,
                     },
-                    // apps: [tmplPoolAppID], // needsto reference template to create new instance
-                    // boxes: [
-                    //     { appId: 0, name: getValidatorListBoxName(nextValidator) },
-                    //     { appId: 0, name: '' }, // buy more i/o
-                    // ],
+                    apps: [tmplPoolAppID], // needsto reference template to create new instance
+                    boxes: [
+                        { appId: 0, name: getValidatorListBoxName(nextValidator) },
+                        { appId: 0, name: '' }, // buy more i/o
+                    ],
                     sender: vldtrAcct,
                 }
             )
-        ).return!;
+            .execute();
+        return results.returns[0];
     } catch (exception) {
         console.log((exception as LogicError).message);
         throw exception;
@@ -144,24 +153,48 @@ async function addStake(vldtrId: number, staker: Account, algoAmount: AlgoAmount
             amount: algoAmount.microAlgos,
             suggestedParams,
         });
-        // compose txn group that pays, then adds stake
-        const txnResp = await validatorClient
+        // const gasCall = await getAppArgsForABICall(
+        //     {
+        //         method: { name: 'gas', args: [{ type: 'void' }], returns: { type: 'void' } },
+        //         methodArgs: [],
+        //     },
+        //     staker
+        // );
+        // we need a dummy 'gas' call to the staking pool to buy up references as well
+        // const gasAndRefs = poolClient.compose().gas({}, {});
+        await validatorClient
+            // .StakingPoolCallFactory.gas({},{})
             .compose()
-            .addTransaction({ transaction: stakeTransfer, signer: staker })
+            // .addTransaction(gasCall)
+            .gas(
+                {},
+                {
+                    apps: [Number(poolAppId)],
+                    boxes: [
+                        { appId: Number(poolAppId), name: new TextEncoder().encode('stakers') },
+                        { appId: Number(poolAppId), name: '' },
+                        { appId: Number(poolAppId), name: '' },
+                        { appId: Number(poolAppId), name: '' },
+                        { appId: Number(poolAppId), name: '' },
+                        { appId: Number(poolAppId), name: '' },
+                    ],
+                }
+            )
             .addStake(
-                { validatorID: vldtrId, amountToStake: algoAmount.microAlgos },
+                {
+                    stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
+                    validatorID: vldtrId,
+                },
                 {
                     sendParams: {
                         fee: AlgoAmount.MicroAlgos(6000),
                         // populateAppCallResources:true
                     },
-                    apps: [tmplPoolAppID, Number(poolAppId)],
+                    apps: [tmplPoolAppID],
                     boxes: [
                         { appId: 0, name: getValidatorListBoxName(vldtrId) },
                         { appId: 0, name: '' }, // buy more i/o
                         { appId: 0, name: getStakerPoolSetName(staker) },
-                        { appId: Number(poolAppId), name: new TextEncoder().encode('stakers') },
-                        { appId: Number(poolAppId), name: '' },
                     ],
                     sender: staker,
                 }
@@ -174,6 +207,47 @@ async function addStake(vldtrId: number, staker: Account, algoAmount: AlgoAmount
         throw exception;
     }
 }
+
+const ALGORAND_ACCOUNT_MIN_BALANCE = 100000;
+
+// values taken from: https://developer.algorand.org/docs/features/asc1/stateful/#minimum-balance-requirement-for-a-smart-contract
+const APPLICATION_BASE_FEE = 100000; // base fee for creating or opt-in to application
+const ASSET_HOLDING_FEE = 100000; // creation fee for asset
+const SSC_VALUE_UINT = 28500; // cost for value as uint64
+const SSC_VALUE_BYTES = 50000; // cost for value as bytes
+
+const SCBOX_PERBOX = 2500;
+const SCBOX_PERBYTE = 400;
+
+function minBalanceForAccount(
+    contracts: number,
+    extraPages: number,
+    assets: number,
+    localInts: number,
+    localBytes: number,
+    globalInts: number,
+    globalBytes: number
+): number {
+    let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
+    minBal += contracts * APPLICATION_BASE_FEE;
+    minBal += extraPages * APPLICATION_BASE_FEE;
+    minBal += assets * ASSET_HOLDING_FEE;
+    minBal += localInts * SSC_VALUE_UINT;
+    minBal += globalInts * SSC_VALUE_UINT;
+    minBal += localBytes * SSC_VALUE_BYTES;
+    minBal += globalBytes * SSC_VALUE_BYTES;
+    return minBal;
+}
+
+function costForBoxStorage(totalNumBytes: number): number {
+    return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
+}
+
+// Now we need to fund the validator contract itself to cover its MBR !
+// await validatorClient.appClient.fundAppAccount(AlgoAmount.Algos(0.2));
+const MAX_POOLS = 48;
+const validatorMbr = minBalanceForAccount(MAX_POOLS, 0, 0, 0, 0, 2, 0);
+const perPoolMbr = minBalanceForAccount(0, 0, 0, 0, 0, 6, 2) + costForBoxStorage('sps'.length + 32 + 16 * 4); // size of key + all values
 
 describe('ValidatorRegistry', () => {
     beforeEach(fixture.beforeEach);
@@ -202,12 +276,11 @@ describe('ValidatorRegistry', () => {
                 sender: testAccount,
                 resolveBy: 'id',
                 id: 0,
-                deployTimeParams: { StakingPoolTemplateAppID: tmplPool.appId },
             },
             algod
         );
 
-        const validatorApp = await validatorClient.create.createApplication({});
+        const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppID: tmplPool.appId });
 
         // Add jest checks to verify that the constructed validator contract is initialized as expected
         expect(validatorApp.appId).toBeDefined();
@@ -216,8 +289,12 @@ describe('ValidatorRegistry', () => {
         expect(validatorState.numV.value).toBe(0);
         expect(validatorState.foo).toBeUndefined(); // sanity check that undefines states doesn't match 0.
 
-        // Now we need to fund the validator contract itself to cover its MBR !
-        await validatorClient.appClient.fundAppAccount(AlgoAmount.Algos(1.0799));
+        // Need to cover the cost of box storage in validator for ValidatorList and StakerPoolSet
+        // and in each staking pool (need to fund up front)
+        consoleLogger.info(validatorMbr.toString());
+        consoleLogger.info(perPoolMbr.toString());
+
+        await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(validatorMbr));
     });
 
     test('addValidator', async () => {
