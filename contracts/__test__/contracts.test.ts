@@ -48,6 +48,36 @@ function validatorConfigAsArray(config: ValidatorConfig): [number, number, strin
     ];
 }
 
+type ValidatorCurState = {
+    NumPools: number; // current number of pools this validator has - capped at MaxPools
+    TotalStakers: bigint; // total number of stakers across all pools
+    TotalAlgoStaked: bigint; // total amount staked to this validator across ALL of its pools
+};
+
+function createValidatorCurStateFromValues([NumPools, TotalStakers, TotalAlgoStaked]: [
+    number,
+    bigint,
+    bigint,
+]): ValidatorCurState {
+    return { NumPools, TotalStakers, TotalAlgoStaked };
+}
+
+type PoolInfo = {
+    NodeID: number;
+    PoolAppID: bigint; // The App ID of this staking pool contract instance
+    TotalStakers: number;
+    TotalAlgoStaked: bigint;
+};
+
+function createPoolInfoFromValues([NodeID, PoolAppID, TotalStakers, TotalAlgoStaked]: [
+    number,
+    bigint,
+    number,
+    bigint,
+]): PoolInfo {
+    return { NodeID, PoolAppID, TotalStakers, TotalAlgoStaked };
+}
+
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
     const result = new Uint8Array(a.length + b.length);
     result.set(a);
@@ -92,6 +122,33 @@ async function addValidator(config: ValidatorConfig, vldtrAcct: Account, nextVal
     }
 }
 
+async function getValidatorState(validatorID: number) {
+    // const retVal = ;
+    // if (retVal.simulateResponse.txnGroups[0].failureMessage !== undefined) {
+    //     consoleLogger.error(retVal.simulateResponse.txnGroups[0].failureMessage);
+    //     throw retVal.simulateResponse.txnGroups[0].failureMessage;
+    // }
+    return createValidatorCurStateFromValues(
+        (
+            await validatorClient
+                .compose()
+                .getValidatorState({ validatorID }, { sendParams: { populateAppCallResources: true } })
+                .simulate({ allowUnnamedResources: true })
+        ).returns![0]
+    );
+}
+
+async function getPoolInfo(poolKey: [bigint, bigint, bigint]) {
+    return createPoolInfoFromValues(
+        (
+            await validatorClient
+                .compose()
+                .getPoolInfo({ poolKey }, { sendParams: { populateAppCallResources: true } })
+                .simulate({ allowUnnamedResources: true })
+        ).returns![0]
+    );
+}
+
 async function getMbrAmountsFromValidatorClient() {
     const mbrAmounts = (
         await validatorClient
@@ -102,7 +159,7 @@ async function getMbrAmountsFromValidatorClient() {
     return mbrAmounts;
 }
 
-async function addStakingPool(vldtrId: number, nextValidator: number, vldtrAcct: Account) {
+async function addStakingPool(validatorID: number, nextValidator: number, vldtrAcct: Account) {
     // Now get MBR amounts via simulate from the contract
     const mbrAmounts = await getMbrAmountsFromValidatorClient();
     const addPoolMbr = mbrAmounts[1];
@@ -122,7 +179,10 @@ async function addStakingPool(vldtrId: number, nextValidator: number, vldtrAcct:
         const results = await validatorClient
             .compose()
             .addPool(
-                { mbrPayment: { transaction: payPoolMbr, signer: fixture.context.testAccount }, validatorID: vldtrId },
+                {
+                    mbrPayment: { transaction: payPoolMbr, signer: fixture.context.testAccount },
+                    validatorID,
+                },
                 {
                     sendParams: {
                         fee: AlgoAmount.MicroAlgos(2000),
@@ -171,15 +231,6 @@ async function addStake(vldtrId: number, staker: Account, algoAmount: AlgoAmount
             amount: algoAmount.microAlgos,
             suggestedParams,
         });
-        // const gasCall = await getAppArgsForABICall(
-        //     {
-        //         method: { name: 'gas', args: [{ type: 'void' }], returns: { type: 'void' } },
-        //         methodArgs: [],
-        //     },
-        //     staker
-        // );
-        // we need a dummy 'gas' call to the staking pool to buy up references as well
-        // const gasAndRefs = poolClient.compose().gas({}, {});
         const results = await validatorClient
             .compose()
             .gas(
@@ -292,12 +343,12 @@ describe('ValidatorRegistry', () => {
         // Before validator can add pools it needs to be funded
         await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(addValidatorMbr)));
         // Construct the validator pool
-        const vldtrId = await addValidator(config, vldtrAcct, nextValidator);
+        const validatorID = await addValidator(config, vldtrAcct, nextValidator);
 
         // Now add a pool - we have to include payment for its MBR as well
-        const poolKey = await addStakingPool(vldtrId, nextValidator, vldtrAcct);
+        const poolKey = await addStakingPool(validatorID, nextValidator, vldtrAcct);
         // should be [validator id, pool id (1 based)]
-        expect(poolKey[0]).toBe(BigInt(vldtrId));
+        expect(poolKey[0]).toBe(BigInt(validatorID));
         expect(poolKey[1]).toBe(BigInt(1));
 
         // get the app id of the specified validator/pool so we can compare against the internal box state changes.
@@ -306,12 +357,17 @@ describe('ValidatorRegistry', () => {
         ).return!;
         expect(poolKey[2]).toBe(poolAppId);
 
-        const newBoxData = await validatorClient.appClient.getBoxValue(getValidatorListBoxName(vldtrId));
-        // ensure that bytes 121-122 is equal to numpools uint16 value
-        expect(newBoxData.slice(121, 123)).toEqual(encodeUint64(1).slice(6, 8));
-        // bytes 549-557 will contain the first pool's stored app id
-        expect(newBoxData.slice(549, 557)).toEqual(encodeUint64(Number(poolAppId)));
-        // compareAndLogUint8Arrays(origValidListData, newBoxData);
+        const newBoxData = await validatorClient.appClient.getBoxValue(getValidatorListBoxName(validatorID));
+
+        const stateData = await getValidatorState(validatorID);
+        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
+        expect(stateData.TotalStakers).toEqual(BigInt(0));
+
+        const poolInfo = await getPoolInfo(poolKey);
+        expect(poolInfo.PoolAppID).toBe(BigInt(poolAppId));
+        expect(poolInfo.TotalStakers).toEqual(BigInt(0));
+        expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(0));
 
         // get current balance of staker pool
         const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
@@ -328,7 +384,7 @@ describe('ValidatorRegistry', () => {
         const stakerMbr = mbrs[2];
 
         const stakeAmount = AlgoAmount.Algos(900);
-        const stakedPoolKey = await addStake(vldtrId, stakerAccount, stakeAmount);
+        const stakedPoolKey = await addStake(validatorID, stakerAccount, stakeAmount);
         // should be same as what we added prior
         expect(stakedPoolKey[0]).toBe(poolKey[0]);
         expect(stakedPoolKey[1]).toBe(poolKey[1]);

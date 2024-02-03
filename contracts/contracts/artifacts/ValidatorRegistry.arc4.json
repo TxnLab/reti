@@ -62,6 +62,30 @@
       }
     },
     {
+      "name": "getValidatorState",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "(uint16,uint64,uint64)"
+      }
+    },
+    {
+      "name": "getPoolInfo",
+      "args": [
+        {
+          "name": "poolKey",
+          "type": "(uint64,uint64,uint64)"
+        }
+      ],
+      "returns": {
+        "type": "(uint16,uint64,uint16,uint64)"
+      }
+    },
+    {
       "name": "addValidator",
       "desc": "Adds a new validator",
       "args": [

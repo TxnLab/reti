@@ -98,7 +98,7 @@ class ValidatorRegistry extends Contract {
      */
     gas(): void {}
 
-    private     minBalanceForAccount(
+    private minBalanceForAccount(
         contracts: number,
         extraPages: number,
         assets: number,
@@ -150,6 +150,16 @@ class ValidatorRegistry extends Contract {
     // @abi.readonly
     getValidatorConfig(validatorID: ValidatorID): ValidatorConfig {
         return this.ValidatorList(validatorID).value.Config;
+    }
+
+    // @abi.readonly
+    getValidatorState(validatorID: ValidatorID): ValidatorCurState {
+        return this.ValidatorList(validatorID).value.State;
+    }
+
+    // @abi.readonly
+    getPoolInfo(poolKey: ValidatorPoolKey): PoolInfo {
+        return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID-1];
     }
 
     /** Adds a new validator
