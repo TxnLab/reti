@@ -150,13 +150,12 @@ async function getPoolInfo(poolKey: [bigint, bigint, bigint]) {
 }
 
 async function getMbrAmountsFromValidatorClient() {
-    const mbrAmounts = (
+    return (
         await validatorClient
             .compose()
             .getMbrAmounts({}, { sendParams: { populateAppCallResources: true } })
             .simulate()
     ).returns![0];
-    return mbrAmounts;
 }
 
 async function addStakingPool(validatorID: number, nextValidator: number, vldtrAcct: Account) {
@@ -173,7 +172,7 @@ async function addStakingPool(validatorID: number, nextValidator: number, vldtrA
         suggestedParams,
     });
 
-    // Before validator can add pools it needs funded
+    // Before validator can add pools it needs to be funded
     try {
         // Now add a staking pool
         const results = await validatorClient
@@ -351,7 +350,7 @@ describe('ValidatorRegistry', () => {
         expect(poolKey[0]).toBe(BigInt(validatorID));
         expect(poolKey[1]).toBe(BigInt(1));
 
-        // get the app id of the specified validator/pool so we can compare against the internal box state changes.
+        // get the app id of the specified validator/pool, so we can compare against the internal box state changes.
         const poolAppId = (
             await validatorClient.getPoolAppId({ poolKey }, { sendParams: { populateAppCallResources: true } })
         ).return!;
