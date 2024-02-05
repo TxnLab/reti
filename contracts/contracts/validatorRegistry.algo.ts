@@ -222,6 +222,7 @@ class ValidatorRegistry extends Contract {
             globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
             extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
+                // creatingContractID, validatorID, poolID, owner, manager
                 method('createApplication(uint64,uint64,uint64,address,address)void'),
                 itob(this.app.id),
                 itob(validatorID),

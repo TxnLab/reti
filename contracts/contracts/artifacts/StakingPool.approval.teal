@@ -67,49 +67,125 @@ abi_route_createApplication:
 createApplication:
 	proto 5 0
 
+	// if0_condition
 	// contracts/stakingPool.algo.ts:53
+	// owner === globals.zeroAddress || manager === globals.zeroAddress
+	frame_dig -4 // owner: Address
+	global ZeroAddress
+	==
+	dup
+	bnz skip_or0
+	frame_dig -5 // manager: Address
+	global ZeroAddress
+	==
+	||
+
+skip_or0:
+	bz if0_else
+
+	// if0_consequent
+	// contracts/stakingPool.algo.ts:55
+	// assert(owner === globals.zeroAddress)
+	frame_dig -4 // owner: Address
+	global ZeroAddress
+	==
+	assert
+
+	// contracts/stakingPool.algo.ts:56
+	// assert(manager === globals.zeroAddress)
+	frame_dig -5 // manager: Address
+	global ZeroAddress
+	==
+	assert
+
+	// contracts/stakingPool.algo.ts:57
+	// assert(creatingContractID === 0)
+	frame_dig -1 // creatingContractID: uint64
+	int 0
+	==
+	assert
+
+	// contracts/stakingPool.algo.ts:58
+	// assert(validatorID === 0)
+	frame_dig -2 // validatorID: uint64
+	int 0
+	==
+	assert
+
+	// contracts/stakingPool.algo.ts:59
+	// assert(poolID === 0)
+	frame_dig -3 // poolID: uint64
+	int 0
+	==
+	assert
+	b if0_end
+
+if0_else:
+	// contracts/stakingPool.algo.ts:61
+	// assert(creatingContractID !== 0)
+	frame_dig -1 // creatingContractID: uint64
+	int 0
+	!=
+	assert
+
+	// contracts/stakingPool.algo.ts:62
+	// assert(validatorID !== 0)
+	frame_dig -2 // validatorID: uint64
+	int 0
+	!=
+	assert
+
+	// contracts/stakingPool.algo.ts:63
+	// assert(poolID !== 0)
+	frame_dig -3 // poolID: uint64
+	int 0
+	!=
+	assert
+
+if0_end:
+	// contracts/stakingPool.algo.ts:65
 	// this.CreatingValidatorContractAppID.value = creatingContractID
 	byte 0x63726561746f72417070 // "creatorApp"
 	frame_dig -1 // creatingContractID: uint64
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:54
+	// contracts/stakingPool.algo.ts:66
 	// this.ValidatorID.value = validatorID
 	byte 0x76616c696461746f724944 // "validatorID"
 	frame_dig -2 // validatorID: uint64
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:55
+	// contracts/stakingPool.algo.ts:67
 	// this.PoolID.value = poolID
 	byte 0x706f6f6c4944 // "poolID"
 	frame_dig -3 // poolID: uint64
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:56
+	// contracts/stakingPool.algo.ts:68
 	// this.Owner.value = owner
 	byte 0x6f776e6572 // "owner"
 	frame_dig -4 // owner: Address
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:57
+	// contracts/stakingPool.algo.ts:69
 	// this.Manager.value = manager
 	byte 0x6d616e61676572 // "manager"
 	frame_dig -5 // manager: Address
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:58
+	// contracts/stakingPool.algo.ts:70
 	// this.NumStakers.value = 0
 	byte 0x6e756d5374616b657273 // "numStakers"
 	int 0
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:59
+	// contracts/stakingPool.algo.ts:71
 	// this.TotalAlgoStaked.value = 0
 	byte 0x7374616b6564 // "staked"
 	int 0
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:60
+	// contracts/stakingPool.algo.ts:72
 	// this.MaxAlgo.value = MAX_ALGO_PER_POOL
 	byte 0x6d61785374616b65 // "maxStake"
 	int 20000000000000
@@ -178,33 +254,33 @@ addStake:
 	byte 0x
 	dupn 3
 
-	// if0_condition
-	// contracts/stakingPool.algo.ts:79
+	// if1_condition
+	// contracts/stakingPool.algo.ts:91
 	// !this.Stakers.exists
 	byte 0x7374616b657273 // "stakers"
 	box_len
 	swap
 	pop
 	!
-	bz if0_end
+	bz if1_end
 
-	// if0_consequent
-	// contracts/stakingPool.algo.ts:80
+	// if1_consequent
+	// contracts/stakingPool.algo.ts:92
 	// this.Stakers.create()
 	byte 0x7374616b657273 // "stakers"
 	int 4088
 	box_create
 	pop
 
-if0_end:
-	// contracts/stakingPool.algo.ts:83
+if1_end:
+	// contracts/stakingPool.algo.ts:95
 	// assert(staker !== Account.zeroAddress)
 	frame_dig -2 // staker: Address
 	global ZeroAddress
 	!=
 	assert
 
-	// contracts/stakingPool.algo.ts:84
+	// contracts/stakingPool.algo.ts:96
 	// assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address)
 	txn Sender
 	byte 0x63726561746f72417070 // "creatorApp"
@@ -214,7 +290,7 @@ if0_end:
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:88
+	// contracts/stakingPool.algo.ts:100
 	// verifyPayTxn(stakedAmountPayment, {
 	//             sender: Application.fromID(this.CreatingValidatorContractAppID.value).address,
 	//             receiver: this.app.address,
@@ -245,38 +321,38 @@ if0_end:
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:95
+	// contracts/stakingPool.algo.ts:107
 	// entryTime = this.getEntryTime()
 	callsub getEntryTime
 	frame_bury 0 // entryTime: uint64
 
-	// contracts/stakingPool.algo.ts:96
+	// contracts/stakingPool.algo.ts:108
 	// firstEmpty = 0
 	int 0
 	frame_bury 1 // firstEmpty: uint64
 
-	// contracts/stakingPool.algo.ts:99
+	// contracts/stakingPool.algo.ts:111
 	// stakers = clone(this.Stakers.value)
 	byte 0x7374616b657273 // "stakers"
 	box_get
 	assert
 	frame_bury 2 // stakers: (address,uint64,uint64,uint64)[73]
 
-	// contracts/stakingPool.algo.ts:100
+	// contracts/stakingPool.algo.ts:112
 	// i = 0
 	int 0
 	frame_bury 3 // i: uint64
 
 for_0:
-	// contracts/stakingPool.algo.ts:100
+	// contracts/stakingPool.algo.ts:112
 	// i < MAX_STAKERS_PER_POOL
 	frame_dig 3 // i: uint64
 	int 73
 	<
 	bz for_0_end
 
-	// if1_condition
-	// contracts/stakingPool.algo.ts:101
+	// if2_condition
+	// contracts/stakingPool.algo.ts:113
 	// stakers[i].Account === staker
 	frame_dig 2 // stakers: (address,uint64,uint64,uint64)[73]
 	frame_dig 3 // i: uint64
@@ -288,10 +364,10 @@ for_0:
 	extract3
 	frame_dig -2 // staker: Address
 	==
-	bz if1_end
+	bz if2_end
 
-	// if1_consequent
-	// contracts/stakingPool.algo.ts:102
+	// if2_consequent
+	// contracts/stakingPool.algo.ts:114
 	// stakers[i].Balance += stakedAmountPayment.amount
 	frame_dig 2 // stakers: (address,uint64,uint64,uint64)[73]
 	frame_dig 3 // i: uint64
@@ -315,7 +391,7 @@ for_0:
 	replace3
 	frame_bury 2 // stakers: (address,uint64,uint64,uint64)[73]
 
-	// contracts/stakingPool.algo.ts:103
+	// contracts/stakingPool.algo.ts:115
 	// stakers[i].EntryTime = entryTime
 	frame_dig 2 // stakers: (address,uint64,uint64,uint64)[73]
 	frame_dig 3 // i: uint64
@@ -328,7 +404,7 @@ for_0:
 	replace3
 	frame_bury 2 // stakers: (address,uint64,uint64,uint64)[73]
 
-	// contracts/stakingPool.algo.ts:105
+	// contracts/stakingPool.algo.ts:117
 	// this.Stakers.value[i] = stakers[i]
 	frame_dig 3 // i: uint64
 	int 56
@@ -343,7 +419,7 @@ for_0:
 	cover 2
 	box_replace
 
-	// contracts/stakingPool.algo.ts:106
+	// contracts/stakingPool.algo.ts:118
 	// this.TotalAlgoStaked.value += stakedAmountPayment.amount
 	byte 0x7374616b6564 // "staked"
 	app_global_get
@@ -354,7 +430,7 @@ for_0:
 	swap
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:107
+	// contracts/stakingPool.algo.ts:119
 	// return entryTime;
 	frame_dig 0 // entryTime: uint64
 
@@ -365,9 +441,9 @@ for_0:
 	popn 3
 	retsub
 
-if1_end:
-	// if2_condition
-	// contracts/stakingPool.algo.ts:109
+if2_end:
+	// if3_condition
+	// contracts/stakingPool.algo.ts:121
 	// stakers[i].Account === Address.zeroAddress
 	frame_dig 2 // stakers: (address,uint64,uint64,uint64)[73]
 	frame_dig 3 // i: uint64
@@ -379,10 +455,10 @@ if1_end:
 	extract3
 	global ZeroAddress
 	==
-	bz if2_end
+	bz if3_end
 
-	// if2_consequent
-	// contracts/stakingPool.algo.ts:110
+	// if3_consequent
+	// contracts/stakingPool.algo.ts:122
 	// firstEmpty = i + 1
 	frame_dig 3 // i: uint64
 	int 1
@@ -390,15 +466,15 @@ if1_end:
 	frame_bury 1 // firstEmpty: uint64
 	b for_0_end
 
-if2_end:
-	// contracts/stakingPool.algo.ts:113
+if3_end:
+	// contracts/stakingPool.algo.ts:125
 	// i += 1
 	frame_dig 3 // i: uint64
 	int 1
 	+
 	frame_bury 3 // i: uint64
 
-	// contracts/stakingPool.algo.ts:100
+	// contracts/stakingPool.algo.ts:112
 	// i += 1
 	frame_dig 3 // i: uint64
 	int 1
@@ -407,19 +483,19 @@ if2_end:
 	b for_0
 
 for_0_end:
-	// if3_condition
-	// contracts/stakingPool.algo.ts:116
+	// if4_condition
+	// contracts/stakingPool.algo.ts:128
 	// firstEmpty === 0
 	frame_dig 1 // firstEmpty: uint64
 	int 0
 	==
-	bz if3_end
+	bz if4_end
 
-	// if3_consequent
+	// if4_consequent
 	err // 'Staking pool full'
 
-if3_end:
-	// contracts/stakingPool.algo.ts:122
+if4_end:
+	// contracts/stakingPool.algo.ts:134
 	// assert(this.Stakers.value[firstEmpty - 1].Account === Address.zeroAddress)
 	frame_dig 1 // firstEmpty: uint64
 	int 1
@@ -436,7 +512,7 @@ if3_end:
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:123
+	// contracts/stakingPool.algo.ts:135
 	// this.Stakers.value[firstEmpty - 1] = {
 	//             Account: staker,
 	//             Balance: stakedAmountPayment.amount,
@@ -462,7 +538,7 @@ if3_end:
 	cover 2
 	box_replace
 
-	// contracts/stakingPool.algo.ts:129
+	// contracts/stakingPool.algo.ts:141
 	// this.NumStakers.value += 1
 	byte 0x6e756d5374616b657273 // "numStakers"
 	app_global_get
@@ -472,7 +548,7 @@ if3_end:
 	swap
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:130
+	// contracts/stakingPool.algo.ts:142
 	// this.TotalAlgoStaked.value += stakedAmountPayment.amount
 	byte 0x7374616b6564 // "staked"
 	app_global_get
@@ -483,7 +559,7 @@ if3_end:
 	swap
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:131
+	// contracts/stakingPool.algo.ts:143
 	// return entryTime;
 	frame_dig 0 // entryTime: uint64
 
@@ -528,26 +604,26 @@ removeStake:
 	byte 0x
 	dupn 4
 
-	// contracts/stakingPool.algo.ts:146
+	// contracts/stakingPool.algo.ts:158
 	// assert(account !== Account.zeroAddress)
 	frame_dig -1 // account: Address
 	global ZeroAddress
 	!=
 	assert
 
-	// contracts/stakingPool.algo.ts:147
+	// contracts/stakingPool.algo.ts:159
 	// assert(this.txn.sender === account)
 	txn Sender
 	frame_dig -1 // account: Address
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:149
+	// contracts/stakingPool.algo.ts:161
 	// i = 0
 	int 0
 	frame_bury 0 // i: uint64
 
-	// contracts/stakingPool.algo.ts:150
+	// contracts/stakingPool.algo.ts:162
 	// this.Stakers.value
 	byte 0x7374616b657273 // "stakers"
 	box_get
@@ -560,31 +636,31 @@ removeStake:
 	frame_bury 3 // the offset we are extracting the next element from
 
 forEach_0:
-	// if4_condition
-	// contracts/stakingPool.algo.ts:151
+	// if5_condition
+	// contracts/stakingPool.algo.ts:163
 	// staker.Account === account
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)
 	extract 0 32
 	frame_dig -1 // account: Address
 	==
-	bz if4_end
+	bz if5_end
 
-	// if4_consequent
-	// if5_condition
-	// contracts/stakingPool.algo.ts:152
+	// if5_consequent
+	// if6_condition
+	// contracts/stakingPool.algo.ts:164
 	// staker.Balance < amountToUnstake
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)
 	extract 32 8
 	btoi
 	frame_dig -2 // amountToUnstake: uint64
 	<
-	bz if5_end
+	bz if6_end
 
-	// if5_consequent
+	// if6_consequent
 	err // 'Insufficient balance'
 
-if5_end:
-	// contracts/stakingPool.algo.ts:155
+if6_end:
+	// contracts/stakingPool.algo.ts:167
 	// staker.Balance -= amountToUnstake
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)
 	int 32 // headOffset
@@ -597,7 +673,7 @@ if5_end:
 	replace3
 	frame_bury 2 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:156
+	// contracts/stakingPool.algo.ts:168
 	// this.TotalAlgoStaked.value -= amountToUnstake
 	byte 0x7374616b6564 // "staked"
 	app_global_get
@@ -607,7 +683,7 @@ if5_end:
 	swap
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:159
+	// contracts/stakingPool.algo.ts:171
 	// sendPayment({
 	//                     amount: amountToUnstake,
 	//                     receiver: account,
@@ -617,17 +693,17 @@ if5_end:
 	int pay
 	itxn_field TypeEnum
 
-	// contracts/stakingPool.algo.ts:160
+	// contracts/stakingPool.algo.ts:172
 	// amount: amountToUnstake
 	frame_dig -2 // amountToUnstake: uint64
 	itxn_field Amount
 
-	// contracts/stakingPool.algo.ts:161
+	// contracts/stakingPool.algo.ts:173
 	// receiver: account
 	frame_dig -1 // account: Address
 	itxn_field Receiver
 
-	// contracts/stakingPool.algo.ts:162
+	// contracts/stakingPool.algo.ts:174
 	// note: 'unstaked'
 	byte 0x756e7374616b6564 // "unstaked"
 	itxn_field Note
@@ -639,23 +715,23 @@ if5_end:
 	// Submit inner transaction
 	itxn_submit
 
-	// contracts/stakingPool.algo.ts:164
+	// contracts/stakingPool.algo.ts:176
 	// stakerRemoved = false
 	int 0
 	frame_bury 4 // stakerRemoved: bool
 
-	// if6_condition
-	// contracts/stakingPool.algo.ts:165
+	// if7_condition
+	// contracts/stakingPool.algo.ts:177
 	// staker.Balance === 0
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)
 	extract 32 8
 	btoi
 	int 0
 	==
-	bz if6_end
+	bz if7_end
 
-	// if6_consequent
-	// contracts/stakingPool.algo.ts:167
+	// if7_consequent
+	// contracts/stakingPool.algo.ts:179
 	// this.NumStakers.value -= 1
 	byte 0x6e756d5374616b657273 // "numStakers"
 	app_global_get
@@ -665,7 +741,7 @@ if5_end:
 	swap
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:168
+	// contracts/stakingPool.algo.ts:180
 	// staker.Account = Address.zeroAddress
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)
 	int 0
@@ -673,20 +749,20 @@ if5_end:
 	replace3
 	frame_bury 2 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:169
+	// contracts/stakingPool.algo.ts:181
 	// staker.TotalRewarded = 0
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)
 	byte 0x0000000000000000
 	replace2 40
 	frame_bury 2 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:170
+	// contracts/stakingPool.algo.ts:182
 	// stakerRemoved = true
 	int 1
 	frame_bury 4 // stakerRemoved: bool
 
-if6_end:
-	// contracts/stakingPool.algo.ts:173
+if7_end:
+	// contracts/stakingPool.algo.ts:185
 	// this.Stakers.value[i] = staker
 	frame_dig 0 // i: uint64
 	int 56
@@ -696,7 +772,7 @@ if6_end:
 	cover 2
 	box_replace
 
-	// contracts/stakingPool.algo.ts:178
+	// contracts/stakingPool.algo.ts:190
 	// sendMethodCall<[[uint64, uint64], Address, uint64, boolean], void>({
 	//                     applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
 	//                     name: 'stakeRemoved',
@@ -708,13 +784,13 @@ if6_end:
 	method "stakeRemoved((uint64,uint64),address,uint64,bool)void"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:179
+	// contracts/stakingPool.algo.ts:191
 	// applicationID: Application.fromID(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:181
+	// contracts/stakingPool.algo.ts:193
 	// methodArgs: [[this.ValidatorID.value, this.PoolID.value], account, amountToUnstake, stakerRemoved]
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
@@ -743,8 +819,8 @@ if6_end:
 	// Submit inner transaction
 	itxn_submit
 
-if4_end:
-	// contracts/stakingPool.algo.ts:184
+if5_end:
+	// contracts/stakingPool.algo.ts:196
 	// i += 1
 	frame_dig 0 // i: uint64
 	int 1
@@ -785,24 +861,24 @@ payStakers:
 	byte 0x
 	dupn 23
 
-	// contracts/stakingPool.algo.ts:191
+	// contracts/stakingPool.algo.ts:203
 	// assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value)
 	txn Sender
 	byte 0x6f776e6572 // "owner"
 	app_global_get
 	==
 	dup
-	bnz skip_or0
+	bnz skip_or1
 	txn Sender
 	byte 0x6d616e61676572 // "manager"
 	app_global_get
 	==
 	||
 
-skip_or0:
+skip_or1:
 	assert
 
-	// contracts/stakingPool.algo.ts:194
+	// contracts/stakingPool.algo.ts:206
 	// payoutConfig = sendMethodCall<[uint64], [uint16, uint32, Address, uint8, uint16]>({
 	//             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
 	//             name: 'getValidatorConfig',
@@ -814,13 +890,13 @@ skip_or0:
 	method "getValidatorConfig(uint64)(uint16,uint32,address,uint8,uint16)"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:195
+	// contracts/stakingPool.algo.ts:207
 	// applicationID: Application.fromID(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:197
+	// contracts/stakingPool.algo.ts:209
 	// methodArgs: [this.ValidatorID.value]
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
@@ -840,34 +916,34 @@ skip_or0:
 	extract 4 0
 	frame_bury 0 // payoutConfig: (uint16,uint32,address,uint8,uint16)
 
-	// contracts/stakingPool.algo.ts:202
+	// contracts/stakingPool.algo.ts:214
 	// payoutDays = payoutConfig[0] as uint64
 	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint8,uint16)
 	extract 0 2
 	btoi
 	frame_bury 1 // payoutDays: uint64
 
-	// contracts/stakingPool.algo.ts:203
+	// contracts/stakingPool.algo.ts:215
 	// pctToValidator = payoutConfig[1] as uint64
 	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint8,uint16)
 	extract 2 4
 	btoi
 	frame_bury 2 // pctToValidator: uint64
 
-	// contracts/stakingPool.algo.ts:204
+	// contracts/stakingPool.algo.ts:216
 	// validatorCommissionAddress = payoutConfig[2]
 	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint8,uint16)
 	extract 6 32
 	frame_bury 3 // validatorCommissionAddress: address
 
-	// contracts/stakingPool.algo.ts:208
+	// contracts/stakingPool.algo.ts:220
 	// origBalance = this.app.address.balance
 	global CurrentApplicationAddress
 	acct_params_get AcctBalance
 	pop
 	frame_bury 4 // origBalance: uint64
 
-	// contracts/stakingPool.algo.ts:209
+	// contracts/stakingPool.algo.ts:221
 	// rewardAvailable = origBalance - this.TotalAlgoStaked.value - this.app.address.minBalance
 	frame_dig 4 // origBalance: uint64
 	byte 0x7374616b6564 // "staked"
@@ -879,7 +955,7 @@ skip_or0:
 	-
 	frame_bury 5 // rewardAvailable: uint64
 
-	// contracts/stakingPool.algo.ts:212
+	// contracts/stakingPool.algo.ts:224
 	// assert(
 	//             rewardAvailable > globals.minTxnFee * 2,
 	//             'Reward to payout not high enough to cover txn costs of paying it out'
@@ -893,7 +969,7 @@ skip_or0:
 	// Reward to payout not high enough to cover txn costs of paying it out
 	assert
 
-	// contracts/stakingPool.algo.ts:218
+	// contracts/stakingPool.algo.ts:230
 	// validatorPay = wideRatio([rewardAvailable, pctToValidator], [1000000])
 	frame_dig 5 // rewardAvailable: uint64
 	frame_dig 2 // pctToValidator: uint64
@@ -908,14 +984,14 @@ skip_or0:
 	assert
 	frame_bury 6 // validatorPay: uint64
 
-	// contracts/stakingPool.algo.ts:220
+	// contracts/stakingPool.algo.ts:232
 	// rewardAvailable -= validatorPay
 	frame_dig 5 // rewardAvailable: uint64
 	frame_dig 6 // validatorPay: uint64
 	-
 	frame_bury 5 // rewardAvailable: uint64
 
-	// contracts/stakingPool.algo.ts:224
+	// contracts/stakingPool.algo.ts:236
 	// sendPayment({
 	//             amount: validatorPay,
 	//             receiver: validatorCommissionAddress,
@@ -925,17 +1001,17 @@ skip_or0:
 	int pay
 	itxn_field TypeEnum
 
-	// contracts/stakingPool.algo.ts:225
+	// contracts/stakingPool.algo.ts:237
 	// amount: validatorPay
 	frame_dig 6 // validatorPay: uint64
 	itxn_field Amount
 
-	// contracts/stakingPool.algo.ts:226
+	// contracts/stakingPool.algo.ts:238
 	// receiver: validatorCommissionAddress
 	frame_dig 3 // validatorCommissionAddress: address
 	itxn_field Receiver
 
-	// contracts/stakingPool.algo.ts:227
+	// contracts/stakingPool.algo.ts:239
 	// note: 'validator reward'
 	byte 0x76616c696461746f7220726577617264 // "validator reward"
 	itxn_field Note
@@ -947,12 +1023,12 @@ skip_or0:
 	// Submit inner transaction
 	itxn_submit
 
-	// contracts/stakingPool.algo.ts:237
+	// contracts/stakingPool.algo.ts:249
 	// curTime = globals.latestTimestamp
 	global LatestTimestamp
 	frame_bury 7 // curTime: uint64
 
-	// contracts/stakingPool.algo.ts:239
+	// contracts/stakingPool.algo.ts:251
 	// payoutDaysInSecs = payoutDays * 24 * 60 * 60
 	frame_dig 1 // payoutDays: uint64
 	int 24
@@ -963,17 +1039,17 @@ skip_or0:
 	*
 	frame_bury 8 // payoutDaysInSecs: uint64
 
-	// contracts/stakingPool.algo.ts:263
+	// contracts/stakingPool.algo.ts:275
 	// partialStakersTotalStake = 0
 	int 0
 	frame_bury 9 // partialStakersTotalStake: uint64
 
-	// contracts/stakingPool.algo.ts:264
+	// contracts/stakingPool.algo.ts:276
 	// i = 0
 	int 0
 	frame_bury 10 // i: uint64
 
-	// contracts/stakingPool.algo.ts:265
+	// contracts/stakingPool.algo.ts:277
 	// this.Stakers.value
 	byte 0x7374616b657273 // "stakers"
 	box_get
@@ -986,28 +1062,28 @@ skip_or0:
 	frame_bury 13 // the offset we are extracting the next element from
 
 forEach_1:
-	// if7_condition
-	// contracts/stakingPool.algo.ts:266
+	// if8_condition
+	// contracts/stakingPool.algo.ts:278
 	// staker.Account !== Address.zeroAddress
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
 	extract 0 32
 	global ZeroAddress
 	!=
-	bz if7_end
+	bz if8_end
 
-	// if7_consequent
-	// if8_condition
-	// contracts/stakingPool.algo.ts:267
+	// if8_consequent
+	// if9_condition
+	// contracts/stakingPool.algo.ts:279
 	// staker.EntryTime > curTime
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
 	extract 48 8
 	btoi
 	frame_dig 7 // curTime: uint64
 	>
-	bz if8_else
+	bz if9_else
 
-	// if8_consequent
-	// contracts/stakingPool.algo.ts:270
+	// if9_consequent
+	// contracts/stakingPool.algo.ts:282
 	// partialStakersTotalStake += staker.Balance
 	frame_dig 9 // partialStakersTotalStake: uint64
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
@@ -1015,10 +1091,10 @@ forEach_1:
 	btoi
 	+
 	frame_bury 9 // partialStakersTotalStake: uint64
-	b if8_end
+	b if9_end
 
-if8_else:
-	// contracts/stakingPool.algo.ts:274
+if9_else:
+	// contracts/stakingPool.algo.ts:286
 	// timeInPool = curTime - staker.EntryTime
 	frame_dig 7 // curTime: uint64
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
@@ -1027,16 +1103,16 @@ if8_else:
 	-
 	frame_bury 14 // timeInPool: uint64
 
-	// if9_condition
-	// contracts/stakingPool.algo.ts:277
+	// if10_condition
+	// contracts/stakingPool.algo.ts:289
 	// timeInPool < payoutDaysInSecs
 	frame_dig 14 // timeInPool: uint64
 	frame_dig 8 // payoutDaysInSecs: uint64
 	<
-	bz if9_end
+	bz if10_end
 
-	// if9_consequent
-	// contracts/stakingPool.algo.ts:278
+	// if10_consequent
+	// contracts/stakingPool.algo.ts:290
 	// partialStakersTotalStake += staker.Balance
 	frame_dig 9 // partialStakersTotalStake: uint64
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
@@ -1045,7 +1121,7 @@ if8_else:
 	+
 	frame_bury 9 // partialStakersTotalStake: uint64
 
-	// contracts/stakingPool.algo.ts:279
+	// contracts/stakingPool.algo.ts:291
 	// timePercentage = (timeInPool * 1000) / payoutDaysInSecs
 	frame_dig 14 // timeInPool: uint64
 	int 1000
@@ -1054,7 +1130,7 @@ if8_else:
 	/
 	frame_bury 15 // timePercentage: uint64
 
-	// contracts/stakingPool.algo.ts:281
+	// contracts/stakingPool.algo.ts:293
 	// stakerReward = wideRatio(
 	//                             [staker.Balance, rewardAvailable, timePercentage],
 	//                             [this.TotalAlgoStaked.value / 1000]
@@ -1086,14 +1162,14 @@ if8_else:
 	assert
 	frame_bury 16 // stakerReward: uint64
 
-	// contracts/stakingPool.algo.ts:287
+	// contracts/stakingPool.algo.ts:299
 	// rewardAvailable -= stakerReward
 	frame_dig 5 // rewardAvailable: uint64
 	frame_dig 16 // stakerReward: uint64
 	-
 	frame_bury 5 // rewardAvailable: uint64
 
-	// contracts/stakingPool.algo.ts:290
+	// contracts/stakingPool.algo.ts:302
 	// staker.Balance += stakerReward
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
 	int 32 // headOffset
@@ -1106,7 +1182,7 @@ if8_else:
 	replace3
 	frame_bury 12 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:291
+	// contracts/stakingPool.algo.ts:303
 	// staker.TotalRewarded += stakerReward
 	frame_dig 12 // staker: (address,uint64,uint64,uint64)
 	int 40 // headOffset
@@ -1119,7 +1195,7 @@ if8_else:
 	replace3
 	frame_bury 12 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:294
+	// contracts/stakingPool.algo.ts:306
 	// this.Stakers.value[i] = staker
 	frame_dig 10 // i: uint64
 	int 56
@@ -1129,12 +1205,12 @@ if8_else:
 	cover 2
 	box_replace
 
+if10_end:
+
 if9_end:
 
 if8_end:
-
-if7_end:
-	// contracts/stakingPool.algo.ts:298
+	// contracts/stakingPool.algo.ts:310
 	// i += 1
 	frame_dig 10 // i: uint64
 	int 1
@@ -1158,7 +1234,7 @@ if7_end:
 	b forEach_1
 
 forEach_1_end:
-	// contracts/stakingPool.algo.ts:303
+	// contracts/stakingPool.algo.ts:315
 	// newPoolTotalStake = this.TotalAlgoStaked.value - partialStakersTotalStake
 	byte 0x7374616b6564 // "staked"
 	app_global_get
@@ -1166,12 +1242,12 @@ forEach_1_end:
 	-
 	frame_bury 17 // newPoolTotalStake: uint64
 
-	// contracts/stakingPool.algo.ts:305
+	// contracts/stakingPool.algo.ts:317
 	// i = 0
 	int 0
 	frame_bury 10 // i: uint64
 
-	// contracts/stakingPool.algo.ts:306
+	// contracts/stakingPool.algo.ts:318
 	// this.Stakers.value
 	byte 0x7374616b657273 // "stakers"
 	box_get
@@ -1184,8 +1260,8 @@ forEach_1_end:
 	frame_bury 20 // the offset we are extracting the next element from
 
 forEach_2:
-	// if10_condition
-	// contracts/stakingPool.algo.ts:307
+	// if11_condition
+	// contracts/stakingPool.algo.ts:319
 	// staker.Account !== Address.zeroAddress && staker.EntryTime < curTime
 	frame_dig 19 // staker: (address,uint64,uint64,uint64)
 	extract 0 32
@@ -1201,10 +1277,10 @@ forEach_2:
 	&&
 
 skip_and0:
-	bz if10_end
+	bz if11_end
 
-	// if10_consequent
-	// contracts/stakingPool.algo.ts:308
+	// if11_consequent
+	// contracts/stakingPool.algo.ts:320
 	// timeInPool = curTime - staker.EntryTime
 	frame_dig 7 // curTime: uint64
 	frame_dig 19 // staker: (address,uint64,uint64,uint64)
@@ -1213,21 +1289,21 @@ skip_and0:
 	-
 	frame_bury 21 // timeInPool: uint64
 
-	// if11_condition
-	// contracts/stakingPool.algo.ts:310
+	// if12_condition
+	// contracts/stakingPool.algo.ts:322
 	// timeInPool < payoutDaysInSecs
 	frame_dig 21 // timeInPool: uint64
 	frame_dig 8 // payoutDaysInSecs: uint64
 	<
-	bz if11_end
+	bz if12_end
 
-	// if11_consequent
-	// contracts/stakingPool.algo.ts:311
+	// if12_consequent
+	// contracts/stakingPool.algo.ts:323
 	// return;
 	b forEach_2_end
 
-if11_end:
-	// contracts/stakingPool.algo.ts:315
+if12_end:
+	// contracts/stakingPool.algo.ts:327
 	// stakerReward = wideRatio([staker.Balance, rewardAvailable], [newPoolTotalStake])
 	frame_dig 19 // staker: (address,uint64,uint64,uint64)
 	extract 32 8
@@ -1244,7 +1320,7 @@ if11_end:
 	assert
 	frame_bury 22 // stakerReward: uint64
 
-	// contracts/stakingPool.algo.ts:318
+	// contracts/stakingPool.algo.ts:330
 	// staker.Balance += stakerReward
 	frame_dig 19 // staker: (address,uint64,uint64,uint64)
 	int 32 // headOffset
@@ -1257,7 +1333,7 @@ if11_end:
 	replace3
 	frame_bury 19 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:319
+	// contracts/stakingPool.algo.ts:331
 	// staker.TotalRewarded += stakerReward
 	frame_dig 19 // staker: (address,uint64,uint64,uint64)
 	int 40 // headOffset
@@ -1270,7 +1346,7 @@ if11_end:
 	replace3
 	frame_bury 19 // staker: (address,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:322
+	// contracts/stakingPool.algo.ts:334
 	// this.Stakers.value[i] = staker
 	frame_dig 10 // i: uint64
 	int 56
@@ -1280,8 +1356,8 @@ if11_end:
 	cover 2
 	box_replace
 
-if10_end:
-	// contracts/stakingPool.algo.ts:324
+if11_end:
+	// contracts/stakingPool.algo.ts:336
 	// i += 1
 	frame_dig 10 // i: uint64
 	int 1
@@ -1305,7 +1381,7 @@ if10_end:
 	b forEach_2
 
 forEach_2_end:
-	// contracts/stakingPool.algo.ts:329
+	// contracts/stakingPool.algo.ts:341
 	// increasedStake = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance
 	global CurrentApplicationAddress
 	acct_params_get AcctBalance
@@ -1319,7 +1395,7 @@ forEach_2_end:
 	-
 	frame_bury 23 // increasedStake: uint64
 
-	// contracts/stakingPool.algo.ts:330
+	// contracts/stakingPool.algo.ts:342
 	// this.TotalAlgoStaked.value += increasedStake
 	byte 0x7374616b6564 // "staked"
 	app_global_get
@@ -1329,8 +1405,8 @@ forEach_2_end:
 	swap
 	app_global_put
 
-	// contracts/stakingPool.algo.ts:335
-	// sendMethodCall<[[uint64, uint64,uint64], uint64], void>({
+	// contracts/stakingPool.algo.ts:347
+	// sendMethodCall<[[uint64, uint64, uint64], uint64], void>({
 	//             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
 	//             name: 'stakeUpdatedViaRewards',
 	//             methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake],
@@ -1341,13 +1417,13 @@ forEach_2_end:
 	method "stakeUpdatedViaRewards((uint64,uint64,uint64),uint64)void"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:336
+	// contracts/stakingPool.algo.ts:348
 	// applicationID: Application.fromID(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:338
+	// contracts/stakingPool.algo.ts:350
 	// methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake]
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
@@ -1407,24 +1483,24 @@ abi_route_goOnline:
 goOnline:
 	proto 6 0
 
-	// contracts/stakingPool.algo.ts:350
+	// contracts/stakingPool.algo.ts:362
 	// assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value)
 	txn Sender
 	byte 0x6f776e6572 // "owner"
 	app_global_get
 	==
 	dup
-	bnz skip_or1
+	bnz skip_or2
 	txn Sender
 	byte 0x6d616e61676572 // "manager"
 	app_global_get
 	==
 	||
 
-skip_or1:
+skip_or2:
 	assert
 
-	// contracts/stakingPool.algo.ts:351
+	// contracts/stakingPool.algo.ts:363
 	// sendOnlineKeyRegistration({
 	//             votePK: votePK,
 	//             selectionPK: selectionPK,
@@ -1437,32 +1513,32 @@ skip_or1:
 	int keyreg
 	itxn_field TypeEnum
 
-	// contracts/stakingPool.algo.ts:352
+	// contracts/stakingPool.algo.ts:364
 	// votePK: votePK
 	frame_dig -1 // votePK: bytes
 	itxn_field VotePK
 
-	// contracts/stakingPool.algo.ts:353
+	// contracts/stakingPool.algo.ts:365
 	// selectionPK: selectionPK
 	frame_dig -2 // selectionPK: bytes
 	itxn_field SelectionPK
 
-	// contracts/stakingPool.algo.ts:354
+	// contracts/stakingPool.algo.ts:366
 	// stateProofPK: stateProofPK
 	frame_dig -3 // stateProofPK: bytes
 	itxn_field StateProofPK
 
-	// contracts/stakingPool.algo.ts:355
+	// contracts/stakingPool.algo.ts:367
 	// voteFirst: voteFirst
 	frame_dig -4 // voteFirst: uint64
 	itxn_field VoteFirst
 
-	// contracts/stakingPool.algo.ts:356
+	// contracts/stakingPool.algo.ts:368
 	// voteLast: voteLast
 	frame_dig -5 // voteLast: uint64
 	itxn_field VoteLast
 
-	// contracts/stakingPool.algo.ts:357
+	// contracts/stakingPool.algo.ts:369
 	// voteKeyDilution: voteKeyDilution
 	frame_dig -6 // voteKeyDilution: uint64
 	itxn_field VoteKeyDilution
@@ -1486,24 +1562,24 @@ abi_route_goOffline:
 goOffline:
 	proto 0 0
 
-	// contracts/stakingPool.algo.ts:362
+	// contracts/stakingPool.algo.ts:374
 	// assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value)
 	txn Sender
 	byte 0x6f776e6572 // "owner"
 	app_global_get
 	==
 	dup
-	bnz skip_or2
+	bnz skip_or3
 	txn Sender
 	byte 0x6d616e61676572 // "manager"
 	app_global_get
 	==
 	||
 
-skip_or2:
+skip_or3:
 	assert
 
-	// contracts/stakingPool.algo.ts:363
+	// contracts/stakingPool.algo.ts:375
 	// sendOfflineKeyRegistration({})
 	itxn_begin
 	int keyreg
@@ -1532,12 +1608,12 @@ getEntryTime:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:378
+	// contracts/stakingPool.algo.ts:390
 	// entryTime = globals.latestTimestamp
 	global LatestTimestamp
 	frame_bury 0 // entryTime: uint64
 
-	// contracts/stakingPool.algo.ts:381
+	// contracts/stakingPool.algo.ts:393
 	// return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10;
 	frame_dig 0 // entryTime: uint64
 	int 960

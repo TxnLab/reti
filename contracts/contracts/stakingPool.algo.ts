@@ -50,8 +50,20 @@ class StakingPool extends Contract {
         owner: Address,
         manager: Address
     ): void {
+        if (owner === globals.zeroAddress || manager === globals.zeroAddress) {
+            // this is likely initial template setup - everything should basically be zero...
+            assert(owner === globals.zeroAddress);
+            assert(manager === globals.zeroAddress);
+            assert(creatingContractID === 0);
+            assert(validatorID === 0);
+            assert(poolID === 0);
+        } else {
+            assert(creatingContractID !== 0);
+            assert(validatorID !== 0);
+            assert(poolID !== 0);
+        }
         this.CreatingValidatorContractAppID.value = creatingContractID;
-        this.ValidatorID.value = validatorID; // Which valida
+        this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;
         this.Owner.value = owner;
         this.Manager.value = manager;
@@ -332,7 +344,7 @@ class StakingPool extends Contract {
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it
         // stakeUpdatedViaRewards((uint64,uint64),uint64)void
-        sendMethodCall<[[uint64, uint64,uint64], uint64], void>({
+        sendMethodCall<[[uint64, uint64, uint64], uint64], void>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
             name: 'stakeUpdatedViaRewards',
             methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake],
