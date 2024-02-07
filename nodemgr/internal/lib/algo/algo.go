@@ -26,7 +26,7 @@ func FormattedAlgoAmount(microAlgos uint64) string {
 	return fmt.Sprintf("%.6f", types.MicroAlgos(microAlgos).ToAlgos())
 }
 
-func GetAlgoClient(log *slog.Logger, config NetworkConfig, maxConnections int) (*algod.Client, error) {
+func GetAlgoClient(log *slog.Logger, config NetworkConfig) (*algod.Client, error) {
 	var (
 		apiURL     string
 		apiToken   string
@@ -68,7 +68,7 @@ func GetAlgoClient(log *slog.Logger, config NetworkConfig, maxConnections int) (
 	// host (and allow connection resuse)
 	customTransport := http.DefaultTransport.(*http.Transport).Clone()
 	customTransport.MaxIdleConns = 100
-	customTransport.MaxConnsPerHost = min(100, maxConnections)
+	customTransport.MaxConnsPerHost = 100
 	customTransport.MaxIdleConnsPerHost = 100
 	client, err := algod.MakeClientWithTransport(serverAddr.String(), apiToken, apiHeaders, customTransport)
 	if err != nil {

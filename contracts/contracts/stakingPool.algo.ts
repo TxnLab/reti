@@ -31,7 +31,7 @@ class StakingPool extends Contract {
 
     TotalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' });
 
-    MaxAlgo = GlobalStateKey<uint64>({ key: 'maxStake' });
+    MaxStakeAllowed = GlobalStateKey<uint64>({ key: 'maxStake' });
 
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
 
@@ -40,15 +40,17 @@ class StakingPool extends Contract {
      * @param creatingContractID - id of contract that constructed us - the validator application (single global instance)
      * @param validatorID - id of validator we're a staking pool of
      * @param poolID - which pool id are we
-     * @param owner
-     * @param manager
+     * @param owner - owner of pool
+     * @param manager - manager of pool (can issue payouts and online txns)
+     * @param maxStakeAllowed - maximum algo allowed in this staking pool
      */
     createApplication(
         creatingContractID: uint64,
         validatorID: uint64,
         poolID: uint64,
         owner: Address,
-        manager: Address
+        manager: Address,
+        maxStakeAllowed: uint64,
     ): void {
         if (owner === globals.zeroAddress || manager === globals.zeroAddress) {
             // this is likely initial template setup - everything should basically be zero...
@@ -62,6 +64,7 @@ class StakingPool extends Contract {
             assert(validatorID !== 0);
             assert(poolID !== 0);
         }
+        assert(maxStakeAllowed < MAX_ALGO_PER_POOL);  // this should have already been checked by validator but... still
         this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;
@@ -69,7 +72,7 @@ class StakingPool extends Contract {
         this.Manager.value = manager;
         this.NumStakers.value = 0;
         this.TotalAlgoStaked.value = 0;
-        this.MaxAlgo.value = MAX_ALGO_PER_POOL;
+        this.MaxStakeAllowed.value = maxStakeAllowed;
     }
 
     /**
@@ -92,8 +95,8 @@ class StakingPool extends Contract {
             this.Stakers.create();
         }
         // account calling us has to be our creating validator contract
-        assert(staker !== Account.zeroAddress);
         assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
+        assert(staker !== Account.zeroAddress);
 
         // Now, is the required amount actually being paid to US (this contract account - the staking pool)
         // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
@@ -102,6 +105,10 @@ class StakingPool extends Contract {
             receiver: this.app.address,
             amount: stakedAmountPayment.amount,
         });
+        assert(
+            stakedAmountPayment.amount + this.TotalAlgoStaked.value < this.MaxStakeAllowed.value,
+            'adding this stake amount will exceed the max allowed in this pool'
+        );
         // See if the account staking is already in our ledger of Stakers - if so, they're just adding to their stake
         // track first empty slot as we go along as well.
         const entryTime = this.getEntryTime();
@@ -109,7 +116,7 @@ class StakingPool extends Contract {
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
         const stakers = clone(this.Stakers.value);
-        for (let i = 0; i < MAX_STAKERS_PER_POOL; i += 1) {
+        for (let i = 0; i < stakers.length; i += 1) {
             if (stakers[i].Account === staker) {
                 stakers[i].Balance += stakedAmountPayment.amount;
                 stakers[i].EntryTime = entryTime;

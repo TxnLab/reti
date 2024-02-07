@@ -23,11 +23,18 @@
         },
         {
           "name": "owner",
-          "type": "address"
+          "type": "address",
+          "desc": "owner of pool"
         },
         {
           "name": "manager",
-          "type": "address"
+          "type": "address",
+          "desc": "manager of pool (can issue payouts and online txns)"
+        },
+        {
+          "name": "maxStakeAllowed",
+          "type": "uint64",
+          "desc": "maximum algo allowed in this staking pool"
         }
       ],
       "returns": {

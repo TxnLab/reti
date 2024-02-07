@@ -21,7 +21,7 @@ import (
 	"github.com/TxnLab/reti/internal/lib/misc"
 )
 
-func NewLocalKeyStore(log *slog.Logger) *localKeyStore {
+func NewLocalKeyStore(log *slog.Logger) MultipleWalletSigner {
 	keyStore := &localKeyStore{
 		log:  log,
 		keys: map[string]ed25519.PrivateKey{},

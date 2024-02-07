@@ -53,4 +53,25 @@
   * watcher
     * looks for 
 
-
+* validator
+  * config/init
+    * to initially create and identify yourself as a validator
+    * set: maximum stake allowed for all pools
+    * payout schedule
+    * % fees to validator
+  * inherit
+    * used to configure new node with data about your existing validator config - configure with owner or manager address?
+    * node has to have keys to manager to allow it?  
+  * modify
+    * change nfd 
+    * change manager
+    * change owner ????  (seems iffy)
+  * nodes
+    * need config'd at all? or just matter of configuring pools already gate this?
+    * add 
+    * what about remove?
+    * do we really 'care' about formal definition of nodes or is it just matter of adding pools to current config and a max is allowed?
+  * pool
+    * add pool
+      * checks pool count on machine - based on config - does it really care about formal def of node?
+    

@@ -28,21 +28,25 @@ let suggestedParams: SuggestedParams;
 // app id of template app id
 let tmplPoolAppID: number;
 
-algokit.Config.configure({ debug: true });
+// algokit.Config.configure({ debug: true });
 
 type ValidatorConfig = {
     PayoutEveryXDays: number; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
     ValidatorCommissionAddress: Account; // account that receives the validation commission each epoch payout
+    MinEntryStake: number; // minimum stake required to enter pool
+    MaxAlgoPerPool: number; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: number; // Number of pools to allow per node (max of 4 is recommended)
     MaxNodes: number; // Maximum number of nodes the validator is stating they'll allow
 };
 
-function validatorConfigAsArray(config: ValidatorConfig): [number, number, string, number, number] {
+function validatorConfigAsArray(config: ValidatorConfig): [number, number, string, number, number, number, number] {
     return [
         config.PayoutEveryXDays,
         config.PercentToValidator,
         config.ValidatorCommissionAddress.addr,
+        config.MinEntryStake,
+        config.MaxAlgoPerPool,
         config.PoolsPerNode,
         config.MaxNodes,
     ];
@@ -132,7 +136,7 @@ async function getValidatorState(validatorID: number) {
         (
             await validatorClient
                 .compose()
-                .getValidatorState({ validatorID }, { sendParams: { populateAppCallResources: true } })
+                .getValidatorState({ validatorID }, {})
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
     );
@@ -140,22 +144,13 @@ async function getValidatorState(validatorID: number) {
 
 async function getPoolInfo(poolKey: [bigint, bigint, bigint]) {
     return createPoolInfoFromValues(
-        (
-            await validatorClient
-                .compose()
-                .getPoolInfo({ poolKey }, { sendParams: { populateAppCallResources: true } })
-                .simulate({ allowUnnamedResources: true })
-        ).returns![0]
+        (await validatorClient.compose().getPoolInfo({ poolKey }, {}).simulate({ allowUnnamedResources: true }))
+            .returns![0]
     );
 }
 
 async function getMbrAmountsFromValidatorClient() {
-    return (
-        await validatorClient
-            .compose()
-            .getMbrAmounts({}, { sendParams: { populateAppCallResources: true } })
-            .simulate()
-    ).returns![0];
+    return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
 }
 
 async function addStakingPool(validatorID: number, nextValidator: number, vldtrAcct: Account) {
@@ -185,7 +180,6 @@ async function addStakingPool(validatorID: number, nextValidator: number, vldtrA
                 {
                     sendParams: {
                         fee: AlgoAmount.MicroAlgos(2000),
-                        // populateAppCallResources: true,
                     },
                     apps: [tmplPoolAppID], // needsto reference template to create new instance
                     boxes: [
@@ -255,7 +249,6 @@ async function addStake(vldtrId: number, staker: Account, algoAmount: AlgoAmount
                 {
                     sendParams: {
                         fee: AlgoAmount.MicroAlgos(5000),
-                        // populateAppCallResources:true
                     },
                     apps: [tmplPoolAppID],
                     boxes: [
@@ -296,6 +289,7 @@ describe('ValidatorRegistry', () => {
             poolID: 0,
             owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
             manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+            maxStakeAllowed: 0,
         });
         tmplPoolAppID = tmplPool.appId as number;
         validatorClient = new ValidatorRegistryClient(
@@ -331,6 +325,8 @@ describe('ValidatorRegistry', () => {
             PayoutEveryXDays: 1,
             PercentToValidator: 10000,
             ValidatorCommissionAddress: validatorOwnerAccount,
+            MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
+            MaxAlgoPerPool: AlgoAmount.Algos(1_000_000).microAlgos,
             PoolsPerNode: 1,
             MaxNodes: 1,
         };
@@ -404,8 +400,10 @@ describe('ValidatorRegistry', () => {
         expect(stakePt2Balance.amount).toBe(stakePt1Balance.amount + stakeAmount.microAlgos);
         const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do();
         expect(stakerAcctBalance.amount).toBe(
-            AlgoAmount.Algos(5000).microAlgos - AlgoAmount.Algos(900).microAlgos - AlgoAmount.Algos(1000).microAlgos -
-            AlgoAmount.Algos(.006 * 2).microAlgos /* 6 txn fee cost per staking */
+            AlgoAmount.Algos(5000).microAlgos -
+                AlgoAmount.Algos(900).microAlgos -
+                AlgoAmount.Algos(1000).microAlgos -
+                AlgoAmount.Algos(0.006 * 2).microAlgos /* 6 txn fee cost per staking */
         );
     });
 
