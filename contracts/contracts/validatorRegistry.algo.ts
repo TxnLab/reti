@@ -48,7 +48,7 @@ type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
     Manager: Address; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
-    NFDForInfo: uint64; // Optional NFD App I sD which the validator uses for describe their validator pool
+    NFDForInfo: uint64; // Optional NFD AppID which the validator uses to describe their validator pool
     Config: ValidatorConfig;
     State: ValidatorCurState;
     Nodes: StaticArray<NodeInfo, typeof MAX_NODES>;
@@ -77,17 +77,17 @@ class ValidatorRegistry extends Contract {
     programVersion = 9;
 
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
-    numValidators = GlobalStateKey<uint64>({key: 'numV'});
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
 
     // Validator list - simply incremental id - direct access to info for validator
     // and also contains all pool information (but not user-account ledger per pool)
-    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({prefix: 'v'});
+    ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
 
     // For given user staker address, which of up to 4 validator/pools are they in
-    StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({prefix: 'sps'});
+    StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'sps' });
 
     // The app id of a staking pool contract instance to use as template for newly created pools
-    StakingPoolTemplateAppID = GlobalStateKey<uint64>({key: 'poolTemplateAppID'});
+    StakingPoolTemplateAppID = GlobalStateKey<uint64>({ key: 'poolTemplateAppID' });
 
     createApplication(poolTemplateAppID: uint64): void {
         this.numValidators.value = 0;
@@ -97,8 +97,7 @@ class ValidatorRegistry extends Contract {
     /**
      * gas is a dummy no-op call that can be used to pool-up resource references and opcode cost
      */
-    gas(): void {
-    }
+    gas(): void {}
 
     private minBalanceForAccount(
         contracts: number,
@@ -128,10 +127,10 @@ class ValidatorRegistry extends Contract {
         return {
             AddValidatorMbr:
                 this.minBalanceForAccount(0, 0, 0, 0, 0, 2, 0) +
-                this.costForBoxStorage(1 /* v prefix */ + 1507 /* ValidatorInfo struct size */),
+                this.costForBoxStorage(1 /* v prefix */ + 1523 /* ValidatorInfo struct size */),
             AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 6, 2),
             AddStakerMbr:
-            // how much to charge for first time a staker adds stake - since we add a tracking box per staker
+                // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
         };
     }
@@ -199,14 +198,14 @@ class ValidatorRegistry extends Contract {
      *
      */
     addPool(mbrPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
-        verifyPayTxn(mbrPayment, {amount: this.getMbrAmounts().AddPoolMbr});
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr });
 
         assert(this.ValidatorList(validatorID).exists);
 
         // Must be called by the owner or manager of the validator.
         assert(
             this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
-            this.txn.sender === this.ValidatorList(validatorID).value.Manager
+                this.txn.sender === this.ValidatorList(validatorID).value.Manager
         );
 
         let numPools = this.ValidatorList(validatorID).value.State.NumPools;
@@ -241,7 +240,7 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
 
         // PoolID is 1-based, 0 is invalid id
-        return {ID: validatorID, PoolID: numPools as uint64, PoolAppID: this.itxn!.createdApplicationID.id};
+        return { ID: validatorID, PoolID: numPools as uint64, PoolAppID: this.itxn!.createdApplicationID.id };
     }
 
     getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
@@ -369,7 +368,7 @@ class ValidatorRegistry extends Contract {
                     // This staker already has stake with this validator - if room left, start there first
                     if (
                         this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
-                        amountToStake <
+                            amountToStake <
                         maxPerPool
                     ) {
                         return poolSet[i];
@@ -381,11 +380,11 @@ class ValidatorRegistry extends Contract {
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
         for (let i = 0; i < pools.length; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake < maxPerPool) {
-                return {ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID};
+                return { ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID };
             }
         }
         // Not found is poolID 0
-        return {ID: validatorID, PoolID: 0, PoolAppID: 0};
+        return { ID: validatorID, PoolID: 0, PoolAppID: 0 };
     }
 
     private validateConfig(config: ValidatorConfig): void {
@@ -394,8 +393,7 @@ class ValidatorRegistry extends Contract {
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
         assert(config.ValidatorCommissionAddress !== Address.zeroAddress);
         assert(config.MinEntryStake >= MIN_ALGO_STAKE_PER_POOL);
-        assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL,
-            'enforce hard constraint to be safe to the network');
+        assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
         assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES);
     }
@@ -422,7 +420,7 @@ class ValidatorRegistry extends Contract {
             methodArgs: [
                 // =======
                 // THIS IS A SEND of the amount received right back out and into the staking pool contract account.
-                {amount: stakedAmountPayment.amount - mbrAmtPaid, receiver: Application.fromID(poolAppID).address},
+                { amount: stakedAmountPayment.amount - mbrAmtPaid, receiver: Application.fromID(poolAppID).address },
                 // =======
                 stakedAmountPayment.sender,
             ],
@@ -462,7 +460,7 @@ class ValidatorRegistry extends Contract {
         const poolSet = clone(this.StakerPoolSet(staker).value);
         for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
             if (poolSet[i] === poolKey) {
-                this.StakerPoolSet(staker).value[i] = {ID: 0, PoolID: 0, PoolAppID: 0};
+                this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0, PoolAppID: 0 };
                 return;
             }
         }

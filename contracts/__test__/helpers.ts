@@ -4,25 +4,42 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 
-export type ValidatorConfig = {
-    PayoutEveryXDays: number; // Payout frequency - ie: 7, 30, etc.
-    PercentToValidator: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    ValidatorCommissionAddress: Account; // account that receives the validation commission each epoch payout
-    MinEntryStake: number; // minimum stake required to enter pool
-    MaxAlgoPerPool: number; // maximum stake allowed per pool (to keep under incentive limits)
-    PoolsPerNode: number; // Number of pools to allow per node (max of 4 is recommended)
-    MaxNodes: number; // Maximum number of nodes the validator is stating they'll allow
+interface ValidatorConfig {
+    PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
+    PercentToValidator?: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
+    ValidatorCommissionAddress?: string; // account that receives the validation commission each epoch payout
+    MinEntryStake?: number; // minimum stake required to enter pool
+    MaxAlgoPerPool?: number; // maximum stake allowed per pool (to keep under incentive limits)
+    PoolsPerNode?: number; // Number of pools to allow per node (max of 4 is recommended)
+    MaxNodes?: number; // Maximum number of nodes the validator is stating they'll allow
+}
+
+const DefaultValidatorConfig: ValidatorConfig = {
+    PayoutEveryXDays: 1,
+    PercentToValidator: 10000, // 1.0000%
+    ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
+    MaxAlgoPerPool: AlgoAmount.Algos(200_000).microAlgos,
+    PoolsPerNode: 3,
+    MaxNodes: 4,
 };
+
+export function createValidatorConfig(inputConfig: ValidatorConfig): ValidatorConfig {
+    return {
+        ...DefaultValidatorConfig,
+        ...inputConfig,
+    };
+}
 
 function validatorConfigAsArray(config: ValidatorConfig): [number, number, string, number, number, number, number] {
     return [
-        config.PayoutEveryXDays,
-        config.PercentToValidator,
-        config.ValidatorCommissionAddress.addr,
-        config.MinEntryStake,
-        config.MaxAlgoPerPool,
-        config.PoolsPerNode,
-        config.MaxNodes,
+        config.PayoutEveryXDays!,
+        config.PercentToValidator!,
+        config.ValidatorCommissionAddress!,
+        config.MinEntryStake!,
+        config.MaxAlgoPerPool!,
+        config.PoolsPerNode!,
+        config.MaxNodes!,
     ];
 }
 
@@ -77,17 +94,26 @@ export async function addValidator(
     validatorClient: ValidatorRegistryClient,
     config: ValidatorConfig,
     owner: Account,
-    nextValidator: number
 ) {
+    // 'real' code will likely have to do this unless simulate is used..
+    const nextValidator = (await validatorClient.getGlobalState()).numV!.asNumber() + 1;
+
+    // Now get MBR amounts via simulate from the contract
+    const mbrAmounts = await getMbrAmountsFromValidatorClient(validatorClient);
+    const addValidatorMbr = mbrAmounts[0];
+
+    // Need MBR to cover box cost for new validator data
+    await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(addValidatorMbr)));
+
     try {
         return Number(
             (
                 await validatorClient.addValidator(
                     {
-                        config: validatorConfigAsArray(config),
-                        manager: owner.addr,
                         owner: owner.addr,
+                        manager: owner.addr,
                         nfdAppID: 0,
+                        config: validatorConfigAsArray(config),
                     },
                     {
                         boxes: [
@@ -131,7 +157,6 @@ export async function addStakingPool(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
     validatorID: number,
-    nextValidator: number,
     vldtrAcct: Account
 ) {
     // Now get MBR amounts via simulate from the contract
@@ -165,7 +190,7 @@ export async function addStakingPool(
                     sender: vldtrAcct,
                     // apps: [tmplPoolAppID], // needs to reference template to create new instance
                     // boxes: [
-                    //     {appId: 0, name: getValidatorListBoxName(nextValidator)},
+                    //     {appId: 0, name: getValidatorListBoxName(validatorID)},
                     //     {appId: 0, name: ''}, // buy more i/o
                     // ],
                 }

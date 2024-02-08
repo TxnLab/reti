@@ -10,11 +10,11 @@ import {
     addStake,
     addStakingPool,
     addValidator,
+    createValidatorConfig,
     getMbrAmountsFromValidatorClient,
     getPoolInfo,
     getValidatorListBoxName,
     getValidatorState,
-    ValidatorConfig,
 } from './helpers';
 // import { algoKitLogCaptureFixture } from '@algorandfoundation/algokit-utils/testing'
 
@@ -79,17 +79,10 @@ describe('ValidatorRegistry', () => {
             fixture.context.kmd
         );
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`);
-        const expectedNextValidatorID = (await validatorClient.getGlobalState()).numV!.asNumber() + 1;
 
-        const config: ValidatorConfig = {
-            PayoutEveryXDays: 1,
-            PercentToValidator: 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount,
-            MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
-            MaxAlgoPerPool: AlgoAmount.Algos(1_000_000).microAlgos,
-            PoolsPerNode: 1,
-            MaxNodes: 1,
-        };
+        const config = createValidatorConfig({
+            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+        });
 
         // Now get MBR amounts via simulate from the contract
         const mbrAmounts = await getMbrAmountsFromValidatorClient(validatorClient);
@@ -98,16 +91,10 @@ describe('ValidatorRegistry', () => {
         // Before validator can add pools it needs to be funded
         await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(addValidatorMbr)));
         // Construct the validator pool itself !
-        const validatorID = await addValidator(validatorClient, config, validatorOwnerAccount, expectedNextValidatorID);
+        const validatorID = await addValidator(validatorClient, config, validatorOwnerAccount);
 
         // Now add a pool - we have to include payment for its MBR as well
-        const poolKey = await addStakingPool(
-            fixture.context,
-            validatorClient,
-            validatorID,
-            expectedNextValidatorID,
-            validatorOwnerAccount
-        );
+        const poolKey = await addStakingPool(fixture.context, validatorClient, validatorID, validatorOwnerAccount);
         // should be [validator id, pool id (1 based)]
         expect(poolKey[0]).toBe(BigInt(validatorID));
         expect(poolKey[1]).toBe(BigInt(1));
@@ -117,8 +104,6 @@ describe('ValidatorRegistry', () => {
             await validatorClient.getPoolAppId({ poolKey }, { sendParams: { populateAppCallResources: true } })
         ).return!;
         expect(poolKey[2]).toBe(poolAppId);
-
-        const newBoxData = await validatorClient.appClient.getBoxValue(getValidatorListBoxName(validatorID));
 
         const stateData = await getValidatorState(validatorClient, validatorID);
         expect(stateData.NumPools).toEqual(BigInt(1));
