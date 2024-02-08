@@ -3,6 +3,7 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
+import { consoleLogger } from "@algorandfoundation/algokit-utils/types/logging";
 
 interface ValidatorConfig {
     PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
@@ -90,20 +91,16 @@ function getStakerPoolSetName(stakerAccount: Account) {
     return concatUint8Arrays(prefix, decodeAddress(stakerAccount.addr).publicKey);
 }
 
-export async function addValidator(
-    validatorClient: ValidatorRegistryClient,
-    config: ValidatorConfig,
-    owner: Account,
-) {
+export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
+    return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
+}
+
+export async function addValidator(validatorClient: ValidatorRegistryClient, owner: Account, config: ValidatorConfig, validatorMbr: bigint) {
     // 'real' code will likely have to do this unless simulate is used..
     const nextValidator = (await validatorClient.getGlobalState()).numV!.asNumber() + 1;
 
-    // Now get MBR amounts via simulate from the contract
-    const mbrAmounts = await getMbrAmountsFromValidatorClient(validatorClient);
-    const addValidatorMbr = mbrAmounts[0];
-
     // Need MBR to cover box cost for new validator data
-    await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(addValidatorMbr)));
+    await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(validatorMbr)));
 
     try {
         return Number(
@@ -120,14 +117,15 @@ export async function addValidator(
                             { appId: 0, name: getValidatorListBoxName(nextValidator) },
                             { appId: 0, name: '' }, // buy more i/o
                         ],
-                        // sendParams: {populateAppCallResources:true},
+                        sendParams: {populateAppCallResources:true},
                     }
                 )
             ).return!
         );
-    } catch (exception) {
-        console.log((exception as LogicError).message);
-        throw exception;
+    } catch (e) {
+        // throw validatorClient.appClient.exposeLogicError(e as Error)
+        console.log((e as LogicError).message);
+        throw e;
     }
 }
 
@@ -149,27 +147,21 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
     );
 }
 
-export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
-    return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
-}
-
 export async function addStakingPool(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
     validatorID: number,
-    vldtrAcct: Account
+    vldtrAcct: Account,
+    poolMbr: bigint
 ) {
-    // Now get MBR amounts via simulate from the contract
-    const mbrAmounts = await getMbrAmountsFromValidatorClient(validatorClient);
-    const addPoolMbr = mbrAmounts[1];
-
     const suggestedParams = await context.algod.getTransactionParams().do();
     const validatorsAppRef = await validatorClient.appClient.getAppReference();
+
     // Pay the additional mbr to the validator contract for the new pool mbr
     const payPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,
         to: validatorsAppRef.appAddress,
-        amount: Number(addPoolMbr),
+        amount: Number(poolMbr),
         suggestedParams,
     });
 
@@ -275,7 +267,8 @@ export async function addStake(
             .execute({ populateAppCallResources: true });
         return results.returns[1];
     } catch (exception) {
-        console.log((exception as LogicError).message);
-        throw exception;
+        throw validatorClient.appClient.exposeLogicError(exception as Error)
+        // consoleLogger.warn((exception as LogicError).message);
+        // throw exception;
     }
 }

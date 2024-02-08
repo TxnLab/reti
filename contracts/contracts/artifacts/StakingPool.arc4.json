@@ -32,6 +32,11 @@
           "desc": "manager of pool (can issue payouts and online txns)"
         },
         {
+          "name": "minAllowedStake",
+          "type": "uint64",
+          "desc": "minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)"
+        },
+        {
           "name": "maxStakeAllowed",
           "type": "uint64",
           "desc": "maximum algo allowed in this staking pool"
@@ -71,7 +76,7 @@
     },
     {
       "name": "removeStake",
-      "desc": "Removes stake on behalf of a particular staker.  Also notifies the validator contract for this poolsvalidaotr of the staker / balance changes.",
+      "desc": "Removes stake on behalf of a particular staker.  Also notifies the validator contract for this poolsvalidator of the staker / balance changes.",
       "args": [
         {
           "name": "account",

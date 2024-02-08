@@ -20,7 +20,7 @@ export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
     ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout
-    MinEntryStake: uint64; // minimum stake required to enter pool
+    MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
     MaxNodes: uint16; // Maximum number of nodes the validator is stating they'll allow
@@ -123,12 +123,14 @@ class ValidatorRegistry extends Contract {
         return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
     }
 
+    // Cost for creator of validator contract itself is:
+    // this.minBalanceForAccount(0, 0, 0, 0, 0, 2, 0)
+
     getMbrAmounts(): MbrAmounts {
         return {
             AddValidatorMbr:
-                this.minBalanceForAccount(0, 0, 0, 0, 0, 2, 0) +
-                this.costForBoxStorage(1 /* v prefix */ + 1523 /* ValidatorInfo struct size */),
-            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 6, 2),
+                this.costForBoxStorage(1 /* v prefix */ + 8 /* key id size */ + 1523 /* ValidatorInfo struct size */),
+            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 7, 2),
             AddStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
@@ -223,13 +225,14 @@ class ValidatorRegistry extends Contract {
             globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
             extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
-                // creatingContractID, validatorID, poolID, owner, manager, maxStakeAllowed
-                method('createApplication(uint64,uint64,uint64,address,address,uint64)void'),
+                // creatingContractID, validatorID, poolID, owner, manager, minAllowedStake, maxStakeAllowed
+                method('createApplication(uint64,uint64,uint64,address,address,uint64,uint64)void'),
                 itob(this.app.id),
                 itob(validatorID),
                 itob(numPools as uint64),
                 rawBytes(this.ValidatorList(validatorID).value.Owner),
                 rawBytes(this.ValidatorList(validatorID).value.Manager),
+                itob(this.ValidatorList(validatorID).value.Config.MinAllowedStake),
                 itob(this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool),
             ],
         });
@@ -263,6 +266,8 @@ class ValidatorRegistry extends Contract {
             receiver: this.app.address,
         });
 
+        // find existing slot where staker is already in a pool, or if none found, then ensure they're
+        // putting in minimum amount for this validator.
         const poolKey = this.findPoolForStaker(validatorID, staker, stakedAmountPayment.amount);
         if (poolKey.PoolID === 0) {
             throw Error('No pool available with free stake.  Validator needs to add another pool');
@@ -279,7 +284,8 @@ class ValidatorRegistry extends Contract {
         // Update StakerPoolList for this found pool (new or existing)
         this.updateStakerPoolSet(staker, poolKey);
         increaseOpcodeBudget();
-        // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool
+        // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool and it then updates
+        // the staker data.
         this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind);
         return poolKey;
     }
@@ -377,6 +383,12 @@ class ValidatorRegistry extends Contract {
             }
         }
 
+        // We don't already have stake in place, so ensure the stake meets the 'minimum entry' amount
+        assert(
+            amountToStake >= this.ValidatorList(validatorID).value.Config.MinAllowedStake,
+            'must stake at least the minimum for this pool'
+        );
+
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
         for (let i = 0; i < pools.length; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake < maxPerPool) {
@@ -392,15 +404,15 @@ class ValidatorRegistry extends Contract {
         assert(config.PayoutEveryXDays >= MIN_PAYOUT_DAYS && config.PayoutEveryXDays <= MAX_PAYOUT_DAYS);
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
         assert(config.ValidatorCommissionAddress !== Address.zeroAddress);
-        assert(config.MinEntryStake >= MIN_ALGO_STAKE_PER_POOL);
+        assert(config.MinAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
         assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
         assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES);
     }
 
     /**
-     * Adds a stakers amount of algo to a validator pool, transfering the algo we received from them (already verified
-     * by our caller) to the staking pool account, and then telling it about the amount being add for the specified
+     * Adds a stakers amount of algo to a validator pool, transferring the algo we received from them (already verified
+     * by our caller) to the staking pool account, and then telling it about the amount being added for the specified
      * staker.
      *
      * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
@@ -429,12 +441,15 @@ class ValidatorRegistry extends Contract {
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = Application.fromID(
             poolAppID
         ).globalState('numStakers') as uint64 as uint16;
+
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = Application.fromID(
             poolAppID
         ).globalState('staked') as uint64;
+
         // now update our global totals based on delta (if new staker was added, new amount - can only have gone up or stayed same)
         this.ValidatorList(poolKey.ID).value.State.TotalStakers +=
             (Application.fromID(poolAppID).globalState('numStakers') as uint64) - priorStakers;
+
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid;
     }
 

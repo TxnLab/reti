@@ -1,6 +1,6 @@
 import { Contract } from '@algorandfoundation/tealscript';
 // import { ValidatorConfig } from "./validatorRegistry.algo";
-import { MAX_ALGO_PER_POOL } from './constants.algo';
+import { MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
 
 const MAX_STAKERS_PER_POOL = 73; // *56 (size of StakeInfo) = 4,088 bytes
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
@@ -31,6 +31,8 @@ class StakingPool extends Contract {
 
     TotalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' });
 
+    MinAllowedStake = GlobalStateKey<uint64>({ key: 'minAllowedStake' });
+
     MaxStakeAllowed = GlobalStateKey<uint64>({ key: 'maxStake' });
 
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
@@ -42,6 +44,7 @@ class StakingPool extends Contract {
      * @param poolID - which pool id are we
      * @param owner - owner of pool
      * @param manager - manager of pool (can issue payouts and online txns)
+     * @param minAllowedStake - minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)
      * @param maxStakeAllowed - maximum algo allowed in this staking pool
      */
     createApplication(
@@ -50,7 +53,8 @@ class StakingPool extends Contract {
         poolID: uint64,
         owner: Address,
         manager: Address,
-        maxStakeAllowed: uint64,
+        minAllowedStake: uint64,
+        maxStakeAllowed: uint64
     ): void {
         if (owner === globals.zeroAddress || manager === globals.zeroAddress) {
             // this is likely initial template setup - everything should basically be zero...
@@ -64,7 +68,8 @@ class StakingPool extends Contract {
             assert(validatorID !== 0);
             assert(poolID !== 0);
         }
-        assert(maxStakeAllowed < MAX_ALGO_PER_POOL);  // this should have already been checked by validator but... still
+        assert(minAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
+        assert(maxStakeAllowed < MAX_ALGO_PER_POOL); // this should have already been checked by validator but... still
         this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;
@@ -72,6 +77,7 @@ class StakingPool extends Contract {
         this.Manager.value = manager;
         this.NumStakers.value = 0;
         this.TotalAlgoStaked.value = 0;
+        this.MinAllowedStake.value = minAllowedStake;
         this.MaxStakeAllowed.value = maxStakeAllowed;
     }
 
@@ -136,8 +142,14 @@ class StakingPool extends Contract {
             // nothing was found - pool is full and this staker can't fit
             throw Error('Staking pool full');
         }
-        // This is a new staker to the pool, so initialize slot and add to the stakers.
+        // This is a new staker to the pool, so first ensure they're adding required minimum, then
+        // initialize slot and add to the stakers.
         // our caller will see stakers increase in state and increase in their state as well.
+        assert(
+            stakedAmountPayment.amount >= this.MinAllowedStake.value,
+            'must stake at least the minimum for this pool'
+        );
+
         assert(this.Stakers.value[firstEmpty - 1].Account === Address.zeroAddress);
         this.Stakers.value[firstEmpty - 1] = {
             Account: staker,
@@ -152,7 +164,7 @@ class StakingPool extends Contract {
 
     /**
      * Removes stake on behalf of a particular staker.  Also notifies the validator contract for this pools
-     * validaotr of the staker / balance changes.
+     * validator of the staker / balance changes.
      *
      * @param {Address} account - The address of the account removing stake.
      * @param {uint64} amountToUnstake - The amount of stake to be removed.
@@ -164,6 +176,7 @@ class StakingPool extends Contract {
         // account calling us has to be account removing stake
         assert(account !== Account.zeroAddress);
         assert(this.txn.sender === account);
+        assert(amountToUnstake !== 0);
 
         let i = 0;
         this.Stakers.value.forEach((staker) => {
@@ -173,6 +186,12 @@ class StakingPool extends Contract {
                 }
                 staker.Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
+
+                // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
+                assert(
+                    staker.Balance == 0 || staker.Balance >= MIN_ALGO_STAKE_PER_POOL,
+                    'cannot reduce balance below minimum allowed stake unless all is removed'
+                );
 
                 // Pay the staker back
                 sendPayment({
