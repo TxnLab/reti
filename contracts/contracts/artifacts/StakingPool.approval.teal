@@ -353,7 +353,7 @@ if1_end:
 
 	// contracts/stakingPool.algo.ts:114
 	// assert(
-	//             stakedAmountPayment.amount + this.TotalAlgoStaked.value < this.MaxStakeAllowed.value,
+	//             stakedAmountPayment.amount + this.TotalAlgoStaked.value <= this.MaxStakeAllowed.value,
 	//             'adding this stake amount will exceed the max allowed in this pool'
 	//         )
 	frame_dig -1 // stakedAmountPayment: PayTxn
@@ -363,7 +363,7 @@ if1_end:
 	+
 	byte 0x6d61785374616b65 // "maxStake"
 	app_global_get
-	<
+	<=
 
 	// adding this stake amount will exceed the max allowed in this pool
 	assert

@@ -3,7 +3,6 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
-import { consoleLogger } from "@algorandfoundation/algokit-utils/types/logging";
 
 interface ValidatorConfig {
     PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
@@ -74,6 +73,20 @@ function createPoolInfoFromValues([NodeID, PoolAppID, TotalStakers, TotalAlgoSta
     return { NodeID, PoolAppID, TotalStakers, TotalAlgoStaked };
 }
 
+export type ValidatorPoolKey = {
+    ID: bigint;
+    PoolID: bigint; // 0 means INVALID ! - so 1 is index, technically of [0]
+    PoolAppID: bigint;
+};
+
+function createPoolKeyFromValues([ID, PoolID, PoolAppID]: [bigint, bigint, bigint]): ValidatorPoolKey {
+    return { ID, PoolID, PoolAppID };
+}
+
+export function argsFromPoolKey(poolKey: ValidatorPoolKey): [bigint,bigint,bigint] {
+    return [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID]
+}
+
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
     const result = new Uint8Array(a.length + b.length);
     result.set(a);
@@ -95,7 +108,12 @@ export async function getMbrAmountsFromValidatorClient(validatorClient: Validato
     return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
 }
 
-export async function addValidator(validatorClient: ValidatorRegistryClient, owner: Account, config: ValidatorConfig, validatorMbr: bigint) {
+export async function addValidator(
+    validatorClient: ValidatorRegistryClient,
+    owner: Account,
+    config: ValidatorConfig,
+    validatorMbr: bigint
+) {
     // 'real' code will likely have to do this unless simulate is used..
     const nextValidator = (await validatorClient.getGlobalState()).numV!.asNumber() + 1;
 
@@ -117,7 +135,7 @@ export async function addValidator(validatorClient: ValidatorRegistryClient, own
                             { appId: 0, name: getValidatorListBoxName(nextValidator) },
                             { appId: 0, name: '' }, // buy more i/o
                         ],
-                        sendParams: {populateAppCallResources:true},
+                        sendParams: { populateAppCallResources: true },
                     }
                 )
             ).return!
@@ -137,13 +155,6 @@ export async function getValidatorState(validatorClient: ValidatorRegistryClient
                 .getValidatorState({ validatorID }, {})
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
-    );
-}
-
-export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: [bigint, bigint, bigint]) {
-    return createPoolInfoFromValues(
-        (await validatorClient.compose().getPoolInfo({ poolKey }, {}).simulate({ allowUnnamedResources: true }))
-            .returns![0]
     );
 }
 
@@ -188,12 +199,21 @@ export async function addStakingPool(
                 }
             )
             .execute({ populateAppCallResources: true });
-        return results.returns[0];
+
+        return createPoolKeyFromValues(results.returns[0]);
     } catch (exception) {
         console.log((exception as LogicError).message);
         throw exception;
     }
 }
+
+export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
+    return createPoolInfoFromValues(
+        (await validatorClient.compose().getPoolInfo({ poolKey: [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID] }, {}).simulate({ allowUnnamedResources: true }))
+            .returns![0]
+    );
+}
+
 
 export async function addStake(
     context: AlgorandTestAutomationContext,
@@ -206,7 +226,7 @@ export async function addStake(
         const suggestedParams = await context.algod.getTransactionParams().do();
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
-        const poolKey = (
+        const poolKey = createPoolKeyFromValues((
             await validatorClient.findPoolForStaker(
                 { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
                 {
@@ -216,11 +236,9 @@ export async function addStake(
                     },
                 }
             )
-        ).return!;
+        ).return!);
 
-        const poolAppId = (
-            await validatorClient.getPoolAppId({ poolKey }, { sendParams: { populateAppCallResources: true } })
-        ).return!;
+        const poolAppId = poolKey.PoolAppID;
 
         // Pay the stake to the validator contract
         const stakeTransfer = makePaymentTxnWithSuggestedParamsFromObject({
@@ -265,9 +283,10 @@ export async function addStake(
                 }
             )
             .execute({ populateAppCallResources: true });
-        return results.returns[1];
+
+        return createPoolKeyFromValues( results.returns[1]);
     } catch (exception) {
-        throw validatorClient.appClient.exposeLogicError(exception as Error)
+        throw validatorClient.appClient.exposeLogicError(exception as Error);
         // consoleLogger.warn((exception as LogicError).message);
         // throw exception;
     }

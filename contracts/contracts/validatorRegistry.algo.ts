@@ -268,19 +268,21 @@ class ValidatorRegistry extends Contract {
             receiver: this.app.address,
         });
 
-        // find existing slot where staker is already in a pool w/ this validator, or if none found, then ensure they're
-        // putting in minimum amount for this validator.
-        const poolKey = this.findPoolForStaker(validatorID, staker, stakedAmountPayment.amount);
-        if (poolKey.PoolID === 0) {
-            throw Error('No pool available with free stake.  Validator needs to add another pool');
-        }
+        let realAmount = stakedAmountPayment.amount;
         let mbrAmtLeftBehind: uint64 = 0;
         // determine if this is FIRST time this user has staked with this pool
         if (!this.StakerPoolSet(staker).exists) {
             // We'll deduct the required MBR from what the user is depositing by telling callPoolAddState to leave
             // that amount behind and subtract from their depositing stake.
             mbrAmtLeftBehind = this.getMbrAmounts().AddStakerMbr;
+            realAmount -= mbrAmtLeftBehind;
             this.StakerPoolSet(staker).create();
+        }
+        // find existing slot where staker is already in a pool w/ this validator, or if none found, then ensure they're
+        // putting in minimum amount for this validator.
+        const poolKey = this.findPoolForStaker(validatorID, staker, realAmount);
+        if (poolKey.PoolID === 0) {
+            throw Error('No pool available with free stake.  Validator needs to add another pool');
         }
 
         // Update StakerPoolList for this found pool (new or existing)
@@ -380,7 +382,7 @@ class ValidatorRegistry extends Contract {
                     // This staker already has stake with this validator - if room left, start there first
                     if (
                         this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
-                            amountToStake <
+                            amountToStake <=
                         maxPerPool
                     ) {
                         return poolSet[i];
@@ -398,7 +400,7 @@ class ValidatorRegistry extends Contract {
         // Walk this validators pools and find free space
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
         for (let i = 0; i < pools.length; i += 1) {
-            if (pools[i].TotalAlgoStaked + amountToStake < maxPerPool) {
+            if (pools[i].TotalAlgoStaked + amountToStake <= maxPerPool) {
                 return { ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID };
             }
         }
@@ -456,9 +458,8 @@ class ValidatorRegistry extends Contract {
     }
 
     private updateStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {
-        if (!this.StakerPoolSet(staker).exists) {
-            this.StakerPoolSet(staker).create();
-        }
+        assert(this.StakerPoolSet(staker).exists);
+
         const poolSet = clone(this.StakerPoolSet(staker).value);
         for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
             if (poolSet[i] === poolKey) {

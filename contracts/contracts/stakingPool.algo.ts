@@ -112,7 +112,7 @@ class StakingPool extends Contract {
             amount: stakedAmountPayment.amount,
         });
         assert(
-            stakedAmountPayment.amount + this.TotalAlgoStaked.value < this.MaxStakeAllowed.value,
+            stakedAmountPayment.amount + this.TotalAlgoStaked.value <= this.MaxStakeAllowed.value,
             'adding this stake amount will exceed the max allowed in this pool'
         );
         // See if the account staking is already in our ledger of Stakers - if so, they're just adding to their stake
