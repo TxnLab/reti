@@ -22,16 +22,15 @@ const logs = algoKitLogCaptureFixture();
 
 // algokit.Config.configure({ debug: true });
 
-
 // app id of template app id
 let tmplPoolAppID: number;
 
 let validatorClient: ValidatorRegistryClient;
 let poolClient: StakingPoolClient;
 
-let validatorMbr: bigint
-let poolMbr: bigint
-let stakerMbr: bigint
+let validatorMbr: bigint;
+let poolMbr: bigint;
+let stakerMbr: bigint;
 // =====
 // First construct the 'template' pool and then the master validator contract that everything will use
 beforeAll(async () => {
@@ -69,10 +68,10 @@ beforeAll(async () => {
     expect(validatorState.numV.value).toBe(0);
     expect(validatorState.foo).toBeUndefined(); // sanity check that undefined states doesn't match 0.
 
-    [ validatorMbr, poolMbr, stakerMbr ] = await getMbrAmountsFromValidatorClient(validatorClient);
+    [validatorMbr, poolMbr, stakerMbr] = await getMbrAmountsFromValidatorClient(validatorClient);
 });
 
-describe('ValidatorRegistry', () => {
+describe('ValidatorAddCheck', () => {
     beforeEach(fixture.beforeEach);
     beforeEach(logs.beforeEach);
     afterEach(logs.afterEach);
@@ -85,16 +84,20 @@ describe('ValidatorRegistry', () => {
             fixture.context.kmd
         );
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
-        const origMbr = (await fixture.context.algod.accountInformation(validatorsAppRef.appAddress).do())['min-balance'];
+        const origMbr = (await fixture.context.algod.accountInformation(validatorsAppRef.appAddress).do())[
+            'min-balance'
+        ];
 
         // need .1 ALGO for things to really work at all w/ this validator contract account so get that out of the way
-        await validatorClient.appClient.fundAppAccount(AlgoAmount.Algos(.1));
+        await validatorClient.appClient.fundAppAccount(AlgoAmount.Algos(0.1));
 
         const config = createValidatorConfig({ ValidatorCommissionAddress: validatorOwnerAccount.addr });
         let expectedID = 1;
         let validatorID = await addValidator(validatorClient, validatorOwnerAccount, config, validatorMbr);
         expect(validatorID).toBe(expectedID);
-        const newMbr = (await fixture.context.algod.accountInformation(validatorsAppRef.appAddress).do())['min-balance'];
+        const newMbr = (await fixture.context.algod.accountInformation(validatorsAppRef.appAddress).do())[
+            'min-balance'
+        ];
         expect(newMbr).toBe(origMbr + Number(validatorMbr));
 
         expectedID += 1;
@@ -104,8 +107,19 @@ describe('ValidatorRegistry', () => {
         validatorID = await addValidator(validatorClient, validatorOwnerAccount, config, validatorMbr);
         expect(validatorID).toBe(expectedID);
     });
+});
 
-    test('addValidator', async () => {
+describe('StakeAdds', () => {
+    beforeEach(fixture.beforeEach);
+    beforeEach(logs.beforeEach);
+    afterEach(logs.afterEach);
+
+    let validatorID: number;
+    let poolAppId: bigint;
+    let poolKey: [bigint, bigint, bigint];
+
+    // add validator and 1 pool for subsequent stake tests
+    beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
         const validatorOwnerAccount = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
@@ -118,16 +132,16 @@ describe('ValidatorRegistry', () => {
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
             MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
         });
-        const validatorID = await addValidator(validatorClient, validatorOwnerAccount, config, validatorMbr);
+        validatorID = await addValidator(validatorClient, validatorOwnerAccount, config, validatorMbr);
 
         // Add new pool - then we'll add stake and verify balances.
-        const poolKey = await addStakingPool(fixture.context, validatorClient, validatorID, validatorOwnerAccount, poolMbr);
+        poolKey = await addStakingPool(fixture.context, validatorClient, validatorID, validatorOwnerAccount, poolMbr);
         // should be [validator id, pool id (1 based)]
         expect(poolKey[0]).toBe(BigInt(validatorID));
         expect(poolKey[1]).toBe(BigInt(1));
 
         // get the app id via contract call - it should match what we just got back in poolKey[2]
-        const poolAppId = (
+        poolAppId = (
             await validatorClient.getPoolAppId({ poolKey }, { sendParams: { populateAppCallResources: true } })
         ).return!;
         expect(poolKey[2]).toBe(poolAppId);
@@ -141,7 +155,9 @@ describe('ValidatorRegistry', () => {
         expect(poolInfo.PoolAppID).toBe(BigInt(poolAppId));
         expect(poolInfo.TotalStakers).toEqual(BigInt(0));
         expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(0));
+    });
 
+    test('singleStaker', async () => {
         // get current balance of staker pool
         const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
 
@@ -151,48 +167,49 @@ describe('ValidatorRegistry', () => {
             fixture.context.algod,
             fixture.context.kmd
         );
-        consoleLogger.info(`staker account ${stakerAccount.addr}`);
+        // Start by funding 'not enough' (for minimum stake) - should fail (!)
+        await expect(
+            addStake(fixture.context, validatorClient, validatorID, stakerAccount, AlgoAmount.Algos(900))
+        ).rejects.toThrowError();
 
-        // Start by funding 'not enough' (for minimum stake) - should fail.
-        let stakeAmount = AlgoAmount.Algos(900);
-        await expect(addStake(fixture.context, validatorClient, validatorID, stakerAccount, stakeAmount)).rejects.toThrowError()
-
-        consoleLogger.info('past first stake that should fail');
-
-        // now stake 10000, min for this pool - for the first time - which means actual stake amount will be reduced by 'first time staker' fee to cover MBR
-        stakeAmount = AlgoAmount.MicroAlgos( AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos);
-        const stakedPoolKey = await addStake(fixture.context, validatorClient, validatorID, stakerAccount, stakeAmount)
+        // now stake 10000, min for this pool - for the first time - which means actual stake amount will be reduced
+        // by 'first time staker' fee to cover MBR (which goes to VALIDATOR contract account, not staker contract account!)
+        const stakeAmount1 = AlgoAmount.MicroAlgos(
+            AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
+        );
+        const stakedPoolKey = await addStake(
+            fixture.context,
+            validatorClient,
+            validatorID,
+            stakerAccount,
+            stakeAmount1
+        );
         // should be same as what we added prior
         expect(stakedPoolKey[0]).toBe(poolKey[0]);
         expect(stakedPoolKey[1]).toBe(poolKey[1]);
         expect(stakedPoolKey[2]).toBe(poolKey[2]);
 
         const poolBalance1 = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
-        expect(poolBalance1.amount).toBe(origStakePoolInfo.amount + stakeAmount.microAlgos - Number(stakerMbr));
+        expect(poolBalance1.amount).toBe(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr));
 
-        consoleLogger.info('staked first 1000');
-
-        // stake again for 1000 more - should go to same pool.
-        stakeAmount = AlgoAmount.Algos(1000);
-        const stakedKey2 = await addStake(fixture.context, validatorClient, validatorID, stakerAccount, stakeAmount);
+        // stake again for 1000 more - should go to same pool (!)
+        const stakeAmount2 = AlgoAmount.Algos(1000);
+        const stakedKey2 = await addStake(fixture.context, validatorClient, validatorID, stakerAccount, stakeAmount2);
         // should be same as what we added prior
         expect(stakedKey2[0]).toBe(poolKey[0]);
         expect(stakedKey2[1]).toBe(poolKey[1]);
         expect(stakedKey2[2]).toBe(poolKey[2]);
 
         const poolBalance2 = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
-        expect(poolBalance2.amount).toBe(poolBalance1.amount + stakeAmount.microAlgos);
+        expect(poolBalance2.amount).toBe(poolBalance1.amount + stakeAmount2.microAlgos);
 
-        consoleLogger.info('staked next 1000');
-
-
-        // const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do();
-        // expect(stakerAcctBalance.amount).toBe(
-        //     AlgoAmount.Algos(5000).microAlgos -
-        //         AlgoAmount.Algos(100).microAlgos -
-        //         AlgoAmount.Algos(1000).microAlgos -
-        //         AlgoAmount.Algos(0.006 * 2).microAlgos /* 6 txn fee cost per staking */
-        // );
+        const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do();
+        expect(stakerAcctBalance.amount).toBe(
+            AlgoAmount.Algos(5000).microAlgos - // funded amount
+                stakeAmount1.microAlgos -
+                stakeAmount2.microAlgos -
+                AlgoAmount.Algos(0.006 * 2).microAlgos /* 6 txn fee cost per staking */
+        );
     });
 
     async function tryCatchWrapper(instance: any, methodName: string, ...args: any[]) {

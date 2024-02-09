@@ -753,7 +753,7 @@ if6_end:
 
 	// contracts/stakingPool.algo.ts:191
 	// assert(
-	//                     staker.Balance == 0 || staker.Balance >= MIN_ALGO_STAKE_PER_POOL,
+	//                     staker.Balance === 0 || staker.Balance >= MIN_ALGO_STAKE_PER_POOL,
 	//                     'cannot reduce balance below minimum allowed stake unless all is removed'
 	//                 )
 	frame_dig 2 // staker: (address,uint64,uint64,uint64)

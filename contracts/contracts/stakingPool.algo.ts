@@ -189,7 +189,7 @@ class StakingPool extends Contract {
 
                 // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
                 assert(
-                    staker.Balance == 0 || staker.Balance >= MIN_ALGO_STAKE_PER_POOL,
+                    staker.Balance === 0 || staker.Balance >= MIN_ALGO_STAKE_PER_POOL,
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 
