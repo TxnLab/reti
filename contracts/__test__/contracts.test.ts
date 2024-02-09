@@ -157,7 +157,7 @@ describe('StakeAdds', () => {
         expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(0));
     });
 
-    test('singleStaker', async () => {
+    test('firstStaker', async () => {
         // get current balance of staker pool
         const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
 
@@ -210,6 +210,49 @@ describe('StakeAdds', () => {
                 stakeAmount2.microAlgos -
                 AlgoAmount.Algos(0.006 * 2).microAlgos /* 6 txn fee cost per staking */
         );
+    });
+
+    test('nextStaker', async () => {
+        // get current balance of staker pool
+        const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
+
+        // Fund a 'staker account' that will be the new 'staker'
+        const stakerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
+        );
+        // add 2000 stake by random staker - should go to NEW slot - but this is still their first add so they have to pay more mbr
+        // this time - since it's over minimum... don't pay 'extra' - so we should ensure that the MBR is NOT part of what we stake
+        const stakeAmount1 = AlgoAmount.Algos(2000);
+        const stakedPoolKey = await addStake(
+            fixture.context,
+            validatorClient,
+            validatorID,
+            stakerAccount,
+            stakeAmount1
+        );
+        // should be same as what we added prior
+        expect(stakedPoolKey[0]).toBe(poolKey[0]);
+        expect(stakedPoolKey[1]).toBe(poolKey[1]);
+        expect(stakedPoolKey[2]).toBe(poolKey[2]);
+
+        const poolBalance1 = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
+        expect(poolBalance1.amount).toBe(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr));
+
+        const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do();
+        expect(stakerAcctBalance.amount).toBe(
+            AlgoAmount.Algos(5000).microAlgos - // funded amount
+                stakeAmount1.microAlgos -
+                AlgoAmount.Algos(0.006 * 1).microAlgos /* 6 txn fee cost per staking */
+        );
+    });
+
+    test('validatorPoolCheck', async () => {
+        const poolInfo = await getPoolInfo(validatorClient, poolKey);
+        expect(poolInfo.PoolAppID).toBe(BigInt(poolAppId));
+        expect(poolInfo.TotalStakers).toBe(BigInt(2));
+        expect(poolInfo.TotalAlgoStaked).toBe(BigInt(AlgoAmount.Algos(4000).microAlgos));
     });
 
     async function tryCatchWrapper(instance: any, methodName: string, ...args: any[]) {

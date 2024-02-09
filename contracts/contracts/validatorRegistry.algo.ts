@@ -74,7 +74,7 @@ const SCBOX_PERBYTE = 400;
 
 // eslint-disable-next-line no-unused-vars
 class ValidatorRegistry extends Contract {
-    programVersion = 9;
+    programVersion = 10;
 
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
     numValidators = GlobalStateKey<uint64>({ key: 'numV' });
