@@ -22,59 +22,60 @@ const logs = algoKitLogCaptureFixture();
 
 // algokit.Config.configure({ debug: true });
 
+
+// app id of template app id
+let tmplPoolAppID: number;
+
+let validatorClient: ValidatorRegistryClient;
+let poolClient: StakingPoolClient;
+
+let validatorMbr: bigint
+let poolMbr: bigint
+let stakerMbr: bigint
+// =====
+// First construct the 'template' pool and then the master validator contract that everything will use
+beforeAll(async () => {
+    await fixture.beforeEach();
+    // testAccount here is the account that creates the Validator master contracts themselves - but basically one-time thing to be ignored..
+    const { algod, testAccount } = fixture.context;
+
+    // First we have to create dummy instance of a pool that we can use as template contract for validator
+    // which it can use to create new instances of that contract for staking pool.
+    poolClient = new StakingPoolClient({ sender: testAccount, resolveBy: 'id', id: 0 }, algod);
+    const tmplPool = await poolClient.create.createApplication({
+        creatingContractID: 0,
+        validatorID: 0,
+        poolID: 0,
+        owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+        manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+        minAllowedStake: 1_000_000,
+        maxStakeAllowed: 0,
+    });
+    tmplPoolAppID = tmplPool.appId as number;
+    validatorClient = new ValidatorRegistryClient(
+        {
+            sender: testAccount,
+            resolveBy: 'id',
+            id: 0,
+        },
+        algod
+    );
+
+    const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppID: tmplPool.appId });
+    // verify that the constructed validator contract is initialized as expected
+    expect(validatorApp.appId).toBeDefined();
+    expect(validatorApp.appAddress).toBeDefined();
+    const validatorState = await validatorClient.appClient.getGlobalState();
+    expect(validatorState.numV.value).toBe(0);
+    expect(validatorState.foo).toBeUndefined(); // sanity check that undefined states doesn't match 0.
+
+    [ validatorMbr, poolMbr, stakerMbr ] = await getMbrAmountsFromValidatorClient(validatorClient);
+});
+
 describe('ValidatorRegistry', () => {
     beforeEach(fixture.beforeEach);
     beforeEach(logs.beforeEach);
     afterEach(logs.afterEach);
-
-    // app id of template app id
-    let tmplPoolAppID: number;
-
-    let validatorClient: ValidatorRegistryClient;
-    let poolClient: StakingPoolClient;
-
-    let validatorMbr: bigint
-    let poolMbr: bigint
-    let stakerMbr: bigint
-    // =====
-    // First construct the 'template' pool and then the master validator contract that everything will use
-    beforeAll(async () => {
-        await fixture.beforeEach();
-        // testAccount here is the account that creates the Validator master contracts themselves - but basically one-time thing to be ignored..
-        const { algod, testAccount } = fixture.context;
-
-        // First we have to create dummy instance of a pool that we can use as template contract for validator
-        // which it can use to create new instances of that contract for staking pool.
-        poolClient = new StakingPoolClient({ sender: testAccount, resolveBy: 'id', id: 0 }, algod);
-        const tmplPool = await poolClient.create.createApplication({
-            creatingContractID: 0,
-            validatorID: 0,
-            poolID: 0,
-            owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-            manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-            minAllowedStake: 1_000_000,
-            maxStakeAllowed: 0,
-        });
-        tmplPoolAppID = tmplPool.appId as number;
-        validatorClient = new ValidatorRegistryClient(
-            {
-                sender: testAccount,
-                resolveBy: 'id',
-                id: 0,
-            },
-            algod
-        );
-
-        const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppID: tmplPool.appId });
-        // verify that the constructed validator contract is initialized as expected
-        expect(validatorApp.appId).toBeDefined();
-        expect(validatorApp.appAddress).toBeDefined();
-        const validatorState = await validatorClient.appClient.getGlobalState();
-        expect(validatorState.numV.value).toBe(0);
-        expect(validatorState.foo).toBeUndefined(); // sanity check that undefined states doesn't match 0.
-
-        [ validatorMbr, poolMbr, stakerMbr ] = await getMbrAmountsFromValidatorClient(validatorClient);
-    });
 
     // Just verify adding new validators and their ids incrementing and mbrs being covered, etc,
     test('validatorAddTests', async () => {
@@ -104,7 +105,7 @@ describe('ValidatorRegistry', () => {
         expect(validatorID).toBe(expectedID);
     });
 
-    test('singleStaker', async () => {
+    test('addValidator', async () => {
         // Fund a 'validator account' that will be the validator owner.
         const validatorOwnerAccount = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
