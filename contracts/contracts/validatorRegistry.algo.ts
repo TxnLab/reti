@@ -294,9 +294,23 @@ class ValidatorRegistry extends Contract {
         return poolKey;
     }
 
+    getStakedPoolsForAccount(staker: Account): ValidatorPoolKey[] {
+        if (!this.StakerPoolSet(staker).exists) {
+            return [];
+        }
+        let retData: ValidatorPoolKey[] = [];
+        const poolSet = clone(this.StakerPoolSet(staker).value);
+        for (let i = 0; i < poolSet.length; i += 1) {
+            if (poolSet[i].ID !== 0) {
+                retData.push(poolSet[i])
+            }
+        }
+        return retData;
+    }
+
     /**
-     * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
-     * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
+     * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total
+     * stake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
      * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
      * @param amountToAdd
@@ -332,6 +346,8 @@ class ValidatorRegistry extends Contract {
      * @param stakerRemoved
      */
     stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
+        increaseOpcodeBudget();
+
         assert(this.ValidatorList(poolKey.ID).exists);
         assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
         assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
@@ -365,6 +381,16 @@ class ValidatorRegistry extends Contract {
         }
     }
 
+    /**
+     * Finds the pool for a staker based on the provided validator ID, staker address, and amount to stake.
+     * First checks the stakers 'already staked list' for the validator preferring those (adding if possible) then adds
+     * to new pool if necessary.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator.
+     * @param {Address} staker - The address of the staker.
+     * @param {uint64} amountToStake - The amount to stake.
+     * @returns {ValidatorPoolKey} - The pool for the staker.
+     */
     findPoolForStaker(validatorID: ValidatorID, staker: Address, amountToStake: uint64): ValidatorPoolKey {
         // expensive loops - buy it up right now
         increaseOpcodeBudget();

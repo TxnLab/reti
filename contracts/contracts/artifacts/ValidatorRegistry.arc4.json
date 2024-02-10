@@ -167,8 +167,20 @@
       }
     },
     {
+      "name": "getStakedPoolsForAccount",
+      "args": [
+        {
+          "name": "staker",
+          "type": "account"
+        }
+      ],
+      "returns": {
+        "type": "(uint64,uint64,uint64)[]"
+      }
+    },
+    {
       "name": "stakeUpdatedViaRewards",
-      "desc": "stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
+      "desc": "stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of totalstake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
       "args": [
         {
           "name": "poolKey",
@@ -212,22 +224,27 @@
     },
     {
       "name": "findPoolForStaker",
+      "desc": "Finds the pool for a staker based on the provided validator ID, staker address, and amount to stake.First checks the stakers 'already staked list' for the validator preferring those (adding if possible) then addsto new pool if necessary.",
       "args": [
         {
           "name": "validatorID",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The ID of the validator."
         },
         {
           "name": "staker",
-          "type": "address"
+          "type": "address",
+          "desc": "The address of the staker."
         },
         {
           "name": "amountToStake",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The amount to stake."
         }
       ],
       "returns": {
-        "type": "(uint64,uint64,uint64)"
+        "type": "(uint64,uint64,uint64)",
+        "desc": "{ValidatorPoolKey}- The pool for the staker."
       }
     }
   ]

@@ -3,6 +3,7 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
+import { StakingPoolClient } from "../contracts/clients/StakingPoolClient";
 
 interface ValidatorConfig {
     PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
@@ -99,9 +100,13 @@ export function getValidatorListBoxName(validatorID: number) {
     return concatUint8Arrays(prefix, encodeUint64(validatorID));
 }
 
-function getStakerPoolSetName(stakerAccount: Account) {
+function getStakerPoolSetBoxName(stakerAccount: Account) {
     const prefix = new TextEncoder().encode('sps');
     return concatUint8Arrays(prefix, decodeAddress(stakerAccount.addr).publicKey);
+}
+
+function getStakersBoxName() {
+    return new TextEncoder().encode('stakers');
 }
 
 export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
@@ -287,6 +292,38 @@ export async function addStake(
         return createPoolKeyFromValues( results.returns[1]);
     } catch (exception) {
         throw validatorClient.appClient.exposeLogicError(exception as Error);
+        // consoleLogger.warn((exception as LogicError).message);
+        // throw exception;
+    }
+}
+
+export async function removeStake(
+    context: AlgorandTestAutomationContext,
+    validatorAppID: bigint,
+    stakeClient: StakingPoolClient,
+    staker: Account,
+    unstakeAmount: AlgoAmount
+) {
+    try {
+        return (await stakeClient.removeStake({staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos},
+                {
+                    sendParams: {
+                        // pays us back and tells validator about balance changed
+                        fee: AlgoAmount.MicroAlgos(4000),
+                        populateAppCallResources: true,
+                    },
+                    sender: staker,
+                    // apps: [Number(validatorAppID)],
+                    // boxes: [
+                    //     { appId: 0, name: getStakersBoxName() },
+                    //     { appId: 0, name: '' }, // buy more i/o
+                    //     { appId: 0, name: '' }, // buy more i/o
+                    //     { appId: 0, name: '' }, // buy more i/o
+                    // ],
+                }
+            )).return!;
+    } catch (exception) {
+        throw stakeClient.appClient.exposeLogicError(exception as Error);
         // consoleLogger.warn((exception as LogicError).message);
         // throw exception;
     }

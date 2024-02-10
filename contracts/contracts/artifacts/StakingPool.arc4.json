@@ -79,7 +79,7 @@
       "desc": "Removes stake on behalf of a particular staker.  Also notifies the validator contract for this poolsvalidator of the staker / balance changes.",
       "args": [
         {
-          "name": "account",
+          "name": "staker",
           "type": "address",
           "desc": "The address of the account removing stake."
         },

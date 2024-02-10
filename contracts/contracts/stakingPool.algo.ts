@@ -17,14 +17,22 @@ type StakedInfo = {
 class StakingPool extends Contract {
     programVersion = 9;
 
+    // When created, we track our creating validator contract so that only this contract can call us.  Independent
+    // copies of this contract could be created but only the 'official' validator contract would be considered valid
+    // and official.  Calls from these pools back to the validator contract are also validated, ensuring the pool
+    // calling the validator is one of the pools it created.
     CreatingValidatorContractAppID = GlobalStateKey<uint64>({ key: 'creatorApp' });
 
+    // The 'id' of the validator our pool belongs to
     ValidatorID = GlobalStateKey<uint64>({ key: 'validatorID' });
 
+    // The pool ID we were assigned by the validator contract - sequential id per validator
     PoolID = GlobalStateKey<uint64>({ key: 'poolID' });
 
+    // Owner of our pool (validator owner)
     Owner = GlobalStateKey<Address>({ key: 'owner' });
 
+    // Manager of our pool (validator manager)
     Manager = GlobalStateKey<Address>({ key: 'manager' });
 
     NumStakers = GlobalStateKey<uint64>({ key: 'numStakers' });
@@ -166,58 +174,59 @@ class StakingPool extends Contract {
      * Removes stake on behalf of a particular staker.  Also notifies the validator contract for this pools
      * validator of the staker / balance changes.
      *
-     * @param {Address} account - The address of the account removing stake.
+     * @param {Address} staker - The address of the account removing stake.
      * @param {uint64} amountToUnstake - The amount of stake to be removed.
      * @throws {Error} If the account has insufficient balance or if the account is not found.
      */
-    removeStake(account: Address, amountToUnstake: uint64): void {
+    removeStake(staker: Address, amountToUnstake: uint64): void {
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
         // It makes it a bit awkward this way to update the state in the validator but it's safer
         // account calling us has to be account removing stake
-        assert(account !== Account.zeroAddress);
-        assert(this.txn.sender === account);
+        assert(staker !== Account.zeroAddress);
+        assert(this.txn.sender === staker);
         assert(amountToUnstake !== 0);
 
         let i = 0;
-        this.Stakers.value.forEach((staker) => {
-            if (staker.Account === account) {
-                if (staker.Balance < amountToUnstake) {
+        this.Stakers.value.forEach((stakerIter) => {
+            if (stakerIter.Account === staker) {
+                if (stakerIter.Balance < amountToUnstake) {
                     throw Error('Insufficient balance');
                 }
-                staker.Balance -= amountToUnstake;
+                stakerIter.Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
 
                 // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
                 assert(
-                    staker.Balance === 0 || staker.Balance >= MIN_ALGO_STAKE_PER_POOL,
+                    stakerIter.Balance === 0 || stakerIter.Balance >= MIN_ALGO_STAKE_PER_POOL,
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 
                 // Pay the staker back
                 sendPayment({
                     amount: amountToUnstake,
-                    receiver: account,
+                    receiver: staker,
                     note: 'unstaked',
                 });
                 let stakerRemoved = false;
-                if (staker.Balance === 0) {
+                if (stakerIter.Balance === 0) {
                     // Staker has been 'removed' - zero out record
                     this.NumStakers.value -= 1;
-                    staker.Account = Address.zeroAddress;
-                    staker.TotalRewarded = 0;
+                    stakerIter.Account = Address.zeroAddress;
+                    stakerIter.TotalRewarded = 0;
                     stakerRemoved = true;
                 }
                 // Update the box w/ the new staker data
-                this.Stakers.value[i] = staker;
+                this.Stakers.value[i] = stakerIter;
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it
-                // stakeRemoved((uint64,uint64),address,uint64,bool)void
-                sendMethodCall<[[uint64, uint64], Address, uint64, boolean], void>({
+                // stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void
+                sendMethodCall<[[uint64, uint64, uint64], Address, uint64, boolean], void>({
                     applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
                     name: 'stakeRemoved',
-                    methodArgs: [[this.ValidatorID.value, this.PoolID.value], account, amountToUnstake, stakerRemoved],
+                    methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], staker, amountToUnstake, stakerRemoved],
                 });
+                return;
             }
             i += 1;
         });
