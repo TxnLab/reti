@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/
 import { algoKitLogCaptureFixture, algorandFixture, getTestAccount } from '@algorandfoundation/algokit-utils/testing';
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
-import { Account, getApplicationAddress } from 'algosdk';
+import { Account, encodeAddress, getApplicationAddress } from 'algosdk';
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
@@ -13,7 +13,7 @@ import {
     argsFromPoolKey,
     createValidatorConfig,
     getMbrAmountsFromValidatorClient,
-    getPoolInfo,
+    getPoolInfo, getStakerInfo,
     getValidatorState,
     removeStake,
     ValidatorPoolKey,
@@ -235,6 +235,14 @@ describe('StakeAdds', () => {
         expect(poolInfo.TotalAlgoStaked).toEqual(
             BigInt(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr) + stakeAmount2.microAlgos)
         );
+        // ....and verify data for the 'staker' is correct as well
+        const stakerInfo = await getStakerInfo(explicitPoolClient, stakerAccount);
+        expect(encodeAddress(stakerInfo.Staker.publicKey)).toBe(stakerAccount.addr);
+        // should be full 2000 algos (we included extra for mbr to begin with)
+        expect(stakerInfo.Balance).toEqual(BigInt(AlgoAmount.Algos(2000).microAlgos));
+
+        // let's also get list of all staked pools we're part of... should match
+        // TODO
 
         // second balance check of pool - it should increase by full stake amount since existing staker staked again, so no additional
         // mbr was needed

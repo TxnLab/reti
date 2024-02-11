@@ -1,4 +1,4 @@
-import { Account, decodeAddress, encodeUint64, makePaymentTxnWithSuggestedParamsFromObject } from 'algosdk';
+import { Account, Address, decodeAddress, encodeUint64, makePaymentTxnWithSuggestedParamsFromObject } from 'algosdk';
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
@@ -86,6 +86,22 @@ function createPoolKeyFromValues([ID, PoolID, PoolAppID]: [bigint, bigint, bigin
 
 export function argsFromPoolKey(poolKey: ValidatorPoolKey): [bigint, bigint, bigint] {
     return [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID];
+}
+
+export type StakedInfo = {
+    Staker: Address;
+    Balance: bigint;
+    TotalRewarded: bigint;
+    EntryTime: bigint;
+};
+
+function createStakeInfoFromValues([Staker, Balance, TotalRewarded, EntryTime]: [
+    string,
+    bigint,
+    bigint,
+    bigint,
+]): StakedInfo {
+    return { Staker: decodeAddress(Staker), Balance, TotalRewarded, EntryTime };
 }
 
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
@@ -218,6 +234,17 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
             await validatorClient
                 .compose()
                 .getPoolInfo({ poolKey: [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID] }, {})
+                .simulate({ allowUnnamedResources: true })
+        ).returns![0]
+    );
+}
+
+export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Account) {
+    return createStakeInfoFromValues(
+        (
+            await stakeClient
+                .compose()
+                .getStakerInfo({ staker: staker.addr }, {})
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
     );

@@ -225,9 +225,31 @@ class StakingPool extends Contract {
                 sendMethodCall<[[uint64, uint64, uint64], Address, uint64, boolean], void>({
                     applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
                     name: 'stakeRemoved',
-                    methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], staker, amountToUnstake, stakerRemoved],
+                    methodArgs: [
+                        [this.ValidatorID.value, this.PoolID.value, this.app.id],
+                        staker,
+                        amountToUnstake,
+                        stakerRemoved,
+                    ],
                 });
                 return;
+            }
+        }
+        throw Error('Account not found');
+    }
+
+    /**
+     * Retrieves the staked information for a given staker.
+     *
+     * @param {Address} staker - The address of the staker.
+     * @returns {StakedInfo} - The staked information for the given staker.
+     * @throws {Error} - If the staker's account is not found.
+     */
+    getStakerInfo(staker: Address): StakedInfo {
+        const stakers = clone(this.Stakers.value);
+        for (let i = 0; i < stakers.length; i += 1) {
+            if (stakers[i].Account === staker) {
+                return stakers[i];
             }
         }
         throw Error('Account not found');

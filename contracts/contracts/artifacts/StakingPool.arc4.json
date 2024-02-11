@@ -94,6 +94,21 @@
       }
     },
     {
+      "name": "getStakerInfo",
+      "desc": "Retrieves the staked information for a given staker.",
+      "args": [
+        {
+          "name": "staker",
+          "type": "address",
+          "desc": "The address of the staker."
+        }
+      ],
+      "returns": {
+        "type": "(address,uint64,uint64,uint64)",
+        "desc": "{StakedInfo}- The staked information for the given staker."
+      }
+    },
+    {
       "name": "payStakers",
       "args": [],
       "returns": {

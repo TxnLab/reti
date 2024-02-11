@@ -37,8 +37,8 @@ func initApp() *AppConfig {
 	logger := slog.Default()
 	signer := algo.NewLocalKeyStore(logger)
 
-	// We initialize our wrapper instance first so we can pass to the 'Before' lambda func
-	// in initization of cli App instance.
+	// We initialize our wrapper instance first, so we can pass to the 'Before' lambda func
+	// in initialization of cli App instance.
 	appConfig := &AppConfig{signer: signer, logger: logger}
 	appConfig.App = &cli.App{
 		Name:    "réti node manager",

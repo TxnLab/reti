@@ -1,0 +1,43 @@
+@startuml
+'# str:  verify_nfd_addr
+'# str:  nfd name
+'# int:  app id
+'# addr: address being verified [MUST BE TXN SENDER!]
+actor "NFD-Owner" as owner
+actor "Address being linked/unlinked" as address
+database ".algo registry SC" as registry
+database NFD as nfd
+
+group Link an address in registry and NFD
+autonumber 0
+... MBR Payouts ...
+owner -> nfd: pay MBR cost of box storage to set value into u.cav.algo.a\nand then subsequently added to v.caAlgo.0.as set
+owner -> registry: pay MBR cost of box storage to add address into {ADDRESS} box w/ 'set' of NFD IDs
+... Sets of paired transactions per address linked\nNotice: Owner has to approve address by being one that adds it\nAddress has to be signed to complete link...
+owner -> nfd: app call: [update_field, u.cav.algo.a, {32-byte pk}]
+address -> registry: app call: [verify_nfd_addr, {nfd name}, {nfd app id}, {address}]
+autonumber stop
+registry -> registry: checks if valid NFD by verifying registry->[hashed name] box\nreferences same app id passed\nAND name matches i.name inside that app's global state
+registry -> registry: the SENDER MUST be the address being linked/unlinked\nOR - SENDER must be owner if Address is the NFD App Account
+autonumber 0
+registry -> nfd: [itxn] app call: [is_address_in_field, u.cav.algo.a, {address}]\nChecks if specified address is contained in field name inside NFD
+autonumber stop
+registry -> registry: adds NFD ID to {ADDRESS} box set of ids.
+autonumber 1
+registry -> nfd: [itxn] app call: [reg_add_verified_address, u.cav.algo.a, v.caAlgo.0.as]\nNFD accepts calls 'from' registry for this method as privileged and already validated\nMOVES from specified field TO set of target field\nin this case, from u.cav.algo.a to v.caAlgo.0.as set
+end
+
+group Unlink an address in registry and NFD
+autonumber 0
+address -> registry: app call: [unlink_nfd_addr, {nfd name}, {nfd app id}, {address}]
+autonumber stop
+registry -> registry: checks if valid NFD by verifying registry->[hashed name] box\nreferences same app id passed\nAND name matches i.name inside that app's global state
+registry -> registry: the SENDER MUST be the address being linked/unlinked\nOR - SENDER must be owner if Address is the NFD App Account
+autonumber 0
+registry -> nfd: [itxn] app call: [is_address_in_field, u.cav.algo.a, {address}]\nChecks if specified address is contained in field name inside NFD
+autonumber stop
+registry -> registry: removes NFD ID in {ADDRESS} box set of ids.
+autonumber 1
+registry -> nfd: [itxn] app call: [reg_remove_verified_address, v.caAlgo.0.as]\nNFD accepts calls 'from' registry for this method as privileged and already validated\nremoves address from set in specified field
+end
+@enduml

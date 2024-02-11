@@ -294,6 +294,12 @@ class ValidatorRegistry extends Contract {
         return poolKey;
     }
 
+    /**
+     * Retrieves the staked pools for an account.
+     *
+     * @param {Account} staker - The account to retrieve staked pools for.
+     * @return {ValidatorPoolKey[]} - The array of staked pools for the account.
+     */
     getStakedPoolsForAccount(staker: Account): ValidatorPoolKey[] {
         if (!this.StakerPoolSet(staker).exists) {
             return [];
