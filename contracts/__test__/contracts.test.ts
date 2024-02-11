@@ -27,7 +27,6 @@ const logs = algoKitLogCaptureFixture();
 
 const MaxAlgoPerPool = AlgoAmount.Algos(100_000).microAlgos;
 let validatorClient: ValidatorRegistryClient;
-let validatorAppID: bigint;
 let poolClient: StakingPoolClient;
 
 let validatorMbr: bigint;
@@ -68,8 +67,6 @@ beforeAll(async () => {
     const validatorState = await validatorClient.appClient.getGlobalState();
     expect(validatorState.numV.value).toBe(0);
     expect(validatorState.foo).toBeUndefined(); // sanity check that undefined states doesn't match 0.
-
-    validatorAppID = validatorApp.appId as bigint;
 
     [validatorMbr, poolMbr, stakerMbr] = await getMbrAmountsFromValidatorClient(validatorClient);
 });
@@ -205,21 +202,25 @@ describe('StakeAdds', () => {
         expect(stakedPoolKey.PoolID).toBe(firstPoolKey.PoolID);
         expect(stakedPoolKey.PoolAppID).toBe(firstPoolKey.PoolAppID);
 
+        let poolInfo = await getPoolInfo(validatorClient, firstPoolKey);
+        expect(poolInfo.TotalStakers).toEqual(BigInt(1));
+        expect(poolInfo.TotalAlgoStaked).toEqual(
+            BigInt(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr))
+        );
+
         const poolBalance1 = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
         expect(poolBalance1.amount).toBe(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr));
 
         // now try to remove partial amount - which should fail because it will take staked amount to < its 'minimum amount'
-        // await removeStake9
         const explicitPoolClient = new StakingPoolClient(
             { sender: stakerAccount, resolveBy: 'id', id: stakedPoolKey.PoolAppID },
             fixture.context.algod
         );
-        await removeStake(
-            fixture.context,
-            validatorAppID,
-            explicitPoolClient,
-            stakerAccount,
-            AlgoAmount.Algos(200)
+        await expect(removeStake(explicitPoolClient, stakerAccount, AlgoAmount.Algos(200))).rejects.toThrowError();
+        // verify pool stake didn't change!
+        poolInfo = await getPoolInfo(validatorClient, firstPoolKey);
+        expect(poolInfo.TotalAlgoStaked).toEqual(
+            BigInt(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr))
         );
 
         // stake again for 1000 more - should go to same pool (!)
@@ -229,6 +230,11 @@ describe('StakeAdds', () => {
         expect(stakedKey2.ID).toBe(firstPoolKey.ID);
         expect(stakedKey2.PoolID).toBe(firstPoolKey.PoolID);
         expect(stakedKey2.PoolAppID).toBe(firstPoolKey.PoolAppID);
+        // verify pool state changed...
+        poolInfo = await getPoolInfo(validatorClient, firstPoolKey);
+        expect(poolInfo.TotalAlgoStaked).toEqual(
+            BigInt(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr) + stakeAmount2.microAlgos)
+        );
 
         // second balance check of pool - it should increase by full stake amount since existing staker staked again, so no additional
         // mbr was needed
@@ -291,7 +297,8 @@ describe('StakeAdds', () => {
         const pools = [];
         const stakers = [];
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop
             const newPool = await addStakingPool(
                 fixture.context,
                 validatorClient,
@@ -303,7 +310,7 @@ describe('StakeAdds', () => {
             pools.push(newPool);
         }
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 3; i += 1) {
             const poolInfo = await getPoolInfo(validatorClient, pools[i]);
             expect(poolInfo.PoolAppID).toBe(pools[i].PoolAppID);
             expect(poolInfo.TotalStakers).toEqual(BigInt(0));
@@ -314,7 +321,7 @@ describe('StakeAdds', () => {
         // add stake for each - each time should work and go to new pool (starting with first pool we added - the one
         // that's already there shouldn't have room).  Then next add of same size should fail.. then next add of something
         // small should go to first pool again
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 4; i += 1) {
             // fund some new staker accounts (4)
             const stakerAccount = await getTestAccount(
                 {
@@ -328,7 +335,7 @@ describe('StakeAdds', () => {
         }
 
         // iterate stakers using forEach
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 3; i += 1) {
             const stakeAmount = AlgoAmount.MicroAlgos(
                 AlgoAmount.MicroAlgos(MaxAlgoPerPool).microAlgos - AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
             );

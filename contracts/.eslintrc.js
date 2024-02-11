@@ -56,7 +56,13 @@ module.exports = {
                 'operator-assignment': 'off',
                 'prefer-template': 'off',
                 'prefer-destructuring': 'off',
-                'no-param-reassign': 'off'
+                'no-param-reassign': 'off',
+            },
+        },
+        {
+            files: ['*.test.ts'],
+            rules: {
+                'no-await-in-loop': 'off',
             },
         },
     ],

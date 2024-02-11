@@ -3,7 +3,7 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
-import { StakingPoolClient } from "../contracts/clients/StakingPoolClient";
+import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 
 interface ValidatorConfig {
     PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
@@ -84,8 +84,8 @@ function createPoolKeyFromValues([ID, PoolID, PoolAppID]: [bigint, bigint, bigin
     return { ID, PoolID, PoolAppID };
 }
 
-export function argsFromPoolKey(poolKey: ValidatorPoolKey): [bigint,bigint,bigint] {
-    return [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID]
+export function argsFromPoolKey(poolKey: ValidatorPoolKey): [bigint, bigint, bigint] {
+    return [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID];
 }
 
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
@@ -214,11 +214,14 @@ export async function addStakingPool(
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
     return createPoolInfoFromValues(
-        (await validatorClient.compose().getPoolInfo({ poolKey: [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID] }, {}).simulate({ allowUnnamedResources: true }))
-            .returns![0]
+        (
+            await validatorClient
+                .compose()
+                .getPoolInfo({ poolKey: [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID] }, {})
+                .simulate({ allowUnnamedResources: true })
+        ).returns![0]
     );
 }
-
 
 export async function addStake(
     context: AlgorandTestAutomationContext,
@@ -231,17 +234,19 @@ export async function addStake(
         const suggestedParams = await context.algod.getTransactionParams().do();
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
-        const poolKey = createPoolKeyFromValues((
-            await validatorClient.findPoolForStaker(
-                { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
-                {
-                    sendParams: {
-                        fee: AlgoAmount.MicroAlgos(2000),
-                        populateAppCallResources: true,
-                    },
-                }
-            )
-        ).return!);
+        const poolKey = createPoolKeyFromValues(
+            (
+                await validatorClient.findPoolForStaker(
+                    { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
+                    {
+                        sendParams: {
+                            fee: AlgoAmount.MicroAlgos(2000),
+                            populateAppCallResources: true,
+                        },
+                    }
+                )
+            ).return!
+        );
 
         const poolAppId = poolKey.PoolAppID;
 
@@ -289,7 +294,7 @@ export async function addStake(
             )
             .execute({ populateAppCallResources: true });
 
-        return createPoolKeyFromValues( results.returns[1]);
+        return createPoolKeyFromValues(results.returns[1]);
     } catch (exception) {
         throw validatorClient.appClient.exposeLogicError(exception as Error);
         // consoleLogger.warn((exception as LogicError).message);
@@ -297,15 +302,11 @@ export async function addStake(
     }
 }
 
-export async function removeStake(
-    context: AlgorandTestAutomationContext,
-    validatorAppID: bigint,
-    stakeClient: StakingPoolClient,
-    staker: Account,
-    unstakeAmount: AlgoAmount
-) {
+export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
     try {
-        return (await stakeClient.removeStake({staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos},
+        return (
+            await stakeClient.removeStake(
+                { staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos },
                 {
                     sendParams: {
                         // pays us back and tells validator about balance changed
@@ -321,10 +322,11 @@ export async function removeStake(
                     //     { appId: 0, name: '' }, // buy more i/o
                     // ],
                 }
-            )).return!;
+            )
+        ).return!;
     } catch (exception) {
-        throw stakeClient.appClient.exposeLogicError(exception as Error);
+        // throw stakeClient.appClient.exposeLogicError(exception as Error);
         // consoleLogger.warn((exception as LogicError).message);
-        // throw exception;
+        throw exception;
     }
 }

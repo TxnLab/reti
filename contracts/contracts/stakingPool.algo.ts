@@ -180,24 +180,24 @@ class StakingPool extends Contract {
      */
     removeStake(staker: Address, amountToUnstake: uint64): void {
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
-        // It makes it a bit awkward this way to update the state in the validator but it's safer
+        // It makes it a bit awkward this way to update the state in the validator, but it's safer
         // account calling us has to be account removing stake
         assert(staker !== Account.zeroAddress);
         assert(this.txn.sender === staker);
         assert(amountToUnstake !== 0);
 
-        let i = 0;
-        this.Stakers.value.forEach((stakerIter) => {
-            if (stakerIter.Account === staker) {
-                if (stakerIter.Balance < amountToUnstake) {
+        const stakers = clone(this.Stakers.value);
+        for (let i = 0; i < stakers.length; i += 1) {
+            if (stakers[i].Account === staker) {
+                if (stakers[i].Balance < amountToUnstake) {
                     throw Error('Insufficient balance');
                 }
-                stakerIter.Balance -= amountToUnstake;
+                stakers[i].Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
 
                 // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
                 assert(
-                    stakerIter.Balance === 0 || stakerIter.Balance >= MIN_ALGO_STAKE_PER_POOL,
+                    stakers[i].Balance === 0 || stakers[i].Balance >= this.MinAllowedStake.value,
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 
@@ -208,19 +208,20 @@ class StakingPool extends Contract {
                     note: 'unstaked',
                 });
                 let stakerRemoved = false;
-                if (stakerIter.Balance === 0) {
+                if (stakers[i].Balance === 0) {
                     // Staker has been 'removed' - zero out record
                     this.NumStakers.value -= 1;
-                    stakerIter.Account = Address.zeroAddress;
-                    stakerIter.TotalRewarded = 0;
+                    stakers[i].Account = Address.zeroAddress;
+                    stakers[i].TotalRewarded = 0;
                     stakerRemoved = true;
                 }
                 // Update the box w/ the new staker data
-                this.Stakers.value[i] = stakerIter;
+                this.Stakers.value[i] = stakers[i];
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it
-                // stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void
+                // stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void
+                // ABI: stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void
                 sendMethodCall<[[uint64, uint64, uint64], Address, uint64, boolean], void>({
                     applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
                     name: 'stakeRemoved',
@@ -228,8 +229,7 @@ class StakingPool extends Contract {
                 });
                 return;
             }
-            i += 1;
-        });
+        }
         throw Error('Account not found');
     }
 
@@ -282,7 +282,7 @@ class StakingPool extends Contract {
         // but what if we're told to pay really early?  it should just mean
         // the reward is smaller.  It shouldn't be an issue.
         const curTime = globals.latestTimestamp;
-        // How many seconds in an epoch..
+        // How many seconds in an epoch.
         const payoutDaysInSecs = payoutDays * 24 * 60 * 60;
 
         /**
@@ -316,7 +316,7 @@ class StakingPool extends Contract {
                     // in this case it definitely means they get 0...
                     partialStakersTotalStake += staker.Balance;
                 } else {
-                    // Reward is % of users stake in pool
+                    // Reward is % of users stake in pool,
                     // but we deduct based on time in pool
                     const timeInPool = curTime - staker.EntryTime;
                     let timePercentage: uint64;
@@ -332,7 +332,7 @@ class StakingPool extends Contract {
                         // reduce the reward available (that we're accounting for) so that the subsequent
                         // 'full' pays are based on what's left
                         rewardAvailable -= stakerReward;
-                        // instead of sending them algo now - just increase their ledger balance so they can claim
+                        // instead of sending them algo now - just increase their ledger balance, so they can claim
                         // it at any time.
                         staker.Balance += stakerReward;
                         staker.TotalRewarded += stakerReward;
@@ -353,14 +353,14 @@ class StakingPool extends Contract {
         this.Stakers.value.forEach((staker) => {
             if (staker.Account !== Address.zeroAddress && staker.EntryTime < curTime) {
                 const timeInPool = curTime - staker.EntryTime;
-                // We're now only paying out peoeple who've been in pool an entire epoch.
+                // We're now only paying out people who've been in pool an entire epoch.
                 if (timeInPool < payoutDaysInSecs) {
                     return;
                 }
-                // we're in for 100% so it's just % of stakers balance vs 'new total' for their
+                // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                 // payment
                 const stakerReward = wideRatio([staker.Balance, rewardAvailable], [newPoolTotalStake]);
-                // instead of sending them algo now - just increase their ledger balance so they can claim
+                // instead of sending them algo now - just increase their ledger balance, so they can claim
                 // it at any time.
                 staker.Balance += stakerReward;
                 staker.TotalRewarded += stakerReward;
