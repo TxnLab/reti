@@ -168,14 +168,24 @@ class ValidatorRegistry extends Contract {
     }
 
     /** Adds a new validator
+     * @param mbrPayment payment from caller which covers mbr increase of new validator storage
      * @param owner The account (presumably cold-wallet) that owns the validator set
      * @param manager The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys
      * @param nfdAppID Optional NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found.
      * @param config ValidatorConfig struct
+     * @returns validator ID
      */
-    addValidator(owner: Address, manager: Address, nfdAppID: uint64, config: ValidatorConfig): uint64 {
+    addValidator(
+        mbrPayment: PayTxn,
+        owner: Address,
+        manager: Address,
+        nfdAppID: uint64,
+        config: ValidatorConfig
+    ): uint64 {
         assert(owner !== Address.zeroAddress);
         assert(manager !== Address.zeroAddress);
+
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddValidatorMbr });
 
         this.validateConfig(config);
 
@@ -196,7 +206,7 @@ class ValidatorRegistry extends Contract {
 
     /** Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
      * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
-     * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of valiator pool + staking pool
+     * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of adding a new pool
      * @param {uint64} validatorID is ID of validator to pool to (must be owner or manager)
      * @returns {ValidatorPoolKey} pool key to created pool
      *
@@ -304,11 +314,11 @@ class ValidatorRegistry extends Contract {
         if (!this.StakerPoolSet(staker).exists) {
             return [];
         }
-        let retData: ValidatorPoolKey[] = [];
+        const retData: ValidatorPoolKey[] = [];
         const poolSet = clone(this.StakerPoolSet(staker).value);
         for (let i = 0; i < poolSet.length; i += 1) {
             if (poolSet[i].ID !== 0) {
-                retData.push(poolSet[i])
+                retData.push(poolSet[i]);
             }
         }
         return retData;
@@ -429,9 +439,10 @@ class ValidatorRegistry extends Contract {
             'must stake at least the minimum for this pool'
         );
 
-        // Walk this validators pools and find free space
+        // Walk these validators pools and find free space
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
-        for (let i = 0; i < pools.length; i += 1) {
+        const curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
+        for (let i = 0; i < curNumPools; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake <= maxPerPool) {
                 return { ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID };
             }

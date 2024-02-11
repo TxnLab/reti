@@ -90,6 +90,11 @@
       "desc": "Adds a new validator",
       "args": [
         {
+          "name": "mbrPayment",
+          "type": "pay",
+          "desc": "payment from caller which covers mbr increase of new validator storage"
+        },
+        {
           "name": "owner",
           "type": "address",
           "desc": "The account (presumably cold-wallet) that owns the validator set"
@@ -111,7 +116,8 @@
         }
       ],
       "returns": {
-        "type": "uint64"
+        "type": "uint64",
+        "desc": "validator ID"
       }
     },
     {
@@ -121,7 +127,7 @@
         {
           "name": "mbrPayment",
           "type": "pay",
-          "desc": "payment from caller which covers mbr increase of valiator pool + staking pool"
+          "desc": "payment from caller which covers mbr increase of adding a new pool"
         },
         {
           "name": "validatorID",
@@ -168,10 +174,12 @@
     },
     {
       "name": "getStakedPoolsForAccount",
+      "desc": "Retrieves the staked pools for an account.",
       "args": [
         {
           "name": "staker",
-          "type": "account"
+          "type": "account",
+          "desc": "The account to retrieve staked pools for.@return{ValidatorPoolKey[]}- The array of staked pools for the account."
         }
       ],
       "returns": {

@@ -80,7 +80,7 @@ export type ValidatorPoolKey = {
     PoolAppID: bigint;
 };
 
-function createPoolKeyFromValues([ID, PoolID, PoolAppID]: [bigint, bigint, bigint]): ValidatorPoolKey {
+export function createPoolKeyFromValues([ID, PoolID, PoolAppID]: [bigint, bigint, bigint]): ValidatorPoolKey {
     return { ID, PoolID, PoolAppID };
 }
 
@@ -130,6 +130,7 @@ export async function getMbrAmountsFromValidatorClient(validatorClient: Validato
 }
 
 export async function addValidator(
+    context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
     owner: Account,
     config: ValidatorConfig,
@@ -138,29 +139,39 @@ export async function addValidator(
     // 'real' code will likely have to do this unless simulate is used..
     const nextValidator = (await validatorClient.getGlobalState()).numV!.asNumber() + 1;
 
-    // Need MBR to cover box cost for new validator data
-    await validatorClient.appClient.fundAppAccount(AlgoAmount.MicroAlgos(Number(validatorMbr)));
+    const suggestedParams = await context.algod.getTransactionParams().do();
+    const validatorsAppRef = await validatorClient.appClient.getAppReference();
+
+    // Pay the additional mbr to the validator contract for the new pool mbr
+    const payPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
+        from: context.testAccount.addr,
+        to: validatorsAppRef.appAddress,
+        amount: Number(validatorMbr),
+        suggestedParams,
+    });
 
     try {
-        return Number(
-            (
-                await validatorClient.addValidator(
-                    {
-                        owner: owner.addr,
-                        manager: owner.addr,
-                        nfdAppID: 0,
-                        config: validatorConfigAsArray(config),
-                    },
-                    {
-                        boxes: [
-                            { appId: 0, name: getValidatorListBoxName(nextValidator) },
-                            { appId: 0, name: '' }, // buy more i/o
-                        ],
-                        sendParams: { populateAppCallResources: true },
-                    }
-                )
-            ).return!
-        );
+        const results = await validatorClient
+            .compose()
+            .addValidator(
+                {
+                    // the required MBR payment transaction..
+                    mbrPayment: { transaction: payPoolMbr, signer: context.testAccount },
+                    //
+                    owner: owner.addr,
+                    manager: owner.addr,
+                    nfdAppID: 0,
+                    config: validatorConfigAsArray(config),
+                },
+                {
+                    boxes: [
+                        { appId: 0, name: getValidatorListBoxName(nextValidator) },
+                        { appId: 0, name: '' }, // buy more i/o
+                    ],
+                }
+            )
+            .execute({ populateAppCallResources: true });
+        return Number(results.returns![0]);
     } catch (e) {
         // throw validatorClient.appClient.exposeLogicError(e as Error)
         console.log((e as LogicError).message);
@@ -221,7 +232,7 @@ export async function addStakingPool(
             )
             .execute({ populateAppCallResources: true });
 
-        return createPoolKeyFromValues(results.returns[0]);
+        return createPoolKeyFromValues(results.returns![0]);
     } catch (exception) {
         console.log((exception as LogicError).message);
         throw exception;
@@ -237,6 +248,21 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
     );
+}
+
+export async function getStakedPoolsForAccount(
+    validatorClient: ValidatorRegistryClient,
+    stakerAccount: Account
+): Promise<ValidatorPoolKey[]> {
+    const results = await validatorClient.getStakedPoolsForAccount(
+        { staker: stakerAccount.addr },
+        { sendParams: { populateAppCallResources: true } }
+    );
+    const retPoolKeys: ValidatorPoolKey[] = [];
+    results.return!.forEach((poolKey) => {
+        retPoolKeys.push(createPoolKeyFromValues(poolKey));
+    });
+    return retPoolKeys;
 }
 
 export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Account) {
