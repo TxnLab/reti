@@ -15,14 +15,6 @@ import (
 	"github.com/TxnLab/reti/internal/validator"
 )
 
-type AppConfig struct {
-	*cli.App
-	logger     *slog.Logger
-	signer     algo.MultipleWalletSigner
-	algoClient *algod.Client
-	api        *nfdapi.APIClient
-}
-
 func main() {
 	app := initApp()
 
@@ -45,7 +37,7 @@ func initApp() *AppConfig {
 		Usage:   "Configuration tool and background daemon for Algorand validator pools",
 		Version: misc.GetVersionInfo(),
 		Before: func(ctx *cli.Context) error {
-			return initClients(ctx, appConfig)
+			return appConfig.initClients(ctx)
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -64,7 +56,18 @@ func initApp() *AppConfig {
 	return appConfig
 }
 
-func initClients(ctx *cli.Context, ourAppConfig *AppConfig) error {
+type AppConfig struct {
+	*cli.App
+	logger     *slog.Logger
+	signer     algo.MultipleWalletSigner
+	algoClient *algod.Client
+	api        *nfdapi.APIClient
+}
+
+// initClients initializes both an an algod client (to correct network - which it
+// also validates) and an nfd api clinet - for nfd updates or fetches if caller
+// desires
+func (ac *AppConfig) initClients(ctx *cli.Context) error {
 	network := ctx.Value("network").(string)
 
 	switch network {
@@ -79,7 +82,7 @@ func initClients(ctx *cli.Context, ourAppConfig *AppConfig) error {
 	)
 
 	cfg := algo.GetNetworkConfig(network)
-	algoClient, err = algo.GetAlgoClient(ourAppConfig.logger, cfg)
+	algoClient, err = algo.GetAlgoClient(ac.logger, cfg)
 	if err != nil {
 		return err
 	}
@@ -88,8 +91,8 @@ func initClients(ctx *cli.Context, ourAppConfig *AppConfig) error {
 	api = nfdapi.NewAPIClient(nfdApiCfg)
 	_, _ = algoClient, api
 
-	ourAppConfig.algoClient = algoClient
-	ourAppConfig.api = api
+	ac.algoClient = algoClient
+	ac.api = api
 
 	return nil
 }

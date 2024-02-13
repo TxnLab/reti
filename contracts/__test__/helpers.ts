@@ -78,25 +78,29 @@ export class PoolInfo {
     TotalAlgoStaked: bigint;
 
     constructor([NodeID, PoolAppID, TotalStakers, TotalAlgoStaked]: [number, bigint, number, bigint]) {
-        this.NodeID = NodeID;
+        this.NodeID = Number(NodeID);
         this.PoolAppID = PoolAppID;
-        this.TotalStakers = TotalStakers;
+        this.TotalStakers = Number(TotalStakers);
         this.TotalAlgoStaked = TotalAlgoStaked;
     }
 }
 
-export type ValidatorPoolKey = {
+export class ValidatorPoolKey {
     ID: bigint;
+
     PoolID: bigint; // 0 means INVALID ! - so 1 is index, technically of [0]
+
     PoolAppID: bigint;
-};
 
-export function createPoolKeyFromValues([ID, PoolID, PoolAppID]: [bigint, bigint, bigint]): ValidatorPoolKey {
-    return { ID, PoolID, PoolAppID };
-}
+    constructor([ID, PoolID, PoolAppID]: [bigint, bigint, bigint]) {
+        this.ID = ID;
+        this.PoolID = PoolID;
+        this.PoolAppID = PoolAppID;
+    }
 
-export function argsFromPoolKey(poolKey: ValidatorPoolKey): [bigint, bigint, bigint] {
-    return [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID];
+    encode(): [bigint, bigint, bigint] {
+        return [this.ID, this.PoolID, this.PoolAppID];
+    }
 }
 
 // StakedInfo is the testing-friendly version of what's stored as a static array in each staking pool
@@ -271,7 +275,7 @@ export async function addStakingPool(
             )
             .execute({ populateAppCallResources: true });
 
-        return createPoolKeyFromValues(results.returns![0]);
+        return new ValidatorPoolKey(results.returns![0]);
     } catch (exception) {
         console.log((exception as LogicError).message);
         throw exception;
@@ -283,7 +287,7 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
         (
             await validatorClient
                 .compose()
-                .getPoolInfo({ poolKey: [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID] }, {})
+                .getPoolInfo({ poolKey: poolKey.encode() }, {})
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
     );
@@ -299,7 +303,7 @@ export async function getStakedPoolsForAccount(
     );
     const retPoolKeys: ValidatorPoolKey[] = [];
     results.return!.forEach((poolKey) => {
-        retPoolKeys.push(createPoolKeyFromValues(poolKey));
+        retPoolKeys.push(new ValidatorPoolKey(poolKey));
     });
     return retPoolKeys;
 }
@@ -326,7 +330,7 @@ export async function addStake(
         const suggestedParams = await context.algod.getTransactionParams().do();
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
-        const poolKey = createPoolKeyFromValues(
+        const poolKey = new ValidatorPoolKey(
             (
                 await validatorClient.findPoolForStaker(
                     { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
@@ -386,7 +390,7 @@ export async function addStake(
             )
             .execute({ populateAppCallResources: true });
 
-        return createPoolKeyFromValues(results.returns[1]);
+        return new ValidatorPoolKey(results.returns[1]);
     } catch (exception) {
         throw validatorClient.appClient.exposeLogicError(exception as Error);
         // consoleLogger.warn((exception as LogicError).message);

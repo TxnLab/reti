@@ -229,6 +229,27 @@ class ValidatorRegistry extends Contract {
         return validatorID;
     }
 
+    changeValidatorManager(validatorID: ValidatorID, manager: Address): void {
+        assert(this.txn.sender === this.ValidatorList(validatorID).value.Owner);
+        this.ValidatorList(validatorID).value.Manager = manager;
+    }
+
+    changeValidatorNFD(validatorID: ValidatorID, nfdAppID: uint64): void {
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Manager
+        );
+        this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
+    }
+
+    changeValidatorCommissionAddress(validatorID: ValidatorID, commissionAddress: Address): void {
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Manager
+        );
+        this.ValidatorList(validatorID).value.Config.ValidatorCommissionAddress = commissionAddress;
+    }
+
     /** Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
      * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
      * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of adding a new pool
