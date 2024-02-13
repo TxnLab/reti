@@ -43,6 +43,9 @@ class StakingPool extends Contract {
 
     MaxStakeAllowed = GlobalStateKey<uint64>({ key: 'maxStake' });
 
+    // Last timestamp of a payout - used to ensure payout call isn't cheated and called prior to agreed upon schedule
+    LastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' });
+
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
 
     /**
@@ -300,11 +303,19 @@ class StakingPool extends Contract {
 
         // Since we're being told to payout - treat this as epoch end
         // We're at epoch 'end' presumably - or close enough
-        // but what if we're told to pay really early?  it should just mean
-        // the reward is smaller.  It shouldn't be an issue.
+        // but what if we're told to pay really early?  we need to verify that as well.
         const curTime = globals.latestTimestamp;
-        // How many seconds in an epoch.
+        // How many seconds in the 'configured' epoch.
         const payoutDaysInSecs = payoutDays * 24 * 60 * 60;
+        if (this.LastPayout.exists) {
+            const secsSinceLastPayout = curTime - this.LastPayout.value;
+            // We've had one payout - so we need to be at least one epoch past the last payout (allowing 10 minutes
+            // early to account for script/clock issues)
+            assert(
+                secsSinceLastPayout >= payoutDaysInSecs - 10 * 60,  /* 10 minutes in seconds 'fudge' allowed */
+                "Can't payout earlier than last payout + epoch time"
+            );
+        }
 
         /**
          * assume 1 and 2 have equal stake...
@@ -405,6 +416,7 @@ class StakingPool extends Contract {
             name: 'stakeUpdatedViaRewards',
             methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake],
         });
+        this.LastPayout.value = curTime;
     }
 
     goOnline(

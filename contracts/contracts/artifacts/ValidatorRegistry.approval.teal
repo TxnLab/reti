@@ -178,18 +178,18 @@ getMbrAmounts:
 	// contracts/validatorRegistry.algo.ts:131
 	// return {
 	//             AddValidatorMbr: this.costForBoxStorage(
-	//                 1 /* v prefix */ + 8 /* key id size */ + 1523 /* ValidatorInfo struct size */
+	//                 1 /* v prefix */ + 8 /* key id size */ + 2003 /* ValidatorInfo struct size */
 	//             ),
-	//             AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 7, 2),
+	//             AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 2),
 	//             AddStakerMbr:
 	//                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
 	//                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
 	//         };
-	int 1532
+	int 2012
 	callsub costForBoxStorage
 	itob
 	int 2
-	int 7
+	int 8
 	int 0
 	dupn 3
 	int 1
@@ -227,7 +227,7 @@ getNumValidators:
 	app_global_get
 	retsub
 
-// getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[48])
+// getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])
 abi_route_getValidatorInfo:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -236,7 +236,7 @@ abi_route_getValidatorInfo:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[48])
+	// execute getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])
 	callsub getValidatorInfo
 	concat
 	log
@@ -667,7 +667,7 @@ addValidator:
 	frame_dig 0 // validatorID: uint64
 	itob
 	concat
-	int 1523
+	int 2003
 	box_create
 	pop
 
@@ -1037,7 +1037,7 @@ skip_or2:
 	// contracts/validatorRegistry.algo.ts:272
 	// (numPools as uint64) >= MAX_POOLS
 	frame_dig 0 // numPools: uint16
-	int 48
+	int 72
 	>=
 	bz if2_end
 
@@ -2230,14 +2230,14 @@ if6_end:
 	// contracts/validatorRegistry.algo.ts:465
 	// pools = clone(this.ValidatorList(validatorID).value.Pools)
 	int 563 // headOffset
-	int 960
+	int 1440
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 3 // pools: (uint16,uint64,uint16,uint64)[48]
+	frame_bury 3 // pools: (uint16,uint64,uint16,uint64)[72]
 
 	// contracts/validatorRegistry.algo.ts:466
 	// curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64
@@ -2268,7 +2268,7 @@ for_2:
 	// if9_condition
 	// contracts/validatorRegistry.algo.ts:468
 	// pools[i].TotalAlgoStaked + amountToStake <= maxPerPool
-	frame_dig 3 // pools: (uint16,uint64,uint16,uint64)[48]
+	frame_dig 3 // pools: (uint16,uint64,uint16,uint64)[72]
 	frame_dig 5 // i: uint64
 	int 20
 	* // acc * typeLength
@@ -2293,7 +2293,7 @@ for_2:
 	+
 	itob
 	concat
-	frame_dig 3 // pools: (uint16,uint64,uint16,uint64)[48]
+	frame_dig 3 // pools: (uint16,uint64,uint16,uint64)[72]
 	frame_dig 5 // i: uint64
 	int 20
 	* // acc * typeLength
@@ -2420,7 +2420,7 @@ skip_and3:
 	frame_dig -1 // config: ValidatorConfig
 	extract 54 1
 	btoi
-	int 4
+	int 6
 	<=
 	&&
 
@@ -2882,7 +2882,7 @@ call_NoOp:
 	method "gas()void"
 	method "getMbrAmounts()(uint64,uint64,uint64)"
 	method "getNumValidators()uint64"
-	method "getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[48])"
+	method "getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])"
 	method "getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8,uint16)"
 	method "getValidatorState(uint64)(uint16,uint64,uint64)"
 	method "getPoolAppID((uint64,uint64,uint64))uint64"

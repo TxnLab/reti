@@ -2,7 +2,7 @@ import { Contract } from '@algorandfoundation/tealscript';
 import { MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
 
 const MAX_NODES = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
-const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
+const MAX_POOLS_PER_NODE = 6; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
 const MIN_PAYOUT_DAYS = 1;
 const MAX_PAYOUT_DAYS = 30;
@@ -129,10 +129,11 @@ class ValidatorRegistry extends Contract {
 
     getMbrAmounts(): MbrAmounts {
         return {
+            // TODO change this 2003 value to the static size of the ValidatorInfo struct once tealscript can provide it
             AddValidatorMbr: this.costForBoxStorage(
-                1 /* v prefix */ + 8 /* key id size */ + 1523 /* ValidatorInfo struct size */
+                1 /* v prefix */ + 8 /* key id size */ + 2003 /* ValidatorInfo struct size */
             ),
-            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 7, 2),
+            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 2),
             AddStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values

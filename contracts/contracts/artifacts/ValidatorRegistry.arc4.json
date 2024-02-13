@@ -46,7 +46,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[48])"
+        "type": "(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])"
       }
     },
     {
