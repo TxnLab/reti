@@ -110,7 +110,7 @@ class StakingPool extends Contract {
         }
         // account calling us has to be our creating validator contract
         assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
-        assert(staker !== Account.zeroAddress);
+        assert(staker !== globals.zeroAddress);
 
         // Now, is the required amount actually being paid to US (this contract account - the staking pool)
         // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
@@ -139,11 +139,10 @@ class StakingPool extends Contract {
                 this.TotalAlgoStaked.value += stakedAmountPayment.amount;
                 return entryTime;
             }
-            if (stakers[i].Account === Address.zeroAddress) {
+            if (stakers[i].Account === globals.zeroAddress) {
                 firstEmpty = i + 1;
                 break;
             }
-            i += 1;
         }
 
         if (firstEmpty === 0) {
@@ -158,7 +157,7 @@ class StakingPool extends Contract {
             'must stake at least the minimum for this pool'
         );
 
-        assert(this.Stakers.value[firstEmpty - 1].Account === Address.zeroAddress);
+        assert(this.Stakers.value[firstEmpty - 1].Account === globals.zeroAddress);
         this.Stakers.value[firstEmpty - 1] = {
             Account: staker,
             Balance: stakedAmountPayment.amount,
@@ -182,7 +181,7 @@ class StakingPool extends Contract {
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
         // It makes it a bit awkward this way to update the state in the validator, but it's safer
         // account calling us has to be account removing stake
-        assert(staker !== Account.zeroAddress);
+        assert(staker !== globals.zeroAddress);
         assert(this.txn.sender === staker);
         assert(amountToUnstake !== 0);
 
@@ -211,7 +210,7 @@ class StakingPool extends Contract {
                 if (stakers[i].Balance === 0) {
                     // Staker has been 'removed' - zero out record
                     this.NumStakers.value -= 1;
-                    stakers[i].Account = Address.zeroAddress;
+                    stakers[i].Account = globals.zeroAddress;
                     stakers[i].TotalRewarded = 0;
                     stakerRemoved = true;
                 }
@@ -332,7 +331,7 @@ class StakingPool extends Contract {
         let partialStakersTotalStake = 0;
         let i = 0;
         this.Stakers.value.forEach((staker) => {
-            if (staker.Account !== Address.zeroAddress) {
+            if (staker.Account !== globals.zeroAddress) {
                 if (staker.EntryTime > curTime) {
                     // due to 'forward dating' entry time this could be possible
                     // in this case it definitely means they get 0...
@@ -373,7 +372,7 @@ class StakingPool extends Contract {
         // Now go back through the list AGAIN and pay out the full-timers their rewards + excess
         i = 0;
         this.Stakers.value.forEach((staker) => {
-            if (staker.Account !== Address.zeroAddress && staker.EntryTime < curTime) {
+            if (staker.Account !== globals.zeroAddress && staker.EntryTime < curTime) {
                 const timeInPool = curTime - staker.EntryTime;
                 // We're now only paying out people who've been in pool an entire epoch.
                 if (timeInPool < payoutDaysInSecs) {

@@ -163,8 +163,33 @@ class ValidatorRegistry extends Contract {
     }
 
     // @abi.readonly
+    getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
+        return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
+    }
+
+    // @abi.readonly
     getPoolInfo(poolKey: ValidatorPoolKey): PoolInfo {
         return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1];
+    }
+
+    /**
+     * Retrieves the staked pools for an account.
+     *
+     * @param {Account} staker - The account to retrieve staked pools for.
+     * @return {ValidatorPoolKey[]} - The array of staked pools for the account.
+     */
+    getStakedPoolsForAccount(staker: Account): ValidatorPoolKey[] {
+        if (!this.StakerPoolSet(staker).exists) {
+            return [];
+        }
+        const retData: ValidatorPoolKey[] = [];
+        const poolSet = clone(this.StakerPoolSet(staker).value);
+        for (let i = 0; i < poolSet.length; i += 1) {
+            if (poolSet[i].ID !== 0) {
+                retData.push(poolSet[i]);
+            }
+        }
+        return retData;
     }
 
     /** Adds a new validator
@@ -258,10 +283,6 @@ class ValidatorRegistry extends Contract {
         return { ID: validatorID, PoolID: numPools as uint64, PoolAppID: this.itxn!.createdApplicationID.id };
     }
 
-    getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
-        return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
-    }
-
     /**
      * Adds stake to a validator pool.
      *
@@ -302,26 +323,6 @@ class ValidatorRegistry extends Contract {
         // the staker data.
         this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind);
         return poolKey;
-    }
-
-    /**
-     * Retrieves the staked pools for an account.
-     *
-     * @param {Account} staker - The account to retrieve staked pools for.
-     * @return {ValidatorPoolKey[]} - The array of staked pools for the account.
-     */
-    getStakedPoolsForAccount(staker: Account): ValidatorPoolKey[] {
-        if (!this.StakerPoolSet(staker).exists) {
-            return [];
-        }
-        const retData: ValidatorPoolKey[] = [];
-        const poolSet = clone(this.StakerPoolSet(staker).value);
-        for (let i = 0; i < poolSet.length; i += 1) {
-            if (poolSet[i].ID !== 0) {
-                retData.push(poolSet[i]);
-            }
-        }
-        return retData;
     }
 
     /**

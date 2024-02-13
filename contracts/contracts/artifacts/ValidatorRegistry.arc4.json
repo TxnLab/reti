@@ -74,6 +74,18 @@
       }
     },
     {
+      "name": "getPoolAppID",
+      "args": [
+        {
+          "name": "poolKey",
+          "type": "(uint64,uint64,uint64)"
+        }
+      ],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
       "name": "getPoolInfo",
       "args": [
         {
@@ -83,6 +95,20 @@
       ],
       "returns": {
         "type": "(uint16,uint64,uint16,uint64)"
+      }
+    },
+    {
+      "name": "getStakedPoolsForAccount",
+      "desc": "Retrieves the staked pools for an account.",
+      "args": [
+        {
+          "name": "staker",
+          "type": "account",
+          "desc": "The account to retrieve staked pools for.@return{ValidatorPoolKey[]}- The array of staked pools for the account."
+        }
+      ],
+      "returns": {
+        "type": "(uint64,uint64,uint64)[]"
       }
     },
     {
@@ -141,18 +167,6 @@
       }
     },
     {
-      "name": "getPoolAppID",
-      "args": [
-        {
-          "name": "poolKey",
-          "type": "(uint64,uint64,uint64)"
-        }
-      ],
-      "returns": {
-        "type": "uint64"
-      }
-    },
-    {
       "name": "addStake",
       "desc": "Adds stake to a validator pool.",
       "args": [
@@ -170,20 +184,6 @@
       "returns": {
         "type": "(uint64,uint64,uint64)",
         "desc": "{ValidatorPoolKey}- The key of the validator pool."
-      }
-    },
-    {
-      "name": "getStakedPoolsForAccount",
-      "desc": "Retrieves the staked pools for an account.",
-      "args": [
-        {
-          "name": "staker",
-          "type": "account",
-          "desc": "The account to retrieve staked pools for.@return{ValidatorPoolKey[]}- The array of staked pools for the account."
-        }
-      ],
-      "returns": {
-        "type": "(uint64,uint64,uint64)[]"
       }
     },
     {

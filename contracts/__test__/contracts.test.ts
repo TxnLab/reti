@@ -7,18 +7,20 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 import {
-    addValidator,
     addStake,
     addStakingPool,
+    addValidator,
+    ALGORAND_ZERO_ADDRESS_STRING,
     argsFromPoolKey,
     createValidatorConfig,
     getMbrAmountsFromValidatorClient,
     getPoolInfo,
+    getStakedPoolsForAccount,
+    getStakeInfoFromBoxValue,
     getStakerInfo,
     getValidatorState,
     removeStake,
     ValidatorPoolKey,
-    getStakedPoolsForAccount,
 } from './helpers';
 // import { algoKitLogCaptureFixture } from '@algorandfoundation/algokit-utils/testing'
 
@@ -319,7 +321,7 @@ describe('StakeAdds', () => {
     test('add3PoolsAndFill', async () => {
         const pools = [];
         const stakers = [];
-        const poolsToCreate = 4
+        const poolsToCreate = 4;
 
         // we create 4 new pools (on top of the first pool we added as part of beforeAll)
         for (let i = 0; i < poolsToCreate; i += 1) {
@@ -360,7 +362,7 @@ describe('StakeAdds', () => {
         // add stake for each - each time should work and go to new pool (starting with first pool we added - the one
         // that's already there shouldn't have room).  Then next add of same size should fail.. then next add of something
         // small should go to first pool again
-        for (let i = 0; i < poolsToCreate-1; i += 1) {
+        for (let i = 0; i < poolsToCreate - 1; i += 1) {
             const stakeAmount = AlgoAmount.MicroAlgos(MaxAlgoPerPool - AlgoAmount.Algos(1000).microAlgos);
             const stakedPoolKey = await addStake(
                 fixture.context,
@@ -425,25 +427,33 @@ describe('StakeAdds', () => {
         expect(fitTestStake3.PoolID).toBe(firstPoolKey.PoolID);
         expect(fitTestStake3.PoolAppID).toBe(firstPoolKey.PoolAppID);
 
-        // const stakerAcctOrigBalance = await fixture.context.algod.accountInformation(stakers[3].addr).do();
-        // const stakeAmount1 = AlgoAmount.Algos(2000);
-        // const stakedPoolKey = await addStake(fixture.context, validatorClient, validatorID, stakers[3], stakeAmount1);
-        // expect(stakedPoolKey.ID).toBe(firstPoolKey.ID);
-        // expect(stakedPoolKey.PoolID).toBe(firstPoolKey.PoolID);
-        // expect(stakedPoolKey.PoolAppID).toBe(firstPoolKey.PoolAppID);
-        // ensure their balance decreased appropriately..
-        // const stakerAcctNewBalance = await fixture.context.algod.accountInformation(stakers[3].addr).do();
-        // expect(stakerAcctNewBalance.amount).toBe(
-        //     stakerAcctOrigBalance.amount -
-        //         stakeAmount1.microAlgos -
-        //         AlgoAmount.Algos(0.006 * 1).microAlgos /* 6 txn fee cost per staking */
-        // );
-
         // For staker 4 - get their staked pool list - should now be two entries - pool 5 (pool 4 we added) then pool 1 (order of staking)
         const lastStakerPools = await getStakedPoolsForAccount(validatorClient, stakers[3]);
         expect(lastStakerPools).toHaveLength(2);
         expect(lastStakerPools[0]).toEqual(pools[3]);
         expect(lastStakerPools[1]).toEqual(firstPoolKey);
+
+        // let i = 0;
+        // stakers.forEach((staker) => {
+        //     consoleLogger.info(`staker ${i}: ${staker.addr}`)
+        //     i+=1;
+        // })
+    });
+
+    test('getStakeInfo', async () => {
+        const firstPoolClient = new StakingPoolClient(
+            { sender: fixture.context.testAccount, resolveBy: 'id', id: firstPoolKey.PoolAppID },
+            fixture.context.algod
+        );
+        const stakers = await getStakeInfoFromBoxValue(firstPoolClient);
+        // iterate stakers displaying the info
+        let i = 0;
+        stakers.forEach((staker) => {
+            if (encodeAddress(staker.Staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
+                consoleLogger.info(`${i}: Staker:${encodeAddress(staker.Staker.publicKey)}, Balance:${staker.Balance}`);
+            }
+            i += 1;
+        });
     });
 
     async function tryCatchWrapper(instance: any, methodName: string, ...args: any[]) {

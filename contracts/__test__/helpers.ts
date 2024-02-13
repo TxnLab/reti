@@ -1,9 +1,19 @@
-import { Account, Address, decodeAddress, encodeUint64, makePaymentTxnWithSuggestedParamsFromObject } from 'algosdk';
+import {
+    Account,
+    Address,
+    bytesToBigInt,
+    decodeAddress,
+    encodeAddress,
+    encodeUint64,
+    makePaymentTxnWithSuggestedParamsFromObject,
+} from 'algosdk';
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
+
+export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
 
 interface ValidatorConfig {
     PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
@@ -58,20 +68,21 @@ function createValidatorCurStateFromValues([NumPools, TotalStakers, TotalAlgoSta
     return { NumPools, TotalStakers, TotalAlgoStaked };
 }
 
-type PoolInfo = {
+export class PoolInfo {
     NodeID: number;
-    PoolAppID: bigint; // The App ID of this staking pool contract instance
-    TotalStakers: number;
-    TotalAlgoStaked: bigint;
-};
 
-function createPoolInfoFromValues([NodeID, PoolAppID, TotalStakers, TotalAlgoStaked]: [
-    number,
-    bigint,
-    number,
-    bigint,
-]): PoolInfo {
-    return { NodeID, PoolAppID, TotalStakers, TotalAlgoStaked };
+    PoolAppID: bigint; // The App ID of this staking pool contract instance
+
+    TotalStakers: number;
+
+    TotalAlgoStaked: bigint;
+
+    constructor([NodeID, PoolAppID, TotalStakers, TotalAlgoStaked]: [number, bigint, number, bigint]) {
+        this.NodeID = NodeID;
+        this.PoolAppID = PoolAppID;
+        this.TotalStakers = TotalStakers;
+        this.TotalAlgoStaked = TotalAlgoStaked;
+    }
 }
 
 export type ValidatorPoolKey = {
@@ -88,20 +99,43 @@ export function argsFromPoolKey(poolKey: ValidatorPoolKey): [bigint, bigint, big
     return [poolKey.ID, poolKey.PoolID, poolKey.PoolAppID];
 }
 
-export type StakedInfo = {
+// StakedInfo is the testing-friendly version of what's stored as a static array in each staking pool
+export class StakedInfo {
     Staker: Address;
-    Balance: bigint;
-    TotalRewarded: bigint;
-    EntryTime: bigint;
-};
 
-function createStakeInfoFromValues([Staker, Balance, TotalRewarded, EntryTime]: [
-    string,
-    bigint,
-    bigint,
-    bigint,
-]): StakedInfo {
-    return { Staker: decodeAddress(Staker), Balance, TotalRewarded, EntryTime };
+    Balance: bigint;
+
+    TotalRewarded: bigint;
+
+    EntryTime: bigint;
+
+    constructor(data: Uint8Array) {
+        this.Staker = decodeAddress(encodeAddress(data.slice(0, 32)));
+        this.Balance = bytesToBigInt(data.slice(32, 40));
+        this.TotalRewarded = bytesToBigInt(data.slice(40, 48));
+        this.EntryTime = bytesToBigInt(data.slice(48, 56));
+    }
+
+    public static fromValues([Staker, Balance, TotalRewarded, EntryTime]: [
+        string,
+        bigint,
+        bigint,
+        bigint,
+    ]): StakedInfo {
+        return { Staker: decodeAddress(Staker), Balance, TotalRewarded, EntryTime };
+    }
+
+    public static FromBoxData(boxData: Uint8Array): StakedInfo[] {
+        // take 56-byte chunks of boxData and return as an array of StakedInfo values (initialized via its constructor
+        // which takes 56-byte chunks and returns an initialized StakedInfo
+        const chunkSize = 56;
+        const stakedInfoArray: StakedInfo[] = [];
+        for (let i = 0; i < boxData.length; i += chunkSize) {
+            const chunk = boxData.slice(i, i + chunkSize);
+            stakedInfoArray.push(new StakedInfo(chunk));
+        }
+        return stakedInfoArray;
+    }
 }
 
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
@@ -109,6 +143,11 @@ function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
     result.set(a);
     result.set(b, a.length);
     return result;
+}
+
+export async function getStakeInfoFromBoxValue(stakeClient: StakingPoolClient) {
+    const stakerData = await stakeClient.appClient.getBoxValue('stakers');
+    return StakedInfo.FromBoxData(stakerData);
 }
 
 export function getValidatorListBoxName(validatorID: number) {
@@ -240,7 +279,7 @@ export async function addStakingPool(
 }
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
-    return createPoolInfoFromValues(
+    return new PoolInfo(
         (
             await validatorClient
                 .compose()
@@ -266,7 +305,7 @@ export async function getStakedPoolsForAccount(
 }
 
 export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Account) {
-    return createStakeInfoFromValues(
+    return StakedInfo.fromValues(
         (
             await stakeClient
                 .compose()
