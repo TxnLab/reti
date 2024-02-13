@@ -72,6 +72,12 @@ func getDefaults(network string) NetworkConfig {
 	case "betanet":
 		cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
 		cfg.NodeURL = "https://betanet-api.algonode.cloud"
+	//-----
+	// VOI
+	//-----
+	case "voitestnet":
+		//cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
+		cfg.NodeURL = "https://testnet-api.voi.nodely.io"
 	}
 	return cfg
 }
