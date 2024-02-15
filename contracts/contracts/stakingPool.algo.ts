@@ -15,7 +15,7 @@ type StakedInfo = {
 
 // eslint-disable-next-line no-unused-vars
 class StakingPool extends Contract {
-    programVersion = 9;
+    programVersion = 10;
 
     // When created, we track our creating validator contract so that only this contract can call us.  Independent
     // copies of this contract could be created but only the 'official' validator contract would be considered valid
@@ -29,12 +29,6 @@ class StakingPool extends Contract {
     // The pool ID we were assigned by the validator contract - sequential id per validator
     PoolID = GlobalStateKey<uint64>({ key: 'poolID' });
 
-    // Owner of our pool (validator owner)
-    Owner = GlobalStateKey<Address>({ key: 'owner' });
-
-    // Manager of our pool (validator manager)
-    Manager = GlobalStateKey<Address>({ key: 'manager' });
-
     NumStakers = GlobalStateKey<uint64>({ key: 'numStakers' });
 
     TotalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' });
@@ -46,6 +40,7 @@ class StakingPool extends Contract {
     // Last timestamp of a payout - used to ensure payout call isn't cheated and called prior to agreed upon schedule
     LastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' });
 
+    // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
 
     /**
@@ -53,8 +48,6 @@ class StakingPool extends Contract {
      * @param creatingContractID - id of contract that constructed us - the validator application (single global instance)
      * @param validatorID - id of validator we're a staking pool of
      * @param poolID - which pool id are we
-     * @param owner - owner of pool
-     * @param manager - manager of pool (can issue payouts and online txns)
      * @param minAllowedStake - minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)
      * @param maxStakeAllowed - maximum algo allowed in this staking pool
      */
@@ -62,15 +55,11 @@ class StakingPool extends Contract {
         creatingContractID: uint64,
         validatorID: uint64,
         poolID: uint64,
-        owner: Address,
-        manager: Address,
         minAllowedStake: uint64,
         maxStakeAllowed: uint64
     ): void {
-        if (owner === globals.zeroAddress || manager === globals.zeroAddress) {
+        if (creatingContractID === 0) {
             // this is likely initial template setup - everything should basically be zero...
-            assert(owner === globals.zeroAddress);
-            assert(manager === globals.zeroAddress);
             assert(creatingContractID === 0);
             assert(validatorID === 0);
             assert(poolID === 0);
@@ -84,8 +73,6 @@ class StakingPool extends Contract {
         this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;
-        this.Owner.value = owner;
-        this.Manager.value = manager;
         this.NumStakers.value = 0;
         this.TotalAlgoStaked.value = 0;
         this.MinAllowedStake.value = minAllowedStake;
@@ -173,19 +160,17 @@ class StakingPool extends Contract {
     }
 
     /**
-     * Removes stake on behalf of a particular staker.  Also notifies the validator contract for this pools
+     * Removes stake on behalf of caller (removing own stake).  Also notifies the validator contract for this pools
      * validator of the staker / balance changes.
      *
-     * @param {Address} staker - The address of the account removing stake.
      * @param {uint64} amountToUnstake - The amount of stake to be removed.
      * @throws {Error} If the account has insufficient balance or if the account is not found.
      */
-    removeStake(staker: Address, amountToUnstake: uint64): void {
+    removeStake(amountToUnstake: uint64): void {
         // We want to preserve the sanctity that the ONLY account that can call us is the staking account
         // It makes it a bit awkward this way to update the state in the validator, but it's safer
         // account calling us has to be account removing stake
-        assert(staker !== globals.zeroAddress);
-        assert(this.txn.sender === staker);
+        const staker = this.txn.sender;
         assert(amountToUnstake !== 0);
 
         const stakers = clone(this.Stakers.value);
@@ -247,6 +232,7 @@ class StakingPool extends Contract {
      * @returns {StakedInfo} - The staked information for the given staker.
      * @throws {Error} - If the staker's account is not found.
      */
+    // @abi.readonly
     getStakerInfo(staker: Address): StakedInfo {
         const stakers = clone(this.Stakers.value);
         for (let i = 0; i < stakers.length; i += 1) {
@@ -257,9 +243,25 @@ class StakingPool extends Contract {
         throw Error('Account not found');
     }
 
+    private isOwnerOrManagerCaller(): boolean {
+        const OwnerAndManager = sendMethodCall<[uint64], [Address, Address]>({
+            applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
+            name: 'getValidatorOwnerAndManager',
+            methodArgs: [this.ValidatorID.value],
+        });
+        return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
+    }
+
+    /**
+     * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)
+     * Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balance
+     * compounds over time and staker can remove that amount at will.
+     * The validator is paid their percentage each epoch payout.
+     *
+     * @returns {void}
+     */
     payStakers(): void {
-        // we should only be callable by owner or manager of validator.
-        assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value);
+        assert(this.isOwnerOrManagerCaller());
 
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<[uint64], [uint16, uint32, Address, uint8, uint16]>({
@@ -298,6 +300,11 @@ class StakingPool extends Contract {
             note: 'validator reward',
         });
 
+        if (rewardAvailable === 0) {
+            // likely a personal validator node - we just isssued the entire reward to them - we're done
+            return;
+        }
+
         // Now we "pay" (but really just update their tracked balance) the stakers the remainder based on their % of
         // pool and time in this epoch.
 
@@ -312,7 +319,7 @@ class StakingPool extends Contract {
             // We've had one payout - so we need to be at least one epoch past the last payout (allowing 10 minutes
             // early to account for script/clock issues)
             assert(
-                secsSinceLastPayout >= payoutDaysInSecs - 10 * 60,  /* 10 minutes in seconds 'fudge' allowed */
+                secsSinceLastPayout >= payoutDaysInSecs - 10 * 60 /* 10 minutes in seconds 'fudge' allowed */,
                 "Can't payout earlier than last payout + epoch time"
             );
         }
@@ -427,7 +434,7 @@ class StakingPool extends Contract {
         voteLast: uint64,
         voteKeyDilution: uint64
     ): void {
-        assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value);
+        assert(this.isOwnerOrManagerCaller());
         sendOnlineKeyRegistration({
             votePK: votePK,
             selectionPK: selectionPK,
@@ -439,7 +446,7 @@ class StakingPool extends Contract {
     }
 
     goOffline(): void {
-        assert(this.txn.sender === this.Owner.value || this.txn.sender === this.Manager.value);
+        assert(this.isOwnerOrManagerCaller());
         sendOfflineKeyRegistration({});
     }
 

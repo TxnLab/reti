@@ -402,7 +402,7 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
     try {
         return (
             await stakeClient.removeStake(
-                { staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos },
+                { amountToUnstake: unstakeAmount.microAlgos },
                 {
                     sendParams: {
                         // pays us back and tells validator about balance changed

@@ -1,13 +1,16 @@
 import { Contract } from '@algorandfoundation/tealscript';
-import { MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
+import {
+    MAX_ALGO_PER_POOL,
+    MAX_PCT_TO_VALIDATOR,
+    MIN_ALGO_STAKE_PER_POOL,
+    MIN_PCT_TO_VALIDATOR
+} from './constants.algo';
 
 const MAX_NODES = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
 const MAX_POOLS_PER_NODE = 6; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
 const MIN_PAYOUT_DAYS = 1;
 const MAX_PAYOUT_DAYS = 30;
-const MIN_PCT_TO_VALIDATOR = 10000; // 1% w/ four decimals - (this allows .0001%)
-const MAX_PCT_TO_VALIDATOR = 100000; // 10% w/ four decimals
 
 type ValidatorID = uint64;
 type ValidatorPoolKey = {
@@ -69,9 +72,6 @@ const ASSET_HOLDING_FEE = 100000; // creation fee for asset
 const SSC_VALUE_UINT = 28500; // cost for value as uint64
 const SSC_VALUE_BYTES = 50000; // cost for value as bytes
 
-const SCBOX_PERBOX = 2500;
-const SCBOX_PERBYTE = 400;
-
 // eslint-disable-next-line no-unused-vars
 class ValidatorRegistry extends Contract {
     programVersion = 10;
@@ -121,6 +121,9 @@ class ValidatorRegistry extends Contract {
     }
 
     private costForBoxStorage(totalNumBytes: number): uint64 {
+        const SCBOX_PERBOX = 2500;
+        const SCBOX_PERBYTE = 400;
+
         return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
     }
 
@@ -133,7 +136,7 @@ class ValidatorRegistry extends Contract {
             AddValidatorMbr: this.costForBoxStorage(
                 1 /* v prefix */ + 8 /* key id size */ + 2003 /* ValidatorInfo struct size */
             ),
-            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 2),
+            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 0),
             AddStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
@@ -161,6 +164,11 @@ class ValidatorRegistry extends Contract {
     // @abi.readonly
     getValidatorState(validatorID: ValidatorID): ValidatorCurState {
         return this.ValidatorList(validatorID).value.State;
+    }
+
+    // @abi.readonly
+    getValidatorOwnerAndManager(validatorID: ValidatorID): [Address, Address] {
+        return [this.ValidatorList(validatorID).value.Owner, this.ValidatorList(validatorID).value.Manager];
     }
 
     // @abi.readonly
@@ -284,13 +292,11 @@ class ValidatorRegistry extends Contract {
             globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
             extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
-                // creatingContractID, validatorID, poolID, owner, manager, minAllowedStake, maxStakeAllowed
-                method('createApplication(uint64,uint64,uint64,address,address,uint64,uint64)void'),
+                // creatingContractID, validatorID, poolID, minAllowedStake, maxStakeAllowed
+                method('createApplication(uint64,uint64,uint64,uint64,uint64)void'),
                 itob(this.app.id),
                 itob(validatorID),
                 itob(numPools as uint64),
-                rawBytes(this.ValidatorList(validatorID).value.Owner),
-                rawBytes(this.ValidatorList(validatorID).value.Manager),
                 itob(this.ValidatorList(validatorID).value.Config.MinAllowedStake),
                 itob(this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool),
             ],

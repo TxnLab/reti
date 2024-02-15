@@ -9,14 +9,15 @@
     * How often payout balance adjustments are made (every day, every week, etc) - the 'epoch' time.
     * The percentage of earned rewards (at payout time) that goes to the validator to pay their operating costs
     * An Algorand address to send validator fees to - changeable only by the owner.
-    * The 'minimum' stake allowed to enter their pools - this prevents dusting a valuable resource.  With 73 slots available per pool,
+    * The 'minimum' stake allowed to enter their pools - this prevents dusting a valuable resource (or competing validators 
+      filling up the pools of other validators with tiny amounts).  With 73 slots available per pool,
       minimum stake of 1,000 ALGO would mean minimum 73,000 ALGO stake if the pool was filled with stakers.  Users can remove 
       stake at will but can't go below the minimum, unless they exit the pool entirely, removing all of their ALGO.
     * A 'maximum' allowed stake per pool - this should be below the max allowed before incentives stop.
     * Number of pools per node (this equates to a participation key [account]).  Maximum of 3 will be recommended
       but validator storage will allow up to 6 pools.
     * Max number of 'nodes' - this will be enforced softly via the node/key management process, but the effective number of pools becomes
-      {max nodes} * {max pools per node}.  Currently this would be 72.
+      {max nodes} * {max pools per node}.  Currently, this would be 72.
     * An optional NFD ID to associate with the validator so that services will be able to link stakers to information about the validator.
       The validator would presumably describe their services, justifying their rates, promoting how they run their infrastructure, etc.  
       Mechanisms will be provided which will allow the users to have the created staking pool contract accounts 'verify' against the NFD so 
@@ -33,8 +34,10 @@
     amongst the validators pools and the algo is sent from the user through the validator contract to the pool (and thus its contract account).
   * A 'ledger' is maintained in each pool of up to (currently) 73 stakers (based on general storage and feasibility estimates) that tracks
     each staker by their account, (last) entry time into the pool, amount currently staked, and historical amount rewarded.
-  * The entry time is set each time a user adds stake so that users can't game rewards.  A naive approach would allow them to add a huge amount of algo just 
-    prior to the epoch payout and get rewarded as if they'd been part of the pool the entire time.
+  * The entry time is set each time a user adds stake so that users can't game rewards (the time is actually 'set forward' approx 16 minutes to account
+    for algorand online balances being 320 rounds behind).  A naive approach would allow them to add a huge amount 
+    of algo just prior to the epoch payout and get rewarded as if they'd been part of the pool the entire time.  Tracking entry time allows their reward
+    to be cut for partial epoch participation.
   * The 'payout' process:
     * Determines the 'reward' amount based on the current pool balance vs the known 'staked' amount.  
     * Pays the validator their % (which is immutable and part of defining the validator record itself).
@@ -53,10 +56,13 @@
   * This service will act as the configuration agent, letting users configure the validator, add pools, etc.
   * Each node daemon will have access to a 'manager' account hot-wallet which it can sign transactions with.  This manager account can be switched out
     by the owner of that validator to a new account at will if there is a compromise.  The only accounts that can ever remove user funds are stakers removing only their balance.
-  * On each node, it will monitor the staking pools defined and automatically create short-lived (no more than 30d) participation keys with that nodes algod instance.
+  * On each node, it will monitor the staking pools defined and automatically create short-lived (no more than 30d) participation keys with that
+    nodes algod instance.
   * The participation keys will be monitored for expiration and new keys will be created in advance so that its always online.
-  * As participation keys are created, the paired staking pool will be instructed via the 'manager' to issue a transaction to go online against that part. key
-  * The node daemon will likely provide a variety of prometheus compatible metrics for scraping into compatible agents (staking amounts, etc.)
+  * As participation keys are created, the paired staking pool will be instructed via the 'manager' to issue a transaction to go online against 
+    that participation key.
+  * The node daemon will likely provide a number of prometheus compatible metrics for scraping into compatible agents (staking amounts, etc.) but 
+    broader monitoring will be best handled independently.
 
 * Monitoring
   * Monitoring of actual validator performance will be best handled by the ecosystem itself - tracking expected proposal/vote percentages per pool per validator, etc.

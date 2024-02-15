@@ -49,8 +49,6 @@ beforeAll(async () => {
         creatingContractID: 0,
         validatorID: 0,
         poolID: 0,
-        owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-        manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
         minAllowedStake: 1_000_000,
         maxStakeAllowed: 0,
     });

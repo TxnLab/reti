@@ -74,6 +74,18 @@
       }
     },
     {
+      "name": "getValidatorOwnerAndManager",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "(address,address)"
+      }
+    },
+    {
       "name": "getPoolAppID",
       "args": [
         {

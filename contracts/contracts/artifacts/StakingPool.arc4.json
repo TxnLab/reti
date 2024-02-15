@@ -22,16 +22,6 @@
           "desc": "which pool id are we"
         },
         {
-          "name": "owner",
-          "type": "address",
-          "desc": "owner of pool"
-        },
-        {
-          "name": "manager",
-          "type": "address",
-          "desc": "manager of pool (can issue payouts and online txns)"
-        },
-        {
           "name": "minAllowedStake",
           "type": "uint64",
           "desc": "minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)"
@@ -76,13 +66,8 @@
     },
     {
       "name": "removeStake",
-      "desc": "Removes stake on behalf of a particular staker.  Also notifies the validator contract for this poolsvalidator of the staker / balance changes.",
+      "desc": "Removes stake on behalf of caller (removing own stake).  Also notifies the validator contract for this poolsvalidator of the staker / balance changes.",
       "args": [
-        {
-          "name": "staker",
-          "type": "address",
-          "desc": "The address of the account removing stake."
-        },
         {
           "name": "amountToUnstake",
           "type": "uint64",
@@ -110,9 +95,11 @@
     },
     {
       "name": "payStakers",
+      "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.",
       "args": [],
       "returns": {
-        "type": "void"
+        "type": "void",
+        "desc": "{void}"
       }
     },
     {
