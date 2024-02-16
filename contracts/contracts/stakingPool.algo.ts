@@ -1,12 +1,11 @@
 import { Contract } from '@algorandfoundation/tealscript';
-// import { ValidatorConfig } from "./validatorRegistry.algo";
-import { MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
+import { ValidatorRegistry } from './validatorRegistry.algo';
+import { MAX_STAKERS_PER_POOL, MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
 
-const MAX_STAKERS_PER_POOL = 80; // *64 (size of StakeInfo) = 5120 bytes
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
 const AVG_BLOCK_TIME_SECS = 30; // in tenths - 30 = 3.0
 
-type StakedInfo = {
+export type StakedInfo = {
     Account: Address;
     Balance: uint64;
     TotalRewarded: uint64;
@@ -15,7 +14,7 @@ type StakedInfo = {
 };
 
 // eslint-disable-next-line no-unused-vars
-class StakingPool extends Contract {
+export class StakingPool extends Contract {
     programVersion = 10;
 
     // When created, we track our creating validator contract so that only this contract can call us.  Independent
@@ -225,11 +224,10 @@ class StakingPool extends Contract {
                 // It'll verify we're a valid staking pool id and update it
                 // stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void
                 // ABI: stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void
-                sendMethodCall<[[uint64, uint64, uint64], Address, uint64, boolean], void>({
+                sendMethodCall<typeof ValidatorRegistry.prototype.stakeRemoved>({
                     applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
-                    name: 'stakeRemoved',
                     methodArgs: [
-                        [this.ValidatorID.value, this.PoolID.value, this.app.id],
+                        { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
                         staker,
                         amountToUnstake,
                         stakerRemoved,
@@ -260,9 +258,8 @@ class StakingPool extends Contract {
     }
 
     private isOwnerOrManagerCaller(): boolean {
-        const OwnerAndManager = sendMethodCall<[uint64], [Address, Address]>({
+        const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
-            name: 'getValidatorOwnerAndManager',
             methodArgs: [this.ValidatorID.value],
         });
         return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
@@ -280,17 +277,11 @@ class StakingPool extends Contract {
         assert(this.isOwnerOrManagerCaller());
 
         // call the validator contract to get our payout data
-        const payoutConfig = sendMethodCall<[uint64], [uint16, uint32, Address, uint8, uint16]>({
+        const payoutConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
-            name: 'getValidatorConfig',
             methodArgs: [this.ValidatorID.value],
         });
-        // first two members of the return value is:
-        //  PayoutEveryXDays - Payout frequency - ie: 7, 30, etc.
-        //  PercentToValidator- Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005
-        const payoutDays = payoutConfig[0] as uint64;
-        const pctToValidator = payoutConfig[1] as uint64;
-        const validatorCommissionAddress = payoutConfig[2];
+        const payoutDays = payoutConfig.PayoutEveryXDays as uint64;
 
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which would be included in base balance anyway but - have to be safe...]
@@ -304,7 +295,7 @@ class StakingPool extends Contract {
         );
 
         // determine the % that goes to validator...
-        const validatorPay = wideRatio([rewardAvailable, pctToValidator], [1000000]);
+        const validatorPay = wideRatio([rewardAvailable, payoutConfig.PercentToValidator], [1000000]);
         // and adjust reward for entire pool accordingly
         rewardAvailable -= validatorPay;
 
@@ -313,7 +304,7 @@ class StakingPool extends Contract {
         if (validatorPay > 0) {
             sendPayment({
                 amount: validatorPay,
-                receiver: validatorCommissionAddress,
+                receiver: payoutConfig.ValidatorCommissionAddress,
                 note: 'validator reward',
             });
         }
@@ -436,10 +427,12 @@ class StakingPool extends Contract {
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it
         // stakeUpdatedViaRewards((uint64,uint64),uint64)void
-        sendMethodCall<[[uint64, uint64, uint64], uint64], void>({
+        sendMethodCall<typeof ValidatorRegistry.prototype.stakeUpdatedViaRewards>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
-            name: 'stakeUpdatedViaRewards',
-            methodArgs: [[this.ValidatorID.value, this.PoolID.value, this.app.id], increasedStake],
+            methodArgs: [
+                { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
+                increasedStake,
+            ],
         });
         this.LastPayout.value = curTime;
     }

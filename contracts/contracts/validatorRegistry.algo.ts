@@ -1,9 +1,11 @@
 import { Contract } from '@algorandfoundation/tealscript';
+import { StakingPool, StakedInfo } from './stakingPool.algo';
 import {
+    MAX_STAKERS_PER_POOL,
     MAX_ALGO_PER_POOL,
     MAX_PCT_TO_VALIDATOR,
     MIN_ALGO_STAKE_PER_POOL,
-    MIN_PCT_TO_VALIDATOR
+    MIN_PCT_TO_VALIDATOR,
 } from './constants.algo';
 
 const MAX_NODES = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
@@ -13,7 +15,7 @@ const MIN_PAYOUT_DAYS = 1;
 const MAX_PAYOUT_DAYS = 30;
 
 type ValidatorID = uint64;
-type ValidatorPoolKey = {
+export type ValidatorPoolKey = {
     ID: ValidatorID;
     PoolID: uint64; // 0 means INVALID ! - so 1 is index, technically of [0]
     PoolAppID: uint64;
@@ -77,7 +79,7 @@ const SSC_VALUE_UINT = 28500; // cost for value as uint64
 const SSC_VALUE_BYTES = 50000; // cost for value as bytes
 
 // eslint-disable-next-line no-unused-vars
-class ValidatorRegistry extends Contract {
+export class ValidatorRegistry extends Contract {
     programVersion = 10;
 
     // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
@@ -136,15 +138,14 @@ class ValidatorRegistry extends Contract {
 
     getMbrAmounts(): MbrAmounts {
         return {
-            // TODO change this 2003 value to the static size of the ValidatorInfo struct once tealscript can provide it
-            AddValidatorMbr: this.costForBoxStorage(
-                1 /* v prefix */ + 8 /* key id size */ + 2003 /* ValidatorInfo struct size */
-            ),
+            AddValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorID>() + len<ValidatorInfo>()),
             AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 0),
-            PoolInitMbr: ALGORAND_ACCOUNT_MIN_BALANCE + this.costForBoxStorage( 7 /* 'stakers' name */ + 5120 /* size of StakedInfo * MAX_STAKERS_IN_POOL */),
+            PoolInitMbr:
+                ALGORAND_ACCOUNT_MIN_BALANCE +
+                this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL),
             AddStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
-                this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
+                this.costForBoxStorage(3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * 4), // size of key + all values
         };
     }
 
@@ -490,8 +491,10 @@ class ValidatorRegistry extends Contract {
         assert(config.PayoutEveryXDays >= MIN_PAYOUT_DAYS && config.PayoutEveryXDays <= MAX_PAYOUT_DAYS);
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
         if (config.PercentToValidator !== 0) {
-            assert(config.ValidatorCommissionAddress !== Address.zeroAddress,
-                'ValidatorCommissionAddress must be set if percent to validator is not 0');
+            assert(
+                config.ValidatorCommissionAddress !== Address.zeroAddress,
+                'ValidatorCommissionAddress must be set if percent to validator is not 0'
+            );
         }
         assert(config.MinAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
         assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
@@ -514,8 +517,7 @@ class ValidatorRegistry extends Contract {
 
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call
-        sendMethodCall<[InnerPayment, Address], uint64>({
-            name: 'addStake',
+        sendMethodCall<typeof StakingPool.prototype.addStake>({
             applicationID: Application.fromID(poolAppID),
             methodArgs: [
                 // =======
