@@ -26,7 +26,7 @@
       "name": "getMbrAmounts",
       "args": [],
       "returns": {
-        "type": "(uint64,uint64,uint64)"
+        "type": "(uint64,uint64,uint64,uint64)"
       }
     },
     {

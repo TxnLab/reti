@@ -2,7 +2,7 @@ import { Contract } from '@algorandfoundation/tealscript';
 // import { ValidatorConfig } from "./validatorRegistry.algo";
 import { MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
 
-const MAX_STAKERS_PER_POOL = 73; // *56 (size of StakeInfo) = 4,088 bytes
+const MAX_STAKERS_PER_POOL = 80; // *64 (size of StakeInfo) = 5120 bytes
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
 const AVG_BLOCK_TIME_SECS = 30; // in tenths - 30 = 3.0
 
@@ -10,6 +10,7 @@ type StakedInfo = {
     Account: Address;
     Balance: uint64;
     TotalRewarded: uint64;
+    RewardTokenBalance: uint64;
     EntryTime: uint64;
 };
 
@@ -85,6 +86,16 @@ class StakingPool extends Contract {
     gas(): void {}
 
     /**
+     * Called after we're created and then funded so we can create our large stakers ledger storage
+     * Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost
+     */
+    initStorage(): void {
+        if (!this.Stakers.exists) {
+            this.Stakers.create();
+        }
+    }
+
+    /**
      * Adds stake to the given account.
      * Can ONLY be called by the validator contract that created us
      * Must receive payment from the validator contract for amount being staked.
@@ -95,9 +106,8 @@ class StakingPool extends Contract {
      * @returns {uint64} new 'entry time' in seconds of stake add.
      */
     addStake(stakedAmountPayment: PayTxn, staker: Address): uint64 {
-        if (!this.Stakers.exists) {
-            this.Stakers.create();
-        }
+        assert(this.Stakers.exists);
+
         // account calling us has to be our creating validator contract
         assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
         assert(staker !== globals.zeroAddress);
@@ -119,17 +129,19 @@ class StakingPool extends Contract {
         let firstEmpty = 0;
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
-        const stakers = clone(this.Stakers.value);
-        for (let i = 0; i < stakers.length; i += 1) {
-            if (stakers[i].Account === staker) {
-                stakers[i].Balance += stakedAmountPayment.amount;
-                stakers[i].EntryTime = entryTime;
+        // const stakers = clone(this.Stakers.value);
+        // for (let i = 0; i < this.Stakers.size; i += 1) {
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            // const cmpStaker = this.Stakers.value[i];
+            if (this.Stakers.value[i].Account === staker) {
+                this.Stakers.value[i].Balance += stakedAmountPayment.amount;
+                this.Stakers.value[i].EntryTime = entryTime;
                 // Update the box w/ the new data
-                this.Stakers.value[i] = stakers[i];
+                // this.Stakers.value[i] = cmpStaker;
                 this.TotalAlgoStaked.value += stakedAmountPayment.amount;
                 return entryTime;
             }
-            if (stakers[i].Account === globals.zeroAddress) {
+            if (this.Stakers.value[i].Account === globals.zeroAddress) {
                 firstEmpty = i + 1;
                 break;
             }
@@ -152,6 +164,7 @@ class StakingPool extends Contract {
             Account: staker,
             Balance: stakedAmountPayment.amount,
             TotalRewarded: 0,
+            RewardTokenBalance: 0,
             EntryTime: entryTime,
         };
         this.NumStakers.value += 1;
@@ -163,7 +176,7 @@ class StakingPool extends Contract {
      * Removes stake on behalf of caller (removing own stake).  Also notifies the validator contract for this pools
      * validator of the staker / balance changes.
      *
-     * @param {uint64} amountToUnstake - The amount of stake to be removed.
+     * @param {uint64} amountToUnstake - The amount of stake to be removed.  Specify 0 to remove all stake.
      * @throws {Error} If the account has insufficient balance or if the account is not found.
      */
     removeStake(amountToUnstake: uint64): void {
@@ -171,20 +184,23 @@ class StakingPool extends Contract {
         // It makes it a bit awkward this way to update the state in the validator, but it's safer
         // account calling us has to be account removing stake
         const staker = this.txn.sender;
-        assert(amountToUnstake !== 0);
 
-        const stakers = clone(this.Stakers.value);
-        for (let i = 0; i < stakers.length; i += 1) {
-            if (stakers[i].Account === staker) {
-                if (stakers[i].Balance < amountToUnstake) {
+        // const stakers = clone(this.Stakers.value);
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            if (this.Stakers.value[i].Account === staker) {
+                if (amountToUnstake === 0) {
+                    // specifying 0 for unstake amount is requesting to UNSTAKE ALL
+                    amountToUnstake = this.Stakers.value[i].Balance;
+                }
+                if (this.Stakers.value[i].Balance < amountToUnstake) {
                     throw Error('Insufficient balance');
                 }
-                stakers[i].Balance -= amountToUnstake;
+                this.Stakers.value[i].Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
 
                 // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
                 assert(
-                    stakers[i].Balance === 0 || stakers[i].Balance >= this.MinAllowedStake.value,
+                    this.Stakers.value[i].Balance === 0 || this.Stakers.value[i].Balance >= this.MinAllowedStake.value,
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 
@@ -195,15 +211,15 @@ class StakingPool extends Contract {
                     note: 'unstaked',
                 });
                 let stakerRemoved = false;
-                if (stakers[i].Balance === 0) {
+                if (this.Stakers.value[i].Balance === 0) {
                     // Staker has been 'removed' - zero out record
                     this.NumStakers.value -= 1;
-                    stakers[i].Account = globals.zeroAddress;
-                    stakers[i].TotalRewarded = 0;
+                    this.Stakers.value[i].Account = globals.zeroAddress;
+                    this.Stakers.value[i].TotalRewarded = 0;
                     stakerRemoved = true;
                 }
                 // Update the box w/ the new staker data
-                this.Stakers.value[i] = stakers[i];
+                this.Stakers.value[i] = this.Stakers.value[i];
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it
@@ -234,10 +250,10 @@ class StakingPool extends Contract {
      */
     // @abi.readonly
     getStakerInfo(staker: Address): StakedInfo {
-        const stakers = clone(this.Stakers.value);
-        for (let i = 0; i < stakers.length; i += 1) {
-            if (stakers[i].Account === staker) {
-                return stakers[i];
+        // const stakers = clone(this.Stakers.value);
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            if (this.Stakers.value[i].Account === staker) {
+                return this.Stakers.value[i];
             }
         }
         throw Error('Account not found');
@@ -258,7 +274,7 @@ class StakingPool extends Contract {
      * compounds over time and staker can remove that amount at will.
      * The validator is paid their percentage each epoch payout.
      *
-     * @returns {void}
+     * @returns {void} or asserts.
      */
     payStakers(): void {
         assert(this.isOwnerOrManagerCaller());
@@ -294,14 +310,16 @@ class StakingPool extends Contract {
 
         // ---
         // pay the validator their cut...
-        sendPayment({
-            amount: validatorPay,
-            receiver: validatorCommissionAddress,
-            note: 'validator reward',
-        });
+        if (validatorPay > 0) {
+            sendPayment({
+                amount: validatorPay,
+                receiver: validatorCommissionAddress,
+                note: 'validator reward',
+            });
+        }
 
         if (rewardAvailable === 0) {
-            // likely a personal validator node - we just isssued the entire reward to them - we're done
+            // likely a personal validator node - we just issued the entire reward to them - we're done
             return;
         }
 

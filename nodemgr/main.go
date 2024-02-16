@@ -71,7 +71,7 @@ func (ac *AppConfig) initClients(ctx *cli.Context) error {
 	network := ctx.Value("network").(string)
 
 	switch network {
-	case "betanet", "testnet", "mainnet", "voi":
+	case "betanet", "testnet", "mainnet", "voitestnet":
 	default:
 		return fmt.Errorf("unknown network:%s", network)
 	}

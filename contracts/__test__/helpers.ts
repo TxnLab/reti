@@ -5,11 +5,14 @@ import {
     decodeAddress,
     encodeAddress,
     encodeUint64,
+    getApplicationAddress,
     makePaymentTxnWithSuggestedParamsFromObject,
 } from 'algosdk';
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
+import { transferAlgos } from '@algorandfoundation/algokit-utils';
+import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 
@@ -111,28 +114,32 @@ export class StakedInfo {
 
     TotalRewarded: bigint;
 
+    RewardTokenBalance: bigint;
+
     EntryTime: bigint;
 
     constructor(data: Uint8Array) {
         this.Staker = decodeAddress(encodeAddress(data.slice(0, 32)));
         this.Balance = bytesToBigInt(data.slice(32, 40));
         this.TotalRewarded = bytesToBigInt(data.slice(40, 48));
-        this.EntryTime = bytesToBigInt(data.slice(48, 56));
+        this.RewardTokenBalance = bytesToBigInt(data.slice(48, 56));
+        this.EntryTime = bytesToBigInt(data.slice(56, 64));
     }
 
-    public static fromValues([Staker, Balance, TotalRewarded, EntryTime]: [
+    public static fromValues([Staker, Balance, TotalRewarded, RewardTokenBalance, EntryTime]: [
         string,
         bigint,
         bigint,
         bigint,
+        bigint,
     ]): StakedInfo {
-        return { Staker: decodeAddress(Staker), Balance, TotalRewarded, EntryTime };
+        return { Staker: decodeAddress(Staker), Balance, TotalRewarded, RewardTokenBalance, EntryTime };
     }
 
     public static FromBoxData(boxData: Uint8Array): StakedInfo[] {
-        // take 56-byte chunks of boxData and return as an array of StakedInfo values (initialized via its constructor
-        // which takes 56-byte chunks and returns an initialized StakedInfo
-        const chunkSize = 56;
+        // take 64-byte chunks of boxData and return as an array of StakedInfo values (initialized via its constructor
+        // which takes 64-byte chunks and returns an initialized StakedInfo
+        const chunkSize = 64;
         const stakedInfoArray: StakedInfo[] = [];
         for (let i = 0; i < boxData.length; i += chunkSize) {
             const chunk = boxData.slice(i, i + chunkSize);
@@ -238,7 +245,8 @@ export async function addStakingPool(
     validatorClient: ValidatorRegistryClient,
     validatorID: number,
     vldtrAcct: Account,
-    poolMbr: bigint
+    poolMbr: bigint,
+    poolInitMbr: bigint
 ) {
     const suggestedParams = await context.algod.getTransactionParams().do();
     const validatorsAppRef = await validatorClient.appClient.getAppReference();
@@ -251,10 +259,11 @@ export async function addStakingPool(
         suggestedParams,
     });
 
+    let addPoolResults: any;
     // Before validator can add pools it needs to be funded
     try {
         // Now add a staking pool
-        const results = await validatorClient
+        addPoolResults = await validatorClient
             .compose()
             .addPool(
                 {
@@ -274,23 +283,44 @@ export async function addStakingPool(
                 }
             )
             .execute({ populateAppCallResources: true });
-
-        return new ValidatorPoolKey(results.returns![0]);
     } catch (exception) {
         console.log((exception as LogicError).message);
         throw exception;
     }
+    const validatorPoolKey = addPoolResults.returns![0];
+
+    // Pay the mbr to the newly created staking pool contract to cover its upcoming box mbr storage req
+    await transferAlgos(
+        {
+            from: context.testAccount,
+            to: getApplicationAddress(validatorPoolKey[2]),
+            amount: AlgoAmount.MicroAlgos(Number(poolInitMbr)),
+        },
+        context.algod
+    );
+
+    // now tell it to initialize its storage
+    const newPoolClient = new StakingPoolClient(
+        { sender: vldtrAcct, resolveBy: 'id', id: validatorPoolKey[2] },
+        context.algod
+    );
+    await newPoolClient.initStorage({}, { sendParams: { populateAppCallResources: true } });
+
+    return new ValidatorPoolKey(validatorPoolKey);
 }
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
-    return new PoolInfo(
-        (
-            await validatorClient
-                .compose()
-                .getPoolInfo({ poolKey: poolKey.encode() }, {})
-                .simulate({ allowUnnamedResources: true })
-        ).returns![0]
-    );
+    try {
+        const PoolRet = await validatorClient
+            .compose()
+            .getPoolInfo({ poolKey: poolKey.encode() }, {})
+            .simulate({ allowUnnamedResources: true });
+        return new PoolInfo(PoolRet.returns![0]);
+    } catch (exception) {
+        console.log((exception as LogicError).message);
+        throw validatorClient.appClient.exposeLogicError(exception as Error);
+        // throw exception;
+    }
 }
 
 export async function getStakedPoolsForAccount(
@@ -309,14 +339,20 @@ export async function getStakedPoolsForAccount(
 }
 
 export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Account) {
-    return StakedInfo.fromValues(
-        (
-            await stakeClient
-                .compose()
-                .getStakerInfo({ staker: staker.addr }, {})
-                .simulate({ allowUnnamedResources: true })
-        ).returns![0]
-    );
+    try {
+        return StakedInfo.fromValues(
+            (
+                await stakeClient
+                    .compose()
+                    .getStakerInfo({ staker: staker.addr }, {})
+                    .simulate({ allowUnnamedResources: true })
+            ).returns![0]
+        );
+    } catch (exception) {
+        console.log((exception as LogicError).message);
+        throw stakeClient.appClient.exposeLogicError(exception as Error);
+        // throw exception;
+    }
 }
 
 export async function addStake(
@@ -392,37 +428,61 @@ export async function addStake(
 
         return new ValidatorPoolKey(results.returns[1]);
     } catch (exception) {
-        throw validatorClient.appClient.exposeLogicError(exception as Error);
-        // consoleLogger.warn((exception as LogicError).message);
-        // throw exception;
+        consoleLogger.warn((exception as LogicError).message);
+        // throw validatorClient.appClient.exposeLogicError(exception as Error);
+        throw exception;
     }
 }
 
 export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
     try {
         return (
-            await stakeClient.removeStake(
-                { amountToUnstake: unstakeAmount.microAlgos },
-                {
-                    sendParams: {
-                        // pays us back and tells validator about balance changed
-                        fee: AlgoAmount.MicroAlgos(4000),
-                        populateAppCallResources: true,
-                    },
-                    sender: staker,
-                    // apps: [Number(validatorAppID)],
-                    // boxes: [
-                    //     { appId: 0, name: getStakersBoxName() },
-                    //     { appId: 0, name: '' }, // buy more i/o
-                    //     { appId: 0, name: '' }, // buy more i/o
-                    //     { appId: 0, name: '' }, // buy more i/o
-                    // ],
-                }
-            )
-        ).return!;
+            await stakeClient
+                .compose()
+                .gas({})
+                .removeStake(
+                    { amountToUnstake: unstakeAmount.microAlgos },
+                    {
+                        sendParams: {
+                            // pays us back and tells validator about balance changed
+                            fee: AlgoAmount.MicroAlgos(4000),
+                        },
+                        sender: staker,
+                        // apps: [Number(validatorAppID)],
+                        // boxes: [
+                        //     { appId: 0, name: getStakersBoxName() },
+                        //     { appId: 0, name: '' }, // buy more i/o
+                        //     { appId: 0, name: '' }, // buy more i/o
+                        //     { appId: 0, name: '' }, // buy more i/o
+                        // ],
+                    }
+                )
+                .execute({ populateAppCallResources: true })
+        ).returns![1]!;
     } catch (exception) {
+        consoleLogger.warn((exception as LogicError).message);
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
-        // consoleLogger.warn((exception as LogicError).message);
         throw exception;
     }
+}
+
+export async function logStakingPoolInfo(
+    context: AlgorandTestAutomationContext,
+    PoolAppID: bigint,
+    msgToDisplay: string
+) {
+    const firstPoolClient = new StakingPoolClient(
+        { sender: context.testAccount, resolveBy: 'id', id: PoolAppID },
+        context.algod
+    );
+    const stakers = await getStakeInfoFromBoxValue(firstPoolClient);
+    // iterate stakers displaying the info
+    let i = 0;
+    consoleLogger.info(msgToDisplay);
+    stakers.forEach((staker) => {
+        if (encodeAddress(staker.Staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
+            consoleLogger.info(`${i}: Staker:${encodeAddress(staker.Staker.publicKey)}, Balance:${staker.Balance}`);
+        }
+        i += 1;
+    });
 }

@@ -22,7 +22,8 @@ type ValidatorPoolKey = {
 export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout
+    // account that receives the validation commission each epoch payout: TODO allow ZeroAddress  (but only if PercentToValidator is 0)
+    ValidatorCommissionAddress: Address;
     MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
@@ -51,7 +52,9 @@ type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
     Manager: Address; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
-    NFDForInfo: uint64; // Optional NFD AppID which the validator uses to describe their validator pool
+    // Optional NFD AppID which the validator uses to describe their validator pool
+    // NFD must be currently OWNED by Owner or Manager address (TODO ..)
+    NFDForInfo: uint64;
     Config: ValidatorConfig;
     State: ValidatorCurState;
     Nodes: StaticArray<NodeInfo, typeof MAX_NODES>;
@@ -61,6 +64,7 @@ type ValidatorInfo = {
 type MbrAmounts = {
     AddValidatorMbr: uint64;
     AddPoolMbr: uint64;
+    PoolInitMbr: uint64;
     AddStakerMbr: uint64;
 };
 
@@ -137,6 +141,7 @@ class ValidatorRegistry extends Contract {
                 1 /* v prefix */ + 8 /* key id size */ + 2003 /* ValidatorInfo struct size */
             ),
             AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 0),
+            PoolInitMbr: ALGORAND_ACCOUNT_MIN_BALANCE + this.costForBoxStorage( 7 /* 'stakers' name */ + 5120 /* size of StakedInfo * MAX_STAKERS_IN_POOL */),
             AddStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(3 /* 'sps' prefix */ + 32 /* account */ + 24 /* ValidatorPoolKey size */ * 4), // size of key + all values
@@ -484,7 +489,10 @@ class ValidatorRegistry extends Contract {
         // Verify all the value in the ValidatorConfig are correct
         assert(config.PayoutEveryXDays >= MIN_PAYOUT_DAYS && config.PayoutEveryXDays <= MAX_PAYOUT_DAYS);
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
-        assert(config.ValidatorCommissionAddress !== Address.zeroAddress);
+        if (config.PercentToValidator !== 0) {
+            assert(config.ValidatorCommissionAddress !== Address.zeroAddress,
+                'ValidatorCommissionAddress must be set if percent to validator is not 0');
+        }
         assert(config.MinAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
         assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);

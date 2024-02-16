@@ -14,12 +14,13 @@
       minimum stake of 1,000 ALGO would mean minimum 73,000 ALGO stake if the pool was filled with stakers.  Users can remove 
       stake at will but can't go below the minimum, unless they exit the pool entirely, removing all of their ALGO.
     * A 'maximum' allowed stake per pool - this should be below the max allowed before incentives stop.
+    * An optional NFT creator account specifying that stakers must hold an ASA created by that creator in order to stake with the pool.
     * Number of pools per node (this equates to a participation key [account]).  Maximum of 3 will be recommended
       but validator storage will allow up to 6 pools.
     * Max number of 'nodes' - this will be enforced softly via the node/key management process, but the effective number of pools becomes
       {max nodes} * {max pools per node}.  Currently, this would be 72.
-    * An optional NFD ID to associate with the validator so that services will be able to link stakers to information about the validator.
-      The validator would presumably describe their services, justifying their rates, promoting how they run their infrastructure, etc.  
+    * An optional NFD ID to associate with the validator (that must be owned by the owner or manager) so that services will be able to link stakers 
+      to information about the validator. The validator would presumably describe their services, justifying their rates, promoting how they run their infrastructure, etc.  
       Mechanisms will be provided which will allow the users to have the created staking pool contract accounts 'verify' against the NFD so 
       that all staking pool operations link to that validator on-chain   
 

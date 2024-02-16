@@ -45,6 +45,14 @@
       }
     },
     {
+      "name": "initStorage",
+      "desc": "Called after we're created and then funded so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "addStake",
       "desc": "Adds stake to the given account.Can ONLY be called by the validator contract that created usMust receive payment from the validator contract for amount being staked.",
       "args": [
@@ -71,7 +79,7 @@
         {
           "name": "amountToUnstake",
           "type": "uint64",
-          "desc": "The amount of stake to be removed."
+          "desc": "The amount of stake to be removed.  Specify 0 to remove all stake."
         }
       ],
       "returns": {
@@ -89,7 +97,7 @@
         }
       ],
       "returns": {
-        "type": "(address,uint64,uint64,uint64)",
+        "type": "(address,uint64,uint64,uint64,uint64)",
         "desc": "{StakedInfo}- The staked information for the given staker."
       }
     },
@@ -99,7 +107,7 @@
       "args": [],
       "returns": {
         "type": "void",
-        "desc": "{void}"
+        "desc": "{void}or asserts."
       }
     },
     {
