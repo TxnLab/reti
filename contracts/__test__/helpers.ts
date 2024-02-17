@@ -224,7 +224,7 @@ export async function addValidator(
         return Number(results.returns![0]);
     } catch (e) {
         // throw validatorClient.appClient.exposeLogicError(e as Error)
-        console.log((e as LogicError).message);
+        consoleLogger.warn((e as LogicError).message);
         throw e;
     }
 }
@@ -311,6 +311,7 @@ export async function addStakingPool(
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
     try {
+        consoleLogger.info(`getting pool info for validator:${poolKey.ID}, pool:${poolKey.PoolID}`);
         const PoolRet = await validatorClient
             .compose()
             .getPoolInfo({ poolKey: poolKey.encode() }, {})
@@ -366,21 +367,25 @@ export async function addStake(
         const suggestedParams = await context.algod.getTransactionParams().do();
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
-        const poolKey = new ValidatorPoolKey(
-            (
-                await validatorClient.findPoolForStaker(
-                    { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
-                    {
-                        sendParams: {
-                            fee: AlgoAmount.MicroAlgos(2000),
-                            populateAppCallResources: true,
-                        },
-                    }
-                )
-            ).return!
-        );
+        const dummy = (
+            await validatorClient.findPoolForStaker(
+                { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
+                {
+                    sendParams: {
+                        fee: AlgoAmount.MicroAlgos(2000),
+                        populateAppCallResources: true,
+                    },
+                }
+            )
+        ).return!;
 
+        const poolKey = new ValidatorPoolKey(dummy[0]);
+        const willBeNewStaker = dummy[1];
         const poolAppId = poolKey.PoolAppID;
+
+        consoleLogger.info(
+            `addStake findPool will add to:${poolKey.ID}, pool:${poolKey.PoolID} and willBeNew:${willBeNewStaker}`
+        );
 
         // Pay the stake to the validator contract
         const stakeTransfer = makePaymentTxnWithSuggestedParamsFromObject({
@@ -389,6 +394,55 @@ export async function addStake(
             amount: algoAmount.microAlgos,
             suggestedParams,
         });
+
+        // // for debugging purposes - lets simulate first so we can get logs
+        // //
+        // const simulateResults = await validatorClient
+        //     .compose()
+        //     .gas(
+        //         {},
+        //         {
+        //             apps: [Number(poolAppId)],
+        //             boxes: [
+        //                 { appId: Number(poolAppId), name: new TextEncoder().encode('stakers') },
+        //                 { appId: Number(poolAppId), name: '' },
+        //                 { appId: Number(poolAppId), name: '' },
+        //                 { appId: Number(poolAppId), name: '' },
+        //                 { appId: Number(poolAppId), name: '' },
+        //                 { appId: Number(poolAppId), name: '' },
+        //             ],
+        //         }
+        //     )
+        //     .addStake(
+        //         // This the actual send of stake to the ac
+        //         {
+        //             stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
+        //             validatorID: vldtrId,
+        //         },
+        //         {
+        //             sendParams: {
+        //                 fee: AlgoAmount.MicroAlgos(5000),
+        //             },
+        //             sender: staker,
+        //             // apps: [tmplPoolAppID],
+        //             // boxes: [
+        //             //     { appId: 0, name: getValidatorListBoxName(vldtrId) },
+        //             //     { appId: 0, name: '' }, // buy more i/o
+        //             //     { appId: 0, name: getStakerPoolSetName(staker) },
+        //             // ],
+        //         }
+        //     )
+        //     .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
+        //
+        // const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult;
+        // // verify logs isn't undefined
+        // if (logs !== undefined) {
+        //     logs.forEach((uint8array) => {
+        //         consoleLogger.info(new TextDecoder().decode(uint8array));
+        //     });
+        // }
+        // stakeTransfer.group = undefined;
+
         const results = await validatorClient
             .compose()
             .gas(

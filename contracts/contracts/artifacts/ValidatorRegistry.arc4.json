@@ -311,8 +311,8 @@
         }
       ],
       "returns": {
-        "type": "(uint64,uint64,uint64)",
-        "desc": "{ValidatorPoolKey}- The pool for the staker."
+        "type": "((uint64,uint64,uint64),bool)",
+        "desc": "{ValidatorPoolKey, boolean}- The pool for the staker and true/false on whether the staker is 'new' to this validator"
       }
     }
   ]

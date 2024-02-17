@@ -215,10 +215,11 @@ export class StakingPool extends Contract {
                     this.NumStakers.value -= 1;
                     this.Stakers.value[i].Account = globals.zeroAddress;
                     this.Stakers.value[i].TotalRewarded = 0;
+                    this.Stakers.value[i].RewardTokenBalance = 0;
                     stakerRemoved = true;
                 }
                 // Update the box w/ the new staker data
-                this.Stakers.value[i] = this.Stakers.value[i];
+                // this.Stakers.value[i] = this.Stakers.value[i];
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it

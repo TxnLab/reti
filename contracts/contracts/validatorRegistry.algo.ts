@@ -1,9 +1,10 @@
 import { Contract } from '@algorandfoundation/tealscript';
-import { StakingPool, StakedInfo } from './stakingPool.algo';
+// eslint-disable-next-line import/no-cycle
+import { StakedInfo, StakingPool } from './stakingPool.algo';
 import {
-    MAX_STAKERS_PER_POOL,
     MAX_ALGO_PER_POOL,
     MAX_PCT_TO_VALIDATOR,
+    MAX_STAKERS_PER_POOL,
     MIN_ALGO_STAKE_PER_POOL,
     MIN_PCT_TO_VALIDATOR,
 } from './constants.algo';
@@ -16,7 +17,7 @@ const MAX_PAYOUT_DAYS = 30;
 
 type ValidatorID = uint64;
 export type ValidatorPoolKey = {
-    ID: ValidatorID;
+    ID: ValidatorID; // 0 is invalid - should start at 1 (but is direct key in box)
     PoolID: uint64; // 0 means INVALID ! - so 1 is index, technically of [0]
     PoolAppID: uint64;
 };
@@ -24,8 +25,7 @@ export type ValidatorPoolKey = {
 export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    // account that receives the validation commission each epoch payout: TODO allow ZeroAddress  (but only if PercentToValidator is 0)
-    ValidatorCommissionAddress: Address;
+    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress
     MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
@@ -325,6 +325,8 @@ export class ValidatorRegistry extends Contract {
      * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
     addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
+        assert(this.ValidatorList(validatorID).exists);
+
         const staker = this.txn.sender;
         // The prior transaction should be a payment to this pool for the amount specified
         // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
@@ -335,7 +337,7 @@ export class ValidatorRegistry extends Contract {
 
         let realAmount = stakedAmountPayment.amount;
         let mbrAmtLeftBehind: uint64 = 0;
-        // determine if this is FIRST time this user has staked with this pool
+        // determine if this is FIRST time this user has ever staked - they need to pay MBR
         if (!this.StakerPoolSet(staker).exists) {
             // We'll deduct the required MBR from what the user is depositing by telling callPoolAddState to leave
             // that amount behind and subtract from their depositing stake.
@@ -345,9 +347,16 @@ export class ValidatorRegistry extends Contract {
         }
         // find existing slot where staker is already in a pool w/ this validator, or if none found, then ensure they're
         // putting in minimum amount for this validator.
-        const poolKey = this.findPoolForStaker(validatorID, staker, realAmount);
+        const dummy = this.findPoolForStaker(validatorID, staker, realAmount);
+        const poolKey = dummy[0];
+        const isNewStaker = dummy[1];
         if (poolKey.PoolID === 0) {
             throw Error('No pool available with free stake.  Validator needs to add another pool');
+        }
+        if (isNewStaker) {
+            log('got return from findPoolForStaker - isNewStaker is TRUE')
+        } else {
+            log('got return from findPoolForStaker - isNewStaker is FALSE')
         }
 
         // Update StakerPoolList for this found pool (new or existing)
@@ -355,7 +364,7 @@ export class ValidatorRegistry extends Contract {
         increaseOpcodeBudget();
         // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool and it then updates
         // the staker data.
-        this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind);
+        this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind, isNewStaker);
         return poolKey;
     }
 
@@ -422,13 +431,18 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked -= amountRemoved;
         if (stakerRemoved) {
+            // remove form that pool
             this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1;
-            this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1;
-            this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
+            // .. then update the staker set..
+            const stakerOutOfThisValidator = this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
                 ID: poolKey.ID,
                 PoolID: poolKey.PoolID,
                 PoolAppID: poolKey.PoolAppID,
             });
+            // .. and remove as a staker in protocol stats if they're completely 'out'
+            if (stakerOutOfThisValidator) {
+                this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1;
+            }
         }
     }
 
@@ -440,12 +454,13 @@ export class ValidatorRegistry extends Contract {
      * @param {ValidatorID} validatorID - The ID of the validator.
      * @param {Address} staker - The address of the staker.
      * @param {uint64} amountToStake - The amount to stake.
-     * @returns {ValidatorPoolKey} - The pool for the staker.
+     * @returns {ValidatorPoolKey, boolean} - The pool for the staker and true/false on whether the staker is 'new' to this validator
      */
-    findPoolForStaker(validatorID: ValidatorID, staker: Address, amountToStake: uint64): ValidatorPoolKey {
+    findPoolForStaker(validatorID: ValidatorID, staker: Address, amountToStake: uint64): [ValidatorPoolKey, boolean] {
         // expensive loops - buy it up right now
         increaseOpcodeBudget();
 
+        let isBrandNewStaker = true;
         // We have max per pool per validator - this value is stored in the pools as well and they enforce it on their
         // addStake calls but the values should be the same and we shouldn't even try to add stake if it won't even
         // be accepted.
@@ -454,36 +469,43 @@ export class ValidatorRegistry extends Contract {
         // validator, then go to the stakers existing pool(s) w/ this validator first.
         if (this.StakerPoolSet(staker).exists) {
             const poolSet = clone(this.StakerPoolSet(staker).value);
+            assert(validatorID !== 0);
             for (let i = 0; i < poolSet.length; i += 1) {
                 if (poolSet[i].ID === validatorID) {
-                    // This staker already has stake with this validator - if room left, start there first
+                    // Not new to this validator - but might still be out of room in this slot..
+                    log('found validator id entry for this staker');
+                    // log(this.itoa(validatorID));
+                    isBrandNewStaker = false;
                     if (
                         this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
                             amountToStake <=
                         maxPerPool
                     ) {
-                        return poolSet[i];
+                        return [poolSet[i], isBrandNewStaker];
                     }
                 }
             }
         }
+        if (isBrandNewStaker) {
+            log('in findPoolForStaker will return true for isBrandNewStaker');
+        }
 
-        // We don't already have stake in place, so ensure the stake meets the 'minimum entry' amount
+        // No existing stake found or that we fit in to, so ensure the stake meets the 'minimum entry' amount
         assert(
             amountToStake >= this.ValidatorList(validatorID).value.Config.MinAllowedStake,
             'must stake at least the minimum for this pool'
         );
 
-        // Walk these validators pools and find free space
+        // Walk their desired validators pools and find free space
         const pools = clone(this.ValidatorList(validatorID).value.Pools);
         const curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
         for (let i = 0; i < curNumPools; i += 1) {
             if (pools[i].TotalAlgoStaked + amountToStake <= maxPerPool) {
-                return { ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID };
+                return [{ ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID }, isBrandNewStaker];
             }
         }
         // Not found is poolID 0
-        return { ID: validatorID, PoolID: 0, PoolAppID: 0 };
+        return [{ ID: validatorID, PoolID: 0, PoolAppID: 0 }, isBrandNewStaker];
     }
 
     private validateConfig(config: ValidatorConfig): void {
@@ -510,8 +532,14 @@ export class ValidatorRegistry extends Contract {
      * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
      * @param {ValidatorPoolKey} poolKey - The key of the validator pool.
      * @param {uint64} mbrAmtPaid - Amount the user is leaving behind in the validator to pay for their Staker MBR cost
+     * @param {boolean} isNewStaker - if this is a new, first-time staker to the validator
      */
-    private callPoolAddStake(stakedAmountPayment: PayTxn, poolKey: ValidatorPoolKey, mbrAmtPaid: uint64): void {
+    private callPoolAddStake(
+        stakedAmountPayment: PayTxn,
+        poolKey: ValidatorPoolKey,
+        mbrAmtPaid: uint64,
+        isNewStaker: boolean
+    ): void {
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
         const priorStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
 
@@ -535,7 +563,15 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = poolAlgoStaked;
 
         // now update our global totals based on delta (if new staker was added, new amount - can only have gone up or stayed same)
-        this.ValidatorList(poolKey.ID).value.State.TotalStakers += poolNumStakers - priorStakers;
+        if (isNewStaker) {
+            log('incrementing because new staker')
+            // this.ValidatorList(poolKey.ID).value.State.TotalStakers += 1;
+            this.ValidatorList(poolKey.ID).value.State.TotalStakers = this.ValidatorList(poolKey.ID).value.State.TotalStakers + 1;
+        } else {
+            log('NOT incrementing because existing staker')
+        }
+        // this.ValidatorList(poolKey.ID).value.State.TotalStakers += poolNumStakers - priorStakers;
+
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid;
     }
 
@@ -562,17 +598,29 @@ export class ValidatorRegistry extends Contract {
      * @param {Address} staker - The address of the staker.
      * @param {ValidatorPoolKey} poolKey - The pool key they should be stored in
      *
-     * @return {void}
+     * @return {boolean} is the staker gone from ALL pools of the given validator
      */
-    private removeFromStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {
+    private removeFromStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey): boolean {
+        // track how many pools staker is in so we  can know if they remove all stake from all pools of this validator
+        let inXPools = 0;
+        let found = false;
+
         const poolSet = clone(this.StakerPoolSet(staker).value);
         for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1) {
-            if (poolSet[i] === poolKey) {
-                // 'zero' it out
-                this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0, PoolAppID: 0 };
-                return;
+            if (poolSet[i].ID === poolKey.ID) {
+                if (poolSet[i] === poolKey) {
+                    found = true;
+                    // 'zero' it out
+                    this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0, PoolAppID: 0 };
+                } else {
+                    inXPools += 1;
+                }
             }
         }
-        throw Error('No matching slot found when told to remove a pool from the stakers set');
+        if (!found) {
+            throw Error('No matching slot found when told to remove a pool from the stakers set');
+        }
+        // Are they completely out of the staking pool ?
+        return inXPools === 0;
     }
 }
