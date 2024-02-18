@@ -253,11 +253,12 @@
         {
           "name": "poolKey",
           "type": "(uint64,uint64,uint64)",
-          "desc": "ValidatorPoolKey type - [validatorID, PoolID] compound type"
+          "desc": "ValidatorPoolKey type"
         },
         {
           "name": "amountToAdd",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "amount this validator's total stake increased via rewards"
         }
       ],
       "returns": {

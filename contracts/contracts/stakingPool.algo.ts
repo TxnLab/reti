@@ -1,9 +1,10 @@
 import { Contract } from '@algorandfoundation/tealscript';
+// eslint-disable-next-line import/no-cycle
 import { ValidatorRegistry } from './validatorRegistry.algo';
 import { MAX_STAKERS_PER_POOL, MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
-const AVG_BLOCK_TIME_SECS = 30; // in tenths - 30 = 3.0
+const AVG_BLOCK_TIME_SECS = 28; // in tenths - 28 = 2.8
 
 export type StakedInfo = {
     Account: Address;

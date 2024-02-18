@@ -355,14 +355,10 @@ export class ValidatorRegistry extends Contract {
         return poolKey;
     }
 
-    /**
-     * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total
-     * stake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.
-     * The calling App ID is validated against our pool list as well.
-     * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
-     * @param amountToAdd
-     */
-    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, amountToAdd: uint64): void {
+    // verifyPoolKeyCaller verifies the passed in key (from a staking pool calling us to update metrics) is valid
+    // and matches the information we have in our state.  'Fake' pools could call us to update our data, but they
+    // can't fake the ids and most importantly application id(!) of the caller that has to match.
+    private verifyPoolKeyCaller(poolKey: ValidatorPoolKey): void {
         assert(this.ValidatorList(poolKey.ID).exists);
         assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
         assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
@@ -374,9 +370,20 @@ export class ValidatorRegistry extends Contract {
         );
         // Sender has to match the pool app id passed in as well.
         assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address);
-        // verify its state matches as well
+        // verify the state of the specified app (the staking pool itself) state matches as well !
         assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64));
         assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64));
+    }
+
+    /**
+     * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total
+     * stake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.
+     * The calling App ID is validated against our pool list as well.
+     * @param poolKey - ValidatorPoolKey type
+     * @param amountToAdd - amount this validator's total stake increased via rewards
+     */
+    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, amountToAdd: uint64): void {
+        this.verifyPoolKeyCaller(poolKey);
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd;
@@ -395,20 +402,7 @@ export class ValidatorRegistry extends Contract {
     stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
         increaseOpcodeBudget();
 
-        assert(this.ValidatorList(poolKey.ID).exists);
-        assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
-        assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
-        // validator id, pool id, pool app id might still be kind of spoofed but they can't spoof us verifying they called us from
-        // the contract address of the pool app id they represent.
-        assert(
-            poolKey.PoolAppID === this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID,
-            "The passed in app id doesn't match the passed in ids"
-        );
-        // Sender has to match the pool app id contract address passed in as well!
-        assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address);
-        // verify its state matches..
-        assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64));
-        assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64));
+        this.verifyPoolKeyCaller(poolKey);
 
         // Yup - we've been called by an official staking pool telling us about stake that was removed from it
         // so we can update our validator's staking stats.
