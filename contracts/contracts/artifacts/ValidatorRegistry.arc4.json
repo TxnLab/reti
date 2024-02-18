@@ -145,7 +145,12 @@
         {
           "name": "nfdAppID",
           "type": "uint64",
-          "desc": "Optional NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found."
+          "desc": "(Optional) NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found."
+        },
+        {
+          "name": "nfdName",
+          "type": "string",
+          "desc": "(Optional) Name of nfd (used as double-check against id"
         },
         {
           "name": "config",

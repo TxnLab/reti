@@ -57,6 +57,9 @@ beforeAll(async () => {
             sender: testAccount,
             resolveBy: 'id',
             id: 0,
+            deployTimeParams: {
+                'NFDRegistryAppID': 0
+            }
         },
         algod
     );

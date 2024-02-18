@@ -209,6 +209,7 @@ export async function addValidator(
                     owner: owner.addr,
                     manager: owner.addr,
                     nfdAppID: 0,
+                    nfdName: '',
                     config: validatorConfigAsArray(config),
                 },
                 {

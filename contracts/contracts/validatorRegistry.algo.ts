@@ -49,7 +49,7 @@ type ValidatorInfo = {
     Owner: Address; // Account that controls config - presumably cold-wallet
     Manager: Address; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
     // Optional NFD AppID which the validator uses to describe their validator pool
-    // NFD must be currently OWNED by Owner or Manager address (TODO ..)
+    // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: uint64;
     Config: ValidatorConfig;
     State: ValidatorCurState;
@@ -88,6 +88,8 @@ export class ValidatorRegistry extends Contract {
 
     // The app id of a staking pool contract instance to use as template for newly created pools
     StakingPoolTemplateAppID = GlobalStateKey<uint64>({ key: 'poolTemplateAppID' });
+
+    NFDRegistryAppID = TemplateVar<uint64>();
 
     createApplication(poolTemplateAppID: uint64): void {
         this.numValidators.value = 0;
@@ -205,7 +207,8 @@ export class ValidatorRegistry extends Contract {
      * @param mbrPayment payment from caller which covers mbr increase of new validator storage
      * @param owner The account (presumably cold-wallet) that owns the validator set
      * @param manager The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys
-     * @param nfdAppID Optional NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found.
+     * @param nfdAppID (Optional) NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found.
+     * @param nfdName (Optional) Name of nfd (used as double-check against id
      * @param config ValidatorConfig struct
      * @returns validator ID
      */
@@ -214,6 +217,7 @@ export class ValidatorRegistry extends Contract {
         owner: Address,
         manager: Address,
         nfdAppID: uint64,
+        nfdName: string,
         config: ValidatorConfig
     ): uint64 {
         assert(owner !== Address.zeroAddress);
@@ -232,6 +236,16 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Owner = owner;
         this.ValidatorList(validatorID).value.Manager = manager;
         this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
+        if (nfdAppID !== 0) {
+            // verify nfd is real, and owned by owner, or manager
+            sendAppCall({
+                applicationID: Application.fromID(this.NFDRegistryAppID),
+                applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
+            });
+            // Verify the NFDs owner is same as our sender (presumably either owner or manager)
+            assert(this.txn.sender === (Application.fromID(nfdAppID).globalState('i.owner.a') as Address),
+                'If specifying NFD, account adding validator must be owner');
+        }
         this.ValidatorList(validatorID).value.Config = config;
         return validatorID;
     }
