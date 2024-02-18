@@ -1036,14 +1036,14 @@ isOwnerOrManagerCaller:
 	byte 0x
 
 	// contracts/stakingPool.algo.ts:262
-	// OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
+	// info = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorInfo>({
 	//             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
 	//             methodArgs: [this.ValidatorID.value],
 	//         })
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getValidatorOwnerAndManager(uint64)(address,address)"
+	method "getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[NaN])"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:263
@@ -1070,19 +1070,19 @@ isOwnerOrManagerCaller:
 	-
 	itxnas Logs
 	extract 4 0
-	frame_bury 0 // OwnerAndManager: (address,address)
+	frame_bury 0 // info: (uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[NaN])
 
 	// contracts/stakingPool.algo.ts:266
-	// return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
+	// return this.txn.sender === info.Owner || this.txn.sender === info.Manager;
 	txn Sender
-	frame_dig 0 // OwnerAndManager: (address,address)
-	extract 0 32
+	frame_dig 0 // info: (uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[NaN])
+	extract 8 32
 	==
 	dup
 	bnz *skip_or1
 	txn Sender
-	frame_dig 0 // OwnerAndManager: (address,address)
-	extract 32 32
+	frame_dig 0 // info: (uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[NaN])
+	extract 40 32
 	==
 	||
 
@@ -1126,7 +1126,7 @@ payStakers:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8,uint16)"
+	method "getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:282
@@ -1153,11 +1153,11 @@ payStakers:
 	-
 	itxnas Logs
 	extract 4 0
-	frame_bury 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8,uint16)
+	frame_bury 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8)
 
 	// contracts/stakingPool.algo.ts:285
 	// payoutDays = payoutConfig.PayoutEveryXDays as uint64
-	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8,uint16)
+	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8)
 	extract 0 2
 	btoi
 	frame_bury 1 // payoutDays: uint64
@@ -1198,7 +1198,7 @@ payStakers:
 	// contracts/stakingPool.algo.ts:299
 	// validatorPay = wideRatio([rewardAvailable, payoutConfig.PercentToValidator], [1000000])
 	frame_dig 3 // rewardAvailable: uint64
-	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8,uint16)
+	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8)
 	extract 2 4
 	btoi
 	mulw
@@ -1245,7 +1245,7 @@ payStakers:
 
 	// contracts/stakingPool.algo.ts:308
 	// receiver: payoutConfig.ValidatorCommissionAddress
-	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8,uint16)
+	frame_dig 0 // payoutConfig: (uint16,uint32,address,uint64,uint64,uint8)
 	extract 6 32
 	itxn_field Receiver
 

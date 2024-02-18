@@ -35,7 +35,6 @@ const DefaultValidatorConfig: ValidatorConfig = {
     MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
     MaxAlgoPerPool: AlgoAmount.Algos(200_000).microAlgos,
     PoolsPerNode: 3,
-    MaxNodes: 4,
 };
 
 export function createValidatorConfig(inputConfig: ValidatorConfig): ValidatorConfig {
@@ -45,7 +44,7 @@ export function createValidatorConfig(inputConfig: ValidatorConfig): ValidatorCo
     };
 }
 
-function validatorConfigAsArray(config: ValidatorConfig): [number, number, string, number, number, number, number] {
+function validatorConfigAsArray(config: ValidatorConfig): [number, number, string, number, number, number] {
     return [
         config.PayoutEveryXDays!,
         config.PercentToValidator!,
@@ -53,7 +52,6 @@ function validatorConfigAsArray(config: ValidatorConfig): [number, number, strin
         config.MinEntryStake!,
         config.MaxAlgoPerPool!,
         config.PoolsPerNode!,
-        config.MaxNodes!,
     ];
 }
 

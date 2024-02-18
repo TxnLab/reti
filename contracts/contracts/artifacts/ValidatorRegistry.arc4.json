@@ -46,7 +46,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])"
+        "type": "(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])"
       }
     },
     {
@@ -58,7 +58,7 @@
         }
       ],
       "returns": {
-        "type": "(uint16,uint32,address,uint64,uint64,uint8,uint16)"
+        "type": "(uint16,uint32,address,uint64,uint64,uint8)"
       }
     },
     {
@@ -149,7 +149,7 @@
         },
         {
           "name": "config",
-          "type": "(uint16,uint32,address,uint64,uint64,uint8,uint16)",
+          "type": "(uint16,uint32,address,uint64,uint64,uint8)",
           "desc": "ValidatorConfig struct"
         }
       ],

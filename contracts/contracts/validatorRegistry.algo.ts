@@ -9,7 +9,7 @@ import {
     MIN_PCT_TO_VALIDATOR,
 } from './constants.algo';
 
-const MAX_NODES = 12; // need to be careful of max size of ValidatorList and embedded PoolInfo
+const MAX_NODES = 12; // more just as a reasonable limit and cap on contract storage
 const MAX_POOLS_PER_NODE = 6; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
 const MIN_PAYOUT_DAYS = 1;
@@ -25,11 +25,10 @@ export type ValidatorPoolKey = {
 export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress
+    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
     MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
-    MaxNodes: uint16; // Maximum number of nodes the validator is stating they'll allow
 };
 
 type ValidatorCurState = {
@@ -45,11 +44,6 @@ type PoolInfo = {
     TotalAlgoStaked: uint64;
 };
 
-type NodeInfo = {
-    ID: uint16; // just sequentially assigned... can only be a few anyway..
-    Name: StaticArray<byte, 32>;
-};
-
 type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
@@ -59,7 +53,6 @@ type ValidatorInfo = {
     NFDForInfo: uint64;
     Config: ValidatorConfig;
     State: ValidatorCurState;
-    Nodes: StaticArray<NodeInfo, typeof MAX_NODES>;
     Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
 };
 
@@ -178,6 +171,7 @@ export class ValidatorRegistry extends Contract {
     }
 
     // @abi.readonly
+    // getPoolAppID is more of a sanity check than anything as the app id is already encoded in ValidatorPoolKey
     getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
         return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
     }
@@ -239,8 +233,6 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Manager = manager;
         this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
         this.ValidatorList(validatorID).value.Config = config;
-        // TODO - what about nodes ?
-        this.ValidatorList(validatorID).value.Nodes[0].Name = 'foo';
         return validatorID;
     }
 
@@ -347,16 +339,11 @@ export class ValidatorRegistry extends Contract {
         }
         // find existing slot where staker is already in a pool w/ this validator, or if none found, then ensure they're
         // putting in minimum amount for this validator.
-        const dummy = this.findPoolForStaker(validatorID, staker, realAmount);
-        const poolKey = dummy[0];
-        const isNewStaker = dummy[1];
+        const findRet = this.findPoolForStaker(validatorID, staker, realAmount);
+        const poolKey = findRet[0];
+        const isNewStaker = findRet[1];
         if (poolKey.PoolID === 0) {
             throw Error('No pool available with free stake.  Validator needs to add another pool');
-        }
-        if (isNewStaker) {
-            log('got return from findPoolForStaker - isNewStaker is TRUE')
-        } else {
-            log('got return from findPoolForStaker - isNewStaker is FALSE')
         }
 
         // Update StakerPoolList for this found pool (new or existing)
@@ -521,7 +508,6 @@ export class ValidatorRegistry extends Contract {
         assert(config.MinAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
         assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
-        assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES);
     }
 
     /**
@@ -564,14 +550,8 @@ export class ValidatorRegistry extends Contract {
 
         // now update our global totals based on delta (if new staker was added, new amount - can only have gone up or stayed same)
         if (isNewStaker) {
-            log('incrementing because new staker')
-            // this.ValidatorList(poolKey.ID).value.State.TotalStakers += 1;
-            this.ValidatorList(poolKey.ID).value.State.TotalStakers = this.ValidatorList(poolKey.ID).value.State.TotalStakers + 1;
-        } else {
-            log('NOT incrementing because existing staker')
+            this.ValidatorList(poolKey.ID).value.State.TotalStakers += 1;
         }
-        // this.ValidatorList(poolKey.ID).value.State.TotalStakers += poolNumStakers - priorStakers;
-
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid;
     }
 

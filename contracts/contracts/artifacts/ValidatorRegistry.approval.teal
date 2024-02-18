@@ -36,13 +36,13 @@ switch *call_NoOp *NOT_IMPLEMENTED *NOT_IMPLEMENTED *NOT_IMPLEMENTED *NOT_IMPLEM
 createApplication:
 	proto 1 0
 
-	// contracts/validatorRegistry.algo.ts:100
+	// contracts/validatorRegistry.algo.ts:93
 	// this.numValidators.value = 0
 	byte 0x6e756d56 // "numV"
 	int 0
 	app_global_put
 
-	// contracts/validatorRegistry.algo.ts:101
+	// contracts/validatorRegistry.algo.ts:94
 	// this.StakingPoolTemplateAppID.value = poolTemplateAppID
 	byte 0x706f6f6c54656d706c6174654170704944 // "poolTemplateAppID"
 	frame_dig -1 // poolTemplateAppID: uint64
@@ -70,12 +70,12 @@ minBalanceForAccount:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/validatorRegistry.algo.ts:118
+	// contracts/validatorRegistry.algo.ts:111
 	// minBal = ALGORAND_ACCOUNT_MIN_BALANCE
 	int 100000
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:119
+	// contracts/validatorRegistry.algo.ts:112
 	// minBal += contracts * APPLICATION_BASE_FEE
 	frame_dig 0 // minBal: uint64
 	frame_dig -1 // contracts: number
@@ -84,7 +84,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:120
+	// contracts/validatorRegistry.algo.ts:113
 	// minBal += extraPages * APPLICATION_BASE_FEE
 	frame_dig 0 // minBal: uint64
 	frame_dig -2 // extraPages: number
@@ -93,7 +93,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:121
+	// contracts/validatorRegistry.algo.ts:114
 	// minBal += assets * ASSET_HOLDING_FEE
 	frame_dig 0 // minBal: uint64
 	frame_dig -3 // assets: number
@@ -102,7 +102,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:122
+	// contracts/validatorRegistry.algo.ts:115
 	// minBal += localInts * SSC_VALUE_UINT
 	frame_dig 0 // minBal: uint64
 	frame_dig -4 // localInts: number
@@ -111,7 +111,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:123
+	// contracts/validatorRegistry.algo.ts:116
 	// minBal += globalInts * SSC_VALUE_UINT
 	frame_dig 0 // minBal: uint64
 	frame_dig -6 // globalInts: number
@@ -120,7 +120,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:124
+	// contracts/validatorRegistry.algo.ts:117
 	// minBal += localBytes * SSC_VALUE_BYTES
 	frame_dig 0 // minBal: uint64
 	frame_dig -5 // localBytes: number
@@ -129,7 +129,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:125
+	// contracts/validatorRegistry.algo.ts:118
 	// minBal += globalBytes * SSC_VALUE_BYTES
 	frame_dig 0 // minBal: uint64
 	frame_dig -7 // globalBytes: number
@@ -138,7 +138,7 @@ minBalanceForAccount:
 	+
 	frame_bury 0 // minBal: uint64
 
-	// contracts/validatorRegistry.algo.ts:126
+	// contracts/validatorRegistry.algo.ts:119
 	// return minBal;
 	frame_dig 0 // minBal: uint64
 
@@ -150,7 +150,7 @@ minBalanceForAccount:
 costForBoxStorage:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:133
+	// contracts/validatorRegistry.algo.ts:126
 	// return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
 	int 2500
 	frame_dig -1 // totalNumBytes: number
@@ -175,7 +175,7 @@ costForBoxStorage:
 getMbrAmounts:
 	proto 0 1
 
-	// contracts/validatorRegistry.algo.ts:140
+	// contracts/validatorRegistry.algo.ts:133
 	// return {
 	//             AddValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorID>() + len<ValidatorInfo>()),
 	//             AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 0),
@@ -186,7 +186,7 @@ getMbrAmounts:
 	//                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
 	//                 this.costForBoxStorage(3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * 4), // size of key + all values
 	//         };
-	int 2012
+	int 1602
 	callsub costForBoxStorage
 	itob
 	int 0
@@ -228,13 +228,13 @@ getMbrAmounts:
 getNumValidators:
 	proto 0 1
 
-	// contracts/validatorRegistry.algo.ts:157
+	// contracts/validatorRegistry.algo.ts:150
 	// return this.numValidators.value;
 	byte 0x6e756d56 // "numV"
 	app_global_get
 	retsub
 
-// getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])
+// getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])
 *abi_route_getValidatorInfo:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -243,7 +243,7 @@ getNumValidators:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])
+	// execute getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])
 	callsub getValidatorInfo
 	concat
 	log
@@ -254,7 +254,7 @@ getNumValidators:
 getValidatorInfo:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:162
+	// contracts/validatorRegistry.algo.ts:155
 	// return this.ValidatorList(validatorID).value;
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -264,7 +264,7 @@ getValidatorInfo:
 	assert
 	retsub
 
-// getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8,uint16)
+// getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8)
 *abi_route_getValidatorConfig:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -273,7 +273,7 @@ getValidatorInfo:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8,uint16)
+	// execute getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8)
 	callsub getValidatorConfig
 	concat
 	log
@@ -284,10 +284,10 @@ getValidatorInfo:
 getValidatorConfig:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:167
+	// contracts/validatorRegistry.algo.ts:160
 	// return this.ValidatorList(validatorID).value.Config;
 	int 80 // headOffset
-	int 57
+	int 55
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -316,9 +316,9 @@ getValidatorConfig:
 getValidatorState:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:172
+	// contracts/validatorRegistry.algo.ts:165
 	// return this.ValidatorList(validatorID).value.State;
-	int 137 // headOffset
+	int 135 // headOffset
 	int 18
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -348,7 +348,7 @@ getValidatorState:
 getValidatorOwnerAndManager:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:177
+	// contracts/validatorRegistry.algo.ts:170
 	// return [this.ValidatorList(validatorID).value.Owner, this.ValidatorList(validatorID).value.Manager];
 	int 8 // headOffset
 	int 32
@@ -394,9 +394,9 @@ getValidatorOwnerAndManager:
 getPoolAppID:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:182
+	// contracts/validatorRegistry.algo.ts:176
 	// return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -443,9 +443,9 @@ getPoolAppID:
 getPoolInfo:
 	proto 1 1
 
-	// contracts/validatorRegistry.algo.ts:187
+	// contracts/validatorRegistry.algo.ts:181
 	// return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1];
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -504,7 +504,7 @@ getStakedPoolsForAccount:
 	dupn 2
 
 	// *if0_condition
-	// contracts/validatorRegistry.algo.ts:197
+	// contracts/validatorRegistry.algo.ts:191
 	// !this.StakerPoolSet(staker).exists
 	byte 0x737073 // "sps"
 	frame_dig -1 // staker: Account
@@ -516,18 +516,18 @@ getStakedPoolsForAccount:
 	bz *if0_end
 
 	// *if0_consequent
-	// contracts/validatorRegistry.algo.ts:198
+	// contracts/validatorRegistry.algo.ts:192
 	// return [];
 	byte 0x
 	retsub
 
 *if0_end:
-	// contracts/validatorRegistry.algo.ts:200
+	// contracts/validatorRegistry.algo.ts:194
 	// retData: ValidatorPoolKey[] = []
 	byte 0x
 	frame_bury 0 // retData: ValidatorPoolKey[]
 
-	// contracts/validatorRegistry.algo.ts:201
+	// contracts/validatorRegistry.algo.ts:195
 	// poolSet = clone(this.StakerPoolSet(staker).value)
 	byte 0x737073 // "sps"
 	frame_dig -1 // staker: Account
@@ -536,13 +536,13 @@ getStakedPoolsForAccount:
 	assert
 	frame_bury 1 // poolSet: (uint64,uint64,uint64)[4]
 
-	// contracts/validatorRegistry.algo.ts:202
+	// contracts/validatorRegistry.algo.ts:196
 	// for (let i = 0; i < poolSet.length; i += 1)
 	int 0
 	frame_bury 2 // i: uint64
 
 *for_0:
-	// contracts/validatorRegistry.algo.ts:202
+	// contracts/validatorRegistry.algo.ts:196
 	// i < poolSet.length
 	frame_dig 2 // i: uint64
 	int 4
@@ -550,7 +550,7 @@ getStakedPoolsForAccount:
 	bz *for_0_end
 
 	// *if1_condition
-	// contracts/validatorRegistry.algo.ts:203
+	// contracts/validatorRegistry.algo.ts:197
 	// poolSet[i].ID !== 0
 	frame_dig 1 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 2 // i: uint64
@@ -566,7 +566,7 @@ getStakedPoolsForAccount:
 	bz *if1_end
 
 	// *if1_consequent
-	// contracts/validatorRegistry.algo.ts:204
+	// contracts/validatorRegistry.algo.ts:198
 	// retData.push(poolSet[i])
 	frame_dig 0 // retData: ValidatorPoolKey[]
 	frame_dig 1 // poolSet: (uint64,uint64,uint64)[4]
@@ -579,7 +579,7 @@ getStakedPoolsForAccount:
 	frame_bury 0 // retData: ValidatorPoolKey[]
 
 *if1_end:
-	// contracts/validatorRegistry.algo.ts:202
+	// contracts/validatorRegistry.algo.ts:196
 	// i += 1
 	frame_dig 2 // i: uint64
 	int 1
@@ -588,7 +588,7 @@ getStakedPoolsForAccount:
 	b *for_0
 
 *for_0_end:
-	// contracts/validatorRegistry.algo.ts:207
+	// contracts/validatorRegistry.algo.ts:201
 	// return retData;
 	frame_dig 0 // retData: ValidatorPoolKey[]
 
@@ -599,16 +599,16 @@ getStakedPoolsForAccount:
 	popn 2
 	retsub
 
-// addValidator(pay,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16))uint64
+// addValidator(pay,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8))uint64
 *abi_route_addValidator:
 	// The ABI return prefix
 	byte 0x151f7c75
 
-	// config: (uint16,uint32,address,uint64,uint64,uint8,uint16)
+	// config: (uint16,uint32,address,uint64,uint64,uint8)
 	txna ApplicationArgs 4
 	dup
 	len
-	int 57
+	int 55
 	==
 	assert
 
@@ -642,7 +642,7 @@ getStakedPoolsForAccount:
 	==
 	assert
 
-	// execute addValidator(pay,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16))uint64
+	// execute addValidator(pay,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8))uint64
 	callsub addValidator
 	itob
 	concat
@@ -665,21 +665,21 @@ addValidator:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/validatorRegistry.algo.ts:225
+	// contracts/validatorRegistry.algo.ts:219
 	// assert(owner !== Address.zeroAddress)
 	frame_dig -2 // owner: Address
 	global ZeroAddress
 	!=
 	assert
 
-	// contracts/validatorRegistry.algo.ts:226
+	// contracts/validatorRegistry.algo.ts:220
 	// assert(manager !== Address.zeroAddress)
 	frame_dig -3 // manager: Address
 	global ZeroAddress
 	!=
 	assert
 
-	// contracts/validatorRegistry.algo.ts:228
+	// contracts/validatorRegistry.algo.ts:222
 	// verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddValidatorMbr })
 	// verify amount
 	frame_dig -1 // mbrPayment: PayTxn
@@ -690,12 +690,12 @@ addValidator:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:230
+	// contracts/validatorRegistry.algo.ts:224
 	// this.validateConfig(config)
 	frame_dig -5 // config: ValidatorConfig
 	callsub validateConfig
 
-	// contracts/validatorRegistry.algo.ts:233
+	// contracts/validatorRegistry.algo.ts:227
 	// validatorID = this.numValidators.value + 1
 	byte 0x6e756d56 // "numV"
 	app_global_get
@@ -703,23 +703,23 @@ addValidator:
 	+
 	frame_bury 0 // validatorID: uint64
 
-	// contracts/validatorRegistry.algo.ts:234
+	// contracts/validatorRegistry.algo.ts:228
 	// this.numValidators.value = validatorID
 	byte 0x6e756d56 // "numV"
 	frame_dig 0 // validatorID: uint64
 	app_global_put
 
-	// contracts/validatorRegistry.algo.ts:236
+	// contracts/validatorRegistry.algo.ts:230
 	// this.ValidatorList(validatorID).create()
 	byte 0x76 // "v"
 	frame_dig 0 // validatorID: uint64
 	itob
 	concat
-	int 2003
+	int 1593
 	box_create
 	pop
 
-	// contracts/validatorRegistry.algo.ts:237
+	// contracts/validatorRegistry.algo.ts:231
 	// this.ValidatorList(validatorID).value.ID = validatorID
 	int 0
 	frame_dig 0 // validatorID: uint64
@@ -731,7 +731,7 @@ addValidator:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:238
+	// contracts/validatorRegistry.algo.ts:232
 	// this.ValidatorList(validatorID).value.Owner = owner
 	int 8 // headOffset
 	frame_dig -2 // owner: Address
@@ -742,7 +742,7 @@ addValidator:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:239
+	// contracts/validatorRegistry.algo.ts:233
 	// this.ValidatorList(validatorID).value.Manager = manager
 	int 40 // headOffset
 	frame_dig -3 // manager: Address
@@ -753,7 +753,7 @@ addValidator:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:240
+	// contracts/validatorRegistry.algo.ts:234
 	// this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID
 	int 72 // headOffset
 	frame_dig -4 // nfdAppID: uint64
@@ -765,7 +765,7 @@ addValidator:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:241
+	// contracts/validatorRegistry.algo.ts:235
 	// this.ValidatorList(validatorID).value.Config = config
 	int 80 // headOffset
 	frame_dig -5 // config: ValidatorConfig
@@ -776,18 +776,7 @@ addValidator:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:243
-	// this.ValidatorList(validatorID).value.Nodes[0].Name = 'foo'
-	int 157
-	byte 0x666f6f // "foo"
-	byte 0x76 // "v"
-	frame_dig 0 // validatorID: uint64
-	itob
-	concat
-	cover 2
-	box_replace
-
-	// contracts/validatorRegistry.algo.ts:244
+	// contracts/validatorRegistry.algo.ts:236
 	// return validatorID;
 	frame_dig 0 // validatorID: uint64
 
@@ -818,7 +807,7 @@ addValidator:
 changeValidatorManager:
 	proto 2 0
 
-	// contracts/validatorRegistry.algo.ts:281
+	// contracts/validatorRegistry.algo.ts:240
 	// assert(this.txn.sender === this.ValidatorList(validatorID).value.Owner)
 	txn Sender
 	int 8 // headOffset
@@ -832,7 +821,7 @@ changeValidatorManager:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:282
+	// contracts/validatorRegistry.algo.ts:241
 	// this.ValidatorList(validatorID).value.Manager = manager
 	int 40 // headOffset
 	frame_dig -2 // manager: Address
@@ -863,7 +852,7 @@ changeValidatorManager:
 changeValidatorNFD:
 	proto 2 0
 
-	// contracts/validatorRegistry.algo.ts:286
+	// contracts/validatorRegistry.algo.ts:245
 	// assert(
 	//             this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
 	//                 this.txn.sender === this.ValidatorList(validatorID).value.Manager
@@ -895,7 +884,7 @@ changeValidatorNFD:
 *skip_or0:
 	assert
 
-	// contracts/validatorRegistry.algo.ts:290
+	// contracts/validatorRegistry.algo.ts:249
 	// this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID
 	int 72 // headOffset
 	frame_dig -2 // nfdAppID: uint64
@@ -931,7 +920,7 @@ changeValidatorNFD:
 changeValidatorCommissionAddress:
 	proto 2 0
 
-	// contracts/validatorRegistry.algo.ts:294
+	// contracts/validatorRegistry.algo.ts:253
 	// assert(
 	//             this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
 	//                 this.txn.sender === this.ValidatorList(validatorID).value.Manager
@@ -963,7 +952,7 @@ changeValidatorCommissionAddress:
 *skip_or1:
 	assert
 
-	// contracts/validatorRegistry.algo.ts:298
+	// contracts/validatorRegistry.algo.ts:257
 	// this.ValidatorList(validatorID).value.Config.ValidatorCommissionAddress = commissionAddress
 	int 86
 	frame_dig -2 // commissionAddress: Address
@@ -1014,7 +1003,7 @@ addPool:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/validatorRegistry.algo.ts:309
+	// contracts/validatorRegistry.algo.ts:268
 	// verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr })
 	// verify amount
 	frame_dig -1 // mbrPayment: PayTxn
@@ -1025,7 +1014,7 @@ addPool:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:311
+	// contracts/validatorRegistry.algo.ts:270
 	// assert(this.ValidatorList(validatorID).exists)
 	byte 0x76 // "v"
 	frame_dig -2 // validatorID: ValidatorID
@@ -1036,7 +1025,7 @@ addPool:
 	pop
 	assert
 
-	// contracts/validatorRegistry.algo.ts:314
+	// contracts/validatorRegistry.algo.ts:273
 	// assert(
 	//             this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
 	//                 this.txn.sender === this.ValidatorList(validatorID).value.Manager
@@ -1068,9 +1057,9 @@ addPool:
 *skip_or2:
 	assert
 
-	// contracts/validatorRegistry.algo.ts:319
+	// contracts/validatorRegistry.algo.ts:278
 	// numPools = this.ValidatorList(validatorID).value.State.NumPools
-	int 137
+	int 135
 	int 2
 	byte 0x76 // "v"
 	frame_dig -2 // validatorID: ValidatorID
@@ -1082,7 +1071,7 @@ addPool:
 	frame_bury 0 // numPools: uint16
 
 	// *if2_condition
-	// contracts/validatorRegistry.algo.ts:320
+	// contracts/validatorRegistry.algo.ts:279
 	// (numPools as uint64) >= MAX_POOLS
 	frame_dig 0 // numPools: uint16
 	int 72
@@ -1093,14 +1082,14 @@ addPool:
 	err // 'already at max pool size'
 
 *if2_end:
-	// contracts/validatorRegistry.algo.ts:323
+	// contracts/validatorRegistry.algo.ts:282
 	// numPools += 1
 	frame_dig 0 // numPools: uint16
 	int 1
 	+
 	frame_bury 0 // numPools: uint16
 
-	// contracts/validatorRegistry.algo.ts:326
+	// contracts/validatorRegistry.algo.ts:285
 	// sendAppCall({
 	//             onCompletion: OnCompletion.NoOp,
 	//             approvalProgram: Application.fromID(this.StakingPoolTemplateAppID.value).approvalProgram,
@@ -1122,12 +1111,12 @@ addPool:
 	int appl
 	itxn_field TypeEnum
 
-	// contracts/validatorRegistry.algo.ts:327
+	// contracts/validatorRegistry.algo.ts:286
 	// onCompletion: OnCompletion.NoOp
 	int 0 // NoOp
 	itxn_field OnCompletion
 
-	// contracts/validatorRegistry.algo.ts:328
+	// contracts/validatorRegistry.algo.ts:287
 	// approvalProgram: Application.fromID(this.StakingPoolTemplateAppID.value).approvalProgram
 	byte 0x706f6f6c54656d706c6174654170704944 // "poolTemplateAppID"
 	app_global_get
@@ -1135,7 +1124,7 @@ addPool:
 	pop
 	itxn_field ApprovalProgram
 
-	// contracts/validatorRegistry.algo.ts:329
+	// contracts/validatorRegistry.algo.ts:288
 	// clearStateProgram: Application.fromID(this.StakingPoolTemplateAppID.value).clearStateProgram
 	byte 0x706f6f6c54656d706c6174654170704944 // "poolTemplateAppID"
 	app_global_get
@@ -1143,7 +1132,7 @@ addPool:
 	pop
 	itxn_field ClearStateProgram
 
-	// contracts/validatorRegistry.algo.ts:330
+	// contracts/validatorRegistry.algo.ts:289
 	// globalNumUint: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumUint
 	byte 0x706f6f6c54656d706c6174654170704944 // "poolTemplateAppID"
 	app_global_get
@@ -1151,7 +1140,7 @@ addPool:
 	pop
 	itxn_field GlobalNumUint
 
-	// contracts/validatorRegistry.algo.ts:331
+	// contracts/validatorRegistry.algo.ts:290
 	// globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumByteSlice
 	byte 0x706f6f6c54656d706c6174654170704944 // "poolTemplateAppID"
 	app_global_get
@@ -1159,7 +1148,7 @@ addPool:
 	pop
 	itxn_field GlobalNumByteSlice
 
-	// contracts/validatorRegistry.algo.ts:332
+	// contracts/validatorRegistry.algo.ts:291
 	// extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID.value).extraProgramPages
 	byte 0x706f6f6c54656d706c6174654170704944 // "poolTemplateAppID"
 	app_global_get
@@ -1167,7 +1156,7 @@ addPool:
 	pop
 	itxn_field ExtraProgramPages
 
-	// contracts/validatorRegistry.algo.ts:333
+	// contracts/validatorRegistry.algo.ts:292
 	// applicationArgs: [
 	//                 // creatingContractID, validatorID, poolID, minAllowedStake, maxStakeAllowed
 	//                 method('createApplication(uint64,uint64,uint64,uint64,uint64)void'),
@@ -1218,9 +1207,9 @@ addPool:
 	// Submit inner transaction
 	itxn_submit
 
-	// contracts/validatorRegistry.algo.ts:344
+	// contracts/validatorRegistry.algo.ts:303
 	// this.ValidatorList(validatorID).value.State.NumPools = numPools
-	int 137
+	int 135
 	frame_dig 0 // numPools: uint16
 	itob
 	extract 6 2
@@ -1231,9 +1220,9 @@ addPool:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:347
+	// contracts/validatorRegistry.algo.ts:306
 	// this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig 0 // numPools: uint16
 	int 1
 	-
@@ -1251,7 +1240,7 @@ addPool:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:350
+	// contracts/validatorRegistry.algo.ts:309
 	// return { ID: validatorID, PoolID: numPools as uint64, PoolAppID: this.itxn!.createdApplicationID.id };
 	frame_dig -2 // validatorID: ValidatorID
 	itob
@@ -1306,7 +1295,7 @@ addStake:
 	byte 0x
 	dupn 4
 
-	// contracts/validatorRegistry.algo.ts:361
+	// contracts/validatorRegistry.algo.ts:320
 	// assert(this.ValidatorList(validatorID).exists)
 	byte 0x76 // "v"
 	frame_dig -2 // validatorID: ValidatorID
@@ -1317,12 +1306,12 @@ addStake:
 	pop
 	assert
 
-	// contracts/validatorRegistry.algo.ts:363
+	// contracts/validatorRegistry.algo.ts:322
 	// staker = this.txn.sender
 	txn Sender
 	frame_bury 0 // staker: address
 
-	// contracts/validatorRegistry.algo.ts:366
+	// contracts/validatorRegistry.algo.ts:325
 	// verifyPayTxn(stakedAmountPayment, {
 	//             sender: staker,
 	//             receiver: this.app.address,
@@ -1341,19 +1330,19 @@ addStake:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:371
+	// contracts/validatorRegistry.algo.ts:330
 	// realAmount = stakedAmountPayment.amount
 	frame_dig -1 // stakedAmountPayment: PayTxn
 	gtxns Amount
 	frame_bury 1 // realAmount: uint64
 
-	// contracts/validatorRegistry.algo.ts:372
+	// contracts/validatorRegistry.algo.ts:331
 	// mbrAmtLeftBehind: uint64 = 0
 	int 0
 	frame_bury 2 // mbrAmtLeftBehind: uint64
 
 	// *if3_condition
-	// contracts/validatorRegistry.algo.ts:374
+	// contracts/validatorRegistry.algo.ts:333
 	// !this.StakerPoolSet(staker).exists
 	byte 0x737073 // "sps"
 	frame_dig 0 // staker: address
@@ -1365,21 +1354,21 @@ addStake:
 	bz *if3_end
 
 	// *if3_consequent
-	// contracts/validatorRegistry.algo.ts:377
+	// contracts/validatorRegistry.algo.ts:336
 	// mbrAmtLeftBehind = this.getMbrAmounts().AddStakerMbr
 	callsub getMbrAmounts
 	extract 24 8
 	btoi
 	frame_bury 2 // mbrAmtLeftBehind: uint64
 
-	// contracts/validatorRegistry.algo.ts:378
+	// contracts/validatorRegistry.algo.ts:337
 	// realAmount -= mbrAmtLeftBehind
 	frame_dig 1 // realAmount: uint64
 	frame_dig 2 // mbrAmtLeftBehind: uint64
 	-
 	frame_bury 1 // realAmount: uint64
 
-	// contracts/validatorRegistry.algo.ts:379
+	// contracts/validatorRegistry.algo.ts:338
 	// this.StakerPoolSet(staker).create()
 	byte 0x737073 // "sps"
 	frame_dig 0 // staker: address
@@ -1389,19 +1378,19 @@ addStake:
 	pop
 
 *if3_end:
-	// contracts/validatorRegistry.algo.ts:383
-	// dummy = this.findPoolForStaker(validatorID, staker, realAmount)
+	// contracts/validatorRegistry.algo.ts:342
+	// findRet = this.findPoolForStaker(validatorID, staker, realAmount)
 	frame_dig 1 // realAmount: uint64
 	frame_dig 0 // staker: address
 	frame_dig -2 // validatorID: ValidatorID
 	callsub findPoolForStaker
-	frame_bury 3 // dummy: ((uint64,uint64,uint64),bool)
+	frame_bury 3 // findRet: ((uint64,uint64,uint64),bool)
 
-	// contracts/validatorRegistry.algo.ts:384
-	// poolKey = dummy[0]
-	// contracts/validatorRegistry.algo.ts:385
-	// isNewStaker = dummy[1]
-	frame_dig 3 // dummy: ((uint64,uint64,uint64),bool)
+	// contracts/validatorRegistry.algo.ts:343
+	// poolKey = findRet[0]
+	// contracts/validatorRegistry.algo.ts:344
+	// isNewStaker = findRet[1]
+	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
 	load 255 // full array
 	int 192
@@ -1409,9 +1398,9 @@ addStake:
 	frame_bury 4 // isNewStaker: bool
 
 	// *if4_condition
-	// contracts/validatorRegistry.algo.ts:386
+	// contracts/validatorRegistry.algo.ts:345
 	// poolKey.PoolID === 0
-	frame_dig 3 // dummy: ((uint64,uint64,uint64),bool)
+	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
 	load 255 // full array
 	extract 8 8
@@ -1424,36 +1413,16 @@ addStake:
 	err // 'No pool available with free stake.  Validator needs to add another pool'
 
 *if4_end:
-	// *if5_condition
-	// contracts/validatorRegistry.algo.ts:389
-	// isNewStaker
-	frame_dig 4 // isNewStaker: bool
-	bz *if5_else
-
-	// *if5_consequent
-	// contracts/validatorRegistry.algo.ts:390
-	// log('got return from findPoolForStaker - isNewStaker is TRUE')
-	byte 0x676f742072657475726e2066726f6d2066696e64506f6f6c466f725374616b6572202d2069734e65775374616b65722069732054525545 // "got return from findPoolForStaker - isNewStaker is TRUE"
-	log
-	b *if5_end
-
-*if5_else:
-	// contracts/validatorRegistry.algo.ts:392
-	// log('got return from findPoolForStaker - isNewStaker is FALSE')
-	byte 0x676f742072657475726e2066726f6d2066696e64506f6f6c466f725374616b6572202d2069734e65775374616b65722069732046414c5345 // "got return from findPoolForStaker - isNewStaker is FALSE"
-	log
-
-*if5_end:
-	// contracts/validatorRegistry.algo.ts:396
+	// contracts/validatorRegistry.algo.ts:350
 	// this.updateStakerPoolSet(staker, poolKey)
-	frame_dig 3 // dummy: ((uint64,uint64,uint64),bool)
+	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
 	load 255 // full array
 	extract 0 24
 	frame_dig 0 // staker: address
 	callsub updateStakerPoolSet
 
-	// contracts/validatorRegistry.algo.ts:397
+	// contracts/validatorRegistry.algo.ts:351
 	// increaseOpcodeBudget()
 	itxn_begin
 	int appl
@@ -1468,20 +1437,20 @@ addStake:
 	itxn_field OnCompletion
 	itxn_submit
 
-	// contracts/validatorRegistry.algo.ts:400
+	// contracts/validatorRegistry.algo.ts:354
 	// this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind, isNewStaker)
 	frame_dig 4 // isNewStaker: bool
 	frame_dig 2 // mbrAmtLeftBehind: uint64
-	frame_dig 3 // dummy: ((uint64,uint64,uint64),bool)
+	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
 	load 255 // full array
 	extract 0 24
 	frame_dig -1 // stakedAmountPayment: PayTxn
 	callsub callPoolAddStake
 
-	// contracts/validatorRegistry.algo.ts:401
+	// contracts/validatorRegistry.algo.ts:355
 	// return poolKey;
-	frame_dig 3 // dummy: ((uint64,uint64,uint64),bool)
+	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
 	load 255 // full array
 	extract 0 24
@@ -1522,7 +1491,7 @@ addStake:
 stakeUpdatedViaRewards:
 	proto 2 0
 
-	// contracts/validatorRegistry.algo.ts:412
+	// contracts/validatorRegistry.algo.ts:366
 	// assert(this.ValidatorList(poolKey.ID).exists)
 	byte 0x76 // "v"
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -1535,7 +1504,7 @@ stakeUpdatedViaRewards:
 	pop
 	assert
 
-	// contracts/validatorRegistry.algo.ts:413
+	// contracts/validatorRegistry.algo.ts:367
 	// assert((poolKey.PoolID as uint64) < 2 ** 16)
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -1546,7 +1515,7 @@ stakeUpdatedViaRewards:
 	<
 	assert
 
-	// contracts/validatorRegistry.algo.ts:414
+	// contracts/validatorRegistry.algo.ts:368
 	// assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools)
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -1558,7 +1527,7 @@ stakeUpdatedViaRewards:
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
-	int 137
+	int 135
 	int 2
 	byte 0x76 // "v"
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -1575,7 +1544,7 @@ stakeUpdatedViaRewards:
 *skip_and0:
 	assert
 
-	// contracts/validatorRegistry.algo.ts:417
+	// contracts/validatorRegistry.algo.ts:371
 	// assert(
 	//             poolKey.PoolAppID === this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID,
 	//             "The passed in app id doesn't match the passed in ids"
@@ -1583,7 +1552,7 @@ stakeUpdatedViaRewards:
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 16 8
 	btoi
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -1609,7 +1578,7 @@ stakeUpdatedViaRewards:
 	// The passed in app id doesn't match the passed in ids
 	assert
 
-	// contracts/validatorRegistry.algo.ts:422
+	// contracts/validatorRegistry.algo.ts:376
 	// assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address)
 	txn Sender
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -1620,7 +1589,7 @@ stakeUpdatedViaRewards:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:424
+	// contracts/validatorRegistry.algo.ts:378
 	// assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64))
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 0 8
@@ -1634,7 +1603,7 @@ stakeUpdatedViaRewards:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:425
+	// contracts/validatorRegistry.algo.ts:379
 	// assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64))
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -1648,9 +1617,9 @@ stakeUpdatedViaRewards:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:428
+	// contracts/validatorRegistry.algo.ts:382
 	// this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -1661,7 +1630,7 @@ stakeUpdatedViaRewards:
 	+
 	int 12 // headOffset
 	+
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -1694,9 +1663,9 @@ stakeUpdatedViaRewards:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:429
+	// contracts/validatorRegistry.algo.ts:383
 	// this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToAdd
-	int 147
+	int 145
 	dup
 	int 8
 	byte 0x76 // "v"
@@ -1773,7 +1742,7 @@ stakeRemoved:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/validatorRegistry.algo.ts:442
+	// contracts/validatorRegistry.algo.ts:396
 	// increaseOpcodeBudget()
 	itxn_begin
 	int appl
@@ -1788,7 +1757,7 @@ stakeRemoved:
 	itxn_field OnCompletion
 	itxn_submit
 
-	// contracts/validatorRegistry.algo.ts:444
+	// contracts/validatorRegistry.algo.ts:398
 	// assert(this.ValidatorList(poolKey.ID).exists)
 	byte 0x76 // "v"
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -1801,7 +1770,7 @@ stakeRemoved:
 	pop
 	assert
 
-	// contracts/validatorRegistry.algo.ts:445
+	// contracts/validatorRegistry.algo.ts:399
 	// assert((poolKey.PoolID as uint64) < 2 ** 16)
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -1812,7 +1781,7 @@ stakeRemoved:
 	<
 	assert
 
-	// contracts/validatorRegistry.algo.ts:446
+	// contracts/validatorRegistry.algo.ts:400
 	// assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools)
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -1824,7 +1793,7 @@ stakeRemoved:
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
-	int 137
+	int 135
 	int 2
 	byte 0x76 // "v"
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -1841,7 +1810,7 @@ stakeRemoved:
 *skip_and1:
 	assert
 
-	// contracts/validatorRegistry.algo.ts:449
+	// contracts/validatorRegistry.algo.ts:403
 	// assert(
 	//             poolKey.PoolAppID === this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID,
 	//             "The passed in app id doesn't match the passed in ids"
@@ -1849,7 +1818,7 @@ stakeRemoved:
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 16 8
 	btoi
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -1875,7 +1844,7 @@ stakeRemoved:
 	// The passed in app id doesn't match the passed in ids
 	assert
 
-	// contracts/validatorRegistry.algo.ts:454
+	// contracts/validatorRegistry.algo.ts:408
 	// assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address)
 	txn Sender
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -1886,7 +1855,7 @@ stakeRemoved:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:456
+	// contracts/validatorRegistry.algo.ts:410
 	// assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64))
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 0 8
@@ -1900,7 +1869,7 @@ stakeRemoved:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:457
+	// contracts/validatorRegistry.algo.ts:411
 	// assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64))
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -1914,16 +1883,16 @@ stakeRemoved:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:461
+	// contracts/validatorRegistry.algo.ts:415
 	// assert(amountRemoved > 0)
 	frame_dig -3 // amountRemoved: uint64
 	int 0
 	>
 	assert
 
-	// contracts/validatorRegistry.algo.ts:464
+	// contracts/validatorRegistry.algo.ts:418
 	// this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -1934,7 +1903,7 @@ stakeRemoved:
 	+
 	int 12 // headOffset
 	+
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -1967,9 +1936,9 @@ stakeRemoved:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:465
+	// contracts/validatorRegistry.algo.ts:419
 	// this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked -= amountRemoved
-	int 147
+	int 145
 	dup
 	int 8
 	byte 0x76 // "v"
@@ -1993,16 +1962,16 @@ stakeRemoved:
 	cover 2
 	box_replace
 
-	// *if6_condition
-	// contracts/validatorRegistry.algo.ts:466
+	// *if5_condition
+	// contracts/validatorRegistry.algo.ts:420
 	// stakerRemoved
 	frame_dig -4 // stakerRemoved: boolean
-	bz *if6_end
+	bz *if5_end
 
-	// *if6_consequent
-	// contracts/validatorRegistry.algo.ts:468
+	// *if5_consequent
+	// contracts/validatorRegistry.algo.ts:422
 	// this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -2013,7 +1982,7 @@ stakeRemoved:
 	+
 	int 10 // headOffset
 	+
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -2047,7 +2016,7 @@ stakeRemoved:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:470
+	// contracts/validatorRegistry.algo.ts:424
 	// stakerOutOfThisValidator = this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
 	//                 ID: poolKey.ID,
 	//                 PoolID: poolKey.PoolID,
@@ -2071,16 +2040,16 @@ stakeRemoved:
 	callsub removeFromStakerPoolSet
 	frame_bury 0 // stakerOutOfThisValidator: bool
 
-	// *if7_condition
-	// contracts/validatorRegistry.algo.ts:476
+	// *if6_condition
+	// contracts/validatorRegistry.algo.ts:430
 	// stakerOutOfThisValidator
 	frame_dig 0 // stakerOutOfThisValidator: bool
-	bz *if7_end
+	bz *if6_end
 
-	// *if7_consequent
-	// contracts/validatorRegistry.algo.ts:477
+	// *if6_consequent
+	// contracts/validatorRegistry.algo.ts:431
 	// this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1
-	int 139
+	int 137
 	dup
 	int 8
 	byte 0x76 // "v"
@@ -2104,9 +2073,9 @@ stakeRemoved:
 	cover 2
 	box_replace
 
-*if7_end:
-
 *if6_end:
+
+*if5_end:
 	retsub
 
 // findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool)
@@ -2154,7 +2123,7 @@ findPoolForStaker:
 	byte 0x
 	dupn 6
 
-	// contracts/validatorRegistry.algo.ts:494
+	// contracts/validatorRegistry.algo.ts:448
 	// increaseOpcodeBudget()
 	itxn_begin
 	int appl
@@ -2169,12 +2138,12 @@ findPoolForStaker:
 	itxn_field OnCompletion
 	itxn_submit
 
-	// contracts/validatorRegistry.algo.ts:496
+	// contracts/validatorRegistry.algo.ts:450
 	// isBrandNewStaker = true
 	int 1
 	frame_bury 0 // isBrandNewStaker: bool
 
-	// contracts/validatorRegistry.algo.ts:500
+	// contracts/validatorRegistry.algo.ts:454
 	// maxPerPool = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool
 	int 126
 	int 8
@@ -2187,8 +2156,8 @@ findPoolForStaker:
 	btoi
 	frame_bury 1 // maxPerPool: uint64
 
-	// *if8_condition
-	// contracts/validatorRegistry.algo.ts:503
+	// *if7_condition
+	// contracts/validatorRegistry.algo.ts:457
 	// this.StakerPoolSet(staker).exists
 	byte 0x737073 // "sps"
 	frame_dig -2 // staker: Address
@@ -2196,10 +2165,10 @@ findPoolForStaker:
 	box_len
 	swap
 	pop
-	bz *if8_end
+	bz *if7_end
 
-	// *if8_consequent
-	// contracts/validatorRegistry.algo.ts:504
+	// *if7_consequent
+	// contracts/validatorRegistry.algo.ts:458
 	// poolSet = clone(this.StakerPoolSet(staker).value)
 	byte 0x737073 // "sps"
 	frame_dig -2 // staker: Address
@@ -2208,28 +2177,28 @@ findPoolForStaker:
 	assert
 	frame_bury 2 // poolSet: (uint64,uint64,uint64)[4]
 
-	// contracts/validatorRegistry.algo.ts:505
+	// contracts/validatorRegistry.algo.ts:459
 	// assert(validatorID !== 0)
 	frame_dig -1 // validatorID: ValidatorID
 	int 0
 	!=
 	assert
 
-	// contracts/validatorRegistry.algo.ts:506
+	// contracts/validatorRegistry.algo.ts:460
 	// for (let i = 0; i < poolSet.length; i += 1)
 	int 0
 	frame_bury 3 // i: uint64
 
 *for_1:
-	// contracts/validatorRegistry.algo.ts:506
+	// contracts/validatorRegistry.algo.ts:460
 	// i < poolSet.length
 	frame_dig 3 // i: uint64
 	int 4
 	<
 	bz *for_1_end
 
-	// *if9_condition
-	// contracts/validatorRegistry.algo.ts:507
+	// *if8_condition
+	// contracts/validatorRegistry.algo.ts:461
 	// poolSet[i].ID === validatorID
 	frame_dig 2 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 3 // i: uint64
@@ -2242,25 +2211,25 @@ findPoolForStaker:
 	btoi
 	frame_dig -1 // validatorID: ValidatorID
 	==
-	bz *if9_end
+	bz *if8_end
 
-	// *if9_consequent
-	// contracts/validatorRegistry.algo.ts:509
+	// *if8_consequent
+	// contracts/validatorRegistry.algo.ts:463
 	// log('found validator id entry for this staker')
 	byte 0x666f756e642076616c696461746f7220696420656e74727920666f722074686973207374616b6572 // "found validator id entry for this staker"
 	log
 
-	// contracts/validatorRegistry.algo.ts:511
+	// contracts/validatorRegistry.algo.ts:465
 	// isBrandNewStaker = false
 	int 0
 	frame_bury 0 // isBrandNewStaker: bool
 
-	// *if10_condition
-	// contracts/validatorRegistry.algo.ts:513
+	// *if9_condition
+	// contracts/validatorRegistry.algo.ts:467
 	// this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
 	//                             amountToStake <=
 	//                         maxPerPool
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig 2 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 3 // i: uint64
 	int 24
@@ -2289,10 +2258,10 @@ findPoolForStaker:
 	+
 	frame_dig 1 // maxPerPool: uint64
 	<=
-	bz *if10_end
+	bz *if9_end
 
-	// *if10_consequent
-	// contracts/validatorRegistry.algo.ts:517
+	// *if9_consequent
+	// contracts/validatorRegistry.algo.ts:471
 	// return [poolSet[i], isBrandNewStaker];
 	frame_dig 2 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 3 // i: uint64
@@ -2313,10 +2282,10 @@ findPoolForStaker:
 	popn 3
 	retsub
 
-*if10_end:
-
 *if9_end:
-	// contracts/validatorRegistry.algo.ts:506
+
+*if8_end:
+	// contracts/validatorRegistry.algo.ts:460
 	// i += 1
 	frame_dig 3 // i: uint64
 	int 1
@@ -2326,21 +2295,21 @@ findPoolForStaker:
 
 *for_1_end:
 
-*if8_end:
-	// *if11_condition
-	// contracts/validatorRegistry.algo.ts:522
+*if7_end:
+	// *if10_condition
+	// contracts/validatorRegistry.algo.ts:476
 	// isBrandNewStaker
 	frame_dig 0 // isBrandNewStaker: bool
-	bz *if11_end
+	bz *if10_end
 
-	// *if11_consequent
-	// contracts/validatorRegistry.algo.ts:523
+	// *if10_consequent
+	// contracts/validatorRegistry.algo.ts:477
 	// log('in findPoolForStaker will return true for isBrandNewStaker')
 	byte 0x696e2066696e64506f6f6c466f725374616b65722077696c6c2072657475726e207472756520666f722069734272616e644e65775374616b6572 // "in findPoolForStaker will return true for isBrandNewStaker"
 	log
 
-*if11_end:
-	// contracts/validatorRegistry.algo.ts:527
+*if10_end:
+	// contracts/validatorRegistry.algo.ts:481
 	// assert(
 	//             amountToStake >= this.ValidatorList(validatorID).value.Config.MinAllowedStake,
 	//             'must stake at least the minimum for this pool'
@@ -2360,9 +2329,9 @@ findPoolForStaker:
 	// must stake at least the minimum for this pool
 	assert
 
-	// contracts/validatorRegistry.algo.ts:533
+	// contracts/validatorRegistry.algo.ts:487
 	// pools = clone(this.ValidatorList(validatorID).value.Pools)
-	int 563 // headOffset
+	int 153 // headOffset
 	int 1440
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -2372,9 +2341,9 @@ findPoolForStaker:
 	box_extract
 	frame_bury 4 // pools: (uint16,uint64,uint16,uint64)[72]
 
-	// contracts/validatorRegistry.algo.ts:534
+	// contracts/validatorRegistry.algo.ts:488
 	// curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64
-	int 137
+	int 135
 	int 2
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -2385,21 +2354,21 @@ findPoolForStaker:
 	btoi
 	frame_bury 5 // curNumPools: uint64
 
-	// contracts/validatorRegistry.algo.ts:535
+	// contracts/validatorRegistry.algo.ts:489
 	// for (let i = 0; i < curNumPools; i += 1)
 	int 0
 	frame_bury 6 // i: uint64
 
 *for_2:
-	// contracts/validatorRegistry.algo.ts:535
+	// contracts/validatorRegistry.algo.ts:489
 	// i < curNumPools
 	frame_dig 6 // i: uint64
 	frame_dig 5 // curNumPools: uint64
 	<
 	bz *for_2_end
 
-	// *if12_condition
-	// contracts/validatorRegistry.algo.ts:536
+	// *if11_condition
+	// contracts/validatorRegistry.algo.ts:490
 	// pools[i].TotalAlgoStaked + amountToStake <= maxPerPool
 	frame_dig 4 // pools: (uint16,uint64,uint16,uint64)[72]
 	frame_dig 6 // i: uint64
@@ -2414,10 +2383,10 @@ findPoolForStaker:
 	+
 	frame_dig 1 // maxPerPool: uint64
 	<=
-	bz *if12_end
+	bz *if11_end
 
-	// *if12_consequent
-	// contracts/validatorRegistry.algo.ts:537
+	// *if11_consequent
+	// contracts/validatorRegistry.algo.ts:491
 	// return [{ ID: validatorID, PoolID: i + 1, PoolAppID: pools[i].PoolAppID }, isBrandNewStaker];
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -2450,8 +2419,8 @@ findPoolForStaker:
 	popn 6
 	retsub
 
-*if12_end:
-	// contracts/validatorRegistry.algo.ts:535
+*if11_end:
+	// contracts/validatorRegistry.algo.ts:489
 	// i += 1
 	frame_dig 6 // i: uint64
 	int 1
@@ -2460,7 +2429,7 @@ findPoolForStaker:
 	b *for_2
 
 *for_2_end:
-	// contracts/validatorRegistry.algo.ts:541
+	// contracts/validatorRegistry.algo.ts:495
 	// return [{ ID: validatorID, PoolID: 0, PoolAppID: 0 }, isBrandNewStaker];
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -2485,7 +2454,7 @@ findPoolForStaker:
 validateConfig:
 	proto 1 0
 
-	// contracts/validatorRegistry.algo.ts:546
+	// contracts/validatorRegistry.algo.ts:500
 	// assert(config.PayoutEveryXDays >= MIN_PAYOUT_DAYS && config.PayoutEveryXDays <= MAX_PAYOUT_DAYS)
 	frame_dig -1 // config: ValidatorConfig
 	extract 0 2
@@ -2504,7 +2473,7 @@ validateConfig:
 *skip_and2:
 	assert
 
-	// contracts/validatorRegistry.algo.ts:547
+	// contracts/validatorRegistry.algo.ts:501
 	// assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR)
 	frame_dig -1 // config: ValidatorConfig
 	extract 2 4
@@ -2523,18 +2492,18 @@ validateConfig:
 *skip_and3:
 	assert
 
-	// *if13_condition
-	// contracts/validatorRegistry.algo.ts:548
+	// *if12_condition
+	// contracts/validatorRegistry.algo.ts:502
 	// config.PercentToValidator !== 0
 	frame_dig -1 // config: ValidatorConfig
 	extract 2 4
 	btoi
 	int 0
 	!=
-	bz *if13_end
+	bz *if12_end
 
-	// *if13_consequent
-	// contracts/validatorRegistry.algo.ts:549
+	// *if12_consequent
+	// contracts/validatorRegistry.algo.ts:503
 	// assert(
 	//                 config.ValidatorCommissionAddress !== Address.zeroAddress,
 	//                 'ValidatorCommissionAddress must be set if percent to validator is not 0'
@@ -2547,8 +2516,8 @@ validateConfig:
 	// ValidatorCommissionAddress must be set if percent to validator is not 0
 	assert
 
-*if13_end:
-	// contracts/validatorRegistry.algo.ts:554
+*if12_end:
+	// contracts/validatorRegistry.algo.ts:508
 	// assert(config.MinAllowedStake >= MIN_ALGO_STAKE_PER_POOL)
 	frame_dig -1 // config: ValidatorConfig
 	extract 38 8
@@ -2557,7 +2526,7 @@ validateConfig:
 	>=
 	assert
 
-	// contracts/validatorRegistry.algo.ts:555
+	// contracts/validatorRegistry.algo.ts:509
 	// assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network')
 	frame_dig -1 // config: ValidatorConfig
 	extract 46 8
@@ -2568,7 +2537,7 @@ validateConfig:
 	// enforce hard constraint to be safe to the network
 	assert
 
-	// contracts/validatorRegistry.algo.ts:556
+	// contracts/validatorRegistry.algo.ts:510
 	// assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE)
 	frame_dig -1 // config: ValidatorConfig
 	extract 54 1
@@ -2585,25 +2554,6 @@ validateConfig:
 	&&
 
 *skip_and4:
-	assert
-
-	// contracts/validatorRegistry.algo.ts:557
-	// assert(config.MaxNodes > 0 && config.MaxNodes <= MAX_NODES)
-	frame_dig -1 // config: ValidatorConfig
-	extract 55 2
-	btoi
-	int 0
-	>
-	dup
-	bz *skip_and5
-	frame_dig -1 // config: ValidatorConfig
-	extract 55 2
-	btoi
-	int 12
-	<=
-	&&
-
-*skip_and5:
 	assert
 	retsub
 
@@ -2624,9 +2574,9 @@ callPoolAddStake:
 	byte 0x
 	dupn 3
 
-	// contracts/validatorRegistry.algo.ts:576
+	// contracts/validatorRegistry.algo.ts:529
 	// poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -2 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -2649,7 +2599,7 @@ callPoolAddStake:
 	btoi
 	frame_bury 0 // poolAppID: uint64
 
-	// contracts/validatorRegistry.algo.ts:577
+	// contracts/validatorRegistry.algo.ts:530
 	// priorStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64
 	frame_dig 0 // poolAppID: uint64
 	byte 0x6e756d5374616b657273 // "numStakers"
@@ -2657,7 +2607,7 @@ callPoolAddStake:
 	assert
 	frame_bury 1 // priorStakers: uint64
 
-	// contracts/validatorRegistry.algo.ts:581
+	// contracts/validatorRegistry.algo.ts:534
 	// sendMethodCall<typeof StakingPool.prototype.addStake>({
 	//             applicationID: Application.fromID(poolAppID),
 	//             methodArgs: [
@@ -2672,7 +2622,7 @@ callPoolAddStake:
 	int pay
 	itxn_field TypeEnum
 
-	// contracts/validatorRegistry.algo.ts:586
+	// contracts/validatorRegistry.algo.ts:539
 	// amount: stakedAmountPayment.amount - mbrAmtPaid
 	frame_dig -1 // stakedAmountPayment: PayTxn
 	gtxns Amount
@@ -2680,7 +2630,7 @@ callPoolAddStake:
 	-
 	itxn_field Amount
 
-	// contracts/validatorRegistry.algo.ts:586
+	// contracts/validatorRegistry.algo.ts:539
 	// receiver: Application.fromID(poolAppID).address
 	frame_dig 0 // poolAppID: uint64
 	app_params_get AppAddress
@@ -2696,12 +2646,12 @@ callPoolAddStake:
 	method "addStake(pay,address)uint64"
 	itxn_field ApplicationArgs
 
-	// contracts/validatorRegistry.algo.ts:582
+	// contracts/validatorRegistry.algo.ts:535
 	// applicationID: Application.fromID(poolAppID)
 	frame_dig 0 // poolAppID: uint64
 	itxn_field ApplicationID
 
-	// contracts/validatorRegistry.algo.ts:583
+	// contracts/validatorRegistry.algo.ts:536
 	// methodArgs: [
 	//                 // =======
 	//                 // THIS IS A SEND of the amount received right back out and into the staking pool contract account.
@@ -2726,7 +2676,7 @@ callPoolAddStake:
 	extract 4 0
 	btoi
 
-	// contracts/validatorRegistry.algo.ts:593
+	// contracts/validatorRegistry.algo.ts:546
 	// poolNumStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64
 	frame_dig 0 // poolAppID: uint64
 	byte 0x6e756d5374616b657273 // "numStakers"
@@ -2734,7 +2684,7 @@ callPoolAddStake:
 	assert
 	frame_bury 2 // poolNumStakers: uint64
 
-	// contracts/validatorRegistry.algo.ts:594
+	// contracts/validatorRegistry.algo.ts:547
 	// poolAlgoStaked = Application.fromID(poolAppID).globalState('staked') as uint64
 	frame_dig 0 // poolAppID: uint64
 	byte 0x7374616b6564 // "staked"
@@ -2742,9 +2692,9 @@ callPoolAddStake:
 	assert
 	frame_bury 3 // poolAlgoStaked: uint64
 
-	// contracts/validatorRegistry.algo.ts:595
+	// contracts/validatorRegistry.algo.ts:548
 	// this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = poolNumStakers as uint16
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -2 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -2767,9 +2717,9 @@ callPoolAddStake:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:596
+	// contracts/validatorRegistry.algo.ts:549
 	// this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = poolAlgoStaked
-	int 563 // headOffset
+	int 153 // headOffset
 	frame_dig -2 // poolKey: ValidatorPoolKey
 	extract 8 8
 	btoi
@@ -2791,21 +2741,16 @@ callPoolAddStake:
 	cover 2
 	box_replace
 
-	// *if14_condition
-	// contracts/validatorRegistry.algo.ts:599
+	// *if13_condition
+	// contracts/validatorRegistry.algo.ts:552
 	// isNewStaker
 	frame_dig -4 // isNewStaker: boolean
-	bz *if14_else
+	bz *if13_end
 
-	// *if14_consequent
-	// contracts/validatorRegistry.algo.ts:600
-	// log('incrementing because new staker')
-	byte 0x696e6372656d656e74696e672062656361757365206e6577207374616b6572 // "incrementing because new staker"
-	log
-
-	// contracts/validatorRegistry.algo.ts:602
-	// this.ValidatorList(poolKey.ID).value.State.TotalStakers = this.ValidatorList(poolKey.ID).value.State.TotalStakers + 1
-	int 139
+	// *if13_consequent
+	// contracts/validatorRegistry.algo.ts:553
+	// this.ValidatorList(poolKey.ID).value.State.TotalStakers += 1
+	int 137
 	dup
 	int 8
 	byte 0x76 // "v"
@@ -2828,18 +2773,11 @@ callPoolAddStake:
 	concat
 	cover 2
 	box_replace
-	b *if14_end
 
-*if14_else:
-	// contracts/validatorRegistry.algo.ts:604
-	// log('NOT incrementing because existing staker')
-	byte 0x4e4f5420696e6372656d656e74696e672062656361757365206578697374696e67207374616b6572 // "NOT incrementing because existing staker"
-	log
-
-*if14_end:
-	// contracts/validatorRegistry.algo.ts:608
+*if13_end:
+	// contracts/validatorRegistry.algo.ts:555
 	// this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid
-	int 147
+	int 145
 	dup
 	int 8
 	byte 0x76 // "v"
@@ -2875,7 +2813,7 @@ updateStakerPoolSet:
 	byte 0x
 	dup
 
-	// contracts/validatorRegistry.algo.ts:612
+	// contracts/validatorRegistry.algo.ts:559
 	// assert(this.StakerPoolSet(staker).exists)
 	byte 0x737073 // "sps"
 	frame_dig -1 // staker: Address
@@ -2885,7 +2823,7 @@ updateStakerPoolSet:
 	pop
 	assert
 
-	// contracts/validatorRegistry.algo.ts:614
+	// contracts/validatorRegistry.algo.ts:561
 	// poolSet = clone(this.StakerPoolSet(staker).value)
 	byte 0x737073 // "sps"
 	frame_dig -1 // staker: Address
@@ -2894,21 +2832,21 @@ updateStakerPoolSet:
 	assert
 	frame_bury 0 // poolSet: (uint64,uint64,uint64)[4]
 
-	// contracts/validatorRegistry.algo.ts:615
+	// contracts/validatorRegistry.algo.ts:562
 	// for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1)
 	int 0
 	frame_bury 1 // i: uint64
 
 *for_3:
-	// contracts/validatorRegistry.algo.ts:615
+	// contracts/validatorRegistry.algo.ts:562
 	// i < this.StakerPoolSet(staker).value.length
 	frame_dig 1 // i: uint64
 	int 4
 	<
 	bz *for_3_end
 
-	// *if15_condition
-	// contracts/validatorRegistry.algo.ts:616
+	// *if14_condition
+	// contracts/validatorRegistry.algo.ts:563
 	// poolSet[i] === poolKey
 	frame_dig 0 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 1 // i: uint64
@@ -2918,16 +2856,16 @@ updateStakerPoolSet:
 	extract3
 	frame_dig -2 // poolKey: ValidatorPoolKey
 	==
-	bz *if15_end
+	bz *if14_end
 
-	// *if15_consequent
-	// contracts/validatorRegistry.algo.ts:618
+	// *if14_consequent
+	// contracts/validatorRegistry.algo.ts:565
 	// return;
 	retsub
 
-*if15_end:
-	// *if16_condition
-	// contracts/validatorRegistry.algo.ts:620
+*if14_end:
+	// *if15_condition
+	// contracts/validatorRegistry.algo.ts:567
 	// poolSet[i].ID === 0
 	frame_dig 0 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 1 // i: uint64
@@ -2940,10 +2878,10 @@ updateStakerPoolSet:
 	btoi
 	int 0
 	==
-	bz *if16_end
+	bz *if15_end
 
-	// *if16_consequent
-	// contracts/validatorRegistry.algo.ts:621
+	// *if15_consequent
+	// contracts/validatorRegistry.algo.ts:568
 	// this.StakerPoolSet(staker).value[i] = poolKey
 	frame_dig 1 // i: uint64
 	int 24
@@ -2955,12 +2893,12 @@ updateStakerPoolSet:
 	cover 2
 	box_replace
 
-	// contracts/validatorRegistry.algo.ts:622
+	// contracts/validatorRegistry.algo.ts:569
 	// return;
 	retsub
 
-*if16_end:
-	// contracts/validatorRegistry.algo.ts:615
+*if15_end:
+	// contracts/validatorRegistry.algo.ts:562
 	// i += 1
 	frame_dig 1 // i: uint64
 	int 1
@@ -2986,17 +2924,17 @@ removeFromStakerPoolSet:
 	byte 0x
 	dupn 3
 
-	// contracts/validatorRegistry.algo.ts:638
+	// contracts/validatorRegistry.algo.ts:585
 	// inXPools = 0
 	int 0
 	frame_bury 0 // inXPools: uint64
 
-	// contracts/validatorRegistry.algo.ts:639
+	// contracts/validatorRegistry.algo.ts:586
 	// found = false
 	int 0
 	frame_bury 1 // found: bool
 
-	// contracts/validatorRegistry.algo.ts:641
+	// contracts/validatorRegistry.algo.ts:588
 	// poolSet = clone(this.StakerPoolSet(staker).value)
 	byte 0x737073 // "sps"
 	frame_dig -1 // staker: Address
@@ -3005,21 +2943,21 @@ removeFromStakerPoolSet:
 	assert
 	frame_bury 2 // poolSet: (uint64,uint64,uint64)[4]
 
-	// contracts/validatorRegistry.algo.ts:642
+	// contracts/validatorRegistry.algo.ts:589
 	// for (let i = 0; i < this.StakerPoolSet(staker).value.length; i += 1)
 	int 0
 	frame_bury 3 // i: uint64
 
 *for_4:
-	// contracts/validatorRegistry.algo.ts:642
+	// contracts/validatorRegistry.algo.ts:589
 	// i < this.StakerPoolSet(staker).value.length
 	frame_dig 3 // i: uint64
 	int 4
 	<
 	bz *for_4_end
 
-	// *if17_condition
-	// contracts/validatorRegistry.algo.ts:643
+	// *if16_condition
+	// contracts/validatorRegistry.algo.ts:590
 	// poolSet[i].ID === poolKey.ID
 	frame_dig 2 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 3 // i: uint64
@@ -3034,11 +2972,11 @@ removeFromStakerPoolSet:
 	extract 0 8
 	btoi
 	==
-	bz *if17_end
+	bz *if16_end
 
-	// *if17_consequent
-	// *if18_condition
-	// contracts/validatorRegistry.algo.ts:644
+	// *if16_consequent
+	// *if17_condition
+	// contracts/validatorRegistry.algo.ts:591
 	// poolSet[i] === poolKey
 	frame_dig 2 // poolSet: (uint64,uint64,uint64)[4]
 	frame_dig 3 // i: uint64
@@ -3048,15 +2986,15 @@ removeFromStakerPoolSet:
 	extract3
 	frame_dig -2 // poolKey: ValidatorPoolKey
 	==
-	bz *if18_else
+	bz *if17_else
 
-	// *if18_consequent
-	// contracts/validatorRegistry.algo.ts:645
+	// *if17_consequent
+	// contracts/validatorRegistry.algo.ts:592
 	// found = true
 	int 1
 	frame_bury 1 // found: bool
 
-	// contracts/validatorRegistry.algo.ts:647
+	// contracts/validatorRegistry.algo.ts:594
 	// this.StakerPoolSet(staker).value[i] = { ID: 0, PoolID: 0, PoolAppID: 0 }
 	frame_dig 3 // i: uint64
 	int 24
@@ -3067,20 +3005,20 @@ removeFromStakerPoolSet:
 	concat
 	cover 2
 	box_replace
-	b *if18_end
+	b *if17_end
 
-*if18_else:
-	// contracts/validatorRegistry.algo.ts:649
+*if17_else:
+	// contracts/validatorRegistry.algo.ts:596
 	// inXPools += 1
 	frame_dig 0 // inXPools: uint64
 	int 1
 	+
 	frame_bury 0 // inXPools: uint64
 
-*if18_end:
-
 *if17_end:
-	// contracts/validatorRegistry.algo.ts:642
+
+*if16_end:
+	// contracts/validatorRegistry.algo.ts:589
 	// i += 1
 	frame_dig 3 // i: uint64
 	int 1
@@ -3089,18 +3027,18 @@ removeFromStakerPoolSet:
 	b *for_4
 
 *for_4_end:
-	// *if19_condition
-	// contracts/validatorRegistry.algo.ts:653
+	// *if18_condition
+	// contracts/validatorRegistry.algo.ts:600
 	// !found
 	frame_dig 1 // found: bool
 	!
-	bz *if19_end
+	bz *if18_end
 
-	// *if19_consequent
+	// *if18_consequent
 	err // 'No matching slot found when told to remove a pool from the stakers set'
 
-*if19_end:
-	// contracts/validatorRegistry.algo.ts:657
+*if18_end:
+	// contracts/validatorRegistry.algo.ts:604
 	// return inXPools === 0;
 	frame_dig 0 // inXPools: uint64
 	int 0
@@ -3123,14 +3061,14 @@ removeFromStakerPoolSet:
 	method "gas()void"
 	method "getMbrAmounts()(uint64,uint64,uint64,uint64)"
 	method "getNumValidators()uint64"
-	method "getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16),(uint16,uint64,uint64),(uint16,byte[32])[12],(uint16,uint64,uint16,uint64)[72])"
-	method "getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8,uint16)"
+	method "getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])"
+	method "getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8)"
 	method "getValidatorState(uint64)(uint16,uint64,uint64)"
 	method "getValidatorOwnerAndManager(uint64)(address,address)"
 	method "getPoolAppID((uint64,uint64,uint64))uint64"
 	method "getPoolInfo((uint64,uint64,uint64))(uint16,uint64,uint16,uint64)"
 	method "getStakedPoolsForAccount(account)(uint64,uint64,uint64)[]"
-	method "addValidator(pay,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8,uint16))uint64"
+	method "addValidator(pay,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8))uint64"
 	method "changeValidatorManager(uint64,address)void"
 	method "changeValidatorNFD(uint64,uint64)void"
 	method "changeValidatorCommissionAddress(uint64,address)void"

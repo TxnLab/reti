@@ -259,11 +259,11 @@ export class StakingPool extends Contract {
     }
 
     private isOwnerOrManagerCaller(): boolean {
-        const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
+        const info = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorInfo>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
-        return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
+        return this.txn.sender === info.Owner || this.txn.sender === info.Manager;
     }
 
     /**
