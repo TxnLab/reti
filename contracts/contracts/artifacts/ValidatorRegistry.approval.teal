@@ -234,36 +234,6 @@ getNumValidators:
 	app_global_get
 	retsub
 
-// getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])
-*abi_route_getValidatorInfo:
-	// The ABI return prefix
-	byte 0x151f7c75
-
-	// validatorID: uint64
-	txna ApplicationArgs 1
-	btoi
-
-	// execute getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])
-	callsub getValidatorInfo
-	concat
-	log
-	int 1
-	return
-
-// getValidatorInfo(validatorID: ValidatorID): ValidatorInfo
-getValidatorInfo:
-	proto 1 1
-
-	// contracts/validatorRegistry.algo.ts:157
-	// return this.ValidatorList(validatorID).value;
-	byte 0x76 // "v"
-	frame_dig -1 // validatorID: ValidatorID
-	itob
-	concat
-	box_get
-	assert
-	retsub
-
 // getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8)
 *abi_route_getValidatorConfig:
 	// The ABI return prefix
@@ -1365,12 +1335,27 @@ addStake:
 	pop
 	assert
 
-	// contracts/validatorRegistry.algo.ts:336
+	// contracts/validatorRegistry.algo.ts:335
+	// increaseOpcodeBudget()
+	itxn_begin
+	int appl
+	itxn_field TypeEnum
+	int 0
+	itxn_field Fee
+	byte b64 CoEB // #pragma version 10; int 1
+	dup
+	itxn_field ApprovalProgram
+	itxn_field ClearStateProgram
+	int DeleteApplication
+	itxn_field OnCompletion
+	itxn_submit
+
+	// contracts/validatorRegistry.algo.ts:337
 	// staker = this.txn.sender
 	txn Sender
 	frame_bury 0 // staker: address
 
-	// contracts/validatorRegistry.algo.ts:339
+	// contracts/validatorRegistry.algo.ts:340
 	// verifyPayTxn(stakedAmountPayment, {
 	//             sender: staker,
 	//             receiver: this.app.address,
@@ -1389,19 +1374,19 @@ addStake:
 	==
 	assert
 
-	// contracts/validatorRegistry.algo.ts:344
+	// contracts/validatorRegistry.algo.ts:345
 	// realAmount = stakedAmountPayment.amount
 	frame_dig -1 // stakedAmountPayment: PayTxn
 	gtxns Amount
 	frame_bury 1 // realAmount: uint64
 
-	// contracts/validatorRegistry.algo.ts:345
+	// contracts/validatorRegistry.algo.ts:346
 	// mbrAmtLeftBehind: uint64 = 0
 	int 0
 	frame_bury 2 // mbrAmtLeftBehind: uint64
 
 	// *if4_condition
-	// contracts/validatorRegistry.algo.ts:347
+	// contracts/validatorRegistry.algo.ts:348
 	// !this.StakerPoolSet(staker).exists
 	byte 0x737073 // "sps"
 	frame_dig 0 // staker: address
@@ -1413,21 +1398,21 @@ addStake:
 	bz *if4_end
 
 	// *if4_consequent
-	// contracts/validatorRegistry.algo.ts:350
+	// contracts/validatorRegistry.algo.ts:351
 	// mbrAmtLeftBehind = this.getMbrAmounts().AddStakerMbr
 	callsub getMbrAmounts
 	extract 24 8
 	btoi
 	frame_bury 2 // mbrAmtLeftBehind: uint64
 
-	// contracts/validatorRegistry.algo.ts:351
+	// contracts/validatorRegistry.algo.ts:352
 	// realAmount -= mbrAmtLeftBehind
 	frame_dig 1 // realAmount: uint64
 	frame_dig 2 // mbrAmtLeftBehind: uint64
 	-
 	frame_bury 1 // realAmount: uint64
 
-	// contracts/validatorRegistry.algo.ts:352
+	// contracts/validatorRegistry.algo.ts:353
 	// this.StakerPoolSet(staker).create()
 	byte 0x737073 // "sps"
 	frame_dig 0 // staker: address
@@ -1437,7 +1422,7 @@ addStake:
 	pop
 
 *if4_end:
-	// contracts/validatorRegistry.algo.ts:356
+	// contracts/validatorRegistry.algo.ts:357
 	// findRet = this.findPoolForStaker(validatorID, staker, realAmount)
 	frame_dig 1 // realAmount: uint64
 	frame_dig 0 // staker: address
@@ -1445,9 +1430,9 @@ addStake:
 	callsub findPoolForStaker
 	frame_bury 3 // findRet: ((uint64,uint64,uint64),bool)
 
-	// contracts/validatorRegistry.algo.ts:357
-	// poolKey = findRet[0]
 	// contracts/validatorRegistry.algo.ts:358
+	// poolKey = findRet[0]
+	// contracts/validatorRegistry.algo.ts:359
 	// isNewStaker = findRet[1]
 	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
@@ -1457,7 +1442,7 @@ addStake:
 	frame_bury 4 // isNewStaker: bool
 
 	// *if5_condition
-	// contracts/validatorRegistry.algo.ts:359
+	// contracts/validatorRegistry.algo.ts:360
 	// poolKey.PoolID === 0
 	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
@@ -1472,7 +1457,7 @@ addStake:
 	err // 'No pool available with free stake.  Validator needs to add another pool'
 
 *if5_end:
-	// contracts/validatorRegistry.algo.ts:364
+	// contracts/validatorRegistry.algo.ts:365
 	// this.updateStakerPoolSet(staker, poolKey)
 	frame_dig 3 // findRet: ((uint64,uint64,uint64),bool)
 	store 255 // full array
@@ -1480,21 +1465,6 @@ addStake:
 	extract 0 24
 	frame_dig 0 // staker: address
 	callsub updateStakerPoolSet
-
-	// contracts/validatorRegistry.algo.ts:365
-	// increaseOpcodeBudget()
-	itxn_begin
-	int appl
-	itxn_field TypeEnum
-	int 0
-	itxn_field Fee
-	byte b64 CoEB // #pragma version 10; int 1
-	dup
-	itxn_field ApprovalProgram
-	itxn_field ClearStateProgram
-	int DeleteApplication
-	itxn_field OnCompletion
-	itxn_submit
 
 	// contracts/validatorRegistry.algo.ts:368
 	// this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind, isNewStaker)
@@ -3009,7 +2979,6 @@ removeFromStakerPoolSet:
 	method "gas()void"
 	method "getMbrAmounts()(uint64,uint64,uint64,uint64)"
 	method "getNumValidators()uint64"
-	method "getValidatorInfo(uint64)(uint64,address,address,uint64,(uint16,uint32,address,uint64,uint64,uint8),(uint16,uint64,uint64),(uint16,uint64,uint16,uint64)[72])"
 	method "getValidatorConfig(uint64)(uint16,uint32,address,uint64,uint64,uint8)"
 	method "getValidatorState(uint64)(uint16,uint64,uint64)"
 	method "getValidatorOwnerAndManager(uint64)(address,address)"
@@ -3026,5 +2995,5 @@ removeFromStakerPoolSet:
 	method "stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void"
 	method "findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool)"
 	txna ApplicationArgs 0
-	match *abi_route_gas *abi_route_getMbrAmounts *abi_route_getNumValidators *abi_route_getValidatorInfo *abi_route_getValidatorConfig *abi_route_getValidatorState *abi_route_getValidatorOwnerAndManager *abi_route_getPoolAppID *abi_route_getPoolInfo *abi_route_getStakedPoolsForAccount *abi_route_addValidator *abi_route_changeValidatorManager *abi_route_changeValidatorNFD *abi_route_changeValidatorCommissionAddress *abi_route_addPool *abi_route_addStake *abi_route_stakeUpdatedViaRewards *abi_route_stakeRemoved *abi_route_findPoolForStaker
+	match *abi_route_gas *abi_route_getMbrAmounts *abi_route_getNumValidators *abi_route_getValidatorConfig *abi_route_getValidatorState *abi_route_getValidatorOwnerAndManager *abi_route_getPoolAppID *abi_route_getPoolInfo *abi_route_getStakedPoolsForAccount *abi_route_addValidator *abi_route_changeValidatorManager *abi_route_changeValidatorNFD *abi_route_changeValidatorCommissionAddress *abi_route_addPool *abi_route_addStake *abi_route_stakeUpdatedViaRewards *abi_route_stakeRemoved *abi_route_findPoolForStaker
 	err

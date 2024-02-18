@@ -310,7 +310,6 @@ export async function addStakingPool(
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
     try {
-        consoleLogger.info(`getting pool info for validator:${poolKey.ID}, pool:${poolKey.PoolID}`);
         const PoolRet = await validatorClient
             .compose()
             .getPoolInfo({ poolKey: poolKey.encode() }, {})
@@ -517,6 +516,29 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
         throw exception;
     }
+}
+
+export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
+    const simulateResults = await stakeClient
+        .compose().epochBalanceUpdate(
+            {},
+            { sendParams: { fee: AlgoAmount.MicroAlgos(9000)} }
+        )
+        .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
+
+    const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[0].txnResult;
+    // verify logs isn't undefined
+    if (logs !== undefined) {
+        logs.forEach((uint8array) => {
+            consoleLogger.info(new TextDecoder().decode(uint8array));
+        });
+    }
+    const fees = AlgoAmount.MicroAlgos(9000);
+    await stakeClient.epochBalanceUpdate(
+        {},
+        { sendParams: { fee: fees, populateAppCallResources: true } }
+    );
+    return fees;
 }
 
 export async function logStakingPoolInfo(

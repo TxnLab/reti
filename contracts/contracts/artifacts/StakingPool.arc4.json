@@ -102,7 +102,7 @@
       }
     },
     {
-      "name": "payStakers",
+      "name": "epochBalanceUpdate",
       "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.",
       "args": [],
       "returns": {

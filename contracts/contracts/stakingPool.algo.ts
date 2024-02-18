@@ -130,7 +130,6 @@ export class StakingPool extends Contract {
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
         // const stakers = clone(this.Stakers.value);
-        // for (let i = 0; i < this.Stakers.size; i += 1) {
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
             // const cmpStaker = this.Stakers.value[i];
             if (this.Stakers.value[i].Account === staker) {
@@ -260,11 +259,11 @@ export class StakingPool extends Contract {
     }
 
     private isOwnerOrManagerCaller(): boolean {
-        const info = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorInfo>({
+        const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
-        return this.txn.sender === info.Owner || this.txn.sender === info.Manager;
+        return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
     }
 
     /**
@@ -275,8 +274,9 @@ export class StakingPool extends Contract {
      *
      * @returns {void} or asserts.
      */
-    payStakers(): void {
+    epochBalanceUpdate(): void {
         assert(this.isOwnerOrManagerCaller());
+        increaseOpcodeBudget();
 
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
@@ -296,11 +296,15 @@ export class StakingPool extends Contract {
             'Reward to payout not high enough to cover txn costs of paying it out'
         );
 
+        // log(concat('reward avail is: ', rewardAvailable.toString()));
+
         // determine the % that goes to validator...
         const validatorPay = wideRatio([rewardAvailable, payoutConfig.PercentToValidator], [1000000]);
         // and adjust reward for entire pool accordingly
         rewardAvailable -= validatorPay;
 
+        // log(concat('validator pay is: ', validatorPay.toString()));
+        // log(concat('remaining reward avail is: ', rewardAvailable.toString()));
         // ---
         // pay the validator their cut...
         if (validatorPay > 0) {
@@ -358,25 +362,25 @@ export class StakingPool extends Contract {
         // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
         // remaining participants.
         let partialStakersTotalStake = 0;
-        let i = 0;
-        this.Stakers.value.forEach((staker) => {
-            if (staker.Account !== globals.zeroAddress) {
-                if (staker.EntryTime > curTime) {
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            // const staker = this.Stakers.value[i];
+            if (this.Stakers.value[i].Account !== globals.zeroAddress) {
+                if (this.Stakers.value[i].EntryTime > curTime) {
                     // due to 'forward dating' entry time this could be possible
                     // in this case it definitely means they get 0...
-                    partialStakersTotalStake += staker.Balance;
+                    partialStakersTotalStake += this.Stakers.value[i].Balance;
                 } else {
                     // Reward is % of users stake in pool,
                     // but we deduct based on time in pool
-                    const timeInPool = curTime - staker.EntryTime;
+                    const timeInPool = curTime - this.Stakers.value[i].EntryTime;
                     let timePercentage: uint64;
                     // get % of time in pool (in tenths precision - 1000 not 100)
                     if (timeInPool < payoutDaysInSecs) {
-                        partialStakersTotalStake += staker.Balance;
+                        partialStakersTotalStake += this.Stakers.value[i].Balance;
                         timePercentage = (timeInPool * 1000) / payoutDaysInSecs;
 
                         const stakerReward = wideRatio(
-                            [staker.Balance, rewardAvailable, timePercentage],
+                            [this.Stakers.value[i].Balance, rewardAvailable, timePercentage],
                             [this.TotalAlgoStaked.value / 1000]
                         );
                         // reduce the reward available (that we're accounting for) so that the subsequent
@@ -384,42 +388,43 @@ export class StakingPool extends Contract {
                         rewardAvailable -= stakerReward;
                         // instead of sending them algo now - just increase their ledger balance, so they can claim
                         // it at any time.
-                        staker.Balance += stakerReward;
-                        staker.TotalRewarded += stakerReward;
+                        this.Stakers.value[i].Balance += stakerReward;
+                        this.Stakers.value[i].TotalRewarded += stakerReward;
 
                         // Update the box w/ the new data
-                        this.Stakers.value[i] = staker;
+                        // this.Stakers.value[i] = this.Stakers.value[i];
                     }
                 }
             }
-            i += 1;
-        });
+        }
 
         // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
         // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
         const newPoolTotalStake = this.TotalAlgoStaked.value - partialStakersTotalStake;
         // Now go back through the list AGAIN and pay out the full-timers their rewards + excess
-        i = 0;
-        this.Stakers.value.forEach((staker) => {
-            if (staker.Account !== globals.zeroAddress && staker.EntryTime < curTime) {
-                const timeInPool = curTime - staker.EntryTime;
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            if (globals.opcodeBudget < 100) {
+                increaseOpcodeBudget();
+            }
+            // const staker = this.Stakers.value[i];
+            if (this.Stakers.value[i].Account !== globals.zeroAddress && this.Stakers.value[i].EntryTime < curTime) {
+                const timeInPool = curTime - this.Stakers.value[i].EntryTime;
                 // We're now only paying out people who've been in pool an entire epoch.
                 if (timeInPool < payoutDaysInSecs) {
                     return;
                 }
                 // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                 // payment
-                const stakerReward = wideRatio([staker.Balance, rewardAvailable], [newPoolTotalStake]);
+                const stakerReward = wideRatio([this.Stakers.value[i].Balance, rewardAvailable], [newPoolTotalStake]);
                 // instead of sending them algo now - just increase their ledger balance, so they can claim
                 // it at any time.
-                staker.Balance += stakerReward;
-                staker.TotalRewarded += stakerReward;
+                this.Stakers.value[i].Balance += stakerReward;
+                this.Stakers.value[i].TotalRewarded += stakerReward;
 
                 // Update the box w/ the new data
-                this.Stakers.value[i] = staker;
+                // this.Stakers.value[i] = staker;
             }
-            i += 1;
-        });
+        }
 
         // We've paid out the validator and updated the stakers new balances to reflect the rewards, now update
         // our 'total staked' value as well (in our pool and in the validator)

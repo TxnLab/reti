@@ -153,9 +153,9 @@ export class ValidatorRegistry extends Contract {
     }
 
     // @abi.readonly
-    getValidatorInfo(validatorID: ValidatorID): ValidatorInfo {
-        return this.ValidatorList(validatorID).value;
-    }
+    // getValidatorInfo(validatorID: ValidatorID): ValidatorInfo {
+    //     return this.ValidatorList(validatorID).value;
+    // }
 
     // @abi.readonly
     getValidatorConfig(validatorID: ValidatorID): ValidatorConfig {
@@ -332,6 +332,7 @@ export class ValidatorRegistry extends Contract {
      */
     addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
         assert(this.ValidatorList(validatorID).exists);
+        increaseOpcodeBudget();
 
         const staker = this.txn.sender;
         // The prior transaction should be a payment to this pool for the amount specified
@@ -362,7 +363,6 @@ export class ValidatorRegistry extends Contract {
 
         // Update StakerPoolList for this found pool (new or existing)
         this.updateStakerPoolSet(staker, poolKey);
-        increaseOpcodeBudget();
         // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool and it then updates
         // the staker data.
         this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind, isNewStaker);
