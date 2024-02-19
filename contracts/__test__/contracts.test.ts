@@ -16,11 +16,12 @@ import {
     getMbrAmountsFromValidatorClient,
     getPoolInfo,
     getStakedPoolsForAccount,
+    getStakeInfoFromBoxValue,
     getStakerInfo,
     getValidatorState,
-    logStakingPoolInfo,
     removeStake,
     ValidatorPoolKey,
+    verifyRewardAmounts,
 } from './helpers';
 // import { algoKitLogCaptureFixture } from '@algorandfoundation/algokit-utils/testing'
 
@@ -290,9 +291,9 @@ describe('StakeAdds', () => {
         expect(stateData.TotalStakers).toEqual(BigInt(1));
     });
 
-    test('payFirstStaker', async () => {
+    test('testFirstRewards', async () => {
         // increment time a day at a time per transaction
-        fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 24);
+        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 24).do();
 
         const firstPoolClient = new StakingPoolClient(
             { sender: validatorOwnerAccount, resolveBy: 'id', id: firstPoolKey.PoolAppID },
@@ -300,6 +301,7 @@ describe('StakeAdds', () => {
         );
         const origValidatorState = await getValidatorState(validatorClient, validatorID);
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do();
+        const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient);
 
         const reward = AlgoAmount.Algos(200);
         // put some test 'reward' algos into staking pool
@@ -316,13 +318,31 @@ describe('StakeAdds', () => {
         const poolInfo = await getPoolInfo(validatorClient, firstPoolKey);
         consoleLogger.info(`pool stakers:${poolInfo.TotalStakers}, staked:${poolInfo.TotalAlgoStaked}`);
 
+        // Perform epoch payout calculation !
         const fees = await epochBalanceUpdate(firstPoolClient);
+        const expectedValidatorReward = reward.microAlgos * 0.05;
 
         const newValidatorState = await getValidatorState(validatorClient, validatorID);
         const newOwnerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do();
-        expect(newOwnerBalance.amount).toBe(ownerBalance.amount - fees.microAlgos + reward.microAlgos * 0.05);
+        expect(newOwnerBalance.amount).toBe(ownerBalance.amount - fees.microAlgos + expectedValidatorReward);
+
+        const stakersAfterReward = await getStakeInfoFromBoxValue(firstPoolClient);
+
+        verifyRewardAmounts(
+            BigInt(reward.microAlgos) - BigInt(expectedValidatorReward),
+            stakersPriorToReward,
+            stakersAfterReward
+        );
+        // get the staker list from the pool - each should have increased
+        // stakers.forEach((staker) => {
+        // }
+        //     const stakerInfo = await getStakerInfo(firstPoolClient, fir);
+        //     expect(encodeAddress(stakerInfo.Staker.publicKey)).toBe(stakerAccount.addr);
+        //     expect(stakerInfo.Balance).toEqual(BigInt(amountStaked - Number(stakerMbr)));
+
+        // the total staked should have grown as well - reward minus what the valiidator was paid in their commission
         expect(Number(newValidatorState.TotalAlgoStaked)).toBe(
-            Number(origValidatorState.TotalAlgoStaked) + (reward.microAlgos - reward.microAlgos * 0.05)
+            Number(origValidatorState.TotalAlgoStaked) + (reward.microAlgos - expectedValidatorReward)
         );
     });
     // Creates new staker account

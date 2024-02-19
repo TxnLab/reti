@@ -15,6 +15,7 @@ import { transferAlgos } from '@algorandfoundation/algokit-utils';
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
+import { expect } from "@jest/globals";
 
 export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
 
@@ -519,10 +520,11 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
 }
 
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
+    const fees = AlgoAmount.MicroAlgos(12_000);
     const simulateResults = await stakeClient
         .compose().epochBalanceUpdate(
             {},
-            { sendParams: { fee: AlgoAmount.MicroAlgos(9000)} }
+            { sendParams: { fee: fees} }
         )
         .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
 
@@ -533,7 +535,6 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
             consoleLogger.info(new TextDecoder().decode(uint8array));
         });
     }
-    const fees = AlgoAmount.MicroAlgos(9000);
     await stakeClient.epochBalanceUpdate(
         {},
         { sendParams: { fee: fees, populateAppCallResources: true } }
@@ -560,4 +561,26 @@ export async function logStakingPoolInfo(
         }
         i += 1;
     });
+}
+
+export function verifyRewardAmounts(
+    rewardedAmount: bigint,
+    stakersPriorToReward: StakedInfo[],
+    stakersAfterReward: StakedInfo[]
+) {
+    // iterate stakersPriorToReward and total the 'Balance' value to get a 'total amount'
+    // then determine if the stakersAfterReward version's balance incremented in accordance w/ their percentage of
+    // the 'total' - where they get that percentage of the rewardedAmount.
+    const totalAmount = stakersPriorToReward.reduce((total, staker) => BigInt(total) + staker.Balance, BigInt(0));
+    for (let i = 0; i < stakersPriorToReward.length; i++) {
+        if (encodeAddress(stakersPriorToReward[i].Staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
+            continue;
+        }
+        const origBalance = stakersPriorToReward[i].Balance;
+        const timePercentage = BigInt(1000); // assume 100% in epoch for now
+        const expectedReward = (BigInt(origBalance) * rewardedAmount * timePercentage) / (totalAmount * BigInt(1000));
+        // test(`staker ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`, async () => {
+        expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
+        // });
+    }
 }
