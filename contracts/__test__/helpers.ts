@@ -13,9 +13,9 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
 import { transferAlgos } from '@algorandfoundation/algokit-utils';
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
+import { expect } from '@jest/globals';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
-import { expect } from "@jest/globals";
 
 export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
 
@@ -522,10 +522,8 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
     const fees = AlgoAmount.MicroAlgos(12_000);
     const simulateResults = await stakeClient
-        .compose().epochBalanceUpdate(
-            {},
-            { sendParams: { fee: fees} }
-        )
+        .compose()
+        .epochBalanceUpdate({}, { sendParams: { fee: fees } })
         .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
 
     const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[0].txnResult;
@@ -535,10 +533,7 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
             consoleLogger.info(new TextDecoder().decode(uint8array));
         });
     }
-    await stakeClient.epochBalanceUpdate(
-        {},
-        { sendParams: { fee: fees, populateAppCallResources: true } }
-    );
+    await stakeClient.epochBalanceUpdate({}, { sendParams: { fee: fees, populateAppCallResources: true } });
     return fees;
 }
 
@@ -583,4 +578,11 @@ export function verifyRewardAmounts(
         expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
         // });
     }
+}
+
+export async function getPoolAvailBalance(context: AlgorandTestAutomationContext, poolKey: ValidatorPoolKey) {
+    const poolAcctInfo = await context.algod
+        .accountInformation(getApplicationAddress(poolKey.PoolAppID))
+        .do();
+    return BigInt(poolAcctInfo.amount - poolAcctInfo['min-balance']);
 }
