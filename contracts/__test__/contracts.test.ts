@@ -869,10 +869,14 @@ describe('StakeWRewards', () => {
         expect(poolInfo.TotalStakers).toEqual(0);
         expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(0));
 
+        await logStakingPoolInfo(fixture.context, firstPoolKey.PoolAppID, 'should be no stakers !');
+
         // We added 200 algo in to bump the clock a bit - and cause transactions - this is basically future reward
         // we did 1 payout - so balance should be 200 - (validator % of 100)
         const poolBalance = await getPoolAvailBalance(fixture.context, firstPoolKey);
-        expect(poolBalance).toBe(BigInt(AlgoAmount.Algos(200).microAlgos) - BigInt(AlgoAmount.Algos(100).microAlgos * (PctToValidator/100)));
+        expect(poolBalance).toBe(
+            BigInt(AlgoAmount.Algos(200).microAlgos) - BigInt(AlgoAmount.Algos(100).microAlgos * (PctToValidator / 100))
+        );
         consoleLogger.info(`ending pool balance: ${poolBalance}`);
     });
 
@@ -914,9 +918,7 @@ describe('StakeWRewards', () => {
         // now stake 1000(+mbr), min for this pool - for the first time - which means actual stake amount will be reduced
         // by 'first time staker' fee to cover MBR (which goes to VALIDATOR contract account, not staker contract account!)
         // we pay the extra here so the final staked amount should be exactly 1000
-        const stakeAmount1 = AlgoAmount.MicroAlgos(
-            AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
-        );
+        const stakeAmount1 = AlgoAmount.Algos(1000);
         // Add stake for first staker - partial epoch
         const aPoolKey = await addStake(fixture.context, validatorClient, validatorID, stakerAccounts[0], stakeAmount1);
         expect(aPoolKey.PoolAppID).toBe(aPoolKey.PoolAppID);
@@ -937,14 +939,19 @@ describe('StakeWRewards', () => {
             fixture.context.kmd
         );
         stakerAccounts.push(fullEpochStaker);
+        const stakeAmount2 = AlgoAmount.MicroAlgos(
+            AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
+        );
 
         // Add stake for full-epoch staker
-        const newPoolKey = await addStake(fixture.context, validatorClient, validatorID, fullEpochStaker, stakeAmount1);
+        const newPoolKey = await addStake(fixture.context, validatorClient, validatorID, fullEpochStaker, stakeAmount2);
 
         expect(newPoolKey.PoolAppID).toBe(aPoolKey.PoolAppID);
         const staker2Info = await getStakerInfo(firstPoolClient, fullEpochStaker);
         const staker2Entry = new Date(Number(staker2Info.EntryTime) * 1000);
         expect((staker2Entry.getTime() - lastPayoutTime.getTime()) / 1000).toBeGreaterThanOrEqual(60 * 60 * 24); // has to be at least a day
+
+        await logStakingPoolInfo(fixture.context, firstPoolKey.PoolAppID, 'should have two stakers');
 
         // ok now do payout - and see if we can figure out the payouts
         // get
@@ -953,15 +960,23 @@ describe('StakeWRewards', () => {
         const poolInfo = await getPoolInfo(validatorClient, aPoolKey);
         expect(poolInfo.TotalStakers).toEqual(2);
         // only subtract out 1 staker mbr because only the 'fullEpochStaker' will be 'new' to staking
-        expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos) * BigInt(2) - stakerMbr);
+        expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos + stakeAmount2.microAlgos) - stakerMbr);
 
         // What's pool's current balance
-        let poolBalance = await getPoolAvailBalance(fixture.context, firstPoolKey);
+        const poolBalance = await getPoolAvailBalance(fixture.context, firstPoolKey);
         const knownReward = poolBalance - poolInfo.TotalAlgoStaked;
+        const expectedValidatorReward = Number(knownReward) * (PctToValidator / 100);
 
-        const fees = await epochBalanceUpdate(firstPoolClient);
+        const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient);
+
+        // do reward calcs
+        await epochBalanceUpdate(firstPoolClient);
         //
         // expect((await getValidatorState(validatorClient, validatorID)).TotalStakers).toEqual(BigInt(1));
+        const stakersAfterReward = await getStakeInfoFromBoxValue(firstPoolClient);
+
+        await logStakingPoolInfo(fixture.context, firstPoolKey.PoolAppID, 'after payouts');
+        // verifyRewardAmounts(knownReward - BigInt(expectedValidatorReward), stakersPriorToReward, stakersAfterReward);
     });
 
     async function tryCatchWrapper(instance: any, methodName: string, ...args: any[]) {

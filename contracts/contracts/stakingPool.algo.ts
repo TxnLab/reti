@@ -305,7 +305,6 @@ export class StakingPool extends Contract {
         rewardAvailable -= validatorPay;
 
         increaseOpcodeBudget();
-        // log(concat('remaining reward avail is: ', this.itoa(rewardAvailable)));
         // ---
         // pay the validator their cut...
         if (validatorPay > 0) {
@@ -315,6 +314,7 @@ export class StakingPool extends Contract {
                 receiver: payoutConfig.ValidatorCommissionAddress,
                 note: 'validator reward',
             });
+            log(concat('remaining reward avail: ', this.itoa(rewardAvailable)));
         }
 
         if (rewardAvailable === 0) {
@@ -369,35 +369,42 @@ export class StakingPool extends Contract {
         // less time in pool.  We keep track of their stake and then will later reduce the effective 'total staked' amount
         // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
         // remaining participants.
-        let partialStakersTotalStake:uint64 = 0;
+        let partialStakersTotalStake: uint64 = 0;
         log(concat('cur time: ', this.itoa(curTime)));
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
-            if (globals.opcodeBudget < 200) {
+            if (globals.opcodeBudget < 300) {
                 increaseOpcodeBudget();
             }
             // const staker = this.Stakers.value[i];
             if (this.Stakers.value[i].Account !== globals.zeroAddress) {
-                log(concat('entry time: ', this.itoa(this.Stakers.value[i].EntryTime)));
+                log(concat(this.itoa(i), concat('entry time: ', this.itoa(this.Stakers.value[i].EntryTime))));
                 if (this.Stakers.value[i].EntryTime > curTime) {
-                    log('staker past epoch');
-                    // log(concat('staker past epoch', this.itoa(i)));
                     // due to 'forward dating' entry time this could be possible
                     // in this case it definitely means they get 0...
+                    log('staker past epoch - skipping');
                     partialStakersTotalStake += this.Stakers.value[i].Balance;
                 } else {
                     // Reward is % of users stake in pool,
                     // but we deduct based on time in pool
                     const timeInPool = curTime - this.Stakers.value[i].EntryTime;
                     let timePercentage: uint64;
-                    // get % of time in pool (in tenths precision - 1000 not 100)
+                    // get % of time in pool (in tenths precision)
+                    // ie: 34.7% becomes 347
                     if (timeInPool < payoutDaysInSecs) {
                         partialStakersTotalStake += this.Stakers.value[i].Balance;
                         timePercentage = (timeInPool * 1000) / payoutDaysInSecs;
 
+                        increaseOpcodeBudget();
+                        increaseOpcodeBudget();
+                        log(concat('time pct:', this.itoa(timePercentage)));
+                        log(concat('staker balance:', this.itoa(this.Stakers.value[i].Balance)));
+                        // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                         const stakerReward = wideRatio(
                             [this.Stakers.value[i].Balance, rewardAvailable, timePercentage],
-                            [this.TotalAlgoStaked.value / 1000]
+                            [this.TotalAlgoStaked.value, 1000]
                         );
+                        log(concat('staker partial rewarded: ', this.itoa(stakerReward)));
+
                         // reduce the reward available (that we're accounting for) so that the subsequent
                         // 'full' pays are based on what's left
                         rewardAvailable -= stakerReward;
@@ -413,7 +420,8 @@ export class StakingPool extends Contract {
                 }
             }
         }
-        // log(concat('partial staker total stake: ', this.itoa(partialStakersTotalStake)));
+        increaseOpcodeBudget();
+        log(concat('partial staker total stake: ', this.itoa(partialStakersTotalStake)));
 
         // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
         // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
@@ -428,19 +436,25 @@ export class StakingPool extends Contract {
                     increaseOpcodeBudget();
                 }
                 // const staker = this.Stakers.value[i];
-                if (this.Stakers.value[i].Account !== globals.zeroAddress && this.Stakers.value[i].EntryTime < curTime) {
+                if (
+                    this.Stakers.value[i].Account !== globals.zeroAddress &&
+                    this.Stakers.value[i].EntryTime < curTime
+                ) {
                     const timeInPool = curTime - this.Stakers.value[i].EntryTime;
                     // We're now only paying out people who've been in pool an entire epoch.
                     if (timeInPool >= payoutDaysInSecs) {
                         // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                         // payment
-                        const stakerReward = wideRatio([this.Stakers.value[i].Balance, rewardAvailable], [newPoolTotalStake]);
+                        const stakerReward = wideRatio(
+                            [this.Stakers.value[i].Balance, rewardAvailable],
+                            [newPoolTotalStake]
+                        );
                         // instead of sending them algo now - just increase their ledger balance, so they can claim
                         // it at any time.
                         this.Stakers.value[i].Balance += stakerReward;
                         this.Stakers.value[i].TotalRewarded += stakerReward;
                         increasedStake += stakerReward;
-                        log(concat('staker rewarded: ', this.itoa(stakerReward)));
+                        log(concat('full staker rewarded: ', this.itoa(stakerReward)));
                     }
                     // Update the box w/ the new data
                     // this.Stakers.value[i] = staker;
@@ -448,14 +462,15 @@ export class StakingPool extends Contract {
             }
         }
         // We've paid out the validator and updated the stakers new balances to reflect the rewards, now update
-        // our 'total staked' value as well based on what we accumulated as we determined stake increases
+        // our 'total staked' value as well based on what we paid to validator and updated in staker balances as we
+        // determined stake increases
         this.TotalAlgoStaked.value += increasedStake;
 
-        log(concat('increased stake: ', this.itoa(increasedStake)))
+        log(concat('increased stake: ', this.itoa(increasedStake)));
 
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it
-        // stakeUpdatedViaRewards((uint64,uint64),uint64)void
+        // stakeUpdatedViaRewards((uint64,uint64,uint64),uint64)void
         sendMethodCall<typeof ValidatorRegistry.prototype.stakeUpdatedViaRewards>({
             applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
             methodArgs: [
@@ -515,7 +530,7 @@ export class StakingPool extends Contract {
 
     private itoa(i: number): string {
         if (i === 0) {
-            return '0';
+            return '0 ';
         }
         const quotient = i / 10;
         const remainder = i % 10;

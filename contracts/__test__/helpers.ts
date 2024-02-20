@@ -520,7 +520,7 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
 }
 
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
-    const fees = AlgoAmount.MicroAlgos(12_000);
+    const fees = AlgoAmount.MicroAlgos(15_000);
     const simulateResults = await stakeClient
         .compose()
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
@@ -546,13 +546,19 @@ export async function logStakingPoolInfo(
         { sender: context.testAccount, resolveBy: 'id', id: PoolAppID },
         context.algod
     );
+    const stakingPoolGS = await firstPoolClient.appClient.getGlobalState();
+    const lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000);
+
     const stakers = await getStakeInfoFromBoxValue(firstPoolClient);
     // iterate stakers displaying the info
     let i = 0;
-    consoleLogger.info(msgToDisplay);
+    consoleLogger.info(`${msgToDisplay}, last Payout: ${lastPayoutTime.toUTCString()}`);
     stakers.forEach((staker) => {
         if (encodeAddress(staker.Staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
-            consoleLogger.info(`${i}: Staker:${encodeAddress(staker.Staker.publicKey)}, Balance:${staker.Balance}`);
+            const entryTime = new Date(Number(staker.EntryTime) * 1000);
+            consoleLogger.info(
+                `${i}: Staker:${encodeAddress(staker.Staker.publicKey)}, Balance:${staker.Balance}, Entry:${entryTime.toUTCString()}`
+            );
         }
         i += 1;
     });
@@ -574,15 +580,12 @@ export function verifyRewardAmounts(
         const origBalance = stakersPriorToReward[i].Balance;
         const timePercentage = BigInt(1000); // assume 100% in epoch for now
         const expectedReward = (BigInt(origBalance) * rewardedAmount * timePercentage) / (totalAmount * BigInt(1000));
-        // test(`staker ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`, async () => {
+        consoleLogger.info(`staker:${i}, ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`);
         expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
-        // });
     }
 }
 
 export async function getPoolAvailBalance(context: AlgorandTestAutomationContext, poolKey: ValidatorPoolKey) {
-    const poolAcctInfo = await context.algod
-        .accountInformation(getApplicationAddress(poolKey.PoolAppID))
-        .do();
+    const poolAcctInfo = await context.algod.accountInformation(getApplicationAddress(poolKey.PoolAppID)).do();
     return BigInt(poolAcctInfo.amount - poolAcctInfo['min-balance']);
 }
