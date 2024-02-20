@@ -547,7 +547,10 @@ export async function logStakingPoolInfo(
         context.algod
     );
     const stakingPoolGS = await firstPoolClient.appClient.getGlobalState();
-    const lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000);
+    let lastPayoutTime: Date = new Date();
+    if (stakingPoolGS.lastPayout !== undefined) {
+        lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000);
+    }
 
     const stakers = await getStakeInfoFromBoxValue(firstPoolClient);
     // iterate stakers displaying the info

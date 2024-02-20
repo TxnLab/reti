@@ -57,6 +57,7 @@ module.exports = {
                 'prefer-template': 'off',
                 'prefer-destructuring': 'off',
                 'no-param-reassign': 'off',
+                'no-restricted-syntax': 'off',
             },
         },
         {

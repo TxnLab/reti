@@ -129,18 +129,19 @@ export class StakingPool extends Contract {
         let firstEmpty = 0;
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
-        // const stakers = clone(this.Stakers.value);
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
-            // const cmpStaker = this.Stakers.value[i];
-            if (this.Stakers.value[i].Account === staker) {
-                this.Stakers.value[i].Balance += stakedAmountPayment.amount;
-                this.Stakers.value[i].EntryTime = entryTime;
+            const cmpStaker = clone(this.Stakers.value[i]);
+            if (cmpStaker.Account === staker) {
+                cmpStaker.Balance += stakedAmountPayment.amount;
+                cmpStaker.EntryTime = entryTime;
+
                 // Update the box w/ the new data
-                // this.Stakers.value[i] = cmpStaker;
+                this.Stakers.value[i] = cmpStaker;
+
                 this.TotalAlgoStaked.value += stakedAmountPayment.amount;
                 return entryTime;
             }
-            if (this.Stakers.value[i].Account === globals.zeroAddress) {
+            if (cmpStaker.Account === globals.zeroAddress) {
                 firstEmpty = i + 1;
                 break;
             }
@@ -184,22 +185,22 @@ export class StakingPool extends Contract {
         // account calling us has to be account removing stake
         const staker = this.txn.sender;
 
-        // const stakers = clone(this.Stakers.value);
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
-            if (this.Stakers.value[i].Account === staker) {
+            const cmpStaker = clone(this.Stakers.value[i]);
+            if (cmpStaker.Account === staker) {
                 if (amountToUnstake === 0) {
                     // specifying 0 for unstake amount is requesting to UNSTAKE ALL
-                    amountToUnstake = this.Stakers.value[i].Balance;
+                    amountToUnstake = cmpStaker.Balance;
                 }
-                if (this.Stakers.value[i].Balance < amountToUnstake) {
+                if (cmpStaker.Balance < amountToUnstake) {
                     throw Error('Insufficient balance');
                 }
-                this.Stakers.value[i].Balance -= amountToUnstake;
+                cmpStaker.Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
 
                 // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
                 assert(
-                    this.Stakers.value[i].Balance === 0 || this.Stakers.value[i].Balance >= this.MinAllowedStake.value,
+                    cmpStaker.Balance === 0 || cmpStaker.Balance >= this.MinAllowedStake.value,
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 
@@ -210,16 +211,16 @@ export class StakingPool extends Contract {
                     note: 'unstaked',
                 });
                 let stakerRemoved = false;
-                if (this.Stakers.value[i].Balance === 0) {
+                if (cmpStaker.Balance === 0) {
                     // Staker has been 'removed' - zero out record
                     this.NumStakers.value -= 1;
-                    this.Stakers.value[i].Account = globals.zeroAddress;
-                    this.Stakers.value[i].TotalRewarded = 0;
-                    this.Stakers.value[i].RewardTokenBalance = 0;
+                    cmpStaker.Account = globals.zeroAddress;
+                    cmpStaker.TotalRewarded = 0;
+                    cmpStaker.RewardTokenBalance = 0;
                     stakerRemoved = true;
                 }
                 // Update the box w/ the new staker data
-                // this.Stakers.value[i] = this.Stakers.value[i];
+                this.Stakers.value[i] = cmpStaker;
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it
@@ -249,7 +250,6 @@ export class StakingPool extends Contract {
      */
     // @abi.readonly
     getStakerInfo(staker: Address): StakedInfo {
-        // const stakers = clone(this.Stakers.value);
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
             if (this.Stakers.value[i].Account === staker) {
                 return this.Stakers.value[i];
