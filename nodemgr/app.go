@@ -1,0 +1,95 @@
+package main
+
+import (
+	"fmt"
+	"log/slog"
+
+	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
+	"github.com/urfave/cli/v2"
+
+	"github.com/TxnLab/reti/internal/lib/algo"
+	"github.com/TxnLab/reti/internal/lib/misc"
+	"github.com/TxnLab/reti/internal/lib/nfdapi/swagger"
+	"github.com/TxnLab/reti/internal/service"
+	"github.com/TxnLab/reti/internal/validator"
+)
+
+func initApp() *RetiApp {
+	logger := slog.Default()
+
+	// This will load and initialize mnemonics from the environment, etc.
+	signer := algo.NewLocalKeyStore(logger)
+
+	// We initialize our wrapper instance first, so we can call its methods in the 'Before' lambda func
+	// in initialization of cli App instance.
+	appConfig := &RetiApp{signer: signer, logger: logger}
+
+	appConfig.App = &cli.App{
+		Name:    "réti node manager",
+		Usage:   "Configuration tool and background daemon for Algorand validator pools",
+		Version: misc.GetVersionInfo(),
+		Before: func(ctx *cli.Context) error {
+			// This is further bootstrap of the 'app' but within context of 'cli' helper as it will
+			// have access to flags and options (network to use for eg)
+			return appConfig.initClients(ctx)
+		},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "network",
+				Usage:   "Algorand network to use",
+				Value:   "mainnet",
+				Aliases: []string{"n"},
+				EnvVars: []string{"ALGO_NETWORK"},
+			},
+		},
+		Commands: []*cli.Command{
+			service.GetDaemonCmdOpts(),
+			validator.GetValidatorCmdOpts(),
+		},
+	}
+	return appConfig
+}
+
+type RetiApp struct {
+	*cli.App
+	logger     *slog.Logger
+	signer     algo.MultipleWalletSigner
+	algoClient *algod.Client
+	api        *swagger.APIClient
+}
+
+// initClients initializes both an an algod client (to correct network - which it
+// also validates) and an nfd api clinet - for nfd updates or fetches if caller
+// desires
+func (ac *RetiApp) initClients(ctx *cli.Context) error {
+	network := ctx.Value("network").(string)
+
+	switch network {
+	case "betanet", "testnet", "mainnet", "voitestnet":
+	default:
+		return fmt.Errorf("unknown network:%s", network)
+	}
+	var (
+		algoClient *algod.Client
+		api        *swagger.APIClient
+		err        error
+	)
+
+	// Initialize algod client / networks (testing connectivity as well)
+	cfg := algo.GetNetworkConfig(network)
+	algoClient, err = algo.GetAlgoClient(ac.logger, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Inititialize NFD API (if even used)
+	nfdApiCfg := swagger.NewConfiguration()
+	nfdApiCfg.BasePath = cfg.NFDAPIUrl
+	api = swagger.NewAPIClient(nfdApiCfg)
+	_, _ = algoClient, api
+
+	ac.algoClient = algoClient
+	ac.api = api
+
+	return nil
+}

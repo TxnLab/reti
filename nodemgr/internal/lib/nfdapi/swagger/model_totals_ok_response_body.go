@@ -10,13 +10,13 @@
 package swagger
 
 type TotalsOkResponseBody struct {
-	ForSale int32 `json:"forSale"`
+	ForSale int64 `json:"forSale"`
 	// Not returned, used in tagging for response to indicate if-none-match etag matched
-	MatchCheck    string                             `json:"match-check,omitempty"`
-	MintedTotals  *TotalsOkResponseBodyMintedTotals  `json:"mintedTotals"`
-	SegmentTotals *TotalsOkResponseBodySegmentTotals `json:"segmentTotals"`
-	SoldTotals    *TotalsOkResponseBodySoldTotals    `json:"soldTotals"`
-	Total         int32                              `json:"total"`
-	TotalSegments int32                              `json:"totalSegments"`
-	UniqueOwners  int32                              `json:"uniqueOwners"`
+	MatchCheck    string                            `json:"match-check,omitempty"`
+	MintedTotals  *TotalsOkResponseBodyMintedTotals `json:"mintedTotals"`
+	SegmentTotals *TotalsOkResponseBodyMintedTotals `json:"segmentTotals"`
+	SoldTotals    *TotalsOkResponseBodyMintedTotals `json:"soldTotals"`
+	Total         int64                             `json:"total"`
+	TotalSegments int64                             `json:"totalSegments"`
+	UniqueOwners  int64                             `json:"uniqueOwners"`
 }

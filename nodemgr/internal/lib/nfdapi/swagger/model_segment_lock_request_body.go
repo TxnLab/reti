@@ -13,7 +13,7 @@ type SegmentLockRequestBody struct {
 	// Whether to lock (true), or unlock (false)
 	Lock bool `json:"lock"`
 	// amount users minting off the segment have to pay to mint in USD (in cents - ie: 300 = $3.00). Set to 0 if locking
-	SellAmount int32 `json:"sellAmount"`
+	SellAmount int64 `json:"sellAmount"`
 	// Sender of transaction - needs to be owner of NFD
 	Sender string `json:"sender"`
 }

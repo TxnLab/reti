@@ -17,7 +17,7 @@ import (
 type NfdAnalyticRecord struct {
 	Data *NfdAnalyticEvent `json:"data,omitempty"`
 	// price of event in microAlgos
-	Price int32 `json:"price,omitempty"`
+	Price int64 `json:"price,omitempty"`
 	// price of event in USD
 	PriceUsd  float64   `json:"priceUsd,omitempty"`
 	Timestamp time.Time `json:"timestamp,omitempty"`

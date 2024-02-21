@@ -24,7 +24,7 @@ type NfdRecord struct {
 	CaAlgo   []string `json:"caAlgo,omitempty"`
 	Category string   `json:"category,omitempty"`
 	// Round this data was last fetched from
-	CurrentAsOfBlock int32 `json:"currentAsOfBlock,omitempty"`
+	CurrentAsOfBlock int64 `json:"currentAsOfBlock,omitempty"`
 	// account wallets should send funds to - precedence is: caAlgo[0], unverifiedCaAlgo[0], owner
 	DepositAccount string `json:"depositAccount,omitempty"`
 	// Not returned, used in tagging for response to indicate if-none-match etag matched
@@ -36,13 +36,13 @@ type NfdRecord struct {
 	// Owner of NFD
 	Owner string `json:"owner,omitempty"`
 	// NFD Application ID of Parent if this is a segment
-	ParentAppID int32          `json:"parentAppID,omitempty"`
+	ParentAppID int64          `json:"parentAppID,omitempty"`
 	Properties  *NfdProperties `json:"properties,omitempty"`
 	// Reserved owner of NFD
 	ReservedFor string `json:"reservedFor,omitempty"`
 	SaleType    string `json:"saleType,omitempty"`
 	// amount NFD is being sold for (microAlgos)
-	SellAmount int32 `json:"sellAmount,omitempty"`
+	SellAmount int64 `json:"sellAmount,omitempty"`
 	// RecipientUid of NFD sales
 	Seller         string `json:"seller,omitempty"`
 	SigNameAddress string `json:"sigNameAddress,omitempty"`

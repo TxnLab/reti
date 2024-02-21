@@ -12,7 +12,7 @@ package swagger
 type PurchaseRequestBody struct {
 	Buyer string `json:"buyer"`
 	// Amount in microAlgo to purchase/claim the NFD for
-	Offer int32 `json:"offer"`
+	Offer int64 `json:"offer"`
 	// Whether to reject receiving the NFT into the purchasers account, leaving or returning it to the NFDs vault instead
 	RejectNFT bool `json:"rejectNFT,omitempty"`
 }

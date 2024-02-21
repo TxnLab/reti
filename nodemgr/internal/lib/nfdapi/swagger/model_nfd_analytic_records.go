@@ -14,5 +14,5 @@ type NfdAnalyticRecords struct {
 	MatchCheck string              `json:"match-check,omitempty"`
 	Results    []NfdAnalyticRecord `json:"results"`
 	// total number of results, with data containing paged amount based on offset/limit
-	Total int32 `json:"total"`
+	Total int64 `json:"total"`
 }

@@ -16,9 +16,9 @@ import (
 // NFD contains all known information about an NFD record
 type NfdRecordinaddress struct {
 	// NFD Application ID
-	AppID int32 `json:"appID,omitempty"`
+	AppID int64 `json:"appID,omitempty"`
 	// NFD ASA ID
-	AsaID int32 `json:"asaID,omitempty"`
+	AsaID int64 `json:"asaID,omitempty"`
 	// Whether the verified Avatar set in this NFD is newer (arc19) then is set into the NFD. This will only be present on direct NFD fetch and if true
 	AvatarOutdated bool `json:"avatarOutdated,omitempty"`
 	// Verified Algorand addresses for this NFD
@@ -27,7 +27,7 @@ type NfdRecordinaddress struct {
 	CacheControl string `json:"cache-control,omitempty"`
 	Category     string `json:"category,omitempty"`
 	// Round this data was last fetched from
-	CurrentAsOfBlock int32 `json:"currentAsOfBlock,omitempty"`
+	CurrentAsOfBlock int64 `json:"currentAsOfBlock,omitempty"`
 	// account wallets should send funds to - precedence is: caAlgo[0], unverifiedCaAlgo[0], owner
 	DepositAccount string `json:"depositAccount,omitempty"`
 	// ETag
@@ -41,13 +41,13 @@ type NfdRecordinaddress struct {
 	// Owner of NFD
 	Owner string `json:"owner,omitempty"`
 	// NFD Application ID of Parent if this is a segment
-	ParentAppID int32          `json:"parentAppID,omitempty"`
+	ParentAppID int64          `json:"parentAppID,omitempty"`
 	Properties  *NfdProperties `json:"properties,omitempty"`
 	// Reserved owner of NFD
 	ReservedFor string `json:"reservedFor,omitempty"`
 	SaleType    string `json:"saleType,omitempty"`
 	// amount NFD is being sold for (microAlgos)
-	SellAmount int32 `json:"sellAmount,omitempty"`
+	SellAmount int64 `json:"sellAmount,omitempty"`
 	// RecipientUid of NFD sales
 	Seller         string `json:"seller,omitempty"`
 	SigNameAddress string `json:"sigNameAddress,omitempty"`

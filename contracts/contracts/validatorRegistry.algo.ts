@@ -28,7 +28,7 @@ export type ValidatorConfig = {
     ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
     MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
-    PoolsPerNode: uint8; // Number of pools to allow per node (max of 4 is recommended)
+    PoolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
 };
 
 type ValidatorCurState = {
@@ -51,6 +51,19 @@ type ValidatorInfo = {
     // Optional NFD AppID which the validator uses to describe their validator pool
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: uint64;
+    /**
+     * TODO:
+     * Add config for
+     * MustHoldCreatorNFT: Address
+     * CreatorNFTMinBalance: uint64
+     *  NFTs by Creator and min amount(Optional): A project running a validator can set a creator account such that all stakers must hold an ASA created
+     *  by this account (w/ optional minimum amount [for tokens].  This can be used to restrict validator pools to members of a particular community.
+     * RewardToken: uint64
+     * RewardPerPayout: uint64
+     * Reward token and reward rate (Optional): A validator can define a token that users are awarded in addition to the ALGO they receive for being in the pool.
+     * This will allow projects to allow rewarding members their own token for eg.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs
+     * and all stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
+     */
     Config: ValidatorConfig;
     State: ValidatorCurState;
     Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
@@ -208,7 +221,7 @@ export class ValidatorRegistry extends Contract {
      * @param owner The account (presumably cold-wallet) that owns the validator set
      * @param manager The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys
      * @param nfdAppID (Optional) NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found.
-     * @param nfdName (Optional) Name of nfd (used as double-check against id
+     * @param nfdName (Optional) Name of nfd (used as double-check against id)
      * @param config ValidatorConfig struct
      * @returns validator ID
      */
@@ -222,10 +235,9 @@ export class ValidatorRegistry extends Contract {
     ): uint64 {
         assert(owner !== Address.zeroAddress);
         assert(manager !== Address.zeroAddress);
+        assert(this.txn.sender === owner, 'sender must be owner to add new validator');
 
         verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddValidatorMbr });
-
-        this.validateConfig(config);
 
         // We're adding a new validator - same owner might have multiple - we don't care.
         const validatorID = this.numValidators.value + 1;
@@ -246,6 +258,7 @@ export class ValidatorRegistry extends Contract {
             assert(this.txn.sender === (Application.fromID(nfdAppID).globalState('i.owner.a') as Address),
                 'If specifying NFD, account adding validator must be owner');
         }
+        this.validateConfig(config);
         this.ValidatorList(validatorID).value.Config = config;
         return validatorID;
     }

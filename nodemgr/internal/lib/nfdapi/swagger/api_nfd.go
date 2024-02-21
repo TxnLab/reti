@@ -12,12 +12,11 @@ package swagger
 import (
 	"context"
 	"fmt"
+	"github.com/antihax/optional"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/antihax/optional"
 )
 
 // Linger please
@@ -35,7 +34,7 @@ Fetch change activity for an NFD, specifically general &#x27;block-level&#x27; d
  * @param optional nil or *NfdApiNfdActivityOpts - Optional Parameters:
      * @param "Type_" (optional.String) -  type of activity to retrieve
      * @param "AfterTime" (optional.Time) -  Fetch events that occurred only after the specified time
-     * @param "Limit" (optional.Int32) -  Limit the number of results returned, per NFD - max 50
+     * @param "Limit" (optional.Int64) -  Limit the number of results returned, per NFD - max 50
      * @param "Sort" (optional.String) -  What to sort on - descending timestamp is default
      * @param "IfNoneMatch" (optional.String) -  etag
 @return []NfdActivity
@@ -44,7 +43,7 @@ Fetch change activity for an NFD, specifically general &#x27;block-level&#x27; d
 type NfdApiNfdActivityOpts struct {
 	Type_       optional.String
 	AfterTime   optional.Time
-	Limit       optional.Int32
+	Limit       optional.Int64
 	Sort        optional.String
 	IfNoneMatch optional.String
 }
@@ -195,12 +194,12 @@ Fetch NFD analytics via various filters
      * @param "SaleType" (optional.Interface of []string) -
      * @param "Length" (optional.Interface of []string) -  Length of NFD
      * @param "Traits" (optional.Interface of []string) -  Traits of NFD
-     * @param "ParentAppID" (optional.Int32) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
+     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
      * @param "MinPrice" (optional.Int64) -  Minimum price of NFD
      * @param "MaxPrice" (optional.Int64) -  Maximum price of NFD
      * @param "AfterTime" (optional.Time) -  Fetch analytics events that occurred only after the specified time
-     * @param "Limit" (optional.Int32) -  Limit the number of results returned - max 200
-     * @param "Offset" (optional.Int32) -  Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
+     * @param "Limit" (optional.Int64) -  Limit the number of results returned - max 200
+     * @param "Offset" (optional.Int64) -  Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
      * @param "Sort" (optional.String) -  What to sort on - descending timestamp is default
      * @param "IfNoneMatch" (optional.String) -  etag
 @return NfdAnalyticRecords
@@ -218,12 +217,12 @@ type NfdApiNfdAnalyticsOpts struct {
 	SaleType           optional.Interface
 	Length             optional.Interface
 	Traits             optional.Interface
-	ParentAppID        optional.Int32
+	ParentAppID        optional.Int64
 	MinPrice           optional.Int64
 	MaxPrice           optional.Int64
 	AfterTime          optional.Time
-	Limit              optional.Int32
-	Offset             optional.Int32
+	Limit              optional.Int64
+	Offset             optional.Int64
 	Sort               optional.String
 	IfNoneMatch        optional.String
 }
@@ -533,7 +532,7 @@ NfdApiService Browse NFDs via various filters
      * @param "Category" (optional.Interface of []string) -
      * @param "SaleType" (optional.Interface of []string) -
      * @param "State" (optional.Interface of []string) -
-     * @param "ParentAppID" (optional.Int32) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
+     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
      * @param "Length" (optional.Interface of []string) -  Length of NFD
      * @param "Traits" (optional.Interface of []string) -  Traits of NFD
      * @param "Owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
@@ -545,8 +544,8 @@ NfdApiService Browse NFDs via various filters
      * @param "MinPrice" (optional.Int64) -  Minimum price of NFD
      * @param "MaxPrice" (optional.Int64) -  Maximum price of NFD
      * @param "ChangedAfter" (optional.Time) -  Fetch NFDs that changed after the specified timestamp
-     * @param "Limit" (optional.Int32) -  Limit the number of results returned - max 200
-     * @param "Offset" (optional.Int32) -  Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
+     * @param "Limit" (optional.Int64) -  Limit the number of results returned - max 200
+     * @param "Offset" (optional.Int64) -  Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
      * @param "Sort" (optional.String) -  What to sort on
      * @param "View" (optional.String) -  View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only), brief (default), or full
      * @param "IfNoneMatch" (optional.String) -  etag
@@ -558,7 +557,7 @@ type NfdApiNfdBrowseOpts struct {
 	Category     optional.Interface
 	SaleType     optional.Interface
 	State        optional.Interface
-	ParentAppID  optional.Int32
+	ParentAppID  optional.Int64
 	Length       optional.Interface
 	Traits       optional.Interface
 	Owner        optional.String
@@ -570,8 +569,8 @@ type NfdApiNfdBrowseOpts struct {
 	MinPrice     optional.Int64
 	MaxPrice     optional.Int64
 	ChangedAfter optional.Time
-	Limit        optional.Int32
-	Offset       optional.Int32
+	Limit        optional.Int64
+	Offset       optional.Int64
 	Sort         optional.String
 	View         optional.String
 	IfNoneMatch  optional.String
@@ -2232,141 +2231,19 @@ func (a *NfdApiService) NfdGetNFD(ctx context.Context, nameOrID string, localVar
 }
 
 /*
-NfdApiService [DEPRECATED] Reverse Address lookup
-[DEPRECATED] Get all NFDs which have been explicitly linked to one or more verified [or unverified] Algorand address(es).  Unverified addresses will match but return as unverifiedCaAlgo array.  These should be treated specially and not have the same trust level as verified addresses as they can be falsely attributed.  The caAlgo array is what should be trusted for things like NFT creation addresses. For reverse lookups returning multiple NFDs, take the first one matching in caAlgo array.
- * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- * @param address one or more addresses to look up, maximum of 20 can be defined.  Specify the same query parameter multiple times for each address, ie: address&#x3D;xxx&amp;address&#x3D;yyy&amp;address&#x3D;zzz
- * @param optional nil or *NfdApiNfdGetNFDsForAddressesOpts - Optional Parameters:
-     * @param "Limit" (optional.Int32) -  Limit the total number of NFDs returned in aggregate across all specified addresses (default 40, max 300)
-     * @param "View" (optional.String) -  View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only [default]), thumbnail (tiny + avatar), brief, or full
-     * @param "IfNoneMatch" (optional.String) -  etag
-@return []NfdRecord
-*/
-
-type NfdApiNfdGetNFDsForAddressesOpts struct {
-	Limit       optional.Int32
-	View        optional.String
-	IfNoneMatch optional.String
-}
-
-func (a *NfdApiService) NfdGetNFDsForAddresses(ctx context.Context, address []string, localVarOptionals *NfdApiNfdGetNFDsForAddressesOpts) ([]NfdRecord, *http.Response, error) {
-	var (
-		localVarHttpMethod  = strings.ToUpper("Get")
-		localVarPostBody    interface{}
-		localVarFileName    string
-		localVarFileBytes   []byte
-		localVarReturnValue []NfdRecord
-	)
-
-	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + "/nfd/address"
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-	if len(address) < 1 {
-		return localVarReturnValue, nil, reportError("address must have at least 1 elements")
-	}
-	if len(address) > 20 {
-		return localVarReturnValue, nil, reportError("address must have less than 20 elements")
-	}
-
-	localVarQueryParams.Add("address", parameterToString(address, "multi"))
-	if localVarOptionals != nil && localVarOptionals.Limit.IsSet() {
-		localVarQueryParams.Add("limit", parameterToString(localVarOptionals.Limit.Value(), ""))
-	}
-	if localVarOptionals != nil && localVarOptionals.View.IsSet() {
-		localVarQueryParams.Add("view", parameterToString(localVarOptionals.View.Value(), ""))
-	}
-	// to determine the Content-Type header
-	localVarHttpContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHttpContentType := selectHeaderContentType(localVarHttpContentTypes)
-	if localVarHttpContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHttpContentType
-	}
-
-	// to determine the Accept header
-	localVarHttpHeaderAccepts := []string{"application/json", "application/vnd.goa.error"}
-
-	// set Accept header
-	localVarHttpHeaderAccept := selectHeaderAccept(localVarHttpHeaderAccepts)
-	if localVarHttpHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHttpHeaderAccept
-	}
-	if localVarOptionals != nil && localVarOptionals.IfNoneMatch.IsSet() {
-		localVarHeaderParams["if-none-match"] = parameterToString(localVarOptionals.IfNoneMatch.Value(), "")
-	}
-	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHttpMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHttpResponse, err := a.client.callAPI(r)
-	if err != nil || localVarHttpResponse == nil {
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	localVarBody, err := ioutil.ReadAll(localVarHttpResponse.Body)
-	localVarHttpResponse.Body.Close()
-	if err != nil {
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	if localVarHttpResponse.StatusCode < 300 {
-		// If we succeed, return the data, otherwise pass on to decode error.
-		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-		if err == nil {
-			return localVarReturnValue, localVarHttpResponse, err
-		}
-	}
-
-	if localVarHttpResponse.StatusCode >= 300 {
-		newErr := GenericSwaggerError{
-			body:  localVarBody,
-			error: localVarHttpResponse.Status,
-		}
-		if localVarHttpResponse.StatusCode == 200 {
-			var v []NfdRecord
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		if localVarHttpResponse.StatusCode == 429 {
-			var v RateLimited
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		return localVarReturnValue, localVarHttpResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHttpResponse, nil
-}
-
-/*
 NfdApiService Reverse Address lookup with results returned per address
 Get all NFDs which have been explicitly linked to one or more verified [or unverified] Algorand address(es).  Unverified addresses will match but return as unverifiedCaAlgo array.  These should be treated specially and not have the same trust level as verified addresses as they can be falsely attributed.  The caAlgo array is what should be trusted for things like NFT creation addresses. For reverse lookups returning multiple NFDs, the first result should be used.
  * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  * @param address one or more addresses (algo or otherwise) to look up, maximum of 20 can be defined.  Specify the same query parameter multiple times for each address, ie: address&#x3D;xxx&amp;address&#x3D;yyy&amp;address&#x3D;zzz
  * @param optional nil or *NfdApiNfdGetNFDsForAddressesV2Opts - Optional Parameters:
-     * @param "Limit" (optional.Int32) -  Limit the total number of NFDs returned - automatically changed to at least be 1 per address
+     * @param "Limit" (optional.Int64) -  Limit the total number of NFDs returned - automatically changed to at least be 1 per address
      * @param "View" (optional.String) -  View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only [default]), thumbnail (tiny + avatar), brief, or full
      * @param "IfNoneMatch" (optional.String) -  etag
 @return map[string][]NfdRecordinaddress
 */
 
 type NfdApiNfdGetNFDsForAddressesV2Opts struct {
-	Limit       optional.Int32
+	Limit       optional.Int64
 	View        optional.String
 	IfNoneMatch optional.String
 }
@@ -2851,7 +2728,7 @@ Determines if specified NFD NFT ASA ID is authentic NFD
 
 @return IsValidAsaResponseBody
 */
-func (a *NfdApiService) NfdIsValidASA(ctx context.Context, asaID int32) (IsValidAsaResponseBody, *http.Response, error) {
+func (a *NfdApiService) NfdIsValidASA(ctx context.Context, asaID int64) (IsValidAsaResponseBody, *http.Response, error) {
 	var (
 		localVarHttpMethod  = strings.ToUpper("Get")
 		localVarPostBody    interface{}
@@ -2968,7 +2845,7 @@ Determines if specified NFD Application ID is authentic
 
 @return IsValidNfdResponseBody
 */
-func (a *NfdApiService) NfdIsValidNFD(ctx context.Context, appID int32) (IsValidNfdResponseBody, *http.Response, error) {
+func (a *NfdApiService) NfdIsValidNFD(ctx context.Context, appID int64) (IsValidNfdResponseBody, *http.Response, error) {
 	var (
 		localVarHttpMethod  = strings.ToUpper("Get")
 		localVarPostBody    interface{}
@@ -3478,134 +3355,6 @@ func (a *NfdApiService) NfdOffer(ctx context.Context, body OfferRequestBody, nam
 }
 
 /*
-NfdApiService partnerKickoff nfd
-[PRIVATE] Kickoff NFD minting process, with user buying specified NFD (or kicking off auction) as appropriate.  Purchase price is set by TxnLab
-  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-  - @param body
-
-@return string
-*/
-func (a *NfdApiService) NfdPartnerKickoff(ctx context.Context, body PartnerKickoffRequestBody) (string, *http.Response, error) {
-	var (
-		localVarHttpMethod  = strings.ToUpper("Post")
-		localVarPostBody    interface{}
-		localVarFileName    string
-		localVarFileBytes   []byte
-		localVarReturnValue string
-	)
-
-	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + "/nfd/partnerKickoff"
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	// to determine the Content-Type header
-	localVarHttpContentTypes := []string{"application/json"}
-
-	// set Content-Type header
-	localVarHttpContentType := selectHeaderContentType(localVarHttpContentTypes)
-	if localVarHttpContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHttpContentType
-	}
-
-	// to determine the Accept header
-	localVarHttpHeaderAccepts := []string{"application/json", "application/vnd.goa.error"}
-
-	// set Accept header
-	localVarHttpHeaderAccept := selectHeaderAccept(localVarHttpHeaderAccepts)
-	if localVarHttpHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHttpHeaderAccept
-	}
-	// body params
-	localVarPostBody = &body
-	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHttpMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHttpResponse, err := a.client.callAPI(r)
-	if err != nil || localVarHttpResponse == nil {
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	localVarBody, err := ioutil.ReadAll(localVarHttpResponse.Body)
-	localVarHttpResponse.Body.Close()
-	if err != nil {
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	if localVarHttpResponse.StatusCode < 300 {
-		// If we succeed, return the data, otherwise pass on to decode error.
-		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-		if err == nil {
-			return localVarReturnValue, localVarHttpResponse, err
-		}
-	}
-
-	if localVarHttpResponse.StatusCode >= 300 {
-		newErr := GenericSwaggerError{
-			body:  localVarBody,
-			error: localVarHttpResponse.Status,
-		}
-		if localVarHttpResponse.StatusCode == 201 {
-			var v string
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		if localVarHttpResponse.StatusCode == 400 {
-			var v ModelError
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		if localVarHttpResponse.StatusCode == 401 {
-			var v ModelError
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		if localVarHttpResponse.StatusCode == 404 {
-			var v ModelError
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		if localVarHttpResponse.StatusCode == 429 {
-			var v RateLimited
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
-			if err != nil {
-				newErr.error = err.Error()
-				return localVarReturnValue, localVarHttpResponse, newErr
-			}
-			newErr.model = v
-			return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		return localVarReturnValue, localVarHttpResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHttpResponse, nil
-}
-
-/*
 NfdApiService postOfferToOwner nfd
 Post an offer to buy to the owner of an NFD, offering up a particular amount with optional note for them to consider
   - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
@@ -3985,7 +3734,7 @@ NfdApiService [DEPRECATED] Search for NFDs based on select lookup criteria
      * @param "Vproperty" (optional.String) -  Verified property name to search on - specify value with vvalue
      * @param "Vvalue" (optional.String) -  Value to find in the vproperty field specified with the vproperty parameter
      * @param "RequireAddresses" (optional.Bool) -  Whether returned NFDs (only in prefix/substring search) must have linked addresses (caAlgo) defined in order to be returned.  This is useful for callers wanting to lookup a name for the purposes of transferring assets to that NFD holder and they want to exclude names not linked for deposits.
-     * @param "Limit" (optional.Int32) -  Limit the number of results returned - max 240
+     * @param "Limit" (optional.Int64) -  Limit the number of results returned - max 240
      * @param "View" (optional.String) -  View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only), thumbnail (tiny + avatar), (brief (default), or full
      * @param "Test00r" (optional.Bool) -
      * @param "IfNoneMatch" (optional.String) -  etag
@@ -4000,7 +3749,7 @@ type NfdApiNfdSearchV1Opts struct {
 	Vproperty        optional.String
 	Vvalue           optional.String
 	RequireAddresses optional.Bool
-	Limit            optional.Int32
+	Limit            optional.Int64
 	View             optional.String
 	Test00r          optional.Bool
 	IfNoneMatch      optional.String
@@ -4146,7 +3895,7 @@ Search NFDs via various filters
      * @param "Category" (optional.Interface of []string) -
      * @param "SaleType" (optional.Interface of []string) -
      * @param "State" (optional.Interface of []string) -
-     * @param "ParentAppID" (optional.Int32) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
+     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
      * @param "Length" (optional.Interface of []string) -  Length of NFD
      * @param "Traits" (optional.Interface of []string) -  Traits of NFD
      * @param "Owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
@@ -4163,8 +3912,8 @@ Search NFDs via various filters
      * @param "MinPriceUsd" (optional.Int64) -  Minimum price of NFD Segment in USD (cents)
      * @param "MaxPriceUsd" (optional.Int64) -  Maximum price of NFD Segment in USD (cents)
      * @param "ChangedAfter" (optional.Time) -  Fetch NFDs that changed after the specified timestamp
-     * @param "Limit" (optional.Int32) -  Limit the number of results returned - max 200
-     * @param "Offset" (optional.Int32) -  Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
+     * @param "Limit" (optional.Int64) -  Limit the number of results returned - max 200
+     * @param "Offset" (optional.Int64) -  Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
      * @param "Sort" (optional.String) -  What to sort on
      * @param "View" (optional.String) -  View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only), brief (default), or full
      * @param "IfNoneMatch" (optional.String) -  etag
@@ -4193,8 +3942,8 @@ type NfdApiNfdSearchV2Opts struct {
 	MinPriceUsd         optional.Int64
 	MaxPriceUsd         optional.Int64
 	ChangedAfter        optional.Time
-	Limit               optional.Int32
-	Offset              optional.Int32
+	Limit               optional.Int64
+	Offset              optional.Int64
 	Sort                optional.String
 	View                optional.String
 	IfNoneMatch         optional.String
@@ -5321,14 +5070,14 @@ Suggest NFDs to purchase
  * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  * @param name A name (even partial) to search for [receiving suggestions as well]
  * @param optional nil or *NfdApiNfdSuggestOpts - Optional Parameters:
-     * @param "Limit" (optional.Int32) -  Limit the number of results returned - max 40
+     * @param "Limit" (optional.Int64) -  Limit the number of results returned - max 40
      * @param "View" (optional.String) -  View of data to return, brief (default), or full
      * @param "Buyer" (optional.String) -  Expected buyer of name.  Used for segment minting as additional check on availability of mint
 @return []NfdRecord
 */
 
 type NfdApiNfdSuggestOpts struct {
-	Limit optional.Int32
+	Limit optional.Int64
 	View  optional.String
 	Buyer optional.String
 }

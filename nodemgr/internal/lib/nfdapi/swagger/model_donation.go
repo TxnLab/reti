@@ -14,5 +14,5 @@ type Donation struct {
 	// Sender or Receiver Algorand address depending on request
 	Address string `json:"address"`
 	// Total donation in microAlgos
-	Total int32 `json:"total"`
+	Total int64 `json:"total"`
 }

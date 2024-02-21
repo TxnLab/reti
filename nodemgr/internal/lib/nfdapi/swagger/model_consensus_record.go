@@ -16,14 +16,14 @@ import (
 // ConsensusRecord contains information about an account that participated in consensus
 type ConsensusRecord struct {
 	Account       string    `json:"account"`
-	LastPropBlock int32     `json:"lastPropBlock,omitempty"`
+	LastPropBlock int64     `json:"lastPropBlock,omitempty"`
 	LastPropTime  time.Time `json:"lastPropTime,omitempty"`
-	LastVoteBlock int32     `json:"lastVoteBlock,omitempty"`
+	LastVoteBlock int64     `json:"lastVoteBlock,omitempty"`
 	LastVoteTime  time.Time `json:"lastVoteTime,omitempty"`
 	LinkType      string    `json:"linkType,omitempty"`
 	OwnerAccount  string    `json:"ownerAccount"`
 	PctOfOnline   float64   `json:"pctOfOnline"`
-	Proposals     int32     `json:"proposals,omitempty"`
+	Proposals     int64     `json:"proposals,omitempty"`
 	Rank          int64     `json:"rank,omitempty"`
-	Votes         int32     `json:"votes,omitempty"`
+	Votes         int64     `json:"votes,omitempty"`
 }

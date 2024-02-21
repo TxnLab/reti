@@ -11,7 +11,7 @@ package swagger
 
 // Whether NFD NFT ASA ID is for authentic NFD
 type IsValidAsaResponseBody struct {
-	AppID   int32  `json:"appID"`
+	AppID   int64  `json:"appID"`
 	IsValid bool   `json:"isValid"`
 	Message string `json:"message"`
 	Name    string `json:"name"`

@@ -22,7 +22,14 @@
     * An optional NFD ID to associate with the validator (that must be owned by the owner or manager) so that services will be able to link stakers 
       to information about the validator. The validator would presumably describe their services, justifying their rates, promoting how they run their infrastructure, etc.  
       Mechanisms will be provided which will allow the users to have the created staking pool contract accounts 'verify' against the NFD so 
-      that all staking pool operations link to that validator on-chain   
+      that all staking pool operations link to that validator on-chain.
+    * NFTs by Creator and min amount(Optional)
+      * A project running a validator can set a creator account such that all stakers must hold an ASA created by this account (w/ optional minimum 
+        amount (for tokens).  This can be used to restrict validator pools to members of a particular community.
+    * Reward token and reward rate (Optional)
+      * A validator can define a token that users are awarded in addition to the ALGO they receive for being in the pool.
+        This will allow projects to allow rewarding members their own token for eg.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs, 
+        and all stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
 
 * Staking Pools
   * On each node, validators can add a new pool (up to their defined limit).

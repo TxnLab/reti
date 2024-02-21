@@ -11,10 +11,10 @@ package swagger
 
 // NFDAnalyticEvent contains a price history record for a point in time of an NFD
 type NfdAnalyticEvent struct {
-	Block int32  `json:"block,omitempty"`
+	Block int64  `json:"block,omitempty"`
 	Buyer string `json:"buyer,omitempty"`
 	// extra amount paid to cover minimum balance requirements - add to price to determine total amount paid
-	CarryCost int32  `json:"carryCost,omitempty"`
+	CarryCost int64  `json:"carryCost,omitempty"`
 	Category  string `json:"category,omitempty"`
 	// NFD current owner - if set via includeOwner property
 	CurrentOwner string   `json:"currentOwner,omitempty"`

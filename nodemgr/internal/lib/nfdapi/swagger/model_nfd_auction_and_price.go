@@ -12,11 +12,11 @@ package swagger
 type NfdAuctionAndPrice struct {
 	AuctionInfo *NfdAuction `json:"auctionInfo"`
 	// Change in price per minute
-	ChangePerMinute int32 `json:"changePerMinute,omitempty"`
+	ChangePerMinute int64 `json:"changePerMinute,omitempty"`
 	// Minutes elapsed so far in Auction
 	ElapsedMinutes int64 `json:"elapsedMinutes,omitempty"`
 	// Current price in microAlgos
-	Price int32 `json:"price,omitempty"`
+	Price int64 `json:"price,omitempty"`
 	// Total number of minutes in Auction
 	TotalMinutes int64 `json:"totalMinutes,omitempty"`
 }

@@ -12,5 +12,5 @@ package swagger
 type EscrowOfferRequestBody struct {
 	Buyer string `json:"buyer"`
 	// Amount in microAlgo to escrow as new floor price
-	Offer int32 `json:"offer"`
+	Offer int64 `json:"offer"`
 }

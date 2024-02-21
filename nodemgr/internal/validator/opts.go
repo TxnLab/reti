@@ -1,6 +1,8 @@
 package validator
 
 import (
+	"log/slog"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -14,6 +16,12 @@ func GetValidatorCmdOpts() *cli.Command {
 				Name:     "init",
 				Usage:    "Initialize self as validator - creating or resetting configuration - should only be done ONCE, EVER !",
 				Category: "validator",
+				Action: func(context *cli.Context) error {
+					// do something with the context here
+					app := context.App
+					slog.Info("in init", "name", app.Name)
+					return nil
+				},
 			},
 			{
 				Name:     "load",
@@ -32,10 +40,3 @@ func GetValidatorCmdOpts() *cli.Command {
 		},
 	}
 }
-
-/*
-node
-	add
-pool
-	add
-*/

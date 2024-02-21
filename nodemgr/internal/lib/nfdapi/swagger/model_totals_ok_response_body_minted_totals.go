@@ -10,8 +10,8 @@
 package swagger
 
 type TotalsOkResponseBodyMintedTotals struct {
-	Day      int32 `json:"day,omitempty"`
-	Lifetime int32 `json:"lifetime,omitempty"`
-	Month    int32 `json:"month,omitempty"`
-	Week     int32 `json:"week,omitempty"`
+	Day      int64 `json:"day,omitempty"`
+	Lifetime int64 `json:"lifetime,omitempty"`
+	Month    int64 `json:"month,omitempty"`
+	Week     int64 `json:"week,omitempty"`
 }

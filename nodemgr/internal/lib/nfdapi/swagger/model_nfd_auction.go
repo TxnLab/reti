@@ -15,15 +15,15 @@ import (
 
 type NfdAuction struct {
 	// Price in microAlgos
-	CeilingPrice int32 `json:"ceilingPrice"`
+	CeilingPrice int64 `json:"ceilingPrice"`
 	// Price in microAlgos
-	CurrentPrice int32     `json:"currentPrice,omitempty"`
+	CurrentPrice int64     `json:"currentPrice,omitempty"`
 	EndTime      time.Time `json:"endTime"`
 	// Price in microAlgos
-	FloorPrice int32     `json:"floorPrice"`
+	FloorPrice int64     `json:"floorPrice"`
 	Name       string    `json:"name"`
 	NewEndTime time.Time `json:"newEndTime,omitempty"`
 	// Escrowed floor price in microAlgos
-	NewFloorPrice int32     `json:"newFloorPrice,omitempty"`
+	NewFloorPrice int64     `json:"newFloorPrice,omitempty"`
 	StartTime     time.Time `json:"startTime"`
 }

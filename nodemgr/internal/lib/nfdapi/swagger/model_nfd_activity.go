@@ -16,7 +16,7 @@ import (
 // NFDActivity contains the property changes made in a particular NFD contract update call
 type NfdActivity struct {
 	// Algorand Block number of change
-	Block        int32  `json:"block"`
+	Block        int64  `json:"block"`
 	CacheControl string `json:"cache-control,omitempty"`
 	// Changed properties
 	Changes map[string]string `json:"changes,omitempty"`

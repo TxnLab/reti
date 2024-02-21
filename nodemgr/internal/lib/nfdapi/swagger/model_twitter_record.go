@@ -15,10 +15,10 @@ import (
 
 // TwitterRecord contains information about an NFD w/ Verified Twitter account and basic info on its twitter metrics
 type TwitterRecord struct {
-	Followers     int32     `json:"followers"`
-	Following     int32     `json:"following"`
+	Followers     int64     `json:"followers"`
+	Following     int64     `json:"following"`
 	Nfd           *Nfd      `json:"nfd"`
 	TimeChanged   time.Time `json:"timeChanged"`
-	Tweets        int32     `json:"tweets"`
+	Tweets        int64     `json:"tweets"`
 	TwitterHandle string    `json:"twitterHandle"`
 }
