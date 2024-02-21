@@ -185,9 +185,6 @@ export async function addValidator(
     config: ValidatorConfig,
     validatorMbr: bigint
 ) {
-    // 'real' code will likely have to do this unless simulate is used..
-    const nextValidator = (await validatorClient.getGlobalState()).numV!.asNumber() + 1;
-
     const suggestedParams = await context.algod.getTransactionParams().do();
     const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
@@ -214,10 +211,11 @@ export async function addValidator(
                     config: validatorConfigAsArray(config),
                 },
                 {
-                    boxes: [
-                        { appId: 0, name: getValidatorListBoxName(nextValidator) },
-                        { appId: 0, name: '' }, // buy more i/o
-                    ],
+                    sender: owner,
+                    // boxes: [
+                    //     { appId: 0, name: getValidatorListBoxName(nextValidator) },
+                    //     { appId: 0, name: '' }, // buy more i/o
+                    // ],
                 }
             )
             .execute({ populateAppCallResources: true });
@@ -287,13 +285,13 @@ export async function addStakingPool(
         console.log((exception as LogicError).message);
         throw exception;
     }
-    const validatorPoolKey = addPoolResults.returns![0];
+    const poolKey = new ValidatorPoolKey(addPoolResults.returns![0]);
 
     // Pay the mbr to the newly created staking pool contract to cover its upcoming box mbr storage req
     await transferAlgos(
         {
             from: context.testAccount,
-            to: getApplicationAddress(validatorPoolKey[2]),
+            to: getApplicationAddress(poolKey.PoolAppID),
             amount: AlgoAmount.MicroAlgos(Number(poolInitMbr)),
         },
         context.algod
@@ -301,12 +299,12 @@ export async function addStakingPool(
 
     // now tell it to initialize its storage
     const newPoolClient = new StakingPoolClient(
-        { sender: vldtrAcct, resolveBy: 'id', id: validatorPoolKey[2] },
+        { sender: vldtrAcct, resolveBy: 'id', id: poolKey.PoolAppID },
         context.algod
     );
     await newPoolClient.initStorage({}, { sendParams: { populateAppCallResources: true } });
 
-    return new ValidatorPoolKey(validatorPoolKey);
+    return poolKey;
 }
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {

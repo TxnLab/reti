@@ -14,6 +14,7 @@ const MAX_POOLS_PER_NODE = 6; // max number of pools per node - more than 4 gets
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
 const MIN_PAYOUT_DAYS = 1;
 const MAX_PAYOUT_DAYS = 30;
+const MAX_POOLS_PER_STAKER = 6;
 
 type ValidatorID = uint64;
 export type ValidatorPoolKey = {
@@ -88,7 +89,6 @@ const SSC_VALUE_BYTES = 50000; // cost for value as bytes
 export class ValidatorRegistry extends Contract {
     programVersion = 10;
 
-    // globalState = GlobalStateMap<bytes, bytes>({ maxKeys: 3 });
     numValidators = GlobalStateKey<uint64>({ key: 'numV' });
 
     // Validator list - simply incremental id - direct access to info for validator
@@ -97,7 +97,7 @@ export class ValidatorRegistry extends Contract {
 
     // For given user staker address, which of up to 4 validator/pools are they in
     // We use this to find a particular addresses deposits (in up to 4 independent pools w/ any validators)
-    StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, 4>>({ prefix: 'sps' });
+    StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, typeof MAX_POOLS_PER_STAKER>>({ prefix: 'sps' });
 
     // The app id of a staking pool contract instance to use as template for newly created pools
     StakingPoolTemplateAppID = GlobalStateKey<uint64>({ key: 'poolTemplateAppID' });
@@ -141,7 +141,7 @@ export class ValidatorRegistry extends Contract {
         return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
     }
 
-    // Cost for creator of validator contract itself is:
+    // Cost for creator of validator contract itself is (but not really our problem - it's a bootstrap issue only)
     // this.minBalanceForAccount(0, 0, 0, 0, 0, 2, 0)
 
     getMbrAmounts(): MbrAmounts {
@@ -153,7 +153,9 @@ export class ValidatorRegistry extends Contract {
                 this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL),
             AddStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
-                this.costForBoxStorage(3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * 4), // size of key + all values
+                this.costForBoxStorage(
+                    3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER
+                ), // size of key + all values
         };
     }
 
@@ -255,8 +257,10 @@ export class ValidatorRegistry extends Contract {
                 applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
             });
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
-            assert(this.txn.sender === (Application.fromID(nfdAppID).globalState('i.owner.a') as Address),
-                'If specifying NFD, account adding validator must be owner');
+            assert(
+                this.txn.sender === (Application.fromID(nfdAppID).globalState('i.owner.a') as Address),
+                'If specifying NFD, account adding validator must be owner'
+            );
         }
         this.validateConfig(config);
         this.ValidatorList(validatorID).value.Config = config;
@@ -548,7 +552,6 @@ export class ValidatorRegistry extends Contract {
         isNewStaker: boolean
     ): void {
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
-        const priorStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
 
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call

@@ -138,7 +138,7 @@
         {
           "name": "nfdName",
           "type": "string",
-          "desc": "(Optional) Name of nfd (used as double-check against id"
+          "desc": "(Optional) Name of nfd (used as double-check against id)"
         },
         {
           "name": "config",
