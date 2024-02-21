@@ -109,13 +109,13 @@ export class StakingPool extends Contract {
         assert(this.Stakers.exists);
 
         // account calling us has to be our creating validator contract
-        assert(this.txn.sender === Application.fromID(this.CreatingValidatorContractAppID.value).address);
+        assert(this.txn.sender === AppID.fromUint64(this.CreatingValidatorContractAppID.value).address);
         assert(staker !== globals.zeroAddress);
 
         // Now, is the required amount actually being paid to US (this contract account - the staking pool)
         // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
         verifyPayTxn(stakedAmountPayment, {
-            sender: Application.fromID(this.CreatingValidatorContractAppID.value).address,
+            sender: AppID.fromUint64(this.CreatingValidatorContractAppID.value).address,
             receiver: this.app.address,
             amount: stakedAmountPayment.amount,
         });
@@ -227,7 +227,7 @@ export class StakingPool extends Contract {
                 // stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void
                 // ABI: stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void
                 sendMethodCall<typeof ValidatorRegistry.prototype.stakeRemoved>({
-                    applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
+                    applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
                     methodArgs: [
                         { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
                         staker,
@@ -260,7 +260,7 @@ export class StakingPool extends Contract {
 
     private isOwnerOrManagerCaller(): boolean {
         const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
-            applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
         return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
@@ -280,7 +280,7 @@ export class StakingPool extends Contract {
 
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
-            applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
         const payoutDays = payoutConfig.PayoutEveryXDays as uint64;
@@ -472,7 +472,7 @@ export class StakingPool extends Contract {
         // It'll verify we're a valid staking pool id and update it
         // stakeUpdatedViaRewards((uint64,uint64,uint64),uint64)void
         sendMethodCall<typeof ValidatorRegistry.prototype.stakeUpdatedViaRewards>({
-            applicationID: Application.fromID(this.CreatingValidatorContractAppID.value),
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [
                 { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
                 increasedStake,

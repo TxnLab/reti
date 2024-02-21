@@ -147,7 +147,7 @@ export class ValidatorRegistry extends Contract {
     getMbrAmounts(): MbrAmounts {
         return {
             AddValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorID>() + len<ValidatorInfo>()),
-            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, 8, 0),
+            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, StakingPool.schema.global.numUint, 0),
             PoolInitMbr:
                 ALGORAND_ACCOUNT_MIN_BALANCE +
                 this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL),
@@ -204,7 +204,7 @@ export class ValidatorRegistry extends Contract {
      * @param {Account} staker - The account to retrieve staked pools for.
      * @return {ValidatorPoolKey[]} - The array of staked pools for the account.
      */
-    getStakedPoolsForAccount(staker: Account): ValidatorPoolKey[] {
+    getStakedPoolsForAccount(staker: AccountReference): ValidatorPoolKey[] {
         if (!this.StakerPoolSet(staker).exists) {
             return [];
         }
@@ -253,12 +253,12 @@ export class ValidatorRegistry extends Contract {
         if (nfdAppID !== 0) {
             // verify nfd is real, and owned by owner, or manager
             sendAppCall({
-                applicationID: Application.fromID(this.NFDRegistryAppID),
+                applicationID: AppID.fromUint64(this.NFDRegistryAppID),
                 applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
             });
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
             assert(
-                this.txn.sender === (Application.fromID(nfdAppID).globalState('i.owner.a') as Address),
+                this.txn.sender === (AppID.fromUint64(nfdAppID).globalState('i.owner.a') as Address),
                 'If specifying NFD, account adding validator must be owner'
             );
         }
@@ -315,11 +315,11 @@ export class ValidatorRegistry extends Contract {
         // Create the actual staker pool contract instance
         sendAppCall({
             onCompletion: OnCompletion.NoOp,
-            approvalProgram: Application.fromID(this.StakingPoolTemplateAppID.value).approvalProgram,
-            clearStateProgram: Application.fromID(this.StakingPoolTemplateAppID.value).clearStateProgram,
-            globalNumUint: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumUint,
-            globalNumByteSlice: Application.fromID(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
-            extraProgramPages: Application.fromID(this.StakingPoolTemplateAppID.value).extraProgramPages,
+            approvalProgram: AppID.fromUint64(this.StakingPoolTemplateAppID.value).approvalProgram,
+            clearStateProgram: AppID.fromUint64(this.StakingPoolTemplateAppID.value).clearStateProgram,
+            globalNumUint: AppID.fromUint64(this.StakingPoolTemplateAppID.value).globalNumUint,
+            globalNumByteSlice: AppID.fromUint64(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
+            extraProgramPages: AppID.fromUint64(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
                 // creatingContractID, validatorID, poolID, minAllowedStake, maxStakeAllowed
                 method('createApplication(uint64,uint64,uint64,uint64,uint64)void'),
@@ -380,7 +380,7 @@ export class ValidatorRegistry extends Contract {
 
         // Update StakerPoolList for this found pool (new or existing)
         this.updateStakerPoolSet(staker, poolKey);
-        // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool and it then updates
+        // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool, and it then updates
         // the staker data.
         this.callPoolAddStake(stakedAmountPayment, poolKey, mbrAmtLeftBehind, isNewStaker);
         return poolKey;
@@ -400,10 +400,10 @@ export class ValidatorRegistry extends Contract {
             "The passed in app id doesn't match the passed in ids"
         );
         // Sender has to match the pool app id passed in as well.
-        assert(this.txn.sender === Application.fromID(poolKey.PoolAppID).address);
+        assert(this.txn.sender === AppID.fromUint64(poolKey.PoolAppID).address);
         // verify the state of the specified app (the staking pool itself) state matches as well !
-        assert(poolKey.ID === (Application.fromID(poolKey.PoolAppID).globalState('validatorID') as uint64));
-        assert(poolKey.PoolID === (Application.fromID(poolKey.PoolAppID).globalState('poolID') as uint64));
+        assert(poolKey.ID === (AppID.fromUint64(poolKey.PoolAppID).globalState('validatorID') as uint64));
+        assert(poolKey.PoolID === (AppID.fromUint64(poolKey.PoolAppID).globalState('poolID') as uint64));
     }
 
     /**
@@ -556,19 +556,19 @@ export class ValidatorRegistry extends Contract {
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call
         sendMethodCall<typeof StakingPool.prototype.addStake>({
-            applicationID: Application.fromID(poolAppID),
+            applicationID: AppID.fromUint64(poolAppID),
             methodArgs: [
                 // =======
                 // THIS IS A SEND of the amount received right back out and into the staking pool contract account.
-                { amount: stakedAmountPayment.amount - mbrAmtPaid, receiver: Application.fromID(poolAppID).address },
+                { amount: stakedAmountPayment.amount - mbrAmtPaid, receiver: AppID.fromUint64(poolAppID).address },
                 // =======
                 stakedAmountPayment.sender,
             ],
         });
 
         // Stake has been added to the pool - get its new totals and add to our own tracking data
-        const poolNumStakers = Application.fromID(poolAppID).globalState('numStakers') as uint64;
-        const poolAlgoStaked = Application.fromID(poolAppID).globalState('staked') as uint64;
+        const poolNumStakers = AppID.fromUint64(poolAppID).globalState('numStakers') as uint64;
+        const poolAlgoStaked = AppID.fromUint64(poolAppID).globalState('staked') as uint64;
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers = poolNumStakers as uint16;
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked = poolAlgoStaked;
 
