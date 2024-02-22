@@ -1,17 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/nfdapi/swagger"
 	"github.com/TxnLab/reti/internal/service"
-	"github.com/TxnLab/reti/internal/validator"
 )
 
 func initApp() *RetiApp {
@@ -24,14 +24,14 @@ func initApp() *RetiApp {
 	// in initialization of cli App instance.
 	appConfig := &RetiApp{signer: signer, logger: logger}
 
-	appConfig.App = &cli.App{
+	appConfig.cliCmd = &cli.Command{
 		Name:    "réti node manager",
 		Usage:   "Configuration tool and background daemon for Algorand validator pools",
 		Version: misc.GetVersionInfo(),
-		Before: func(ctx *cli.Context) error {
+		Before: func(ctx context.Context, cmd *cli.Command) error {
 			// This is further bootstrap of the 'app' but within context of 'cli' helper as it will
 			// have access to flags and options (network to use for eg)
-			return appConfig.initClients(ctx)
+			return appConfig.initClients(ctx, cmd)
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -39,33 +39,44 @@ func initApp() *RetiApp {
 				Usage:   "Algorand network to use",
 				Value:   "mainnet",
 				Aliases: []string{"n"},
-				EnvVars: []string{"ALGO_NETWORK"},
+				Sources: cli.EnvVars("ALGO_NETWORK"),
+			},
+			&cli.UintFlag{
+				Name:        "id",
+				Usage:       "The application ID of the Reti master validator contract",
+				Sources:     cli.EnvVars("RETI_APPID"),
+				Required:    true,
+				Destination: &appConfig.retiAppID,
+				Aliases:     []string{"i"},
+				OnlyOnce:    true,
 			},
 		},
 		Commands: []*cli.Command{
 			service.GetDaemonCmdOpts(),
-			validator.GetValidatorCmdOpts(),
+			GetValidatorCmdOpts(),
 		},
 	}
 	return appConfig
 }
 
 type RetiApp struct {
-	*cli.App
+	cliCmd     *cli.Command
 	logger     *slog.Logger
 	signer     algo.MultipleWalletSigner
 	algoClient *algod.Client
 	api        *swagger.APIClient
+
+	retiAppID uint64
 }
 
 // initClients initializes both an an algod client (to correct network - which it
 // also validates) and an nfd api clinet - for nfd updates or fetches if caller
 // desires
-func (ac *RetiApp) initClients(ctx *cli.Context) error {
-	network := ctx.Value("network").(string)
+func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
+	network := cmd.Value("network").(string)
 
 	switch network {
-	case "betanet", "testnet", "mainnet", "voitestnet":
+	case "sandbox", "betanet", "testnet", "mainnet", "voitestnet":
 	default:
 		return fmt.Errorf("unknown network:%s", network)
 	}

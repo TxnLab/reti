@@ -1,6 +1,10 @@
 package service
 
-import "github.com/urfave/cli/v2"
+import (
+	"context"
+
+	"github.com/urfave/cli/v3"
+)
 
 func GetDaemonCmdOpts() *cli.Command {
 	return &cli.Command{
@@ -11,7 +15,7 @@ func GetDaemonCmdOpts() *cli.Command {
 	}
 }
 
-func runAsDaemon(c *cli.Context) error {
+func runAsDaemon(c context.Context, _ *cli.Command) error {
 	// Add your daemon logic here
 	return nil
 }
