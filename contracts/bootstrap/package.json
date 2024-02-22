@@ -1,0 +1,21 @@
+{
+  "name": "bootstrap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bootstrap/index.js",
+    "go": "npm run build && npm run start"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@algorandfoundation/algokit-utils": ">=5.5.0",
+    "algosdk": ">=2.7.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.2",
+    "typescript": "^5.3.3"
+  }
+}

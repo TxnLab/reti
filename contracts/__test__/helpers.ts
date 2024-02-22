@@ -188,8 +188,8 @@ export async function addValidator(
     const suggestedParams = await context.algod.getTransactionParams().do();
     const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
-    // Pay the additional mbr to the validator contract for the new pool mbr
-    const payPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
+    // Pay the additional mbr to the validator contract for the new validator mbr
+    const payValidatorMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,
         to: validatorsAppRef.appAddress,
         amount: Number(validatorMbr),
@@ -202,7 +202,7 @@ export async function addValidator(
             .addValidator(
                 {
                     // the required MBR payment transaction..
-                    mbrPayment: { transaction: payPoolMbr, signer: context.testAccount },
+                    mbrPayment: { transaction: payValidatorMbr, signer: context.testAccount },
                     //
                     owner: owner.addr,
                     manager: owner.addr,

@@ -72,6 +72,10 @@ func getDefaults(network string) NetworkConfig {
 	case "betanet":
 		cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
 		cfg.NodeURL = "https://betanet-api.algonode.cloud"
+	case "sandbox":
+		cfg.NFDAPIUrl = "https://api.testnet.nf.domains"
+		cfg.NodeURL = "http://localhost:4001"
+		cfg.NodeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	//-----
 	// VOI
 	//-----

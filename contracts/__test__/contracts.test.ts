@@ -753,7 +753,7 @@ describe('StakeWRewards', () => {
     // adds 1000 algo more - should end at exactly 2000 algo staked
     test('firstStaker', async () => {
         // get current balance of staker pool (should already include needed MBR in balance - but subtract it out so it's seen as the '0' amount)
-        const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
+        // const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
 
         // Fund a 'staker account' that will be the new 'staker'
         const stakerAccount = await getTestAccount(

@@ -27,7 +27,7 @@ export type ValidatorConfig = {
     PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
     ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
-    MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
+    MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
 };
@@ -393,7 +393,7 @@ export class ValidatorRegistry extends Contract {
         assert(this.ValidatorList(poolKey.ID).exists);
         assert((poolKey.PoolID as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
         assert(poolKey.PoolID > 0 && (poolKey.PoolID as uint16) <= this.ValidatorList(poolKey.ID).value.State.NumPools);
-        // validator id, pool id, pool app id might still be kind of spoofed but they can't spoof us verifying they called us from
+        // validator id, pool id, pool app id might still be kind of spoofed, but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
         assert(
             poolKey.PoolAppID === this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID,
@@ -435,7 +435,7 @@ export class ValidatorRegistry extends Contract {
 
         this.verifyPoolKeyCaller(poolKey);
 
-        // Yup - we've been called by an official staking pool telling us about stake that was removed from it
+        // Yup - we've been called by an official staking pool telling us about stake that was removed from it,
         // so we can update our validator's staking stats.
         assert(amountRemoved > 0);
 
@@ -445,13 +445,13 @@ export class ValidatorRegistry extends Contract {
         if (stakerRemoved) {
             // remove form that pool
             this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1;
-            // .. then update the staker set..
+            // . then update the staker set.
             const stakerOutOfThisValidator = this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
                 ID: poolKey.ID,
                 PoolID: poolKey.PoolID,
                 PoolAppID: poolKey.PoolAppID,
             });
-            // .. and remove as a staker in protocol stats if they're completely 'out'
+            // . and remove as a staker in protocol stats if they're completely 'out'
             if (stakerOutOfThisValidator) {
                 this.ValidatorList(poolKey.ID).value.State.TotalStakers -= 1;
             }
@@ -473,8 +473,8 @@ export class ValidatorRegistry extends Contract {
         increaseOpcodeBudget();
 
         let isBrandNewStaker = true;
-        // We have max per pool per validator - this value is stored in the pools as well and they enforce it on their
-        // addStake calls but the values should be the same and we shouldn't even try to add stake if it won't even
+        // We have max per pool per validator - this value is stored in the pools as well, and they enforce it on their
+        // addStake calls but the values should be the same, and we shouldn't even try to add stake if it won't even
         // be accepted.
         const maxPerPool = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool;
         // If there's already a stake list for this account, walk that first, so if the staker is already in THIS
@@ -484,7 +484,7 @@ export class ValidatorRegistry extends Contract {
             assert(validatorID !== 0);
             for (let i = 0; i < poolSet.length; i += 1) {
                 if (poolSet[i].ID === validatorID) {
-                    // Not new to this validator - but might still be out of room in this slot..
+                    // Not new to this validator - but might still be out of room in this slot.
                     log('found validator id entry for this staker');
                     // log(this.itoa(validatorID));
                     isBrandNewStaker = false;
@@ -605,7 +605,7 @@ export class ValidatorRegistry extends Contract {
      * @return {boolean} is the staker gone from ALL pools of the given validator
      */
     private removeFromStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey): boolean {
-        // track how many pools staker is in so we  can know if they remove all stake from all pools of this validator
+        // track how many pools staker is in, so we  can know if they remove all stake from all pools of this validator
         let inXPools = 0;
         let found = false;
 
