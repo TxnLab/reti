@@ -46,7 +46,7 @@
         }
       ],
       "returns": {
-        "type": "(uint16,uint32,address,uint64,uint64,uint8)"
+        "type": "(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)"
       }
     },
     {
@@ -121,28 +121,13 @@
           "desc": "payment from caller which covers mbr increase of new validator storage"
         },
         {
-          "name": "owner",
-          "type": "address",
-          "desc": "The account (presumably cold-wallet) that owns the validator set"
-        },
-        {
-          "name": "manager",
-          "type": "address",
-          "desc": "The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys"
-        },
-        {
-          "name": "nfdAppID",
-          "type": "uint64",
-          "desc": "(Optional) NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found."
-        },
-        {
           "name": "nfdName",
           "type": "string",
-          "desc": "(Optional) Name of nfd (used as double-check against id)"
+          "desc": "(Optional) Name of nfd (used as double-check against id specified in config)"
         },
         {
           "name": "config",
-          "type": "(uint16,uint32,address,uint64,uint64,uint8)",
+          "type": "(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -177,6 +162,10 @@
         {
           "name": "nfdAppID",
           "type": "uint64"
+        },
+        {
+          "name": "nfdName",
+          "type": "string"
         }
       ],
       "returns": {

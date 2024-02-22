@@ -22,7 +22,7 @@
           "desc": "which pool id are we"
         },
         {
-          "name": "minAllowedStake",
+          "name": "minEntryStake",
           "type": "uint64",
           "desc": "minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)"
         },

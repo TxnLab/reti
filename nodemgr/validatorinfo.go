@@ -31,7 +31,7 @@ type ValidatorConfig struct {
 	// account that receives the validation commission each epoch payout (can be ZeroAddress)
 	ValidatorCommissionAddress string
 	// minimum stake required to enter pool - but must withdraw all if want to go below this amount as well(!)
-	MinAllowedStake uint64
+	MinEntryStake uint64
 	// maximum stake allowed per pool (to keep under incentive limits)
 	MaxAlgoPerPool uint64
 	// Number of pools to allow per node (max of 3 is recommended)

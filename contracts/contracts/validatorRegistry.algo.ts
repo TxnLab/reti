@@ -24,28 +24,6 @@ export type ValidatorPoolKey = {
 };
 
 export type ValidatorConfig = {
-    PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
-    PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
-    MinAllowedStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
-    MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
-    PoolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
-};
-
-type ValidatorCurState = {
-    NumPools: uint16; // current number of pools this validator has - capped at MaxPools
-    TotalStakers: uint64; // total number of stakers across all pools
-    TotalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
-};
-
-type PoolInfo = {
-    NodeID: uint16;
-    PoolAppID: uint64; // The App ID of this staking pool contract instance
-    TotalStakers: uint16;
-    TotalAlgoStaked: uint64;
-};
-
-type ValidatorInfo = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
     Manager: Address; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
@@ -65,6 +43,29 @@ type ValidatorInfo = {
      * This will allow projects to allow rewarding members their own token for eg.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs
      * and all stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
      */
+
+    PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
+    PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
+    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
+    MinEntryStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
+    MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
+    PoolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
+};
+
+type ValidatorCurState = {
+    NumPools: uint16; // current number of pools this validator has - capped at MaxPools
+    TotalStakers: uint64; // total number of stakers across all pools
+    TotalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
+};
+
+type PoolInfo = {
+    NodeID: uint16;
+    PoolAppID: uint64; // The App ID of this staking pool contract instance
+    TotalStakers: uint16;
+    TotalAlgoStaked: uint64;
+};
+
+type ValidatorInfo = {
     Config: ValidatorConfig;
     State: ValidatorCurState;
     Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
@@ -184,7 +185,10 @@ export class ValidatorRegistry extends Contract {
 
     // @abi.readonly
     getValidatorOwnerAndManager(validatorID: ValidatorID): [Address, Address] {
-        return [this.ValidatorList(validatorID).value.Owner, this.ValidatorList(validatorID).value.Manager];
+        return [
+            this.ValidatorList(validatorID).value.Config.Owner,
+            this.ValidatorList(validatorID).value.Config.Manager,
+        ];
     }
 
     // @abi.readonly
@@ -220,24 +224,15 @@ export class ValidatorRegistry extends Contract {
 
     /** Adds a new validator
      * @param mbrPayment payment from caller which covers mbr increase of new validator storage
-     * @param owner The account (presumably cold-wallet) that owns the validator set
-     * @param manager The account that manages the pool part. keys and triggers payouts.  Normally a hot-wallet as node sidecar needs the keys
-     * @param nfdAppID (Optional) NFD App ID linking to information about the validator being added - where information about the validator and their pools can be found.
-     * @param nfdName (Optional) Name of nfd (used as double-check against id)
+     * @param nfdName (Optional) Name of nfd (used as double-check against id specified in config)
      * @param config ValidatorConfig struct
      * @returns validator ID
      */
-    addValidator(
-        mbrPayment: PayTxn,
-        owner: Address,
-        manager: Address,
-        nfdAppID: uint64,
-        nfdName: string,
-        config: ValidatorConfig
-    ): uint64 {
-        assert(owner !== Address.zeroAddress);
-        assert(manager !== Address.zeroAddress);
-        assert(this.txn.sender === owner, 'sender must be owner to add new validator');
+    addValidator(mbrPayment: PayTxn, nfdName: string, config: ValidatorConfig): uint64 {
+        this.validateConfig(config);
+        assert(config.Owner !== Address.zeroAddress);
+        assert(config.Manager !== Address.zeroAddress);
+        assert(this.txn.sender === config.Owner, 'sender must be owner to add new validator');
 
         verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddValidatorMbr });
 
@@ -246,44 +241,51 @@ export class ValidatorRegistry extends Contract {
         this.numValidators.value = validatorID;
 
         this.ValidatorList(validatorID).create();
-        this.ValidatorList(validatorID).value.ID = validatorID;
-        this.ValidatorList(validatorID).value.Owner = owner;
-        this.ValidatorList(validatorID).value.Manager = manager;
-        this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
-        if (nfdAppID !== 0) {
-            // verify nfd is real, and owned by owner, or manager
+        this.ValidatorList(validatorID).value.Config = config;
+        this.ValidatorList(validatorID).value.Config.ID = validatorID;
+
+        if (config.NFDForInfo !== 0) {
+            // verify nfd is real, and owned by sender
             sendAppCall({
                 applicationID: AppID.fromUint64(this.NFDRegistryAppID),
-                applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
+                applicationArgs: ['is_valid_nfd_appid', nfdName, itob(config.NFDForInfo)],
             });
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
             assert(
-                this.txn.sender === (AppID.fromUint64(nfdAppID).globalState('i.owner.a') as Address),
+                this.txn.sender === (AppID.fromUint64(config.NFDForInfo).globalState('i.owner.a') as Address),
                 'If specifying NFD, account adding validator must be owner'
             );
         }
-        this.validateConfig(config);
-        this.ValidatorList(validatorID).value.Config = config;
         return validatorID;
     }
 
     changeValidatorManager(validatorID: ValidatorID, manager: Address): void {
-        assert(this.txn.sender === this.ValidatorList(validatorID).value.Owner);
-        this.ValidatorList(validatorID).value.Manager = manager;
+        assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
+        this.ValidatorList(validatorID).value.Config.Manager = manager;
     }
 
-    changeValidatorNFD(validatorID: ValidatorID, nfdAppID: uint64): void {
+    changeValidatorNFD(validatorID: ValidatorID, nfdAppID: uint64, nfdName: string): void {
         assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Manager
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
         );
-        this.ValidatorList(validatorID).value.NFDForInfo = nfdAppID;
+        // verify nfd is real, and owned by owner or manager..
+        sendAppCall({
+            applicationID: AppID.fromUint64(this.NFDRegistryAppID),
+            applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
+        });
+        // we know sender is owner or manager - so if sender is owner of nfd - we're fine.
+        assert(
+            this.txn.sender === (AppID.fromUint64(nfdAppID).globalState('i.owner.a') as Address),
+            'If specifying NFD, account adding validator must be owner'
+        );
+        this.ValidatorList(validatorID).value.Config.NFDForInfo = nfdAppID;
     }
 
     changeValidatorCommissionAddress(validatorID: ValidatorID, commissionAddress: Address): void {
         assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Manager
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
         );
         this.ValidatorList(validatorID).value.Config.ValidatorCommissionAddress = commissionAddress;
     }
@@ -296,14 +298,14 @@ export class ValidatorRegistry extends Contract {
      *
      */
     addPool(mbrPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
-        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr });
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr, receiver: this.app.address });
 
         assert(this.ValidatorList(validatorID).exists);
 
         // Must be called by the owner or manager of the validator.
         assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Manager
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
         );
 
         let numPools = this.ValidatorList(validatorID).value.State.NumPools;
@@ -321,12 +323,12 @@ export class ValidatorRegistry extends Contract {
             globalNumByteSlice: AppID.fromUint64(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
             extraProgramPages: AppID.fromUint64(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
-                // creatingContractID, validatorID, poolID, minAllowedStake, maxStakeAllowed
+                // creatingContractID, validatorID, poolID, minEntryStake, maxStakeAllowed
                 method('createApplication(uint64,uint64,uint64,uint64,uint64)void'),
                 itob(this.app.id),
                 itob(validatorID),
                 itob(numPools as uint64),
-                itob(this.ValidatorList(validatorID).value.Config.MinAllowedStake),
+                itob(this.ValidatorList(validatorID).value.Config.MinEntryStake),
                 itob(this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool),
             ],
         });
@@ -504,7 +506,7 @@ export class ValidatorRegistry extends Contract {
 
         // No existing stake found or that we fit in to, so ensure the stake meets the 'minimum entry' amount
         assert(
-            amountToStake >= this.ValidatorList(validatorID).value.Config.MinAllowedStake,
+            amountToStake >= this.ValidatorList(validatorID).value.Config.MinEntryStake,
             'must stake at least the minimum for this pool'
         );
 
@@ -530,7 +532,7 @@ export class ValidatorRegistry extends Contract {
                 'ValidatorCommissionAddress must be set if percent to validator is not 0'
             );
         }
-        assert(config.MinAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
+        assert(config.MinEntryStake >= MIN_ALGO_STAKE_PER_POOL);
         assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
     }

@@ -19,40 +19,103 @@ import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 
 export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
 
-interface ValidatorConfig {
-    PayoutEveryXDays?: number; // Payout frequency - ie: 7, 30, etc.
-    PercentToValidator?: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    ValidatorCommissionAddress?: string; // account that receives the validation commission each epoch payout
-    MinEntryStake?: number; // minimum stake required to enter pool
-    MaxAlgoPerPool?: number; // maximum stake allowed per pool (to keep under incentive limits)
-    PoolsPerNode?: number; // Number of pools to allow per node (max of 4 is recommended)
-    MaxNodes?: number; // Maximum number of nodes the validator is stating they'll allow
+export class ValidatorConfig {
+    ID: bigint; // ID of this validator (sequentially assigned)
+
+    Owner: string; // Account that controls config - presumably cold-wallet
+
+    Manager: string; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
+
+    // Optional NFD AppID which the validator uses to describe their validator pool
+    // NFD must be currently OWNED by address that adds the validator
+    NFDForInfo: bigint;
+
+    PayoutEveryXDays: number; // Payout frequency - ie: 7, 30, etc.
+
+    PercentToValidator: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
+
+    ValidatorCommissionAddress: string; // account that receives the validation commission each epoch payout
+
+    MinEntryStake: bigint; // minimum stake required to enter pool
+
+    MaxAlgoPerPool: bigint; // maximum stake allowed per pool (to keep under incentive limits)
+
+    PoolsPerNode: number; // Number of pools to allow per node (max of 4 is recommended)
+
+    // getValidatorConfig(uint64)(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)
+    // constructor to take array of values like ABI string above and set into the named instance vars
+    constructor([
+        ID,
+        Owner,
+        Manager,
+        NFDForInfo,
+        PayoutEveryXDays,
+        PercentToValidator,
+        ValidatorCommissionAddress,
+        MinEntryStake,
+        MaxAlgoPerPool,
+        PoolsPerNode,
+    ]: [bigint, string, string, bigint, number, number, string, bigint, bigint, number]) {
+        this.ID = ID;
+        this.Owner = Owner;
+        this.Manager = Manager;
+        this.NFDForInfo = NFDForInfo;
+        this.PayoutEveryXDays = PayoutEveryXDays;
+        this.PercentToValidator = PercentToValidator;
+        this.ValidatorCommissionAddress = ValidatorCommissionAddress;
+        this.MinEntryStake = MinEntryStake;
+        this.MaxAlgoPerPool = MaxAlgoPerPool;
+        this.PoolsPerNode = PoolsPerNode;
+    }
 }
 
 const DefaultValidatorConfig: ValidatorConfig = {
+    ID: BigInt(0),
+    Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    NFDForInfo: BigInt(0),
     PayoutEveryXDays: 1,
     PercentToValidator: 10000, // 1.0000%
     ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
-    MaxAlgoPerPool: AlgoAmount.Algos(200_000).microAlgos,
+    MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+    MaxAlgoPerPool: BigInt(AlgoAmount.Algos(200_000).microAlgos),
     PoolsPerNode: 3,
 };
 
-export function createValidatorConfig(inputConfig: ValidatorConfig): ValidatorConfig {
-    return {
+export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): ValidatorConfig {
+    const configObj = {
         ...DefaultValidatorConfig,
         ...inputConfig,
     };
+
+    return new ValidatorConfig([
+        configObj.ID,
+        configObj.Owner,
+        configObj.Manager,
+        configObj.NFDForInfo,
+        configObj.PayoutEveryXDays,
+        configObj.PercentToValidator,
+        configObj.ValidatorCommissionAddress,
+        configObj.MinEntryStake,
+        configObj.MaxAlgoPerPool,
+        configObj.PoolsPerNode,
+    ]);
 }
 
-function validatorConfigAsArray(config: ValidatorConfig): [number, number, string, number, number, number] {
+function validatorConfigAsArray(
+    config: ValidatorConfig
+): [bigint, string, string, bigint, number, number, string, bigint, bigint, number] {
     return [
-        config.PayoutEveryXDays!,
-        config.PercentToValidator!,
-        config.ValidatorCommissionAddress!,
-        config.MinEntryStake!,
-        config.MaxAlgoPerPool!,
-        config.PoolsPerNode!,
+        config.ID,
+        config.Owner,
+        config.Manager,
+        config.NFDForInfo,
+        config.PayoutEveryXDays,
+        config.PercentToValidator,
+        config.ValidatorCommissionAddress,
+        config.MinEntryStake,
+        config.MaxAlgoPerPool,
+        config.PoolsPerNode,
     ];
 }
 
@@ -203,19 +266,12 @@ export async function addValidator(
                 {
                     // the required MBR payment transaction..
                     mbrPayment: { transaction: payValidatorMbr, signer: context.testAccount },
-                    //
-                    owner: owner.addr,
-                    manager: owner.addr,
-                    nfdAppID: 0,
+                    // --
                     nfdName: '',
                     config: validatorConfigAsArray(config),
                 },
                 {
                     sender: owner,
-                    // boxes: [
-                    //     { appId: 0, name: getValidatorListBoxName(nextValidator) },
-                    //     { appId: 0, name: '' }, // buy more i/o
-                    // ],
                 }
             )
             .execute({ populateAppCallResources: true });

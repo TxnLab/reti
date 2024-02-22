@@ -147,7 +147,7 @@ func DefineValidator() error {
 	if err != nil {
 		return err
 	}
-	config.MinAllowedStake = uint64(minStake) * 1e6
+	config.MinEntryStake = uint64(minStake) * 1e6
 
 	maxPerPool, err := getInt("Enter the maximum algo stake allowed per pool", 20_000_000, 200_000, 100_000_000)
 	if err != nil {
@@ -167,6 +167,7 @@ func DefineValidator() error {
 		return err
 	}
 	info.ID = validatorID
+	slog.Info("New Validator added, your Validator ID is:", "id", info.ID)
 
 	return SaveValidatorInfo(info)
 }
@@ -187,7 +188,7 @@ func addValidator(info *ValidatorInfo, params types.SuggestedParams, nfdName str
 	// Now try to actually create the validator !!
 	atc := transaction.AtomicTransactionComposer{}
 
-	method, err := abi.MethodFromSignature("addValidator(pay,address,address,uint64,string,(uint16,uint32,address,uint64,uint64,uint8))uint64")
+	method, err := abi.MethodFromSignature("addValidator(pay,string,(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8))uint64")
 	if err != nil {
 		return 0, err
 	}
@@ -199,14 +200,8 @@ func addValidator(info *ValidatorInfo, params types.SuggestedParams, nfdName str
 	}
 	slog.Info("mbrs", "validatormbr", mbrs.AddValidatorMbr)
 
-	// Pay the mbr to add a validator
-	paymentTxn, err := transaction.MakePaymentTxn(
-		ownerAddr.String(),
-		crypto.GetApplicationAddress(App.retiAppID).String(),
-		mbrs.AddValidatorMbr,
-		nil,
-		"",
-		params)
+	// Pay the mbr to add a validator then wrap for use in ATC.
+	paymentTxn, err := transaction.MakePaymentTxn(ownerAddr.String(), crypto.GetApplicationAddress(App.retiAppID).String(), mbrs.AddValidatorMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(App.signer, ownerAddr.String()),
@@ -218,15 +213,17 @@ func addValidator(info *ValidatorInfo, params types.SuggestedParams, nfdName str
 		MethodArgs: []any{
 			// MBR payment
 			payTxWithSigner,
-			// rest of args
-			ownerAddr,
-			managerAddr,
-			info.NFDForInfo,
+			// --
 			nfdName,
-			[]any{uint16(info.Config.PayoutEveryXDays),
+			[]any{
+				0, // id is ignored and assigned by contract
+				ownerAddr,
+				managerAddr,
+				info.NFDForInfo,
+				uint16(info.Config.PayoutEveryXDays),
 				uint16(info.Config.PercentToValidator),
 				commissionAddr,
-				info.Config.MinAllowedStake,
+				info.Config.MinEntryStake,
 				info.Config.MaxAlgoPerPool,
 				uint8(info.Config.PoolsPerNode),
 			},

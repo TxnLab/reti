@@ -34,7 +34,7 @@ export class StakingPool extends Contract {
 
     TotalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' });
 
-    MinAllowedStake = GlobalStateKey<uint64>({ key: 'minAllowedStake' });
+    MinEntryStake = GlobalStateKey<uint64>({ key: 'minEntryStake' });
 
     MaxStakeAllowed = GlobalStateKey<uint64>({ key: 'maxStake' });
 
@@ -49,14 +49,14 @@ export class StakingPool extends Contract {
      * @param creatingContractID - id of contract that constructed us - the validator application (single global instance)
      * @param validatorID - id of validator we're a staking pool of
      * @param poolID - which pool id are we
-     * @param minAllowedStake - minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)
+     * @param minEntryStake - minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)
      * @param maxStakeAllowed - maximum algo allowed in this staking pool
      */
     createApplication(
         creatingContractID: uint64,
         validatorID: uint64,
         poolID: uint64,
-        minAllowedStake: uint64,
+        minEntryStake: uint64,
         maxStakeAllowed: uint64
     ): void {
         if (creatingContractID === 0) {
@@ -69,14 +69,14 @@ export class StakingPool extends Contract {
             assert(validatorID !== 0);
             assert(poolID !== 0);
         }
-        assert(minAllowedStake >= MIN_ALGO_STAKE_PER_POOL);
+        assert(minEntryStake >= MIN_ALGO_STAKE_PER_POOL);
         assert(maxStakeAllowed < MAX_ALGO_PER_POOL); // this should have already been checked by validator but... still
         this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;
         this.NumStakers.value = 0;
         this.TotalAlgoStaked.value = 0;
-        this.MinAllowedStake.value = minAllowedStake;
+        this.MinEntryStake.value = minEntryStake;
         this.MaxStakeAllowed.value = maxStakeAllowed;
     }
 
@@ -155,7 +155,7 @@ export class StakingPool extends Contract {
         // initialize slot and add to the stakers.
         // our caller will see stakers increase in state and increase in their state as well.
         assert(
-            stakedAmountPayment.amount >= this.MinAllowedStake.value,
+            stakedAmountPayment.amount >= this.MinEntryStake.value,
             'must stake at least the minimum for this pool'
         );
 
@@ -198,9 +198,9 @@ export class StakingPool extends Contract {
                 cmpStaker.Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
 
-                // don't let them reduce their balance below the MinAllowedStake UNLESS they're removing it all!
+                // don't let them reduce their balance below the MinEntryStake UNLESS they're removing it all!
                 assert(
-                    cmpStaker.Balance === 0 || cmpStaker.Balance >= this.MinAllowedStake.value,
+                    cmpStaker.Balance === 0 || cmpStaker.Balance >= this.MinEntryStake.value,
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 

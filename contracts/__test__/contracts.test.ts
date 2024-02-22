@@ -56,7 +56,7 @@ beforeAll(async () => {
         creatingContractID: 0,
         validatorID: 0,
         poolID: 0,
-        minAllowedStake: 1_000_000,
+        minEntryStake: 1_000_000,
         maxStakeAllowed: 0,
     });
     validatorMasterClient = new ValidatorRegistryClient(
@@ -105,6 +105,8 @@ describe('MultValidatorAddCheck', () => {
         ];
 
         const config = createValidatorConfig({
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
         });
         let expectedID = 1;
@@ -163,11 +165,14 @@ describe('StakeAdds', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`);
 
         const config = createValidatorConfig({
-            MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
-            MaxAlgoPerPool, // this comes into play in later tests !!
-            PercentToValidator: 50000, // 5%
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            PercentToValidator: 50000, // 5%
         });
+
         validatorID = await addValidator(
             fixture.context,
             validatorMasterClient,
@@ -695,8 +700,10 @@ describe('StakeWRewards', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`);
 
         const config = createValidatorConfig({
-            MinEntryStake: AlgoAmount.Algos(1000).microAlgos,
-            MaxAlgoPerPool, // this comes into play in later tests !!
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
+            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
             PercentToValidator: PctToValidator * 10000,
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
         });
