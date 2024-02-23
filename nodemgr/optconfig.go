@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,15 +9,11 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/algorand/go-algorand-sdk/v2/abi"
-	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
-	"github.com/algorand/go-algorand-sdk/v2/crypto"
-	"github.com/algorand/go-algorand-sdk/v2/transaction"
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v3"
 
-	"github.com/TxnLab/reti/internal/lib/algo"
+	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
 func GetValidatorCmdOpts() *cli.Command {
@@ -36,16 +29,32 @@ func GetValidatorCmdOpts() *cli.Command {
 				Action:   InitValidator,
 			},
 			{
-				Name:      "claim",
-				Usage:     "Claim a validator from chain, using manager address as verified.  Signing keys must be present for this address to load",
-				Category:  "validator",
-				ArgsUsage: "id - specify validator ID to claim",
-				Arguments: []cli.Argument{
-					&cli.IntArg{
-						Name:      "id",
-						UsageText: "Validator ID to claim (you must be owner or manager!)",
-						Min:       1,
-						Max:       -1,
+				Name:     "info",
+				Usage:    "Display info about the validator from the chain",
+				Category: "validator",
+				Action:   ValidatorInfo,
+			},
+			{
+				Name:     "state",
+				Usage:    "Display info about the validator's current state from the chain",
+				Category: "validator",
+				Action:   ValidatorState,
+			},
+			{
+				Name:     "claim",
+				Usage:    "Claim a validator from chain, using manager address as verified.  Signing keys must be present for this address to load",
+				Category: "validator",
+				//ArgsUsage: "id - specify validator ID to claim",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "account",
+						Usage:    "Account (owner or manager) you can sign for that will claim this validator for this node",
+						Required: true,
+					},
+					&cli.UintFlag{
+						Name:     "id",
+						Usage:    "Validator ID to claim (you must be owner or manager!)",
+						Required: true,
 					},
 				},
 				Action: ClaimValidator,
@@ -71,7 +80,43 @@ func InitValidator(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return cli.Exit(err, 1)
 	}
-	slog.Info("validator", "id", v.ID)
+	slog.Info("validator", "id", v.Config.ID)
+	return nil
+}
+
+func ValidatorInfo(ctx context.Context, command *cli.Command) error {
+	v, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+	// Get information from the chain about the current state
+	ownerAddr, err := types.DecodeAddress(v.Config.Owner)
+	if err != nil {
+		return err
+	}
+	config, err := App.retiClient.GetValidatorConfig(v.Config.ID, ownerAddr)
+	if err != nil {
+		return err
+	}
+	slog.Info(config.String())
+	return err
+}
+
+func ValidatorState(ctx context.Context, command *cli.Command) error {
+	v, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+	// Get information from the chain about the current state
+	ownerAddr, err := types.DecodeAddress(v.Config.Owner)
+	if err != nil {
+		return err
+	}
+	state, err := App.retiClient.GetValidatorState(v.Config.ID, ownerAddr)
+	if err != nil {
+		return err
+	}
+	slog.Info(state.String())
 	return nil
 }
 
@@ -81,7 +126,27 @@ func ClaimValidator(ctx context.Context, command *cli.Command) error {
 		return cli.Exit(errors.New("validator configuration already defined"), 1)
 	}
 	// load from chain
+	addr, err := types.DecodeAddress(command.Value("account").(string))
+	if err != nil {
+		return fmt.Errorf("invalid address specified: %w", err)
+	}
 
+	if !App.signer.HasAccount(addr.String()) {
+		return fmt.Errorf("account:%s isn't an account you have keys to!", addr.String())
+	}
+	id := command.Value("id").(uint64)
+
+	App.logger.Info("Claiming validator", "id", id)
+
+	config, err := App.retiClient.GetValidatorConfig(id, addr)
+	if err != nil {
+		return fmt.Errorf("error fetching config from chain: %w", err)
+	}
+	if config.Owner != addr.String() && config.Manager != addr.String() {
+		return fmt.Errorf("you are not the owner or manager of valid validator:%d, account:%s is owner", id, config.Owner)
+	}
+	info := &reti.ValidatorInfo{Config: *config}
+	SaveValidatorInfo(info)
 	return nil
 }
 
@@ -93,10 +158,8 @@ func DefineValidator() error {
 		nfdName  string
 	)
 
-	params, err := App.algoClient.SuggestedParams().Do(context.Background())
-
 	// Build up a new validator config
-	info := &ValidatorInfo{}
+	info := &reti.ValidatorInfo{}
 
 	result, err = yesNo("Validator not configured.  Create brand new validator")
 	if result != "y" {
@@ -109,7 +172,7 @@ func DefineValidator() error {
 	if !App.signer.HasAccount(owner) {
 		return fmt.Errorf("The mnemonics aren't available for this account.  Aborting")
 	}
-	info.Owner = owner
+	info.Config.Owner = owner
 
 	manager, err := getAlgoAccount("Enter account address for the 'manager' of the validator", owner)
 	if err != nil {
@@ -118,15 +181,15 @@ func DefineValidator() error {
 	if !App.signer.HasAccount(manager) {
 		return fmt.Errorf("The mnemonics aren't available for this account.  Aborting")
 	}
-	info.Manager = manager
+	info.Config.Manager = manager
 	if y, _ := yesNo("Do you want to associate an NFD with this"); y == "y" {
-		nfdAppID, nfdName, err = getNFDAppID("Enter the NFD Name for this validator", info.Owner)
+		nfdAppID, nfdName, err = getNFDAppID("Enter the NFD Name for this validator", info.Config.Owner)
 		if err != nil {
 			return err
 		}
-		info.NFDForInfo = nfdAppID
+		info.Config.NFDForInfo = nfdAppID
 	}
-	config := ValidatorConfig{}
+	config := reti.ValidatorConfig{}
 	// Use the promptui library to ask questions for each of the configuration items in ValidatorConfig
 	config.PayoutEveryXDays, err = getInt("Enter the payout frequency (in days)", 1, 1, 365)
 	if err != nil {
@@ -138,7 +201,7 @@ func DefineValidator() error {
 		return err
 	}
 
-	config.ValidatorCommissionAddress, err = getAlgoAccount("Enter the address that receives the validation commission each epoch payout", info.Owner)
+	config.ValidatorCommissionAddress, err = getAlgoAccount("Enter the address that receives the validation commission each epoch payout", info.Config.Owner)
 	if err != nil {
 		return err
 	}
@@ -162,156 +225,14 @@ func DefineValidator() error {
 
 	info.Config = config
 
-	validatorID, err := addValidator(info, params, nfdName)
+	validatorID, err := App.retiClient.AddValidator(info, nfdName)
 	if err != nil {
 		return err
 	}
-	info.ID = validatorID
-	slog.Info("New Validator added, your Validator ID is:", "id", info.ID)
+	info.Config.ID = validatorID
+	slog.Info("New Validator added, your Validator ID is:", "id", info.Config.ID)
 
 	return SaveValidatorInfo(info)
-}
-
-func addValidator(info *ValidatorInfo, params types.SuggestedParams, nfdName string) (uint64, error) {
-	var err error
-
-	ownerAddr, _ := types.DecodeAddress(info.Owner)
-	managerAddr, _ := types.DecodeAddress(info.Manager)
-	commissionAddr, _ := types.DecodeAddress(info.Config.ValidatorCommissionAddress)
-
-	// first determine how much we have to add in MBR to the validaotr
-	mbrs, err := getMbrAmounts(params, ownerAddr)
-	if err != nil {
-		return 0, err
-	}
-
-	// Now try to actually create the validator !!
-	atc := transaction.AtomicTransactionComposer{}
-
-	method, err := abi.MethodFromSignature("addValidator(pay,string,(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8))uint64")
-	if err != nil {
-		return 0, err
-	}
-	// We we need to set all teh box references ourselves still in go, so we need the id of the 'next' validator
-	// We'll do the next two just to be safe
-	curValidatorID, err := getNumValidators()
-	if err != nil {
-		return 0, err
-	}
-	slog.Info("mbrs", "validatormbr", mbrs.AddValidatorMbr)
-
-	// Pay the mbr to add a validator then wrap for use in ATC.
-	paymentTxn, err := transaction.MakePaymentTxn(ownerAddr.String(), crypto.GetApplicationAddress(App.retiAppID).String(), mbrs.AddValidatorMbr, nil, "", params)
-	payTxWithSigner := transaction.TransactionWithSigner{
-		Txn:    paymentTxn,
-		Signer: algo.SignWithAccountForATC(App.signer, ownerAddr.String()),
-	}
-
-	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:  App.retiAppID,
-		Method: method,
-		MethodArgs: []any{
-			// MBR payment
-			payTxWithSigner,
-			// --
-			nfdName,
-			[]any{
-				0, // id is ignored and assigned by contract
-				ownerAddr,
-				managerAddr,
-				info.NFDForInfo,
-				uint16(info.Config.PayoutEveryXDays),
-				uint16(info.Config.PercentToValidator),
-				commissionAddr,
-				info.Config.MinEntryStake,
-				info.Config.MaxAlgoPerPool,
-				uint8(info.Config.PoolsPerNode),
-			},
-		},
-		BoxReferences: []types.AppBoxReference{
-			{AppID: 0, Name: GetValidatorListBoxName(curValidatorID + 1)},
-			{AppID: 0, Name: GetValidatorListBoxName(curValidatorID + 2)},
-			{AppID: 0, Name: nil}, // extra i/o
-		},
-		SuggestedParams: params,
-		OnComplete:      types.NoOpOC,
-		Sender:          ownerAddr,
-		Signer:          algo.SignWithAccountForATC(App.signer, ownerAddr.String()),
-	})
-
-	res, err := atc.Execute(App.algoClient, context.Background(), 4)
-	if err != nil {
-		return 0, err
-	}
-	if validatorID, ok := res.MethodResults[0].ReturnValue.(uint64); ok {
-		return validatorID, nil
-	}
-	return 0, nil
-}
-
-func GetValidatorListBoxName(id uint64) []byte {
-	prefix := []byte("v")
-	ibytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(ibytes, id)
-	return bytes.Join([][]byte{prefix, ibytes[:]}, nil)
-}
-
-type MbrAmounts struct {
-	AddValidatorMbr uint64
-	AddPoolMbr      uint64
-	PoolInitMbr     uint64
-	AddStakerMbr    uint64
-}
-
-func getMbrAmounts(params types.SuggestedParams, caller types.Address) (MbrAmounts, error) {
-	method, err := abi.MethodFromSignature("getMbrAmounts()(uint64,uint64,uint64,uint64)")
-	if err != nil {
-		return MbrAmounts{}, err
-	}
-	atc := transaction.AtomicTransactionComposer{}
-	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:           App.retiAppID,
-		Method:          method,
-		SuggestedParams: params,
-		OnComplete:      types.NoOpOC,
-		Sender:          caller,
-		Signer:          transaction.EmptyTransactionSigner{},
-	})
-	result, err := atc.Simulate(context.Background(), App.algoClient, models.SimulateRequest{
-		AllowEmptySignatures:  true,
-		AllowUnnamedResources: true,
-	})
-	if err != nil {
-		return MbrAmounts{}, err
-	}
-
-	if results, ok := result.MethodResults[0].ReturnValue.([]any); ok {
-		if len(results) != 4 {
-			return MbrAmounts{}, errors.New("invalid number of results")
-		}
-		var mbrs MbrAmounts
-		mbrs.AddValidatorMbr = results[0].(uint64)
-		mbrs.AddPoolMbr = results[1].(uint64)
-		mbrs.PoolInitMbr = results[2].(uint64)
-		mbrs.AddStakerMbr = results[3].(uint64)
-		return mbrs, nil
-	}
-	return MbrAmounts{}, fmt.Errorf("unknown result type:%#v", result.MethodResults)
-}
-
-func getNumValidators() (uint64, error) {
-	appInfo, err := App.algoClient.GetApplicationByID(App.retiAppID).Do(context.Background())
-	if err != nil {
-		return 0, err
-	}
-	for _, gs := range appInfo.Params.GlobalState {
-		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
-		key := string(rawKey)
-		if key == "numV" && gs.Value.Type == 2 {
-			return gs.Value.Uint, nil
-		}
-	}
-	return 0, err
 }
 
 func getInt(prompt string, defVal int, minVal int, maxVal int) (int, error) {
@@ -348,7 +269,7 @@ func getNFDAppID(prompt string, owner string) (uint64, string, error) {
 			if IsNFDNameValid(name) != nil {
 				return invalidNFD
 			}
-			nfd, _, err := App.api.NfdApi.NfdGetNFD(context.Background(), name, nil)
+			nfd, _, err := App.nfdApi.NfdApi.NfdGetNFD(context.Background(), name, nil)
 			if err != nil {
 				return err
 			}

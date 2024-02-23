@@ -11,6 +11,7 @@ import (
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/nfdapi/swagger"
+	"github.com/TxnLab/reti/internal/lib/reti"
 	"github.com/TxnLab/reti/internal/service"
 )
 
@@ -30,7 +31,7 @@ func initApp() *RetiApp {
 		Version: misc.GetVersionInfo(),
 		Before: func(ctx context.Context, cmd *cli.Command) error {
 			// This is further bootstrap of the 'app' but within context of 'cli' helper as it will
-			// have access to flags and options (network to use for eg)
+			// have access to flags and options (network to use for eg) already set.
 			return appConfig.initClients(ctx, cmd)
 		},
 		Flags: []cli.Flag{
@@ -64,13 +65,15 @@ type RetiApp struct {
 	logger     *slog.Logger
 	signer     algo.MultipleWalletSigner
 	algoClient *algod.Client
-	api        *swagger.APIClient
+	nfdApi     *swagger.APIClient
+	retiClient *reti.Reti
 
+	// just here for flag bootstrapping destination
 	retiAppID uint64
 }
 
 // initClients initializes both an an algod client (to correct network - which it
-// also validates) and an nfd api clinet - for nfd updates or fetches if caller
+// also validates) and an nfd nfdApi clinet - for nfd updates or fetches if caller
 // desires
 func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	network := cmd.Value("network").(string)
@@ -100,7 +103,14 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	_, _ = algoClient, api
 
 	ac.algoClient = algoClient
-	ac.api = api
+	ac.nfdApi = api
+
+	// Initialize the 'reti' client
+	retiClient, err := reti.New(ac.retiAppID, ac.logger, ac.algoClient, ac.signer)
+	if err != nil {
+		return err
+	}
+	ac.retiClient = retiClient
 
 	return nil
 }
