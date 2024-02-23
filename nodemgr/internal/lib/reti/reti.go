@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"log/slog"
+	"sync"
 
 	"github.com/algorand/go-algorand-sdk/v2/abi"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
@@ -20,6 +21,11 @@ type Reti struct {
 
 	validatorContract *abi.Contract
 	poolContract      *abi.Contract
+
+	// Fetch the staking pool app id only once by fetching global state of the validator app id
+	// (need it for 'app references')
+	oneTimeInit   sync.Once
+	poolTmplAppID uint64
 }
 
 func New(

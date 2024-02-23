@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/urfave/cli/v3"
@@ -12,12 +13,18 @@ import (
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/nfdapi/swagger"
 	"github.com/TxnLab/reti/internal/lib/reti"
-	"github.com/TxnLab/reti/internal/service"
 )
 
-func initApp() *RetiApp {
-	logger := slog.Default()
+var logLevel = new(slog.LevelVar) // Info by default
 
+func initApp() *RetiApp {
+	h := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
+	slog.SetDefault(slog.New(h))
+
+	logger := slog.Default()
+	if os.Getenv("DEBUG") == "1" {
+		logLevel.Set(slog.LevelDebug)
+	}
 	// This will load and initialize mnemonics from the environment, etc.
 	signer := algo.NewLocalKeyStore(logger)
 
@@ -53,8 +60,9 @@ func initApp() *RetiApp {
 			},
 		},
 		Commands: []*cli.Command{
-			service.GetDaemonCmdOpts(),
+			GetDaemonCmdOpts(),
 			GetValidatorCmdOpts(),
+			GetPoolCmdOpts(),
 		},
 	}
 	return appConfig

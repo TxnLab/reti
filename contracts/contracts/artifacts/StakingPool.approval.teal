@@ -121,10 +121,10 @@ createApplication:
 	assert
 
 	// contracts/stakingPool.algo.ts:73
-	// assert(maxStakeAllowed < MAX_ALGO_PER_POOL)
+	// assert(maxStakeAllowed <= MAX_ALGO_PER_POOL)
 	frame_dig -5 // maxStakeAllowed: uint64
 	int 20000000000000
-	<
+	<=
 	assert
 
 	// contracts/stakingPool.algo.ts:74

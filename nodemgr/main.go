@@ -17,5 +17,6 @@ func main() {
 	err := App.cliCmd.Run(context.Background(), os.Args)
 	if err != nil {
 		slog.Error("Error", "msg", err)
+		os.Exit(1)
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -14,7 +15,12 @@ func ConfigFilename() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(cfgDir, "reti.json"), nil
+	cfgPath := filepath.Join(cfgDir, "reti", "reti.json")
+	err = os.MkdirAll(filepath.Dir(cfgPath), 0775) // user+group RWX, others RX
+	if err != nil {
+		return "", fmt.Errorf("error making directory:%s, error:%w", cfgDir, err)
+	}
+	return cfgPath, nil
 }
 
 func LoadValidatorInfo() (*reti.ValidatorInfo, error) {
@@ -49,6 +55,7 @@ func SaveValidatorInfo(info *reti.ValidatorInfo) error {
 	if err != nil {
 		return err
 	}
+	slog.Info("state saved", "file", cfgName)
 	return nil
 }
 

@@ -94,7 +94,7 @@
         }
       ],
       "returns": {
-        "type": "(uint16,uint64,uint16,uint64)"
+        "type": "(uint64,uint16,uint64)"
       }
     },
     {

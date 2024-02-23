@@ -59,7 +59,6 @@ type ValidatorCurState = {
 };
 
 type PoolInfo = {
-    NodeID: uint16;
     PoolAppID: uint64; // The App ID of this staking pool contract instance
     TotalStakers: uint16;
     TotalAlgoStaked: uint64;
@@ -92,6 +91,9 @@ export class ValidatorRegistry extends Contract {
 
     numValidators = GlobalStateKey<uint64>({ key: 'numV' });
 
+    // The app id of a staking pool contract instance to use as template for newly created pools
+    StakingPoolTemplateAppID = GlobalStateKey<uint64>({ key: 'poolTemplateAppID' });
+
     // Validator list - simply incremental id - direct access to info for validator
     // and also contains all pool information (but not user-account ledger per pool)
     ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
@@ -99,9 +101,6 @@ export class ValidatorRegistry extends Contract {
     // For given user staker address, which of up to 4 validator/pools are they in
     // We use this to find a particular addresses deposits (in up to 4 independent pools w/ any validators)
     StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, typeof MAX_POOLS_PER_STAKER>>({ prefix: 'sps' });
-
-    // The app id of a staking pool contract instance to use as template for newly created pools
-    StakingPoolTemplateAppID = GlobalStateKey<uint64>({ key: 'poolTemplateAppID' });
 
     NFDRegistryAppID = TemplateVar<uint64>();
 

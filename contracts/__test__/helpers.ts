@@ -134,16 +134,13 @@ function createValidatorCurStateFromValues([NumPools, TotalStakers, TotalAlgoSta
 }
 
 export class PoolInfo {
-    NodeID: number;
-
     PoolAppID: bigint; // The App ID of this staking pool contract instance
 
     TotalStakers: number;
 
     TotalAlgoStaked: bigint;
 
-    constructor([NodeID, PoolAppID, TotalStakers, TotalAlgoStaked]: [number, bigint, number, bigint]) {
-        this.NodeID = Number(NodeID);
+    constructor([PoolAppID, TotalStakers, TotalAlgoStaked]: [bigint, number, bigint]) {
         this.PoolAppID = PoolAppID;
         this.TotalStakers = Number(TotalStakers);
         this.TotalAlgoStaked = TotalAlgoStaked;

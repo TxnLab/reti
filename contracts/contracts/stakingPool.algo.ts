@@ -70,7 +70,7 @@ export class StakingPool extends Contract {
             assert(poolID !== 0);
         }
         assert(minEntryStake >= MIN_ALGO_STAKE_PER_POOL);
-        assert(maxStakeAllowed < MAX_ALGO_PER_POOL); // this should have already been checked by validator but... still
+        assert(maxStakeAllowed <= MAX_ALGO_PER_POOL); // this should have already been checked by validator but... still
         this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;

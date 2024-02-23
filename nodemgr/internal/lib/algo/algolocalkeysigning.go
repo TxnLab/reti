@@ -69,7 +69,7 @@ func (lk *localKeyStore) loadFromEnvironment() {
 		}
 		numMnemonics++
 	}
-	misc.Infof(lk.log, "loaded %d mnemonics", numMnemonics)
+	misc.Debugf(lk.log, "loaded %d mnemonics", numMnemonics)
 }
 
 func (lk *localKeyStore) addMnemonic(mnemonicPhrase string) error {
@@ -82,6 +82,6 @@ func (lk *localKeyStore) addMnemonic(mnemonicPhrase string) error {
 		return fmt.Errorf("failed to add mnemonic: %w", err)
 	}
 	lk.keys[account.Address.String()] = key
-	misc.Infof(lk.log, "Added data for pk:%s", account.Address.String())
+	misc.Debugf(lk.log, "Mnemonics available for Account:%s", account.Address.String())
 	return nil
 }

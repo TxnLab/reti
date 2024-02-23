@@ -23,27 +23,23 @@ func GetValidatorCmdOpts() *cli.Command {
 		Usage:   "Configure validator options",
 		Commands: []*cli.Command{
 			{
-				Name:     "init",
-				Usage:    "Initialize self as validator - creating or resetting configuration - should only be done ONCE, EVER !",
-				Category: "validator",
-				Action:   InitValidator,
+				Name:   "init",
+				Usage:  "Initialize self as validator - creating or resetting configuration - should only be done ONCE, EVER !",
+				Action: InitValidator,
 			},
 			{
-				Name:     "info",
-				Usage:    "Display info about the validator from the chain",
-				Category: "validator",
-				Action:   ValidatorInfo,
+				Name:   "info",
+				Usage:  "Display info about the validator from the chain",
+				Action: ValidatorInfo,
 			},
 			{
-				Name:     "state",
-				Usage:    "Display info about the validator's current state from the chain",
-				Category: "validator",
-				Action:   ValidatorState,
+				Name:   "state",
+				Usage:  "Display info about the validator's current state from the chain",
+				Action: ValidatorState,
 			},
 			{
-				Name:     "claim",
-				Usage:    "Claim a validator from chain, using manager address as verified.  Signing keys must be present for this address to load",
-				Category: "validator",
+				Name:  "claim",
+				Usage: "Claim a validator from chain, using manager address as verified.  Signing keys must be present for this address to load",
 				//ArgsUsage: "id - specify validator ID to claim",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -59,22 +55,24 @@ func GetValidatorCmdOpts() *cli.Command {
 				},
 				Action: ClaimValidator,
 			},
-			{
-				Name:     "add",
-				Aliases:  []string{"a"},
-				Usage:    "Add a new staking pool to this node",
-				Category: "pool",
-				Action: func(context context.Context, cmd *cli.Command) error {
-					return nil
-				},
-			},
 		},
 	}
 }
 
 func InitValidator(ctx context.Context, cmd *cli.Command) error {
 	v, err := LoadValidatorInfo()
+	if err == nil {
+		result, _ := yesNo("A validator configuration already appears to exist, do you REALLY want to add an entirely new validator configuration")
+		if result != "y" {
+			return nil
+		}
+		return DefineValidator()
+	}
 	if errors.Is(err, os.ErrNotExist) {
+		result, _ := yesNo("Validator not configured.  Create brand new validator")
+		if result != "y" {
+			return nil
+		}
 		return DefineValidator()
 	}
 	if err != nil {
@@ -146,25 +144,23 @@ func ClaimValidator(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("you are not the owner or manager of valid validator:%d, account:%s is owner", id, config.Owner)
 	}
 	info := &reti.ValidatorInfo{Config: *config}
-	SaveValidatorInfo(info)
+	err = SaveValidatorInfo(info)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func DefineValidator() error {
 	var (
-		result   string
 		err      error
 		nfdAppID uint64
 		nfdName  string
 	)
 
 	// Build up a new validator config
-	info := &reti.ValidatorInfo{}
+	config := reti.ValidatorConfig{}
 
-	result, err = yesNo("Validator not configured.  Create brand new validator")
-	if result != "y" {
-		return err
-	}
 	owner, err := getAlgoAccount("Enter account address for the 'owner' of the validator", "")
 	if err != nil {
 		return err
@@ -172,7 +168,7 @@ func DefineValidator() error {
 	if !App.signer.HasAccount(owner) {
 		return fmt.Errorf("The mnemonics aren't available for this account.  Aborting")
 	}
-	info.Config.Owner = owner
+	config.Owner = owner
 
 	manager, err := getAlgoAccount("Enter account address for the 'manager' of the validator", owner)
 	if err != nil {
@@ -181,15 +177,14 @@ func DefineValidator() error {
 	if !App.signer.HasAccount(manager) {
 		return fmt.Errorf("The mnemonics aren't available for this account.  Aborting")
 	}
-	info.Config.Manager = manager
+	config.Manager = manager
 	if y, _ := yesNo("Do you want to associate an NFD with this"); y == "y" {
-		nfdAppID, nfdName, err = getNFDAppID("Enter the NFD Name for this validator", info.Config.Owner)
+		nfdAppID, nfdName, err = getNFDAppID("Enter the NFD Name for this validator", config.Owner)
 		if err != nil {
 			return err
 		}
-		info.Config.NFDForInfo = nfdAppID
+		config.NFDForInfo = nfdAppID
 	}
-	config := reti.ValidatorConfig{}
 	// Use the promptui library to ask questions for each of the configuration items in ValidatorConfig
 	config.PayoutEveryXDays, err = getInt("Enter the payout frequency (in days)", 1, 1, 365)
 	if err != nil {
@@ -201,7 +196,7 @@ func DefineValidator() error {
 		return err
 	}
 
-	config.ValidatorCommissionAddress, err = getAlgoAccount("Enter the address that receives the validation commission each epoch payout", info.Config.Owner)
+	config.ValidatorCommissionAddress, err = getAlgoAccount("Enter the address that receives the validation commission each epoch payout", config.Owner)
 	if err != nil {
 		return err
 	}
@@ -223,7 +218,7 @@ func DefineValidator() error {
 		return err
 	}
 
-	info.Config = config
+	info := &reti.ValidatorInfo{Config: config}
 
 	validatorID, err := App.retiClient.AddValidator(info, nfdName)
 	if err != nil {
