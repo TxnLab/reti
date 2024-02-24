@@ -107,7 +107,7 @@
       "args": [],
       "returns": {
         "type": "void",
-        "desc": "{void}or asserts."
+        "desc": "{void/asserts}"
       }
     },
     {

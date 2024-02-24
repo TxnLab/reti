@@ -350,7 +350,6 @@ export class ValidatorRegistry extends Contract {
      */
     addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
         assert(this.ValidatorList(validatorID).exists);
-        increaseOpcodeBudget();
 
         const staker = this.txn.sender;
         // The prior transaction should be a payment to this pool for the amount specified
@@ -470,9 +469,6 @@ export class ValidatorRegistry extends Contract {
      * @returns {ValidatorPoolKey, boolean} - The pool for the staker and true/false on whether the staker is 'new' to this validator
      */
     findPoolForStaker(validatorID: ValidatorID, staker: Address, amountToStake: uint64): [ValidatorPoolKey, boolean] {
-        // expensive loops - buy it up right now
-        increaseOpcodeBudget();
-
         let isBrandNewStaker = true;
         // We have max per pool per validator - this value is stored in the pools as well, and they enforce it on their
         // addStake calls but the values should be the same, and we shouldn't even try to add stake if it won't even
@@ -484,10 +480,13 @@ export class ValidatorRegistry extends Contract {
             const poolSet = clone(this.StakerPoolSet(staker).value);
             assert(validatorID !== 0);
             for (let i = 0; i < poolSet.length; i += 1) {
+                if (i % 4 === 0) {
+                    if (globals.opcodeBudget < 300) {
+                        increaseOpcodeBudget();
+                    }
+                }
                 if (poolSet[i].ID === validatorID) {
                     // Not new to this validator - but might still be out of room in this slot.
-                    log('found validator id entry for this staker');
-                    // log(this.itoa(validatorID));
                     isBrandNewStaker = false;
                     if (
                         this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
@@ -498,9 +497,6 @@ export class ValidatorRegistry extends Contract {
                     }
                 }
             }
-        }
-        if (isBrandNewStaker) {
-            log('in findPoolForStaker will return true for isBrandNewStaker');
         }
 
         // No existing stake found or that we fit in to, so ensure the stake meets the 'minimum entry' amount
@@ -552,6 +548,9 @@ export class ValidatorRegistry extends Contract {
         mbrAmtPaid: uint64,
         isNewStaker: boolean
     ): void {
+        if (globals.opcodeBudget < 500) {
+            increaseOpcodeBudget();
+        }
         const poolAppID = this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
 
         // forward the payment on to the pool via 2 txns
