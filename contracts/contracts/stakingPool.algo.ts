@@ -335,15 +335,14 @@ export class StakingPool extends Contract {
         // Now we "pay" (but really just update their tracked balance) the stakers the remainder based on their % of
         // pool and time in this epoch.
 
-        // Since we're being told to payout - treat this as epoch end
-        // We're at epoch 'end' presumably - or close enough
+        // Since we're being told to payout, we're at epoch 'end' presumably - or close enough
         // but what if we're told to pay really early?  we need to verify that as well.
         const curTime = globals.latestTimestamp;
         // How many seconds in the 'configured' epoch.
         const payoutDaysInSecs = payoutDays * 24 * 60 * 60;
         if (this.LastPayout.exists) {
             const secsSinceLastPayout = curTime - this.LastPayout.value;
-            // log(concat('secs since last payout: ', this.itoa(secsSinceLastPayout)));
+            log(concat('secs since last payout: ', secsSinceLastPayout.toString()));
 
             // We've had one payout - so we need to be at least one epoch past the last payout (allowing 10 minutes
             // early to account for script/clock issues)
@@ -352,27 +351,26 @@ export class StakingPool extends Contract {
                 "Can't payout earlier than last payout + epoch time"
             );
         }
-
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.
 
         let increasedStake = 0;
         /**
-         * assume 1 and 2 have equal stake...
+         * assume A)lice and B)ob have equal stake... and there is a reward of 100 to divide
          * |------|-------|...
-         * 2  1
-         *        ^ 1 gets 50% (or 25 of the 50)
+         * A  B
+         *        ^ B gets 50% (or 25 of the 50)
          *        at end - we now have 75 'left' - which gets divided across the people at >=100% of epoch time
          *         *        intended result for 100 reward:
-         *        if 1 and 2 have equal stake... they're each 50% of the 'pool' - call that PP (pool percent)
+         *        if A and B have equal stake... they're each 50% of the 'pool' - call that PP (pool percent)
          *        Time in the epoch - TIE (100% would mean entire epoch - 50% TIE means entered halfway in)
          *        So, we first pay all partials (<100 TIE)
-         *        1 gets 25....  (100 REWARD * 50 PP (.5) * 50 TIE (.5)) or 25.
+         *        B gets 25....  (100 REWARD * 50 PP (.5) * 50 TIE (.5)) or 25.
          *        -- keep total of stake from each of partial - adding into PartialStake value.
-         *        --  we then see that 25 got paid out - so 25 excess needs distributed to the 100 TIE stakers on top of their reward.
+         *        --  we then see that 25 got paid out - so 25 'excess' needs distributed to the 100 TIE stakers on top of their reward.
          *        - reward available is now 75 ALGO to distribute - and PP value is based on percent against new total (TotalStaked-PartialStake)
-         *        - so #2's PP is now 100% not 50% because their stake is equal to the new reduced stake amount
-         *        so 2 gets 75 (75 REWARD * 100 PP (1) * 100 TIE (1)) or 75
+         *        - so A's PP is now 100% not 50% because their stake is equal to the new reduced stake amount
+         *        so A gets 75 (75 REWARD * 100 PP (1) * 100 TIE (1)) or 75
          *        next epoch if nothing else changes - each would get 50% of reward.
          */
         // Iterate all stakers - determine which haven't been for entire epoch - pay them proportionally less for having
@@ -388,11 +386,12 @@ export class StakingPool extends Contract {
             const cmpStaker = clone(this.Stakers.value[i]);
             if (cmpStaker.Account !== globals.zeroAddress) {
                 // log(concat('idx:', i.toString()));
-                // log(concat(this.itoa(i), concat('entry time: ', this.itoa(cmpStaker.EntryTime))));
+                // increaseOpcodeBudget();
+                // log(concat(i.toString(), concat(': entry time: ', cmpStaker.EntryTime.toString())));
                 if (cmpStaker.EntryTime > curTime) {
                     // due to 'forward dating' entry time this could be possible
-                    // in this case it definitely means they get 0...
-                    // log('staker past epoch - skipping');
+                    // in this case it definitely means they get 0%
+                    log("staker past 'now' - skipping");
                     partialStakersTotalStake += cmpStaker.Balance;
                 } else {
                     // Reward is % of users stake in pool,
@@ -405,16 +404,16 @@ export class StakingPool extends Contract {
                         partialStakersTotalStake += cmpStaker.Balance;
                         timePercentage = (timeInPool * 1000) / payoutDaysInSecs;
 
-                        // increaseOpcodeBudget();
-                        // increaseOpcodeBudget();
-                        // log(concat('time pct:', this.itoa(timePercentage)));
-                        // log(concat('staker balance:', this.itoa(cmpStaker.Balance)));
+                        increaseOpcodeBudget();
+                        increaseOpcodeBudget();
+                        log(concat('time pct:', timePercentage.toString()));
+                        log(concat('staker balance:', cmpStaker.Balance.toString()));
                         // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                         const stakerReward = wideRatio(
                             [cmpStaker.Balance, rewardAvailable, timePercentage],
                             [this.TotalAlgoStaked.value, 1000]
                         );
-                        // log(concat('staker partial rewarded: ', this.itoa(stakerReward)));
+                        log(concat('staker partial rewarded: ', stakerReward.toString()));
 
                         // reduce the reward available (that we're accounting for) so that the subsequent
                         // 'full' pays are based on what's left
