@@ -29,6 +29,7 @@ type TxnSigner interface {
 
 type MultipleWalletSigner interface {
 	HasAccount(publicAddress string) bool
+	FindFirstSigner(addresses []string) (string, error)
 	SignWithAccount(ctx context.Context, tx types.Transaction, publicAddress string) (string, []byte, error)
 }
 

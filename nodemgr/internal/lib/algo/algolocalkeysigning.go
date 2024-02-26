@@ -41,6 +41,15 @@ func (lk *localKeyStore) HasAccount(publicAddress string) bool {
 	return found
 }
 
+func (lk *localKeyStore) FindFirstSigner(addresses []string) (string, error) {
+	for _, address := range addresses {
+		if lk.HasAccount(address) {
+			return address, nil
+		}
+	}
+	return "", fmt.Errorf("no signer found for any of the addresses")
+}
+
 func (lk *localKeyStore) SignWithAccount(ctx context.Context, tx types.Transaction, publicAddress string) (string, []byte, error) {
 	key, found := lk.keys[publicAddress]
 	if !found {

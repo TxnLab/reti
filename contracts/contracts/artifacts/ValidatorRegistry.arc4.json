@@ -74,6 +74,20 @@
       }
     },
     {
+      "name": "getPools",
+      "desc": "Return list of all pools for this validator.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "@return{poolInfo[]}- array of poolsNot callable from other contracts because>1K return but can be called w/ simulate which bumps log returns"
+        }
+      ],
+      "returns": {
+        "type": "(uint64,uint16,uint64)[]"
+      }
+    },
+    {
       "name": "getPoolAppID",
       "args": [
         {
@@ -154,18 +168,22 @@
     },
     {
       "name": "changeValidatorNFD",
+      "desc": "Changes the NFD for a validator in the ValidatorList contract.Only the owner or manager of the validator can make this change.",
       "args": [
         {
           "name": "validatorID",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The ID of the validator to update."
         },
         {
           "name": "nfdAppID",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The application ID of the NFD to assign to the validator."
         },
         {
           "name": "nfdName",
-          "type": "string"
+          "type": "string",
+          "desc": "The name of the NFD (which must match)"
         }
       ],
       "returns": {

@@ -10,7 +10,7 @@ async function main() {
 
     const algod = algokit.getAlgoClient(config.algodConfig);
     const kmd = algokit.getAlgoKmdClient(config.kmdConfig);
-    const indexer = algokit.getAlgoIndexerClient(config.indexerConfig);
+    // const indexer = algokit.getAlgoIndexerClient(config.indexerConfig);
 
     const dispAcct = await algokit.getDispenserAccount(algod, kmd);
     console.log('mnemonic for dispenser test account:\n', secretKeyToMnemonic(dispAcct.sk));
@@ -23,7 +23,7 @@ async function main() {
         creatingContractID: 0,
         validatorID: 0,
         poolID: 0,
-        minEntryStake: 1_000_000, // 1 algo min is hard req
+        minEntryStake: 1_000_000, // 1 algo min is hard req in contract creation
         maxStakeAllowed: 0,
     });
 

@@ -87,6 +87,25 @@
       }
     },
     {
+      "name": "removeTokenReward",
+      "desc": "Remove a specified amount of 'community token' rewards for a staker.Anyone can call on behalf of the staker, but the tokens are only sent to the staker.This is so projects can call this on behalf of the staker and cause the staker to be airdropped theirrewarded amount.",
+      "args": [
+        {
+          "name": "staker",
+          "type": "address",
+          "desc": "the staker account to send rewards to"
+        },
+        {
+          "name": "amountToRemove",
+          "type": "uint64",
+          "desc": "The amount of community tokens to be removed.  Specify 0 to remove all rewarded."
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "getStakerInfo",
       "desc": "Retrieves the staked information for a given staker.",
       "args": [
@@ -106,8 +125,7 @@
       "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.",
       "args": [],
       "returns": {
-        "type": "void",
-        "desc": "{void/asserts}"
+        "type": "void"
       }
     },
     {

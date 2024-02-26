@@ -13,6 +13,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v3"
 
+	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
@@ -39,8 +40,7 @@ func GetValidatorCmdOpts() *cli.Command {
 			},
 			{
 				Name:  "claim",
-				Usage: "Claim a validator from chain, using manager address as verified.  Signing keys must be present for this address to load",
-				//ArgsUsage: "id - specify validator ID to claim",
+				Usage: "Claim a validator from chain, using manager address as verified. Signing keys must be present for this address to load",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "account",
@@ -96,7 +96,7 @@ func ValidatorInfo(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	slog.Info(config.String())
+	fmt.Println(config.String())
 	return err
 }
 
@@ -144,7 +144,10 @@ func ClaimValidator(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("you are not the owner or manager of valid validator:%d, account:%s is owner", id, config.Owner)
 	}
 	info := &reti.ValidatorInfo{Config: *config}
+
 	err = SaveValidatorInfo(info)
+
+	misc.Infof(App.logger, "You have successfully imported/claimed this validator, but you must now claim pools for this node as none will be assigned")
 	if err != nil {
 		return err
 	}
