@@ -191,6 +191,26 @@ export class ValidatorRegistry extends Contract {
     }
 
     // @abi.readonly
+    /**
+     * Return list of all pools for this validator.
+     * @param {uint64} validatorID
+     * @return {poolInfo[]} - array of pools
+     * Not callable from other contracts because >1K return but can be called w/ simulate which bumps log returns
+     */
+    getPools(validatorID: ValidatorID): PoolInfo[] {
+        const retData: PoolInfo[] = [];
+        const poolSet = clone(this.ValidatorList(validatorID).value.Pools);
+        for (let i = 0; i < poolSet.length; i += 1) {
+            if (poolSet[i].PoolAppID === 0) {
+                // reached end of list...  we don't replace values here because pools can't be removed
+                break;
+            }
+            retData.push(poolSet[i]);
+        }
+        return retData;
+    }
+
+    // @abi.readonly
     // getPoolAppID is more of a sanity check than anything as the app id is already encoded in ValidatorPoolKey
     getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
         return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
@@ -263,6 +283,14 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Config.Manager = manager;
     }
 
+    /**
+     * Changes the NFD for a validator in the ValidatorList contract.
+     * Only the owner or manager of the validator can make this change.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator to update.
+     * @param {uint64} nfdAppID - The application ID of the NFD to assign to the validator.
+     * @param {string} nfdName - The name of the NFD (which must match)
+     */
     changeValidatorNFD(validatorID: ValidatorID, nfdAppID: uint64, nfdName: string): void {
         assert(
             this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
@@ -289,7 +317,8 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Config.ValidatorCommissionAddress = commissionAddress;
     }
 
-    /** Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
+    /**
+     * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
      * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
      * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of adding a new pool
      * @param {uint64} validatorID is ID of validator to pool to (must be owner or manager)
@@ -419,6 +448,9 @@ export class ValidatorRegistry extends Contract {
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToAdd;
+
+        // Re-validate the NFD as well while we're here
+        this.reverifyNFDOwnership(poolKey.ID);
     }
 
     /**
@@ -515,6 +547,26 @@ export class ValidatorRegistry extends Contract {
         }
         // Not found is poolID 0
         return [{ ID: validatorID, PoolID: 0, PoolAppID: 0 }, isBrandNewStaker];
+    }
+
+    /**
+     * This method verifies the ownership of NFD (Named Function Data) by a validator.
+     * If the ownership is no longer valid, it removes the NFD from the validator's configuration.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator whose data should be re-evaluated.
+     */
+    private reverifyNFDOwnership(validatorID: ValidatorID): void {
+        const validatorConfig = this.ValidatorList(validatorID).value.Config;
+        if (validatorConfig.NFDForInfo !== 0) {
+            // We already verified the nfd id and name were correct at creation time - so we don't need to verify
+            // the nfd is real anymore, just that its still owned by the validator.
+            const nfdOwner = AppID.fromUint64(validatorConfig.NFDForInfo).globalState('i.owner.a') as Address;
+            // If they no longer own the nfd - remove it (!) from the validator config
+            if (validatorConfig.Owner !== nfdOwner && validatorConfig.Manager !== nfdOwner) {
+                // Remove the NFD from this validator !
+                this.ValidatorList(validatorID).value.Config.NFDForInfo = 0;
+            }
+        }
     }
 
     private validateConfig(config: ValidatorConfig): void {

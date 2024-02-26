@@ -319,8 +319,6 @@ export class StakingPool extends Contract {
      * Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balance
      * compounds over time and staker can remove that amount at will.
      * The validator is paid their percentage each epoch payout.
-     *
-     * @returns {void/asserts}
      */
     epochBalanceUpdate(): void {
         assert(this.isOwnerOrManagerCaller());
