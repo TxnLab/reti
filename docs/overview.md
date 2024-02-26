@@ -10,8 +10,8 @@
     * The percentage of earned rewards (at payout time) that goes to the validator to pay their operating costs
     * An Algorand address to send validator fees to - changeable only by the owner.
     * The 'minimum' stake allowed to enter their pools - this prevents dusting a valuable resource (or competing validators 
-      filling up the pools of other validators with tiny amounts).  With 73 slots available per pool,
-      minimum stake of 1,000 ALGO would mean minimum 73,000 ALGO stake if the pool was filled with stakers.  Users can remove 
+      filling up the pools of other validators with tiny amounts).  With 100 slots available per pool,
+      minimum stake of 1,000 ALGO would mean minimum 100,000 ALGO stake if the pool was filled with stakers.  Users can remove 
       stake at will but can't go below the minimum, unless they exit the pool entirely, removing all of their ALGO.
     * A 'maximum' allowed stake per pool - this should be below the max allowed before incentives stop.
     * An optional NFT creator account specifying that stakers must hold an ASA created by that creator in order to stake with the pool.
@@ -40,7 +40,7 @@
     that goes 'online' against a particular participation key.
   * Users add stake by calling the master validator contract and electing to add stake to a specific validator (by an ID).  Free space is found
     amongst the validators pools and the algo is sent from the user through the validator contract to the pool (and thus its contract account).
-  * A 'ledger' is maintained in each pool of up to (currently) 73 stakers (based on general storage and feasibility estimates) that tracks
+  * A 'ledger' is maintained in each pool of up to (currently) 100 stakers (based on general storage and feasibility estimates) that tracks
     each staker by their account, (last) entry time into the pool, amount currently staked, and historical amount rewarded.
   * The entry time is set each time a user adds stake so that users can't game rewards (the time is actually 'set forward' approx 16 minutes to account
     for algorand online balances being 320 rounds behind).  A naive approach would allow them to add a huge amount 
@@ -48,8 +48,8 @@
     to be cut for partial epoch participation.
   * The 'payout' process:
     * Determines the 'reward' amount based on the current pool balance vs the known 'staked' amount.  
-    * Pays the validator their % (which is immutable and part of defining the validator record itself).
-    * Walks the 'ledger' of stakers, and updates their balance to include their percentage of the shared reward.
+    * Directly pays the validator their % (which is immutable and part of defining the validator record itself).
+    * Walks the 'ledger' of stakers, and updates their balance to include their percentage of the shared reward (and thus compounding)
     * The % share the user gets based on their stake is adjusted based on the % of time they were 'in the epoch'.  A
       staker adding/entering stake 95% of the way through an epoch would only receive 5% of the reward they would have received had they been in the pool
       for the entire epoch. 
@@ -57,13 +57,18 @@
       their relative % of the pool being based on their % of the total (minus the stake of the partial epoch stakers!).
     * The partial epoch holders will be full holders in the next epoch, assuming they don't add stake again.  Each time adding stake resets their clock in the epoch.
     * Some validators epochs might be as short as 1 day, so the differences will be small but preventing gaming is still critical.
-  * Users can remove stake at will, being able to remove their tracked 'ledger balance' (which continues to compound and grow as reward epochs occur).
+  * Users can remove stake at will as well as any awarded reward tokens (optionalº, being able to remove their tracked 'ledger balance' (which continues to 
+    compound and grow as reward epochs occur).
+    * The contract will allow anyone to call to 'pay out staker X' rewarded community tokens - this will allow projects to pay to do automated drops of their community 
+      token via their staking pools.  It may be expensive to do this for each staker, but the option will remain. 
 
 * Reti node daemon
-  * Is a combination CLI / Service daemon that will run on Linux / OSX / Windows and which node runners will run as a background service.
-  * This service will act as the configuration agent, letting users configure the validator, add pools, etc.
+  * Is a combination CLI / Service daemon that will run on Linux / OSX and which node runners will run as a background service.
+  * This service can act as the configuration agent, letting users configure the validator, add pools, etc. but the UI for it will be easiest choice (because of 
+    wallet integrations.
   * Each node daemon will have access to a 'manager' account hot-wallet which it can sign transactions with.  This manager account can be switched out
-    by the owner of that validator to a new account at will if there is a compromise.  The only accounts that can ever remove user funds are stakers removing only their balance.
+    by the owner of that validator to a new account at will if there is a compromise.  The only accounts that can ever remove user funds are stakers removing only 
+    their (compounded) balance.  Other accounts can trigger sending of 'reward tokens' to stakers though as this can only pay out to the staker and no one else.
   * On each node, it will monitor the staking pools defined and automatically create short-lived (no more than 30d) participation keys with that
     nodes algod instance.
   * The participation keys will be monitored for expiration and new keys will be created in advance so that its always online.

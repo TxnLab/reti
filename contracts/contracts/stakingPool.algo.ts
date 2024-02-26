@@ -1,7 +1,7 @@
 import { Contract } from '@algorandfoundation/tealscript';
 // eslint-disable-next-line import/no-cycle
 import { ValidatorRegistry } from './validatorRegistry.algo';
-import { MAX_STAKERS_PER_POOL, MAX_ALGO_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
+import { MAX_ALGO_PER_POOL, MAX_STAKERS_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
 const AVG_BLOCK_TIME_SECS = 28; // in tenths - 28 = 2.8
@@ -244,6 +244,46 @@ export class StakingPool extends Contract {
             }
         }
         throw Error('Account not found');
+    }
+
+    /**
+     * Remove a specified amount of 'community token' rewards for a staker.
+     * Anyone can call on behalf of the staker, but the tokens are only sent to the staker.
+     * This is so projects can call this on behalf of the staker and cause the staker to be airdropped their
+     * rewarded amount.
+     * @param {Address} staker - the staker account to send rewards to
+     * @param {uint64} amountToRemove - The amount of community tokens to be removed.  Specify 0 to remove all rewarded.
+     */
+    removeTokenReward(staker: Address, amountToRemove: uint64): void {
+        // TODO - fetch reward token from validator config
+        const rewardToken = 1;
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            if (globals.opcodeBudget < 300) {
+                increaseOpcodeBudget();
+            }
+            const cmpStaker = clone(this.Stakers.value[i]);
+            if (cmpStaker.Account === staker) {
+                if (amountToRemove === 0) {
+                    // specifying 0 for unstake amount is requesting to UNSTAKE ALL
+                    amountToRemove = cmpStaker.RewardTokenBalance;
+                }
+                if (cmpStaker.RewardTokenBalance < amountToRemove) {
+                    throw Error('Insufficient reward token balance');
+                }
+                cmpStaker.RewardTokenBalance -= amountToRemove;
+
+                // Send the reward tokens to the staker
+                sendAssetTransfer({
+                    xferAsset: AssetID.fromUint64(rewardToken),
+                    assetReceiver: staker,
+                    assetAmount: amountToRemove,
+                });
+
+                // Update the box w/ the new staker data
+                this.Stakers.value[i] = cmpStaker;
+                return;
+            }
+        }
     }
 
     /**
