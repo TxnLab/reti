@@ -2340,6 +2340,67 @@ goOffline:
 	itxn_submit
 	retsub
 
+// linkToNFD(uint64,string)void
+*abi_route_linkToNFD:
+	// nfdName: string
+	txna ApplicationArgs 2
+	extract 2 0
+
+	// nfdAppID: uint64
+	txna ApplicationArgs 1
+	btoi
+
+	// execute linkToNFD(uint64,string)void
+	callsub linkToNFD
+	int 1
+	return
+
+// linkToNFD(nfdAppID: uint64, nfdName: string): void
+linkToNFD:
+	proto 2 0
+
+	// Push empty bytes after the frame pointer to reserve space for local variables
+	byte 0x
+
+	// contracts/stakingPool.algo.ts:556
+	// assert(this.isOwnerOrManagerCaller())
+	callsub isOwnerOrManagerCaller
+	assert
+
+	// contracts/stakingPool.algo.ts:558
+	// registryID = sendMethodCall<typeof ValidatorRegistry.prototype.getNFDRegistryID>({
+	//             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+	//             methodArgs: [],
+	//         })
+	itxn_begin
+	int appl
+	itxn_field TypeEnum
+	method "getNFDRegistryID()uint64"
+	itxn_field ApplicationArgs
+
+	// contracts/stakingPool.algo.ts:559
+	// applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value)
+	byte 0x63726561746f72417070 // "creatorApp"
+	app_global_get
+	itxn_field ApplicationID
+
+	// contracts/stakingPool.algo.ts:560
+	// methodArgs: []
+	// Fee field not set, defaulting to 0
+	int 0
+	itxn_field Fee
+
+	// Submit inner transaction
+	itxn_submit
+	itxn NumLogs
+	int 1
+	-
+	itxnas Logs
+	extract 4 0
+	btoi
+	frame_bury 0 // registryID: uint64
+	retsub
+
 // getEntryTime(): uint64
 //
 // Calculate the entry time for counting a stake as entering the pool.
@@ -2355,12 +2416,12 @@ getEntryTime:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:564
+	// contracts/stakingPool.algo.ts:581
 	// entryTime = globals.latestTimestamp
 	global LatestTimestamp
 	frame_bury 0 // entryTime: uint64
 
-	// contracts/stakingPool.algo.ts:567
+	// contracts/stakingPool.algo.ts:584
 	// return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10;
 	frame_dig 0 // entryTime: uint64
 	int 896
@@ -2386,8 +2447,9 @@ getEntryTime:
 	method "epochBalanceUpdate()void"
 	method "goOnline(byte[],byte[],byte[],uint64,uint64,uint64)void"
 	method "goOffline()void"
+	method "linkToNFD(uint64,string)void"
 	txna ApplicationArgs 0
-	match *abi_route_gas *abi_route_initStorage *abi_route_addStake *abi_route_removeStake *abi_route_removeTokenReward *abi_route_getStakerInfo *abi_route_epochBalanceUpdate *abi_route_goOnline *abi_route_goOffline
+	match *abi_route_gas *abi_route_initStorage *abi_route_addStake *abi_route_removeStake *abi_route_removeTokenReward *abi_route_getStakerInfo *abi_route_epochBalanceUpdate *abi_route_goOnline *abi_route_goOffline *abi_route_linkToNFD
 	err
 
 *intToAscii:

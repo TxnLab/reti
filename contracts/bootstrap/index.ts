@@ -2,6 +2,7 @@
 import * as algokit from '@algorandfoundation/algokit-utils';
 import { secretKeyToMnemonic } from 'algosdk';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
+import * as fs from 'fs';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 
@@ -13,9 +14,9 @@ async function main() {
     // const indexer = algokit.getAlgoIndexerClient(config.indexerConfig);
 
     const dispAcct = await algokit.getDispenserAccount(algod, kmd);
-    console.log('mnemonic for dispenser test account:\n', secretKeyToMnemonic(dispAcct.sk));
+    // console.log('mnemonic for dispenser test account:\n', secretKeyToMnemonic(dispAcct.sk));
 
-    console.log(dispAcct.addr);
+    console.log(`Generated test account is: ${dispAcct.addr}`);
 
     // Generate staking pool template instance that the validatory registry will reference
     const poolClient = new StakingPoolClient({ sender: dispAcct, resolveBy: 'id', id: 0 }, algod);
@@ -46,6 +47,13 @@ async function main() {
     algokit.transferAlgos({ from: dispAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(0.1) }, algod);
 
     console.log(`Validatory registry app id is:${validatorApp.appId}`);
+
+    // Write the mnemonic to a .sandbox file in ../../nodemgr directory
+    fs.writeFileSync(
+        '../../nodemgr/.env.sandbox',
+        `ALGO_MNEMONIC_1=${secretKeyToMnemonic(dispAcct.sk)}\nRETI_APPID=${validatorApp.appId}\n`
+    );
+    console.log('Modified .env.sandbox in nodemgr directory with these values for testing');
 }
 
 main();

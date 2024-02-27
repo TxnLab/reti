@@ -6,10 +6,16 @@
 package misc
 
 import (
+	"fmt"
+
 	"github.com/joho/godotenv"
 )
 
-func LoadEnvironmentSettings() {
+func LoadEnvSettings() {
 	godotenv.Load(".env.local")
-	godotenv.Load() // The Original .env
+	godotenv.Load() // .env
+}
+
+func LoadEnvForNetwork(network string) {
+	godotenv.Load(fmt.Sprint(".env.%s", network))
 }

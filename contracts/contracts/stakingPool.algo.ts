@@ -549,6 +549,23 @@ export class StakingPool extends Contract {
         sendOfflineKeyRegistration({});
     }
 
+    // TODO support linking a staking pool's contract account to an NFD.
+    // can only be called by owner or manager.
+    // the contract account address must already be set into the NFD's u.cav.algo.a field pending verification
+    linkToNFD(nfdAppID: uint64, nfdName: string): void {
+        assert(this.isOwnerOrManagerCaller());
+
+        const registryID = sendMethodCall<typeof ValidatorRegistry.prototype.getNFDRegistryID>({
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+            methodArgs: [],
+        });
+
+        // sendAppCall({
+        //     applicationID: AppID.fromUint64(registryID),
+        //     applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), this.app.address],
+        // });
+    }
+
     /**
      * Calculate the entry time for counting a stake as entering the pool.
      * Algorand won't see the balance increase for ALGORAND_STAKING_BLOCK_DELAY rounds, so we approximate it.

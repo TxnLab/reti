@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/urfave/cli/v3"
@@ -25,12 +26,10 @@ func initApp() *RetiApp {
 	if os.Getenv("DEBUG") == "1" {
 		logLevel.Set(slog.LevelDebug)
 	}
-	// This will load and initialize mnemonics from the environment, etc.
-	signer := algo.NewLocalKeyStore(logger)
-
 	// We initialize our wrapper instance first, so we can call its methods in the 'Before' lambda func
 	// in initialization of cli App instance.
-	appConfig := &RetiApp{signer: signer, logger: logger}
+	// signer will be set in the initClients method.
+	appConfig := &RetiApp{logger: logger}
 
 	appConfig.cliCmd = &cli.Command{
 		Name:    "réti node manager",
@@ -83,7 +82,7 @@ type RetiApp struct {
 // initClients initializes both an an algod client (to correct network - which it
 // also validates) and an nfd nfdApi clinet - for nfd updates or fetches if caller
 // desires
-func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
+func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 	network := cmd.Value("network").(string)
 
 	switch network {
@@ -103,6 +102,23 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	// Now load .env.{network} overrides -ie: .env.sandbox containing generated mnemonics
+	// by bootstrap testing script
+	misc.LoadEnvForNetwork(network)
+
+	if ac.retiAppID == 0 {
+		// allow secondary override (and apologize as this is getting a bit spaghetti) of app id via
+		// the network sepcific .env file we just loaded.
+		if idStr := os.Getenv("RETI_APPID"); idStr != "" {
+			ac.retiAppID, err = strconv.ParseUint(idStr, 10, 64)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// This will load and initialize mnemonics from the environment - and handles all 'local' signing for the app
+	ac.signer = algo.NewLocalKeyStore(ac.logger)
 
 	// Inititialize NFD API (if even used)
 	nfdApiCfg := swagger.NewConfiguration()

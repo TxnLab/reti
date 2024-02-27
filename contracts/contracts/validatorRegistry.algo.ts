@@ -168,11 +168,6 @@ export class ValidatorRegistry extends Contract {
     }
 
     // @abi.readonly
-    // getValidatorInfo(validatorID: ValidatorID): ValidatorInfo {
-    //     return this.ValidatorList(validatorID).value;
-    // }
-
-    // @abi.readonly
     getValidatorConfig(validatorID: ValidatorID): ValidatorConfig {
         return this.ValidatorList(validatorID).value.Config;
     }
@@ -239,6 +234,10 @@ export class ValidatorRegistry extends Contract {
             }
         }
         return retData;
+    }
+
+    getNFDRegistryID(): uint64 {
+        return this.NFDRegistryAppID;
     }
 
     /** Adds a new validator

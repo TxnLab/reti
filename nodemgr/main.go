@@ -13,7 +13,7 @@ var App *RetiApp
 func main() {
 	App = initApp()
 
-	misc.LoadEnvironmentSettings()
+	misc.LoadEnvSettings()
 	err := App.cliCmd.Run(context.Background(), os.Args)
 	if err != nil {
 		//log.Printf("Error in command execution: %v\n", err)

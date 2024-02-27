@@ -126,6 +126,13 @@
       }
     },
     {
+      "name": "getNFDRegistryID",
+      "args": [],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
       "name": "addValidator",
       "desc": "Adds a new validator",
       "args": [

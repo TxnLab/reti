@@ -166,6 +166,22 @@
       "returns": {
         "type": "void"
       }
+    },
+    {
+      "name": "linkToNFD",
+      "args": [
+        {
+          "name": "nfdAppID",
+          "type": "uint64"
+        },
+        {
+          "name": "nfdName",
+          "type": "string"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
     }
   ]
 }
