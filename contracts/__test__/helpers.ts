@@ -431,7 +431,6 @@ export async function addStake(
 
         const poolKey = new ValidatorPoolKey(dummy[0]);
         const willBeNewStaker = dummy[1];
-        const poolAppId = poolKey.PoolAppID;
 
         consoleLogger.info(
             `addStake findPool will add to:${poolKey.ID}, pool:${poolKey.PoolID} and willBeNew:${willBeNewStaker}`

@@ -17,6 +17,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
+	"github.com/TxnLab/reti/internal/lib/misc"
 )
 
 const (
@@ -224,14 +225,14 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	slog.Debug("mbrs", "validatormbr", mbrs.AddValidatorMbr)
 
 	// Pay the mbr to add a validator then wrap for use in ATC.
-	paymentTxn, err := transaction.MakePaymentTxn(ownerAddr.String(), crypto.GetApplicationAddress(r.ValidatorAppID).String(), mbrs.AddValidatorMbr, nil, "", params)
+	paymentTxn, err := transaction.MakePaymentTxn(ownerAddr.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), mbrs.AddValidatorMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, ownerAddr.String()),
 	}
 
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:  r.ValidatorAppID,
+		AppID:  r.RetiAppID,
 		Method: method,
 		MethodArgs: []any{
 			// MBR payment
@@ -262,11 +263,11 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 		Signer:          algo.SignWithAccountForATC(r.signer, ownerAddr.String()),
 	})
 
-	res, err := atc.Execute(r.algoClient, context.Background(), 4)
+	result, err := atc.Execute(r.algoClient, context.Background(), 4)
 	if err != nil {
 		return 0, err
 	}
-	if validatorID, ok := res.MethodResults[0].ReturnValue.(uint64); ok {
+	if validatorID, ok := result.MethodResults[0].ReturnValue.(uint64); ok {
 		return validatorID, nil
 	}
 	return 0, nil
@@ -288,7 +289,7 @@ func (r *Reti) GetValidatorConfig(id uint64, sender types.Address) (*ValidatorCo
 		return nil, err
 	}
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:      r.ValidatorAppID,
+		AppID:      r.RetiAppID,
 		Method:     method,
 		MethodArgs: []any{id},
 		BoxReferences: []types.AppBoxReference{
@@ -327,7 +328,7 @@ func (r *Reti) GetValidatorState(id uint64, sender types.Address) (*ValidatorCur
 		return nil, err
 	}
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:      r.ValidatorAppID,
+		AppID:      r.RetiAppID,
 		Method:     method,
 		MethodArgs: []any{id},
 		BoxReferences: []types.AppBoxReference{
@@ -366,7 +367,7 @@ func (r *Reti) GetValidatorPools(id uint64, sender types.Address) ([]PoolInfo, e
 		return nil, err
 	}
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:      r.ValidatorAppID,
+		AppID:      r.RetiAppID,
 		Method:     getPoolInfoMethod,
 		MethodArgs: []any{id},
 		BoxReferences: []types.AppBoxReference{
@@ -401,34 +402,9 @@ func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey, sender types.Addre
 	// Now try to actually create the validator !!
 	atc := transaction.AtomicTransactionComposer{}
 
-	//gasMethod, err := r.validatorContract.GetMethodByName("gas")
-	//if err != nil {
-	//	return nil, err
-	//}
-	getPoolInfoMethod, err := r.validatorContract.GetMethodByName("getPoolInfo")
-	if err != nil {
-		return nil, err
-	}
-	//atc.AddMethodCall(transaction.AddMethodCallParams{
-	//	AppID:      r.ValidatorAppID,
-	//	Method:     gasMethod,
-	//	MethodArgs: nil,
-	//	BoxReferences: []types.AppBoxReference{
-	//		{AppID: poolKey.PoolAppID, Name: []byte("stakers")},
-	//		{AppID: 0, Name: nil}, // extra i/o
-	//		{AppID: 0, Name: nil}, // extra i/o
-	//		{AppID: 0, Name: nil}, // extra i/o
-	//		{AppID: 0, Name: nil}, // extra i/o
-	//		{AppID: 0, Name: nil}, // extra i/o
-	//		{AppID: 0, Name: nil}, // extra i/o
-	//	},
-	//	SuggestedParams: params,
-	//	OnComplete:      types.NoOpOC,
-	//	Sender:          sender,
-	//	Signer:          algo.SignWithAccountForATC(r.signer, sender.String()),
-	//})
+	getPoolInfoMethod, _ := r.validatorContract.GetMethodByName("getPoolInfo")
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:       r.ValidatorAppID,
+		AppID:       r.RetiAppID,
 		Method:      getPoolInfoMethod,
 		MethodArgs:  []any{poolKey.ID, poolKey.PoolID, poolKey.PoolAppID},
 		ForeignApps: []uint64{poolKey.PoolAppID},
@@ -450,6 +426,82 @@ func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey, sender types.Addre
 		return nil, err
 	}
 	return ValidatorPoolInfoFromABIReturn(result.MethodResults[0].ReturnValue)
+}
+
+func (r *Reti) getStakedPoolsForAccount(staker types.Address) ([]*ValidatorPoolKey, error) {
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	method, err := r.validatorContract.GetMethodByName("getStakedPoolsForAccount")
+	if err != nil {
+		return nil, err
+	}
+	atc := transaction.AtomicTransactionComposer{}
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:           r.RetiAppID,
+		Method:          method,
+		MethodArgs:      []any{staker},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          staker,
+		Signer:          transaction.EmptyTransactionSigner{},
+	})
+	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if result.SimulateResponse.TxnGroups[0].FailureMessage != "" {
+		return nil, errors.New(result.SimulateResponse.TxnGroups[0].FailureMessage)
+	}
+	var retPools []*ValidatorPoolKey
+	if arrReturn, ok := result.MethodResults[0].ReturnValue.([]any); ok {
+		for _, poolInfoAny := range arrReturn {
+			poolKey, err := ValidatorPoolKeyFromABIReturn(poolInfoAny)
+			if err != nil {
+				return nil, err
+			}
+			retPools = append(retPools, poolKey)
+		}
+		return retPools, nil
+	}
+
+	return nil, fmt.Errorf("unknown result type:%#v", result.MethodResults)
+}
+
+func (r *Reti) FindPoolForStaker(id uint64, staker types.Address, amount uint64) (*ValidatorPoolKey, error) {
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	findPoolMethod, _ := r.validatorContract.GetMethodByName("findPoolForStaker")
+	atc := transaction.AtomicTransactionComposer{}
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:           r.RetiAppID,
+		Method:          findPoolMethod,
+		MethodArgs:      []any{id, staker, amount},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          staker,
+		Signer:          transaction.EmptyTransactionSigner{},
+	})
+	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if result.SimulateResponse.TxnGroups[0].FailureMessage != "" {
+		return nil, errors.New(result.SimulateResponse.TxnGroups[0].FailureMessage)
+	}
+	// findPoolForStaker returns [ValidatorPoolKey, boolean]
+	return ValidatorPoolKeyFromABIReturn(result.MethodResults[0].ReturnValue.([]any)[0])
 }
 
 func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
@@ -475,7 +527,8 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(r.ValidatorAppID).String(), mbrs.AddPoolMbr, nil, "", params)
+	// We have to pay MBR into the Validator contract itself for adding a pool
+	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), mbrs.AddPoolMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, managerAddr.String()),
@@ -485,7 +538,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	params.Fee = types.MicroAlgos(max(uint64(params.Fee), 1000) + params.MinFee)
 
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:  r.ValidatorAppID,
+		AppID:  r.RetiAppID,
 		Method: method,
 		MethodArgs: []any{
 			// MBR payment
@@ -503,12 +556,177 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 		Sender:          managerAddr,
 		Signer:          algo.SignWithAccountForATC(r.signer, managerAddr.String()),
 	})
-
-	res, err := atc.Execute(r.algoClient, context.Background(), 4)
+	result, err := atc.Execute(r.algoClient, context.Background(), 4)
 	if err != nil {
 		return nil, err
 	}
-	return ValidatorPoolKeyFromABIReturn(res.MethodResults[0].ReturnValue)
+
+	poolKey, err := ValidatorPoolKeyFromABIReturn(result.MethodResults[0].ReturnValue)
+	if err != nil {
+		return nil, err
+	}
+
+	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
+	method, err = r.poolContract.GetMethodByName("initStorage")
+	if err != nil {
+		return nil, err
+	}
+
+	atc = transaction.AtomicTransactionComposer{}
+	paymentTxn, err = transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppID).String(), mbrs.PoolInitMbr, nil, "", params)
+	payTxWithSigner = transaction.TransactionWithSigner{
+		Txn:    paymentTxn,
+		Signer: algo.SignWithAccountForATC(r.signer, managerAddr.String()),
+	}
+	atc.AddTransaction(payTxWithSigner)
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:  poolKey.PoolAppID,
+		Method: method,
+		BoxReferences: []types.AppBoxReference{
+			{AppID: 0, Name: []byte("stakers")},
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          managerAddr,
+		Signer:          algo.SignWithAccountForATC(r.signer, managerAddr.String()),
+	})
+	result, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return nil, err
+	}
+
+	return poolKey, err
+}
+
+func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64) (*ValidatorPoolKey, error) {
+	var (
+		err           error
+		amountToStake = uint64(amount)
+	)
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	// first determine how much we might have to add in MBR if this is a first-time staker
+	mbrs, err := r.getMbrAmounts(staker)
+	if err != nil {
+		return nil, err
+	}
+
+	// has this staker ever staked anything?
+	poolKeys, err := r.getStakedPoolsForAccount(staker)
+
+	if len(poolKeys) == 0 {
+		misc.Infof(r.logger, "Adding %s ALGO to stake to cover first-time MBR", algo.FormattedAlgoAmount(mbrs.AddStakerMbr))
+		amountToStake += mbrs.AddStakerMbr
+	}
+
+	// Because we can't do easy simulate->execute in Go we have to figure out the references ourselves which means we need to know in advance
+	// what staking pool we'll go to.  So we can just ask validator to find the pool for us and then use that (some small race conditions obviously)
+	futurePoolKey, err := r.FindPoolForStaker(validatorID, staker, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	getAtc := func(feesToUse uint64) (transaction.AtomicTransactionComposer, error) {
+		atc := transaction.AtomicTransactionComposer{}
+		gasMethod, _ := r.validatorContract.GetMethodByName("gas")
+		stakeMethod, _ := r.validatorContract.GetMethodByName("addStake")
+
+		paymentTxn, err := transaction.MakePaymentTxn(staker.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), amountToStake, nil, "", params)
+		payTxWithSigner := transaction.TransactionWithSigner{
+			Txn:    paymentTxn,
+			Signer: algo.SignWithAccountForATC(r.signer, staker.String()),
+		}
+
+		params.FlatFee = true
+		params.Fee = transaction.MinTxnFee
+		// we need to stack up references in this gas method for resource pooling
+		err = atc.AddMethodCall(transaction.AddMethodCallParams{
+			AppID:  r.RetiAppID,
+			Method: gasMethod,
+			BoxReferences: []types.AppBoxReference{
+				{AppID: 0, Name: GetValidatorListBoxName(validatorID)},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: GetStakerPoolSetBoxName(staker)},
+			},
+			SuggestedParams: params,
+			OnComplete:      types.NoOpOC,
+			Sender:          staker,
+			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+		})
+		if err != nil {
+			return atc, err
+		}
+		if feesToUse == 0 {
+			// we're simulating so go with super high budget
+			feesToUse = 240 * transaction.MinTxnFee
+		}
+		params.Fee = types.MicroAlgos(feesToUse)
+		err = atc.AddMethodCall(transaction.AddMethodCallParams{
+			AppID:  r.RetiAppID,
+			Method: stakeMethod,
+			MethodArgs: []any{
+				// MBR payment
+				payTxWithSigner,
+				// --
+				validatorID,
+			},
+			ForeignApps: []uint64{futurePoolKey.PoolAppID},
+			BoxReferences: []types.AppBoxReference{
+				{AppID: futurePoolKey.PoolAppID, Name: []byte("stakers")},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+			},
+			SuggestedParams: params,
+			OnComplete:      types.NoOpOC,
+			Sender:          staker,
+			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+		})
+		if err != nil {
+			return atc, err
+		}
+		return atc, err
+	}
+
+	// simulate first
+	atc, err := getAtc(0)
+	if err != nil {
+		return nil, err
+	}
+	simResult, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if simResult.SimulateResponse.TxnGroups[0].FailureMessage != "" {
+		return nil, errors.New(simResult.SimulateResponse.TxnGroups[0].FailureMessage)
+	}
+	// Figure out how much app budget was added so we can know the real fees to use when we execute
+	atc, err = getAtc(2*transaction.MinTxnFee + transaction.MinTxnFee*(simResult.SimulateResponse.TxnGroups[0].AppBudgetAdded/700))
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return nil, err
+	}
+	return ValidatorPoolKeyFromABIReturn(result.MethodResults[1].ReturnValue)
 }
 
 func GetValidatorListBoxName(id uint64) []byte {
@@ -516,6 +734,10 @@ func GetValidatorListBoxName(id uint64) []byte {
 	ibytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(ibytes, id)
 	return bytes.Join([][]byte{prefix, ibytes[:]}, nil)
+}
+
+func GetStakerPoolSetBoxName(stakerAccount types.Address) []byte {
+	return bytes.Join([][]byte{[]byte("sps"), stakerAccount[:]}, nil)
 }
 
 type MbrAmounts struct {
@@ -538,7 +760,7 @@ func (r *Reti) getMbrAmounts(caller types.Address) (MbrAmounts, error) {
 	r.logger.Info("caller addr is:", "caller", caller.String())
 	atc := transaction.AtomicTransactionComposer{}
 	atc.AddMethodCall(transaction.AddMethodCallParams{
-		AppID:           r.ValidatorAppID,
+		AppID:           r.RetiAppID,
 		Method:          method,
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
@@ -571,7 +793,7 @@ func (r *Reti) getMbrAmounts(caller types.Address) (MbrAmounts, error) {
 }
 
 func (r *Reti) getNumValidators() (uint64, error) {
-	appInfo, err := r.algoClient.GetApplicationByID(r.ValidatorAppID).Do(context.Background())
+	appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppID).Do(context.Background())
 	if err != nil {
 		return 0, err
 	}
@@ -587,7 +809,7 @@ func (r *Reti) getNumValidators() (uint64, error) {
 
 func (r *Reti) poolTemplateAppID() uint64 {
 	r.oneTimeInit.Do(func() {
-		appInfo, err := r.algoClient.GetApplicationByID(r.ValidatorAppID).Do(context.Background())
+		appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppID).Do(context.Background())
 		if err != nil {
 			log.Panicln(err)
 		}

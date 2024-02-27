@@ -6,8 +6,6 @@
 package misc
 
 import (
-	"fmt"
-
 	"github.com/joho/godotenv"
 )
 
@@ -17,5 +15,5 @@ func LoadEnvSettings() {
 }
 
 func LoadEnvForNetwork(network string) {
-	godotenv.Load(fmt.Sprint(".env.%s", network))
+	godotenv.Load(".env." + network)
 }

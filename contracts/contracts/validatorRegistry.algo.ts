@@ -291,11 +291,8 @@ export class ValidatorRegistry extends Contract {
      * @param {string} nfdName - The name of the NFD (which must match)
      */
     changeValidatorNFD(validatorID: ValidatorID, nfdAppID: uint64, nfdName: string): void {
-        assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
-        );
-        // verify nfd is real, and owned by owner or manager..
+        assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
+        // verify nfd is real, and owned by owner or manager
         sendAppCall({
             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
             applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
@@ -308,11 +305,12 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).value.Config.NFDForInfo = nfdAppID;
     }
 
+    /**
+     * Change the commission address that validator rewards are sent to.  Can only be changed by that validator owner
+     */
     changeValidatorCommissionAddress(validatorID: ValidatorID, commissionAddress: Address): void {
-        assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
-        );
+        assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
+        assert(commissionAddress !== Address.zeroAddress);
         this.ValidatorList(validatorID).value.Config.ValidatorCommissionAddress = commissionAddress;
     }
 
@@ -511,10 +509,8 @@ export class ValidatorRegistry extends Contract {
             const poolSet = clone(this.StakerPoolSet(staker).value);
             assert(validatorID !== 0);
             for (let i = 0; i < poolSet.length; i += 1) {
-                if (i % 4 === 0) {
-                    if (globals.opcodeBudget < 300) {
-                        increaseOpcodeBudget();
-                    }
+                if (globals.opcodeBudget < 300) {
+                    increaseOpcodeBudget();
                 }
                 if (poolSet[i].ID === validatorID) {
                     // Not new to this validator - but might still be out of room in this slot.

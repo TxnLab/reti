@@ -8,6 +8,7 @@ package algo
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/TxnLab/reti/internal/lib/misc"
@@ -21,6 +22,8 @@ type NetworkConfig struct {
 	NodeURL     string
 	NodeToken   string
 	NodeHeaders map[string]string
+
+	RetiAppID uint64
 }
 
 func GetNetworkConfig(network string) NetworkConfig {
@@ -34,6 +37,10 @@ func GetNetworkConfig(network string) NetworkConfig {
 	nfdAPIUrl := os.Getenv("ALGO_NFD_URL")
 	if nfdAPIUrl != "" {
 		cfg.NFDAPIUrl = nfdAPIUrl
+	}
+
+	if appIDEnv := os.Getenv("RETI_APPID"); appIDEnv != "" {
+		cfg.RetiAppID, _ = strconv.ParseUint(appIDEnv, 10, 64)
 	}
 
 	nodeURL := misc.GetSecret("ALGO_ALGOD_URL")
@@ -64,15 +71,19 @@ func getDefaults(network string) NetworkConfig {
 	cfg := NetworkConfig{}
 	switch network {
 	case "mainnet":
+		cfg.RetiAppID = 0 // TODO
 		cfg.NFDAPIUrl = "https://api.nf.domains"
 		cfg.NodeURL = "https://mainnet-api.algonode.cloud"
 	case "testnet":
+		cfg.RetiAppID = 0 // TODO
 		cfg.NFDAPIUrl = "https://api.testnet.nf.domains"
 		cfg.NodeURL = "https://testnet-api.algonode.cloud"
 	case "betanet":
+		cfg.RetiAppID = 0 // TODO
 		cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
 		cfg.NodeURL = "https://betanet-api.algonode.cloud"
 	case "sandbox":
+		cfg.RetiAppID = 0 // should come from .env.sandbox !!
 		cfg.NFDAPIUrl = "https://api.testnet.nf.domains"
 		cfg.NodeURL = "http://localhost:4001"
 		cfg.NodeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

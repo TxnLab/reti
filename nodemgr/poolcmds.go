@@ -11,6 +11,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/urfave/cli/v3"
 
+	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
@@ -53,7 +54,31 @@ func GetPoolCmdOpts() *cli.Command {
 					},
 				},
 				Action: ClaimPool,
-			}},
+			},
+			{
+				Name:     "stake",
+				Usage:    "Mostly for testing - but allows adding stake w/ a locally available account Add a new staking pool to this node",
+				Category: "pool",
+				Action:   StakeAdd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "from",
+						Usage:    "The account to send stake 'from' - the staker account.",
+						Required: true,
+					},
+					&cli.UintFlag{
+						Name:     "amount",
+						Usage:    "The amount of whole algo to stake",
+						Required: true,
+					},
+					&cli.UintFlag{
+						Name:     "validator",
+						Usage:    "The validator id to stake to",
+						Required: true,
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -96,9 +121,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		} else if !command.Value("all").(bool) {
 			continue
 		}
-		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%d\t\n", i+1, isLocal, pool.PoolAppID, pool.TotalStakers, pool.TotalAlgoStaked)
+		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t\n", i+1, isLocal, pool.PoolAppID, pool.TotalStakers, algo.FormattedAlgoAmount(pool.TotalAlgoStaked))
 	}
-	fmt.Fprintf(tw, "TOTAL\t\t%d\t%d\t\n", state.TotalStakers, state.TotalAlgoStaked)
+	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked))
 
 	tw.Flush()
 	fmt.Print(out.String())
@@ -154,9 +179,14 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 	if idToClaim > len(pools) {
 		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", idToClaim)
 	}
-	if slices.Contains(info.Pools, pools[idToClaim-1]) {
+	if slices.ContainsFunc(info.Pools, func(info reti.PoolInfo) bool {
+		return info.PoolAppID == pools[idToClaim-1].PoolAppID
+	}) {
 		return fmt.Errorf("pool with ID %d has already been claimed by this validator", idToClaim)
 	}
+	// 0 out the totals we store in local state - we use same struct for convenience but these values aren't used
+	pools[idToClaim-1].TotalStakers = 0
+	pools[idToClaim-1].TotalAlgoStaked = 0
 	info.Pools = append(info.Pools, pools[idToClaim-1])
 
 	err = SaveValidatorInfo(info)
@@ -165,5 +195,19 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func StakeAdd(ctx context.Context, command *cli.Command) error {
+	// from, account, validator
+	stakerAddr, err := types.DecodeAddress(command.Value("from").(string))
+	if err != nil {
+		return err
+	}
+	poolKey, err := App.retiClient.AddStake(command.Value("validator").(uint64), stakerAddr, command.Value("amount").(uint64)*1e6)
+	if err != nil {
+		return err
+	}
+	misc.Infof(App.logger, "stake added into pool:%d", poolKey.PoolID)
 	return nil
 }

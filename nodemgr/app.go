@@ -52,7 +52,6 @@ func initApp() *RetiApp {
 				Name:        "id",
 				Usage:       "The application ID of the Reti master validator contract",
 				Sources:     cli.EnvVars("RETI_APPID"),
-				Required:    true,
 				Destination: &appConfig.retiAppID,
 				Aliases:     []string{"i"},
 				OnlyOnce:    true,
@@ -85,6 +84,7 @@ type RetiApp struct {
 func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 	network := cmd.Value("network").(string)
 
+	// quick validity check on possible network names...
 	switch network {
 	case "sandbox", "betanet", "testnet", "mainnet", "voitestnet":
 	default:
@@ -96,16 +96,17 @@ func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 		err        error
 	)
 
-	// Initialize algod client / networks (testing connectivity as well)
+	// Now load .env.{network} overrides -ie: .env.sandbox containing generated mnemonics
+	// by bootstrap testing script
+	misc.LoadEnvForNetwork(network)
+
+	// Initialize algod client / networks / reti validator app id (testing connectivity as well)
 	cfg := algo.GetNetworkConfig(network)
 	algoClient, err = algo.GetAlgoClient(ac.logger, cfg)
 	if err != nil {
 		return err
 	}
-	// Now load .env.{network} overrides -ie: .env.sandbox containing generated mnemonics
-	// by bootstrap testing script
-	misc.LoadEnvForNetwork(network)
-
+	ac.retiAppID = cfg.RetiAppID
 	if ac.retiAppID == 0 {
 		// allow secondary override (and apologize as this is getting a bit spaghetti) of app id via
 		// the network sepcific .env file we just loaded.
@@ -115,6 +116,9 @@ func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 				return err
 			}
 		}
+	}
+	if ac.retiAppID == 0 {
+		return fmt.Errorf("the ID of the Reti Validator contract must be set using either -id or RETI_APPID env var!")
 	}
 
 	// This will load and initialize mnemonics from the environment - and handles all 'local' signing for the app

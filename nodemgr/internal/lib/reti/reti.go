@@ -13,7 +13,7 @@ import (
 )
 
 type Reti struct {
-	ValidatorAppID uint64
+	RetiAppID uint64
 
 	logger     *slog.Logger
 	algoClient *algod.Client
@@ -36,10 +36,10 @@ func New(
 ) (*Reti, error) {
 
 	retReti := &Reti{
-		ValidatorAppID: validatorAppID,
-		logger:         logger,
-		algoClient:     algoClient,
-		signer:         signer,
+		RetiAppID:  validatorAppID,
+		logger:     logger,
+		algoClient: algoClient,
+		signer:     signer,
 	}
 	validatorContract, err := loadContract("artifacts/contracts/ValidatorRegistry.arc32.json")
 	if err != nil {

@@ -130,10 +130,8 @@ export class StakingPool extends Contract {
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
-            if (i % 4 === 0) {
-                if (globals.opcodeBudget < 300) {
-                    increaseOpcodeBudget();
-                }
+            if (globals.opcodeBudget < 300) {
+                increaseOpcodeBudget();
             }
             const cmpStaker = clone(this.Stakers.value[i]);
             if (cmpStaker.Account === staker) {
@@ -560,10 +558,10 @@ export class StakingPool extends Contract {
             methodArgs: [],
         });
 
-        // sendAppCall({
-        //     applicationID: AppID.fromUint64(registryID),
-        //     applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), this.app.address],
-        // });
+        sendAppCall({
+            applicationID: AppID.fromUint64(registryID),
+            applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)],
+        });
     }
 
     /**
@@ -583,19 +581,4 @@ export class StakingPool extends Contract {
         // adding that approximate number of seconds to the entry time.
         return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10;
     }
-
-    // private int_to_ascii(arg: number): string {
-    //     const bytes = '0123456789';
-    //     return bytes[arg];
-    // }
-    //
-    // private itoa(i: number): string {
-    //     if (i === 0) {
-    //         return '0 ';
-    //     }
-    //     const quotient = i / 10;
-    //     const remainder = i % 10;
-    //
-    //     return (quotient > 0 ? this.itoa(quotient) : '') + this.int_to_ascii(remainder);
-    // }
 }
