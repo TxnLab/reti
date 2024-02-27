@@ -27,7 +27,7 @@ const (
 
 type ValidatorInfo struct {
 	Config ValidatorConfig
-	Pools  []PoolInfo `json:"pools,omitempty"`
+	Pools  []PersistedPoolInfo `json:"pools,omitempty"`
 }
 
 type ValidatorConfig struct {
@@ -148,6 +148,13 @@ func ValidatorPoolKeyFromABIReturn(returnVal any) (*ValidatorPoolKey, error) {
 		return key, nil
 	}
 	return nil, errCantFetchPoolKey
+}
+
+// PersistedPoolInfo is simpler version of PoolInfo struct (on-chain data) to just track what pools
+// the local node is using and so there's no confusion by user with stakers/staked numbers in local config file
+// that don't match what's on chain
+type PersistedPoolInfo struct {
+	PoolAppID uint64 // app id of staking pool contract instance
 }
 
 type PoolInfo struct {
@@ -583,7 +590,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 		AppID:  poolKey.PoolAppID,
 		Method: method,
 		BoxReferences: []types.AppBoxReference{
-			{AppID: 0, Name: []byte("stakers")},
+			{AppID: 0, Name: GetStakerLedgerBoxName()},
 			{AppID: 0, Name: nil}, // extra i/o
 			{AppID: 0, Name: nil}, // extra i/o
 			{AppID: 0, Name: nil}, // extra i/o
@@ -641,14 +648,15 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 		gasMethod, _ := r.validatorContract.GetMethodByName("gas")
 		stakeMethod, _ := r.validatorContract.GetMethodByName("addStake")
 
+		params.FlatFee = true
+		params.Fee = transaction.MinTxnFee
+
 		paymentTxn, err := transaction.MakePaymentTxn(staker.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), amountToStake, nil, "", params)
 		payTxWithSigner := transaction.TransactionWithSigner{
 			Txn:    paymentTxn,
 			Signer: algo.SignWithAccountForATC(r.signer, staker.String()),
 		}
 
-		params.FlatFee = true
-		params.Fee = transaction.MinTxnFee
 		// we need to stack up references in this gas method for resource pooling
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:  r.RetiAppID,
@@ -670,6 +678,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 			// we're simulating so go with super high budget
 			feesToUse = 240 * transaction.MinTxnFee
 		}
+		params.FlatFee = true
 		params.Fee = types.MicroAlgos(feesToUse)
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:  r.RetiAppID,
@@ -682,7 +691,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 			},
 			ForeignApps: []uint64{futurePoolKey.PoolAppID},
 			BoxReferences: []types.AppBoxReference{
-				{AppID: futurePoolKey.PoolAppID, Name: []byte("stakers")},
+				{AppID: futurePoolKey.PoolAppID, Name: GetStakerLedgerBoxName()},
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
@@ -738,6 +747,10 @@ func GetValidatorListBoxName(id uint64) []byte {
 
 func GetStakerPoolSetBoxName(stakerAccount types.Address) []byte {
 	return bytes.Join([][]byte{[]byte("sps"), stakerAccount[:]}, nil)
+}
+
+func GetStakerLedgerBoxName() []byte {
+	return []byte("stakers")
 }
 
 type MbrAmounts struct {

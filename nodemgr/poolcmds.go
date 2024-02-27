@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/urfave/cli/v3"
@@ -33,6 +34,20 @@ func GetPoolCmdOpts() *cli.Command {
 						Name:  "all",
 						Usage: "Show ALL pools for this validator not just for this node",
 						Value: false,
+					},
+				},
+			},
+			{
+				Name:    "ledger",
+				Aliases: []string{"l"},
+				Usage:   "List detailed ledger for a specific pool",
+				Action:  PoolLedger,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:     "pool",
+						Usage:    "Pool ID (the number in 'pool list')",
+						Value:    1,
+						Required: true,
 					},
 				},
 			},
@@ -116,7 +131,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	for i, pool := range pools {
 		var isLocal string
 		// Flag the pool id if it's a pool on this node
-		if slices.Contains(info.Pools, pool) {
+		if slices.ContainsFunc(info.Pools, func(info reti.PersistedPoolInfo) bool {
+			return info.PoolAppID == pool.PoolAppID
+		}) {
 			isLocal = " (*)"
 		} else if !command.Value("all").(bool) {
 			continue
@@ -125,6 +142,40 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	}
 	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked))
 
+	tw.Flush()
+	fmt.Print(out.String())
+	return err
+}
+
+func PoolLedger(ctx context.Context, command *cli.Command) error {
+	info, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+	poolID := int(command.Value("pool").(uint64))
+	if poolID < 1 || poolID > len(info.Pools) {
+		return fmt.Errorf("invalid pool ID")
+	}
+
+	ledger, err := App.retiClient.GetStakerLedger(info.Pools[poolID-1].PoolAppID)
+	if err != nil {
+		return err
+	}
+	out := new(strings.Builder)
+	tw := tabwriter.NewWriter(out, 0, 0, 4, ' ', tabwriter.AlignRight)
+	//	Account            types.Address
+	//	Balance            uint64
+	//	TotalRewarded      uint64
+	//	RewardTokenBalance uint64
+	//	EntryTime          uint64
+	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tEntry Time\t")
+	for _, stakerData := range ledger {
+		if stakerData.Account == types.ZeroAddress {
+			continue
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
+			stakerData.RewardTokenBalance, time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
+	}
 	tw.Flush()
 	fmt.Print(out.String())
 	return err
@@ -145,11 +196,7 @@ func PoolAdd(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	slog.Info("added new pool", "key", poolKey.String())
-	info.Pools = append(info.Pools, reti.PoolInfo{
-		PoolAppID:       poolKey.PoolAppID,
-		TotalStakers:    0,
-		TotalAlgoStaked: 0,
-	})
+	info.Pools = append(info.Pools, reti.PersistedPoolInfo{PoolAppID: poolKey.PoolAppID})
 	return SaveValidatorInfo(info)
 }
 
@@ -176,18 +223,19 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 	}
 
 	idToClaim := int(command.Value("pool").(uint64))
+	if idToClaim == 0 {
+		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
+	}
 	if idToClaim > len(pools) {
 		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", idToClaim)
 	}
-	if slices.ContainsFunc(info.Pools, func(info reti.PoolInfo) bool {
+	if slices.ContainsFunc(info.Pools, func(info reti.PersistedPoolInfo) bool {
 		return info.PoolAppID == pools[idToClaim-1].PoolAppID
 	}) {
 		return fmt.Errorf("pool with ID %d has already been claimed by this validator", idToClaim)
 	}
 	// 0 out the totals we store in local state - we use same struct for convenience but these values aren't used
-	pools[idToClaim-1].TotalStakers = 0
-	pools[idToClaim-1].TotalAlgoStaked = 0
-	info.Pools = append(info.Pools, pools[idToClaim-1])
+	info.Pools = append(info.Pools, reti.PersistedPoolInfo{PoolAppID: pools[idToClaim-1].PoolAppID})
 
 	err = SaveValidatorInfo(info)
 
