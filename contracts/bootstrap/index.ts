@@ -3,6 +3,7 @@ import * as algokit from '@algorandfoundation/algokit-utils';
 import { secretKeyToMnemonic } from 'algosdk';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import * as fs from 'fs';
+import { getTestAccount } from '@algorandfoundation/algokit-utils/testing';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 
@@ -16,7 +17,7 @@ async function main() {
     const dispAcct = await algokit.getDispenserAccount(algod, kmd);
     // console.log('mnemonic for dispenser test account:\n', secretKeyToMnemonic(dispAcct.sk));
 
-    console.log(`Generated test account is: ${dispAcct.addr}`);
+    console.log(`Primary DISPENSER account is: ${dispAcct.addr}`);
 
     // Generate staking pool template instance that the validatory registry will reference
     const poolClient = new StakingPoolClient({ sender: dispAcct, resolveBy: 'id', id: 0 }, algod);
@@ -48,10 +49,16 @@ async function main() {
 
     console.log(`Validatory registry app id is:${validatorApp.appId}`);
 
+    // generate two dummy stakers
+    const staker1 = await getTestAccount({ initialFunds: AlgoAmount.Algos(10000), suppressLog: true }, algod, kmd);
+    const staker2 = await getTestAccount({ initialFunds: AlgoAmount.Algos(10000), suppressLog: true }, algod, kmd);
+    console.log(`Created test account 1:${staker1.addr}`);
+    console.log(`Created test account 2:${staker2π.addr}`);
+
     // Write the mnemonic to a .sandbox file in ../../nodemgr directory
     fs.writeFileSync(
         '../../nodemgr/.env.sandbox',
-        `ALGO_MNEMONIC_1=${secretKeyToMnemonic(dispAcct.sk)}\nRETI_APPID=${validatorApp.appId}\n`
+        `ALGO_MNEMONIC_1=${secretKeyToMnemonic(dispAcct.sk)}\nRETI_APPID=${validatorApp.appId}\nALGO_MNEMONIC_2=${secretKeyToMnemonic(staker1.sk)}\nALGO_MNEMONIC_3=${secretKeyToMnemonic(staker2.sk)}\n`
     );
     console.log('Modified .env.sandbox in nodemgr directory with these values for testing');
 }
