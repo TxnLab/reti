@@ -47,7 +47,13 @@
     {
       "name": "initStorage",
       "desc": "Called after we're created and then funded so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost",
-      "args": [],
+      "args": [
+        {
+          "name": "mbrPayment",
+          "type": "pay",
+          "desc": "payment from caller which covers mbr increase of new staking pools' storage"
+        }
+      ],
       "returns": {
         "type": "void"
       }

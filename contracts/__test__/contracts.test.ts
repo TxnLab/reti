@@ -809,7 +809,7 @@ describe('StakeWRewards', () => {
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
         consoleLogger.info(`pool stakers:${poolInfo.TotalStakers}, staked:${poolInfo.TotalAlgoStaked}`);
 
-        // Perform epoch payout calculation  - we get back how much it cost to issue the txn
+        // Perform epoch payout calculation  - we also get back how much it cost to issue the txn
         const fees = await epochBalanceUpdate(firstPoolClient);
         const expectedValidatorReward = reward.microAlgos * (PctToValidator / 100);
 

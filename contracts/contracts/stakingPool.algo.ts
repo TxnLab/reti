@@ -1,7 +1,16 @@
 import { Contract } from '@algorandfoundation/tealscript';
 // eslint-disable-next-line import/no-cycle
 import { ValidatorRegistry } from './validatorRegistry.algo';
-import { MAX_ALGO_PER_POOL, MAX_STAKERS_PER_POOL, MIN_ALGO_STAKE_PER_POOL } from './constants.algo';
+import {
+    ALGORAND_ACCOUNT_MIN_BALANCE,
+    APPLICATION_BASE_FEE,
+    ASSET_HOLDING_FEE,
+    MAX_ALGO_PER_POOL,
+    MAX_STAKERS_PER_POOL,
+    MIN_ALGO_STAKE_PER_POOL,
+    SSC_VALUE_BYTES,
+    SSC_VALUE_UINT,
+} from './constants.algo';
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
 const AVG_BLOCK_TIME_SECS = 28; // in tenths - 28 = 2.8
@@ -78,6 +87,7 @@ export class StakingPool extends Contract {
         this.TotalAlgoStaked.value = 0;
         this.MinEntryStake.value = minEntryStake;
         this.MaxStakeAllowed.value = maxStakeAllowed;
+        this.LastPayout.value = globals.latestTimestamp; // set 'last payout' to init time of pool to establish baseline
     }
 
     /**
@@ -85,11 +95,45 @@ export class StakingPool extends Contract {
      */
     gas(): void {}
 
+    private minBalanceForAccount(
+        contracts: number,
+        extraPages: number,
+        assets: number,
+        localInts: number,
+        localBytes: number,
+        globalInts: number,
+        globalBytes: number
+    ): uint64 {
+        let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
+        minBal += contracts * APPLICATION_BASE_FEE;
+        minBal += extraPages * APPLICATION_BASE_FEE;
+        minBal += assets * ASSET_HOLDING_FEE;
+        minBal += localInts * SSC_VALUE_UINT;
+        minBal += globalInts * SSC_VALUE_UINT;
+        minBal += localBytes * SSC_VALUE_BYTES;
+        minBal += globalBytes * SSC_VALUE_BYTES;
+        return minBal;
+    }
+
+    private costForBoxStorage(totalNumBytes: number): uint64 {
+        const SCBOX_PERBOX = 2500;
+        const SCBOX_PERBYTE = 400;
+
+        return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
+    }
+
     /**
      * Called after we're created and then funded so we can create our large stakers ledger storage
      * Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost
+     * @param mbrPayment payment from caller which covers mbr increase of new staking pools' storage
      */
-    initStorage(): void {
+    initStorage(mbrPayment: PayTxn): void {
+        const PoolInitMbr =
+            ALGORAND_ACCOUNT_MIN_BALANCE +
+            this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL);
+
+        verifyPayTxn(mbrPayment, { amount: PoolInitMbr });
+
         if (!this.Stakers.exists) {
             this.Stakers.create();
         }
@@ -333,11 +377,8 @@ export class StakingPool extends Contract {
         // [not counting MBR which should never be counted as a reward - it's not payable]
         let rewardAvailable = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
 
-        // Reward available needs to be high enough to cover our various txns
-        assert(
-            rewardAvailable > globals.minTxnFee * 2,
-            'Reward to payout not high enough to cover txn costs of paying it out'
-        );
+        // Reward available needs to be at lest 1 algo.
+        assert(rewardAvailable > 1_000_000, 'Reward to payout not high enough');
 
         increaseOpcodeBudget(); // for logging costs
         log(concat('reward avail is: ', rewardAvailable.toString()));
@@ -431,7 +472,7 @@ export class StakingPool extends Contract {
                     partialStakersTotalStake += cmpStaker.Balance;
                 } else {
                     // Reward is % of users stake in pool,
-                    // but we deduct based on time in pool
+                    // but we deduct based on time away from our payout time
                     const timeInPool = curTime - cmpStaker.EntryTime;
                     let timePercentage: uint64;
                     // get % of time in pool (in tenths precision)

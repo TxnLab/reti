@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/urfave/cli/v3"
 
@@ -71,6 +72,19 @@ func GetPoolCmdOpts() *cli.Command {
 				Action: ClaimPool,
 			},
 			{
+				Name:  "payout",
+				Usage: "Try to force a manual epoch update (payout).  Normally happens automatically as part of daemon operations",
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:     "pool",
+						Usage:    "Pool ID (the number in 'pool list')",
+						Value:    1,
+						Required: true,
+					},
+				},
+				Action: PayoutPool,
+			},
+			{
 				Name:     "stake",
 				Usage:    "Mostly for testing - but allows adding stake w/ a locally available account Add a new staking pool to this node",
 				Category: "pool",
@@ -110,7 +124,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("validator not configured: %w", err)
 	}
-	signerAddr, _ := types.DecodeAddress(info.Config.Owner)
+	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
 	state, err := App.retiClient.GetValidatorState(info.Config.ID, signerAddr)
 	if err != nil {
@@ -125,9 +139,10 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 
 	// Display user-friendly version of pool list inside info using the TabWriter class, displaying
 	// final output using fmt.Print type statements
+	var totalRewards uint64
 	out := new(strings.Builder)
-	tw := tabwriter.NewWriter(out, 0, 0, 4, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "Pool (*=Local)\tPool App ID\tTotal Stakers\tTotal Staked\t")
+	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(tw, "Pool (*=Local)\tPool App ID\tTotal Stakers\tTotal Staked\tReward Avail\t")
 	for i, pool := range pools {
 		var isLocal string
 		// Flag the pool id if it's a pool on this node
@@ -138,9 +153,14 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		} else if !command.Value("all").(bool) {
 			continue
 		}
-		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t\n", i+1, isLocal, pool.PoolAppID, pool.TotalStakers, algo.FormattedAlgoAmount(pool.TotalAlgoStaked))
+		acctBalance, _ := algo.GetBareAccount(ctx, App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
+		rewardAvail := acctBalance.Amount - pool.TotalAlgoStaked - acctBalance.MinBalance
+		totalRewards += rewardAvail
+		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t\n", i+1, isLocal, pool.PoolAppID, pool.TotalStakers,
+			algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail))
 	}
-	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked))
+	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
+		algo.FormattedAlgoAmount(totalRewards))
 
 	tw.Flush()
 	fmt.Print(out.String())
@@ -157,24 +177,36 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("invalid pool ID")
 	}
 
+	var nextPayTime time.Time
+	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
+	if err == nil {
+		nextPayTime = time.Unix(int64(lastPayout), 0).AddDate(0, 0, info.Config.PayoutEveryXDays)
+	} else {
+		nextPayTime = time.Now()
+	}
+	pctTimeInEpoch := func(stakerEntryTime uint64) int {
+		entryTime := time.Unix(int64(stakerEntryTime), 0)
+		epochDuration := time.Duration(info.Config.PayoutEveryXDays) * 24 * time.Hour
+		timeInEpoch := nextPayTime.Sub(entryTime).Seconds() / epochDuration.Seconds() * 100
+		if timeInEpoch > 100 {
+			timeInEpoch = 100
+		}
+		return int(timeInEpoch)
+	}
+
 	ledger, err := App.retiClient.GetStakerLedger(info.Pools[poolID-1].PoolAppID)
 	if err != nil {
 		return err
 	}
 	out := new(strings.Builder)
-	tw := tabwriter.NewWriter(out, 0, 0, 4, ' ', tabwriter.AlignRight)
-	//	Account            types.Address
-	//	Balance            uint64
-	//	TotalRewarded      uint64
-	//	RewardTokenBalance uint64
-	//	EntryTime          uint64
-	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tEntry Time\t")
+	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Time\t")
 	for _, stakerData := range ledger {
 		if stakerData.Account == types.ZeroAddress {
 			continue
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
-			stakerData.RewardTokenBalance, time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%s\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
+			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryTime), time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
 	}
 	tw.Flush()
 	fmt.Print(out.String())
@@ -247,6 +279,11 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 }
 
 func StakeAdd(ctx context.Context, command *cli.Command) error {
+	_, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+
 	// from, account, validator
 	stakerAddr, err := types.DecodeAddress(command.Value("from").(string))
 	if err != nil {
@@ -258,4 +295,18 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 	}
 	misc.Infof(App.logger, "stake added into pool:%d", poolKey.PoolID)
 	return nil
+}
+
+func PayoutPool(ctx context.Context, command *cli.Command) error {
+	info, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+	poolID := int(command.Value("pool").(uint64))
+	if poolID < 1 || poolID > len(info.Pools) {
+		return fmt.Errorf("invalid pool ID")
+	}
+	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
+
+	return App.retiClient.EpochBalanceUpdate(info.Config.ID, info.Pools[poolID-1].PoolAppID, signerAddr)
 }

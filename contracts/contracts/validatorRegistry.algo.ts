@@ -2,11 +2,16 @@ import { Contract } from '@algorandfoundation/tealscript';
 // eslint-disable-next-line import/no-cycle
 import { StakedInfo, StakingPool } from './stakingPool.algo';
 import {
+    ALGORAND_ACCOUNT_MIN_BALANCE,
+    APPLICATION_BASE_FEE,
+    ASSET_HOLDING_FEE,
     MAX_ALGO_PER_POOL,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
     MIN_ALGO_STAKE_PER_POOL,
     MIN_PCT_TO_VALIDATOR,
+    SSC_VALUE_BYTES,
+    SSC_VALUE_UINT,
 } from './constants.algo';
 
 const MAX_NODES = 12; // more just as a reasonable limit and cap on contract storage
@@ -76,14 +81,6 @@ type MbrAmounts = {
     PoolInitMbr: uint64;
     AddStakerMbr: uint64;
 };
-
-const ALGORAND_ACCOUNT_MIN_BALANCE = 100000;
-
-// values taken from: https://developer.algorand.org/docs/features/asc1/stateful/#minimum-balance-requirement-for-a-smart-contract
-const APPLICATION_BASE_FEE = 100000; // base fee for creating or opt-in to application
-const ASSET_HOLDING_FEE = 100000; // creation fee for asset
-const SSC_VALUE_UINT = 28500; // cost for value as uint64
-const SSC_VALUE_BYTES = 50000; // cost for value as bytes
 
 // eslint-disable-next-line no-unused-vars
 export class ValidatorRegistry extends Contract {

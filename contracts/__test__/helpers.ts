@@ -341,21 +341,28 @@ export async function addStakingPool(
     const poolKey = new ValidatorPoolKey(addPoolResults.returns![0]);
 
     // Pay the mbr to the newly created staking pool contract to cover its upcoming box mbr storage req
-    await transferAlgos(
-        {
-            from: context.testAccount,
-            to: getApplicationAddress(poolKey.PoolAppID),
-            amount: AlgoAmount.MicroAlgos(Number(poolInitMbr)),
-        },
-        context.algod
-    );
+    const payStakingPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
+        from: context.testAccount.addr,
+        to: getApplicationAddress(poolKey.PoolAppID),
+        amount: Number(poolInitMbr),
+        suggestedParams,
+    });
 
-    // now tell it to initialize its storage
+    // now tell it to initialize its storage (w/ our mbr payment)
     const newPoolClient = new StakingPoolClient(
         { sender: vldtrAcct, resolveBy: 'id', id: poolKey.PoolAppID },
         context.algod
     );
-    await newPoolClient.initStorage({}, { sendParams: { populateAppCallResources: true } });
+    await newPoolClient
+        .compose()
+        .initStorage(
+            {
+                // the required MBR payment transaction
+                mbrPayment: { transaction: payStakingPoolMbr, signer: context.testAccount },
+            },
+            {}
+        )
+        .execute({ populateAppCallResources: true });
 
     return poolKey;
 }

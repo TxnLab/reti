@@ -199,6 +199,7 @@
     },
     {
       "name": "changeValidatorCommissionAddress",
+      "desc": "Change the commission address that validator rewards are sent to.  Can only be changed by that validator owner",
       "args": [
         {
           "name": "validatorID",

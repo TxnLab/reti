@@ -3,7 +3,6 @@ package reti
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -530,7 +529,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	// Now try to actually create the pool !!
 	atc := transaction.AtomicTransactionComposer{}
 
-	method, err := r.validatorContract.GetMethodByName("addPool")
+	addPoolMethod, _ := r.validatorContract.GetMethodByName("addPool")
 	if err != nil {
 		return nil, err
 	}
@@ -546,7 +545,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppID,
-		Method: method,
+		Method: addPoolMethod,
 		MethodArgs: []any{
 			// MBR payment
 			payTxWithSigner,
@@ -574,21 +573,22 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	}
 
 	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
-	method, err = r.poolContract.GetMethodByName("initStorage")
-	if err != nil {
-		return nil, err
-	}
+	initStorageMethod, _ := r.poolContract.GetMethodByName("initStorage")
 
+	misc.Debugf(r.logger, "adding staking pool, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
 	atc = transaction.AtomicTransactionComposer{}
 	paymentTxn, err = transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppID).String(), mbrs.PoolInitMbr, nil, "", params)
 	payTxWithSigner = transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, managerAddr.String()),
 	}
-	atc.AddTransaction(payTxWithSigner)
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  poolKey.PoolAppID,
-		Method: method,
+		Method: initStorageMethod,
+		MethodArgs: []any{
+			// MBR payment
+			payTxWithSigner,
+		},
 		BoxReferences: []types.AppBoxReference{
 			{AppID: 0, Name: GetStakerLedgerBoxName()},
 			{AppID: 0, Name: nil}, // extra i/o
@@ -810,14 +810,7 @@ func (r *Reti) getNumValidators() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	for _, gs := range appInfo.Params.GlobalState {
-		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
-		key := string(rawKey)
-		if key == "numV" && gs.Value.Type == 2 {
-			return gs.Value.Uint, nil
-		}
-	}
-	return 0, errCantFetchValidators
+	return algo.GetIntFromGloalState(appInfo.Params.GlobalState, "numV")
 }
 
 func (r *Reti) poolTemplateAppID() uint64 {
@@ -826,14 +819,7 @@ func (r *Reti) poolTemplateAppID() uint64 {
 		if err != nil {
 			log.Panicln(err)
 		}
-		for _, gs := range appInfo.Params.GlobalState {
-			rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
-			key := string(rawKey)
-			if key == "poolTemplateAppID" && gs.Value.Type == 2 {
-				r.poolTmplAppID = gs.Value.Uint
-				return
-			}
-		}
+		r.poolTmplAppID, _ = algo.GetIntFromGloalState(appInfo.Params.GlobalState, "poolTemplateAppID")
 	})
 	return r.poolTmplAppID
 }

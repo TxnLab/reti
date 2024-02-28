@@ -2,6 +2,7 @@ package algo
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -117,6 +118,16 @@ func SuggestedParams(ctx context.Context, logger *slog.Logger, client *algod.Cli
 type AccountWithMinBalance struct {
 	models.Account
 	MinBalance uint64 `json:"min-balance,omitempty"`
+}
+
+func GetIntFromGloalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
+	for _, gs := range globalState {
+		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
+		if string(rawKey) == keyName && gs.Value.Type == 2 {
+			return gs.Value.Uint, nil
+		}
+	}
+	return 0, fmt.Errorf("couldn't find int key:%s in global state", keyName)
 }
 
 // GetBareAccount just returns account information without asset data, but also includes the minimum balance that's
