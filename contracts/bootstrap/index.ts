@@ -53,7 +53,7 @@ async function main() {
     const staker1 = await getTestAccount({ initialFunds: AlgoAmount.Algos(10000), suppressLog: true }, algod, kmd);
     const staker2 = await getTestAccount({ initialFunds: AlgoAmount.Algos(10000), suppressLog: true }, algod, kmd);
     console.log(`Created test account 1:${staker1.addr}`);
-    console.log(`Created test account 2:${staker2π.addr}`);
+    console.log(`Created test account 2:${staker2.addr}`);
 
     // Write the mnemonic to a .sandbox file in ../../nodemgr directory
     fs.writeFileSync(
