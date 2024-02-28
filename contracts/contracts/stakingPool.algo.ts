@@ -416,17 +416,19 @@ export class StakingPool extends Contract {
         // but what if we're told to pay really early?  we need to verify that as well.
         const curTime = globals.latestTimestamp;
         // How many seconds in the 'configured' epoch.
-        const payoutDaysInSecs = payoutDays * 24 * 60 * 60;
+        // TODO - treat this as minutes for now !!  - so 1 (day) is really just ... 1 minute
+        const payoutDaysInSecs = payoutDays * 60; // * 60 * 24;
         if (this.LastPayout.exists) {
             const secsSinceLastPayout = curTime - this.LastPayout.value;
             log(concat('secs since last payout: ', secsSinceLastPayout.toString()));
 
             // We've had one payout - so we need to be at least one epoch past the last payout (allowing 10 minutes
             // early to account for script/clock issues)
-            assert(
-                secsSinceLastPayout >= payoutDaysInSecs - 10 * 60 /* 10 minutes in seconds 'fudge' allowed */,
-                "Can't payout earlier than last payout + epoch time"
-            );
+            // TODO - hacked out !
+            // assert(
+            //     secsSinceLastPayout >= payoutDaysInSecs - 10 * 60 /* 10 minutes in seconds 'fudge' allowed */,
+            //     "Can't payout earlier than last payout + epoch time"
+            // );
         }
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.

@@ -52,7 +52,7 @@ func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 	return algo.GetIntFromGloalState(appInfo.Params.GlobalState, "lastPayout")
 }
 
-func (r *Reti) EpochBalanceUpdate(validatorID uint64, poolAppID uint64, caller types.Address) error {
+func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolAppID uint64, caller types.Address) error {
 	var (
 		err error
 	)
@@ -76,7 +76,7 @@ func (r *Reti) EpochBalanceUpdate(validatorID uint64, poolAppID uint64, caller t
 			Method:      gasMethod,
 			ForeignApps: []uint64{r.RetiAppID},
 			BoxReferences: []types.AppBoxReference{
-				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(validatorID)},
+				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
 				{AppID: 0, Name: nil}, // extra i/o
 			},
 			SuggestedParams: params,
@@ -94,8 +94,9 @@ func (r *Reti) EpochBalanceUpdate(validatorID uint64, poolAppID uint64, caller t
 		params.FlatFee = true
 		params.Fee = types.MicroAlgos(feesToUse)
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
-			AppID:  poolAppID,
-			Method: epochUpdateMethod,
+			AppID:           poolAppID,
+			Method:          epochUpdateMethod,
+			ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
 			BoxReferences: []types.AppBoxReference{
 				{AppID: 0, Name: GetStakerLedgerBoxName()},
 				{AppID: 0, Name: nil}, // extra i/o

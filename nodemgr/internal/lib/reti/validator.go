@@ -510,6 +510,44 @@ func (r *Reti) FindPoolForStaker(id uint64, staker types.Address, amount uint64)
 	return ValidatorPoolKeyFromABIReturn(result.MethodResults[0].ReturnValue.([]any)[0])
 }
 
+func (r *Reti) ChangeValidatorCommissionAddress(id uint64, sender types.Address, commissionAddress types.Address) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	atc := transaction.AtomicTransactionComposer{}
+
+	changeAddressMethod, _ := r.validatorContract.GetMethodByName("changeValidatorCommissionAddress")
+	// We have to pay MBR into the Validator contract itself for adding a pool
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:  r.RetiAppID,
+		Method: changeAddressMethod,
+		MethodArgs: []any{
+			id,
+			commissionAddress,
+		},
+		ForeignApps: []uint64{r.poolTemplateAppID()},
+		BoxReferences: []types.AppBoxReference{
+			{AppID: 0, Name: GetValidatorListBoxName(id)},
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          sender,
+		Signer:          algo.SignWithAccountForATC(r.signer, sender.String()),
+	})
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	var err error
 
@@ -530,9 +568,6 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	atc := transaction.AtomicTransactionComposer{}
 
 	addPoolMethod, _ := r.validatorContract.GetMethodByName("addPool")
-	if err != nil {
-		return nil, err
-	}
 	// We have to pay MBR into the Validator contract itself for adding a pool
 	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), mbrs.AddPoolMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{

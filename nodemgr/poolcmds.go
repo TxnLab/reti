@@ -177,17 +177,33 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("invalid pool ID")
 	}
 
-	var nextPayTime time.Time
+	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
+	if err != nil {
+		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+
+	var (
+		nextPayTime time.Time
+		// TODO - hack to have payout days be in minutes... not days..
+		epochDuration = time.Duration(info.Config.PayoutEveryXDays) * time.Minute
+		//epochDuration = time.Duration(info.Config.PayoutEveryXDays) * 24 * time.Hour
+	)
 	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
 	if err == nil {
-		nextPayTime = time.Unix(int64(lastPayout), 0).AddDate(0, 0, info.Config.PayoutEveryXDays)
+		// TODO - payout hack
+		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Minute)
+		//nextPayTime = time.Unix(int64(lastPayout), 0).AddDate(0, 0, info.Config.PayoutEveryXDays)
 	} else {
 		nextPayTime = time.Now()
 	}
 	pctTimeInEpoch := func(stakerEntryTime uint64) int {
 		entryTime := time.Unix(int64(stakerEntryTime), 0)
-		epochDuration := time.Duration(info.Config.PayoutEveryXDays) * 24 * time.Hour
 		timeInEpoch := nextPayTime.Sub(entryTime).Seconds() / epochDuration.Seconds() * 100
+		if timeInEpoch < 0 {
+			// they're past the epoch because of entry time + 320 rounds (~16mins)
+			timeInEpoch = 0
+		}
 		if timeInEpoch > 100 {
 			timeInEpoch = 100
 		}
@@ -198,6 +214,15 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
+
+	pools, err := App.retiClient.GetValidatorPools(info.Config.ID, signerAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get validator pools: %w", err)
+	}
+
+	acctBalance, _ := algo.GetBareAccount(ctx, App.algoClient, crypto.GetApplicationAddress(info.Pools[poolID-1].PoolAppID).String())
+	rewardAvail := acctBalance.Amount - pools[poolID-1].TotalAlgoStaked - acctBalance.MinBalance
+
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Time\t")
@@ -208,6 +233,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%s\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
 			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryTime), time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
 	}
+	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
 	tw.Flush()
 	fmt.Print(out.String())
 	return err
@@ -308,5 +334,5 @@ func PayoutPool(ctx context.Context, command *cli.Command) error {
 	}
 	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
-	return App.retiClient.EpochBalanceUpdate(info.Config.ID, info.Pools[poolID-1].PoolAppID, signerAddr)
+	return App.retiClient.EpochBalanceUpdate(info, info.Pools[poolID-1].PoolAppID, signerAddr)
 }

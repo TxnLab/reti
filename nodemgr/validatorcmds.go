@@ -55,6 +55,24 @@ func GetValidatorCmdOpts() *cli.Command {
 				},
 				Action: ClaimValidator,
 			},
+			{
+				Name:  "change",
+				Usage: "Change configuration parameters of validator",
+				Commands: []*cli.Command{
+					{
+						Name:  "commission",
+						Usage: "Change the commission address",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "address",
+								Usage:    "The algorand address to send commissions to.",
+								Required: true,
+							},
+						},
+						Action: ChangeCommission,
+					},
+				},
+			},
 		},
 	}
 }
@@ -152,6 +170,36 @@ func ClaimValidator(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	return nil
+}
+
+func ChangeCommission(ctx context.Context, command *cli.Command) error {
+	info, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+
+	if len(info.Pools) >= info.Config.PoolsPerNode {
+		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
+	}
+
+	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
+	if err != nil {
+		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+
+	commissionAddress, err := types.DecodeAddress(command.Value("address").(string))
+	if err != nil {
+		return err
+	}
+
+	err = App.retiClient.ChangeValidatorCommissionAddress(info.Config.ID, signerAddr, commissionAddress)
+	if err != nil {
+		return err
+	}
+	info.Config.ValidatorCommissionAddress = commissionAddress.String()
+	// Update the local config
+	return SaveValidatorInfo(info)
 }
 
 func DefineValidator() error {
