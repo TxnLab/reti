@@ -30,7 +30,7 @@ export class ValidatorConfig {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: bigint;
 
-    PayoutEveryXDays: number; // Payout frequency - ie: 7, 30, etc.
+    PayoutEveryXMins: number; // // Payout frequency in minutes (can be no shorter than this)
 
     PercentToValidator: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 
@@ -49,7 +49,7 @@ export class ValidatorConfig {
         Owner,
         Manager,
         NFDForInfo,
-        PayoutEveryXDays,
+        PayoutEveryXMins,
         PercentToValidator,
         ValidatorCommissionAddress,
         MinEntryStake,
@@ -60,7 +60,7 @@ export class ValidatorConfig {
         this.Owner = Owner;
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
-        this.PayoutEveryXDays = PayoutEveryXDays;
+        this.PayoutEveryXMins = PayoutEveryXMins;
         this.PercentToValidator = PercentToValidator;
         this.ValidatorCommissionAddress = ValidatorCommissionAddress;
         this.MinEntryStake = MinEntryStake;
@@ -74,7 +74,7 @@ const DefaultValidatorConfig: ValidatorConfig = {
     Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     NFDForInfo: BigInt(0),
-    PayoutEveryXDays: 1,
+    PayoutEveryXMins: 60 * 24, // daily payout
     PercentToValidator: 10000, // 1.0000%
     ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
@@ -93,7 +93,7 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.Owner,
         configObj.Manager,
         configObj.NFDForInfo,
-        configObj.PayoutEveryXDays,
+        configObj.PayoutEveryXMins,
         configObj.PercentToValidator,
         configObj.ValidatorCommissionAddress,
         configObj.MinEntryStake,
@@ -110,7 +110,7 @@ function validatorConfigAsArray(
         config.Owner,
         config.Manager,
         config.NFDForInfo,
-        config.PayoutEveryXDays,
+        config.PayoutEveryXMins,
         config.PercentToValidator,
         config.ValidatorCommissionAddress,
         config.MinEntryStake,
@@ -605,9 +605,9 @@ export async function verifyRewardAmounts(
     rewardedAmount: bigint,
     stakersPriorToReward: StakedInfo[],
     stakersAfterReward: StakedInfo[],
-    payoutEveryXDays: number
+    payoutEveryXMins: number
 ): Promise<void> {
-    const payoutDaysInSecs = payoutEveryXDays * 24 * 60 * 60;
+    const payoutDaysInSecs = payoutEveryXMins * 24 * 60 * 60;
     // iterate stakersPriorToReward and total the 'Balance' value to get a 'total amount'
     // then determine if the stakersAfterReward version's balance incremented in accordance w/ their percentage of
     // the 'total' - where they get that percentage of the rewardedAmount.

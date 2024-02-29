@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
+	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/transaction"
 	"github.com/algorand/go-algorand-sdk/v2/types"
 
@@ -52,10 +54,20 @@ func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 	return algo.GetIntFromGloalState(appInfo.Params.GlobalState, "lastPayout")
 }
 
-func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolAppID uint64, caller types.Address) error {
+func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uint64, caller types.Address) error {
 	var (
 		err error
 	)
+
+	// make sure we even have enough rewards to do the payout
+	pools, err := r.GetValidatorPools(info.Config.ID, caller)
+	if err != nil {
+		return fmt.Errorf("failed to get validator pools: %w", err)
+	}
+	rewardAvail := r.PoolAvailableRewards(poolAppID, pools[poolID-1].TotalAlgoStaked)
+	if rewardAvail < 1e6 {
+		return fmt.Errorf("Reward available is only %s ALGOS but must be at least 1 ALGO", algo.FormattedAlgoAmount(rewardAvail))
+	}
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
@@ -142,4 +154,9 @@ func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolAppID uint64, caller 
 		return err
 	}
 	return nil
+}
+
+func (r *Reti) PoolAvailableRewards(poolAppID uint64, totalAlgoStaked uint64) uint64 {
+	acctBalance, _ := algo.GetBareAccount(context.Background(), r.algoClient, crypto.GetApplicationAddress(poolAppID).String())
+	return acctBalance.Amount - totalAlgoStaked - acctBalance.MinBalance
 }

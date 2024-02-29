@@ -371,7 +371,7 @@ export class StakingPool extends Contract {
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
-        const payoutDays = payoutConfig.PayoutEveryXDays as uint64;
+        const payoutMins = payoutConfig.PayoutEveryXMins as uint64;
 
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which should never be counted as a reward - it's not payable]
@@ -383,29 +383,32 @@ export class StakingPool extends Contract {
         increaseOpcodeBudget(); // for logging costs
         log(concat('reward avail is: ', rewardAvailable.toString()));
 
-        // determine the % that goes to validator...
-        // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
-        const validatorPay = wideRatio([rewardAvailable, payoutConfig.PercentToValidator as uint64], [1_000_000]);
+        if (payoutConfig.PercentToValidator !== 0) {
+            // determine the % that goes to validator...
+            // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
+            const validatorPay = wideRatio([rewardAvailable, payoutConfig.PercentToValidator as uint64], [1_000_000]);
 
-        // and adjust reward for entire pool accordingly
-        rewardAvailable -= validatorPay;
+            // and adjust reward for entire pool accordingly
+            rewardAvailable -= validatorPay;
 
-        // ---
-        // pay the validator their cut...
-        if (validatorPay > 0) {
-            increaseOpcodeBudget();
-            log(concat('paying validator: ', validatorPay.toString()));
-            sendPayment({
-                amount: validatorPay,
-                receiver: payoutConfig.ValidatorCommissionAddress,
-                note: 'validator reward',
-            });
-            increaseOpcodeBudget();
-            log(concat('remaining reward avail: ', rewardAvailable.toString()));
+            // ---
+            // pay the validator their cut...
+            if (validatorPay > 0) {
+                increaseOpcodeBudget();
+                log(concat('paying validator: ', validatorPay.toString()));
+                sendPayment({
+                    amount: validatorPay,
+                    receiver: payoutConfig.ValidatorCommissionAddress,
+                    note: 'validator reward',
+                });
+                increaseOpcodeBudget();
+                log(concat('remaining reward avail: ', rewardAvailable.toString()));
+            }
         }
 
         if (rewardAvailable === 0) {
-            // likely a personal validator node - we just issued the entire reward to them - we're done
+            // likely a personal validator node - probably had validator % at 1000 and we just issued the entire reward
+            // to them - we're done
             return;
         }
 
@@ -415,20 +418,27 @@ export class StakingPool extends Contract {
         // Since we're being told to payout, we're at epoch 'end' presumably - or close enough
         // but what if we're told to pay really early?  we need to verify that as well.
         const curTime = globals.latestTimestamp;
-        // How many seconds in the 'configured' epoch.
-        // TODO - treat this as minutes for now !!  - so 1 (day) is really just ... 1 minute
-        const payoutDaysInSecs = payoutDays * 60; // * 60 * 24;
+
+        // Get configured epoch as seconds since we're block time comparisons will be in seconds
+        const epochInSecs = payoutMins * 60;
         if (this.LastPayout.exists) {
             const secsSinceLastPayout = curTime - this.LastPayout.value;
             log(concat('secs since last payout: ', secsSinceLastPayout.toString()));
 
-            // We've had one payout - so we need to be at least one epoch past the last payout (allowing 10 minutes
-            // early to account for script/clock issues)
-            // TODO - hacked out !
-            // assert(
-            //     secsSinceLastPayout >= payoutDaysInSecs - 10 * 60 /* 10 minutes in seconds 'fudge' allowed */,
-            //     "Can't payout earlier than last payout + epoch time"
-            // );
+            // We've had one payout - so we need to be at least one epoch past the last payout.
+            // depending on epoch size, allow caller to call slightly early to allow for daemon/clock issues
+            let fudgeInSecs = 4;
+            if (epochInSecs > 60 * 60) {
+                // at least an hour?  allow 1 minute fudge
+                fudgeInSecs = 60;
+            } else if (epochInSecs > 60 * 60 * 24) {
+                // at least a day - allow 5 minute fudge.
+                fudgeInSecs = 5 * 60;
+            }
+            assert(
+                secsSinceLastPayout >= epochInSecs - fudgeInSecs,
+                "Can't payout earlier than last payout + epoch time"
+            );
         }
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.
@@ -479,9 +489,9 @@ export class StakingPool extends Contract {
                     let timePercentage: uint64;
                     // get % of time in pool (in tenths precision)
                     // ie: 34.7% becomes 347
-                    if (timeInPool < payoutDaysInSecs) {
+                    if (timeInPool < epochInSecs) {
                         partialStakersTotalStake += cmpStaker.Balance;
-                        timePercentage = (timeInPool * 1000) / payoutDaysInSecs;
+                        timePercentage = (timeInPool * 1000) / epochInSecs;
 
                         increaseOpcodeBudget();
                         increaseOpcodeBudget();
@@ -528,7 +538,7 @@ export class StakingPool extends Contract {
                 if (cmpStaker.Account !== globals.zeroAddress && cmpStaker.EntryTime < curTime) {
                     const timeInPool = curTime - cmpStaker.EntryTime;
                     // We're now only paying out people who've been in pool an entire epoch.
-                    if (timeInPool >= payoutDaysInSecs) {
+                    if (timeInPool >= epochInSecs) {
                         // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                         // payment
                         const stakerReward = wideRatio([cmpStaker.Balance, rewardAvailable], [newPoolTotalStake]);

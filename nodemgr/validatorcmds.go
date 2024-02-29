@@ -237,7 +237,7 @@ func DefineValidator() error {
 		config.NFDForInfo = nfdAppID
 	}
 	// Use the promptui library to ask questions for each of the configuration items in ValidatorConfig
-	config.PayoutEveryXDays, err = getInt("Enter the payout frequency (in days)", 1, 1, 365)
+	config.PayoutEveryXMins, err = getInt("Enter the payout frequency (in minutes - 1, 60 (1 hr), max 7 days)", 1, 1, 60*24*7)
 	if err != nil {
 		return err
 	}

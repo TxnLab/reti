@@ -15,10 +15,11 @@ import {
 } from './constants.algo';
 
 const MAX_NODES = 12; // more just as a reasonable limit and cap on contract storage
-const MAX_POOLS_PER_NODE = 6; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
+const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
+// MAX_POOLS must be under 56 total to keep <1K (max 'log' return - thus max getPools() return
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
-const MIN_PAYOUT_DAYS = 1;
-const MAX_PAYOUT_DAYS = 30;
+const MIN_PAYOUT_MINS = 1;
+const MAX_PAYOUT_MINS = 10080; // 7 days in minutes
 const MAX_POOLS_PER_STAKER = 6;
 
 type ValidatorID = uint64;
@@ -49,7 +50,7 @@ export type ValidatorConfig = {
      * and all stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
      */
 
-    PayoutEveryXDays: uint16; // Payout frequency - ie: 7, 30, etc.
+    PayoutEveryXMins: uint16; // Payout frequency in minutes (can be no shorter than this)
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
     ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
     MinEntryStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
@@ -563,7 +564,7 @@ export class ValidatorRegistry extends Contract {
 
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the value in the ValidatorConfig are correct
-        assert(config.PayoutEveryXDays >= MIN_PAYOUT_DAYS && config.PayoutEveryXDays <= MAX_PAYOUT_DAYS);
+        assert(config.PayoutEveryXMins >= MIN_PAYOUT_MINS && config.PayoutEveryXMins <= MAX_PAYOUT_MINS);
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
         if (config.PercentToValidator !== 0) {
             assert(

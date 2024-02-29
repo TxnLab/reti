@@ -39,8 +39,8 @@ type ValidatorConfig struct {
 	// Optional NFD AppID which the validator uses to describe their validator pool
 	NFDForInfo uint64
 
-	// Payout frequency - ie: 7, 30, etc.
-	PayoutEveryXDays int
+	// Payout frequency in minutes (can be no shorter than this)
+	PayoutEveryXMins int
 	// Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 	PercentToValidator int
 	// account that receives the validation commission each epoch payout (can be ZeroAddress)
@@ -67,7 +67,7 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.Owner = pkAsString(arrReturn[1].([]uint8))
 		config.Manager = pkAsString(arrReturn[2].([]uint8))
 		config.NFDForInfo = arrReturn[3].(uint64)
-		config.PayoutEveryXDays = int(arrReturn[4].(uint16))
+		config.PayoutEveryXMins = int(arrReturn[4].(uint16))
 		config.PercentToValidator = int(arrReturn[5].(uint32))
 		config.ValidatorCommissionAddress = pkAsString(arrReturn[6].([]uint8))
 		config.MinEntryStake = arrReturn[7].(uint64)
@@ -77,6 +77,25 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		return config, nil
 	}
 	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)
+}
+
+func formattedMinutes(mins int) string {
+	// return a string expression of minutes in various forms (if applicable)
+	// minutes, hours, days
+	var out strings.Builder
+	if mins < 60 {
+		out.WriteString(fmt.Sprintf("%d minutes", mins))
+	} else if mins < 1440 {
+		hours := mins / 60
+		minutes := mins % 60
+		out.WriteString(fmt.Sprintf("%d hours, %d minutes", hours, minutes))
+	} else {
+		days := mins / 1440
+		hours := (mins % 1440) / 60
+		minutes := (mins % 1440) % 60
+		out.WriteString(fmt.Sprintf("%d days, %d hours, %d minutes", days, hours, minutes))
+	}
+	return out.String()
 }
 
 func (v *ValidatorConfig) String() string {
@@ -90,13 +109,12 @@ func (v *ValidatorConfig) String() string {
 	if v.NFDForInfo != 0 {
 		out.WriteString(fmt.Sprintf("NFD ID: %d\n", v.NFDForInfo))
 	}
-	out.WriteString(fmt.Sprintf("Payout Every %d days\n", v.PayoutEveryXDays))
+	out.WriteString(fmt.Sprintf("Payout Every %s\n", formattedMinutes(v.PayoutEveryXMins)))
 	out.WriteString(fmt.Sprintf("Min Entry Stake: %s\n", algo.FormattedAlgoAmount(v.MinEntryStake)))
 	out.WriteString(fmt.Sprintf("Max Algo Per Pool: %s\n", algo.FormattedAlgoAmount(v.MaxAlgoPerPool)))
 	out.WriteString(fmt.Sprintf("Max Pools per Node: %d\n", v.PoolsPerNode))
 
 	return out.String()
-	//return fmt.Sprintf("ID: %d, Owner: %s, Manager: %s, NFDForInfo: %d, PayoutEveryXDays: %d, PercentToValidator: %d, ValidatorCommissionAddress: %s, MinEntryStake: %d, MaxAlgoPerPool: %d, PoolsPerNode: %d", v.ID, v.Owner, v.Manager, v.NFDForInfo, v.PayoutEveryXDays, v.PercentToValidator, v.ValidatorCommissionAddress, v.MinEntryStake, v.MaxAlgoPerPool, v.PoolsPerNode)
 }
 
 type ValidatorCurState struct {
@@ -250,7 +268,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				ownerAddr,
 				managerAddr,
 				info.Config.NFDForInfo,
-				uint16(info.Config.PayoutEveryXDays),
+				uint16(info.Config.PayoutEveryXMins),
 				uint16(info.Config.PercentToValidator),
 				commissionAddr,
 				info.Config.MinEntryStake,

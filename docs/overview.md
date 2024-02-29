@@ -6,7 +6,9 @@
     * A 'management' address (a hot-wallet that will need to accessible on each node by the 'reti node daemon').  This
       account only has authority to tell staking pool contract instances to 'go online' against a participation-key, add pools,
       and to update staked balances as part of regular 'epoch' payouts.
-    * How often payout balance adjustments are made (every day, every week, etc) - the 'epoch' time.
+    * How often payout balance adjustments are made (every minute, hour, day, etc) - the 'minimum epoch' time.
+      * This determines how often the validator pays themselves and how often staker balances are adjusted to reflect the 
+        newly received rewards.
     * The percentage of earned rewards (at payout time) that goes to the validator to pay their operating costs
     * An Algorand address to send validator fees to - changeable only by the owner.
     * The 'minimum' stake allowed to enter their pools - this prevents dusting a valuable resource (or competing validators 

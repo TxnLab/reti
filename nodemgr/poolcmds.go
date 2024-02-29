@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/urfave/cli/v3"
 
@@ -153,8 +152,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		} else if !command.Value("all").(bool) {
 			continue
 		}
-		acctBalance, _ := algo.GetBareAccount(ctx, App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
-		rewardAvail := acctBalance.Amount - pool.TotalAlgoStaked - acctBalance.MinBalance
+		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)
 		totalRewards += rewardAvail
 		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t\n", i+1, isLocal, pool.PoolAppID, pool.TotalStakers,
 			algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail))
@@ -184,16 +182,12 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	signerAddr, _ := types.DecodeAddress(signer)
 
 	var (
-		nextPayTime time.Time
-		// TODO - hack to have payout days be in minutes... not days..
-		epochDuration = time.Duration(info.Config.PayoutEveryXDays) * time.Minute
-		//epochDuration = time.Duration(info.Config.PayoutEveryXDays) * 24 * time.Hour
+		nextPayTime   time.Time
+		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
 	)
 	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
 	if err == nil {
-		// TODO - payout hack
-		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Minute)
-		//nextPayTime = time.Unix(int64(lastPayout), 0).AddDate(0, 0, info.Config.PayoutEveryXDays)
+		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
 		nextPayTime = time.Now()
 	}
@@ -220,8 +214,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 
-	acctBalance, _ := algo.GetBareAccount(ctx, App.algoClient, crypto.GetApplicationAddress(info.Pools[poolID-1].PoolAppID).String())
-	rewardAvail := acctBalance.Amount - pools[poolID-1].TotalAlgoStaked - acctBalance.MinBalance
+	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolID-1].PoolAppID, pools[poolID-1].TotalAlgoStaked)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
@@ -334,5 +327,5 @@ func PayoutPool(ctx context.Context, command *cli.Command) error {
 	}
 	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
-	return App.retiClient.EpochBalanceUpdate(info, info.Pools[poolID-1].PoolAppID, signerAddr)
+	return App.retiClient.EpochBalanceUpdate(info, poolID, info.Pools[poolID-1].PoolAppID, signerAddr)
 }
