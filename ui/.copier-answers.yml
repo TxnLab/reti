@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 0.10.1
+_src_path: gh:algorandfoundation/algokit-react-frontend-template
+author_email: drichar@gmail.com
+author_name: Doug Richar
+ide_jetbrains: false
+ide_vscode: true
+preset_name: custom
+project_name: reti-ui
+use_daisy_ui: false
+use_eslint_prettier: true
+use_github_actions: false
+use_jest: true
+use_playwright: true
+use_tailwind: true
