@@ -21,6 +21,11 @@ validator -> master: addPool(mbrPayment: PayTxn, validatorID: ValidatorID): Vali
 autonumber stop
 master -> pool: [itxn] creates new staking pool contract instance
 master -> validator: returns {Validator ID, Pool ID, Pool App ID}
+...  - Initialize Pool Storage - ...
+autonumber 0
+validator -> pool: [payment of box storage mbr for stakers ledger in pool]
+validator -> pool: initStorage(mbrPayment: PayTxn)
+autonumber stop
 end
 group Add stake to validator
 autonumber 0

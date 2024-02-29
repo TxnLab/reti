@@ -66,7 +66,7 @@ func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uin
 	}
 	rewardAvail := r.PoolAvailableRewards(poolAppID, pools[poolID-1].TotalAlgoStaked)
 	if rewardAvail < 1e6 {
-		return fmt.Errorf("Reward available is only %s ALGOS but must be at least 1 ALGO", algo.FormattedAlgoAmount(rewardAvail))
+		return fmt.Errorf("reward available is only %s ALGOS but must be at least 1 ALGO", algo.FormattedAlgoAmount(rewardAvail))
 	}
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
