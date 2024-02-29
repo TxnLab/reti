@@ -1,0 +1,10 @@
+[algokit]
+min_version = "v1.3.0b1"
+
+[generate.import_contract]
+description = "Import a typed client from your smart contracts project"
+path = ".algokit/generators/import_contract"
+
+[project]
+type = "frontend"
+name = "reti-ui"
