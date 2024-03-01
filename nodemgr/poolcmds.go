@@ -90,7 +90,7 @@ func GetPoolCmdOpts() *cli.Command {
 				Action:   StakeAdd,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "from",
+						Name:     "account",
 						Usage:    "The account to send stake 'from' - the staker account.",
 						Required: true,
 					},
@@ -101,7 +101,38 @@ func GetPoolCmdOpts() *cli.Command {
 					},
 					&cli.UintFlag{
 						Name:     "validator",
+						Aliases:  []string{"v"},
 						Usage:    "The validator id to stake to",
+						Required: true,
+					},
+				},
+			},
+			{
+				Name:     "unstake",
+				Usage:    "Mostly for testing - but allows adding stake w/ a locally available account Add a new staking pool to this node",
+				Category: "pool",
+				Action:   StakeRemove,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "account",
+						Usage:    "The staker account wanting to remove stake",
+						Required: true,
+					},
+					&cli.UintFlag{
+						Name:     "amount",
+						Usage:    "The amount of whole algo to unstake",
+						Required: true,
+					},
+					&cli.UintFlag{
+						Name:     "validator",
+						Aliases:  []string{"v"},
+						Usage:    "The validator id stake is with",
+						Required: true,
+					},
+					&cli.UintFlag{
+						Name:     "pool",
+						Aliases:  []string{"p"},
+						Usage:    "The pool id to remove the stake from",
 						Required: true,
 					},
 				},
@@ -189,6 +220,9 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	if err == nil {
 		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
+		nextPayTime = time.Now()
+	}
+	if nextPayTime.Before(time.Now()) {
 		nextPayTime = time.Now()
 	}
 	pctTimeInEpoch := func(stakerEntryTime uint64) int {
@@ -303,8 +337,8 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("validator not configured: %w", err)
 	}
 
-	// from, account, validator
-	stakerAddr, err := types.DecodeAddress(command.Value("from").(string))
+	// account, amount, validator
+	stakerAddr, err := types.DecodeAddress(command.Value("account").(string))
 	if err != nil {
 		return err
 	}
@@ -313,6 +347,43 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	misc.Infof(App.logger, "stake added into pool:%d", poolKey.PoolID)
+	return nil
+}
+
+func StakeRemove(ctx context.Context, command *cli.Command) error {
+	_, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
+
+	// account, amount, validator, pool
+	stakerAddr, err := types.DecodeAddress(command.Value("account").(string))
+	if err != nil {
+		return err
+	}
+	validatorID := command.Value("validator").(uint64)
+	poolID := command.Value("pool").(uint64)
+	var poolKey *reti.ValidatorPoolKey
+	// This staker must have staked something!
+	poolKeys, err := App.retiClient.GetStakedPoolsForAccount(stakerAddr)
+	if err != nil {
+		return err
+	}
+	for _, key := range poolKeys {
+		if key.ID == validatorID && key.PoolID == poolID {
+			poolKey = key
+			break
+		}
+	}
+	if poolKey == nil {
+		return fmt.Errorf("staker has not staked in the specified pool")
+	}
+
+	err = App.retiClient.RemoveStake(*poolKey, stakerAddr, command.Value("amount").(uint64)*1e6)
+	if err != nil {
+		return err
+	}
+	misc.Infof(App.logger, "stake removed from pool:%d", poolKey.PoolID)
 	return nil
 }
 

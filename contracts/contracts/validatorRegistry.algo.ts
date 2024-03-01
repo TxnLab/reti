@@ -204,9 +204,11 @@ export class ValidatorRegistry extends Contract {
     }
 
     // @abi.readonly
-    // getPoolAppID is more of a sanity check than anything as the app id is already encoded in ValidatorPoolKey
-    getPoolAppID(poolKey: ValidatorPoolKey): uint64 {
-        return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID;
+    // getPoolAppID is useful for callers to determine app to call for removing stake if they don't have staking or
+    // want to get staker list for an account
+    getPoolAppID(validatorID: uint64, poolID: uint64): uint64 {
+        assert(poolID !== 0 && poolID <= this.ValidatorList(validatorID).value.Pools.length);
+        return this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID;
     }
 
     // @abi.readonly

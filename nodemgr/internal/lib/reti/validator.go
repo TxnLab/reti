@@ -452,7 +452,7 @@ func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey, sender types.Addre
 	return ValidatorPoolInfoFromABIReturn(result.MethodResults[0].ReturnValue)
 }
 
-func (r *Reti) getStakedPoolsForAccount(staker types.Address) ([]*ValidatorPoolKey, error) {
+func (r *Reti) GetStakedPoolsForAccount(staker types.Address) ([]*ValidatorPoolKey, error) {
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
 		return nil, err
@@ -682,7 +682,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 	}
 
 	// has this staker ever staked anything?
-	poolKeys, err := r.getStakedPoolsForAccount(staker)
+	poolKeys, err := r.GetStakedPoolsForAccount(staker)
 
 	if len(poolKeys) == 0 {
 		misc.Infof(r.logger, "Adding %s ALGO to stake to cover first-time MBR", algo.FormattedAlgoAmount(mbrs.AddStakerMbr))
@@ -789,6 +789,100 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 		return nil, err
 	}
 	return ValidatorPoolKeyFromABIReturn(result.MethodResults[1].ReturnValue)
+}
+
+func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amount uint64) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	getAtc := func(feesToUse uint64) (transaction.AtomicTransactionComposer, error) {
+		atc := transaction.AtomicTransactionComposer{}
+		gasMethod, _ := r.validatorContract.GetMethodByName("gas")
+		unstakeMethod, _ := r.poolContract.GetMethodByName("removeStake")
+
+		params.FlatFee = true
+		params.Fee = transaction.MinTxnFee
+
+		// we need to stack up references in this gas method for resource pooling
+		err = atc.AddMethodCall(transaction.AddMethodCallParams{
+			AppID:  r.RetiAppID,
+			Method: gasMethod,
+			BoxReferences: []types.AppBoxReference{
+				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(poolKey.ID)},
+				{AppID: r.RetiAppID, Name: nil}, // extra i/o
+				{AppID: r.RetiAppID, Name: GetStakerPoolSetBoxName(staker)},
+			},
+			SuggestedParams: params,
+			OnComplete:      types.NoOpOC,
+			Sender:          staker,
+			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+		})
+		if err != nil {
+			return atc, err
+		}
+		if feesToUse == 0 {
+			// we're simulating so go with super high budget
+			feesToUse = 240 * transaction.MinTxnFee
+		}
+		params.FlatFee = true
+		params.Fee = types.MicroAlgos(feesToUse)
+		err = atc.AddMethodCall(transaction.AddMethodCallParams{
+			AppID:  poolKey.PoolAppID,
+			Method: unstakeMethod,
+			MethodArgs: []any{
+				amount,
+			},
+			ForeignApps: []uint64{poolKey.PoolAppID},
+			BoxReferences: []types.AppBoxReference{
+				{AppID: 0, Name: GetStakerLedgerBoxName()},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+			},
+			SuggestedParams: params,
+			OnComplete:      types.NoOpOC,
+			Sender:          staker,
+			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+		})
+		if err != nil {
+			return atc, err
+		}
+		return atc, err
+	}
+
+	// simulate first
+	atc, err := getAtc(0)
+	if err != nil {
+		return err
+	}
+	simResult, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return err
+	}
+	if simResult.SimulateResponse.TxnGroups[0].FailureMessage != "" {
+		return errors.New(simResult.SimulateResponse.TxnGroups[0].FailureMessage)
+	}
+	// Figure out how much app budget was added so we can know the real fees to use when we execute
+	atc, err = getAtc(2*transaction.MinTxnFee + transaction.MinTxnFee*(simResult.SimulateResponse.TxnGroups[0].AppBudgetAdded/700))
+	if err != nil {
+		return err
+	}
+
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetValidatorListBoxName(id uint64) []byte {

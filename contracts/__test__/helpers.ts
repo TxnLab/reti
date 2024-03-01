@@ -588,16 +588,6 @@ export async function logStakingPoolInfo(
             );
         }
     }
-    // let i = 0;
-    // stakers.forEach((staker) => {
-    //     if (encodeAddress(staker.Staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
-    //         const entryTime = new Date(Number(staker.EntryTime) * 1000);
-    //         consoleLogger.info(
-    //             `${i}: Staker:${encodeAddress(staker.Staker.publicKey)}, Balance:${staker.Balance}, Entry:${entryTime.toUTCString()}`
-    //         );
-    //     }
-    //     i += 1;
-    // });
 }
 
 export async function verifyRewardAmounts(
