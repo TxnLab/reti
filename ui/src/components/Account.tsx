@@ -1,7 +1,7 @@
 import { useWallet } from '@txnlab/use-wallet'
 import { useMemo } from 'react'
-import { ellipseAddress } from '../utils/ellipseAddress'
-import { getAlgodConfigFromViteEnvironment } from '../utils/network/getAlgoClientConfigs'
+import { ellipseAddress } from '@/utils/ellipseAddress'
+import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const Account = () => {
   const { activeAddress } = useWallet()
@@ -20,7 +20,9 @@ const Account = () => {
       >
         Address: {ellipseAddress(activeAddress)}
       </a>
-      <div className="text-xl">Network: {algoConfig.network === '' ? 'localnet' : algoConfig.network}</div>
+      <div className="text-xl">
+        Network: {algoConfig.network === '' ? 'localnet' : algoConfig.network}
+      </div>
     </div>
   )
 }
