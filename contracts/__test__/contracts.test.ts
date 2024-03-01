@@ -197,7 +197,7 @@ describe('StakeAdds', () => {
         // get the app id via contract call - it should match what we just got back in poolKey[2]
         poolAppId = (
             await validatorMasterClient.getPoolAppId(
-                { poolKey: firstPoolKey.encode() },
+                { validatorID: firstPoolKey.ID, poolID: firstPoolKey.PoolID },
                 { sendParams: { populateAppCallResources: true } }
             )
         ).return!;
@@ -727,7 +727,7 @@ describe('StakeWRewards', () => {
         // get the app id via contract call - it should match what we just got back in poolKey[2]
         poolAppId = (
             await validatorMasterClient.getPoolAppId(
-                { poolKey: firstPoolKey.encode() },
+                { validatorID: firstPoolKey.ID, poolID: firstPoolKey.PoolID },
                 { sendParams: { populateAppCallResources: true } }
             )
         ).return!;
@@ -1090,7 +1090,7 @@ describe('ValidatorWFullPoolWRewards', () => {
         // get the app id via contract call - it should match what we just got back in poolKey[2]
         poolAppId = (
             await validatorMasterClient.getPoolAppId(
-                { poolKey: firstPoolKey.encode() },
+                { validatorID: firstPoolKey.ID, poolID: firstPoolKey.PoolID },
                 { sendParams: { populateAppCallResources: true } }
             )
         ).return!;

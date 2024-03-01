@@ -96,8 +96,8 @@ export class ValidatorRegistry extends Contract {
     // and also contains all pool information (but not user-account ledger per pool)
     ValidatorList = BoxMap<ValidatorID, ValidatorInfo>({ prefix: 'v' });
 
-    // For given user staker address, which of up to 4 validator/pools are they in
-    // We use this to find a particular addresses deposits (in up to 4 independent pools w/ any validators)
+    // For given user staker address, which of up to MAX_POOLS_PER_STAKER validator/pools are they in
+    // We use this to find a particular addresses deposits (in up to X independent pools w/ any validators)
     StakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, typeof MAX_POOLS_PER_STAKER>>({ prefix: 'sps' });
 
     NFDRegistryAppID = TemplateVar<uint64>();
