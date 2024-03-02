@@ -333,6 +333,9 @@ func (r *Reti) GetValidatorConfig(id uint64, sender types.Address) (*ValidatorCo
 	if err != nil {
 		return nil, err
 	}
+	if result.SimulateResponse.TxnGroups[0].FailureMessage != "" {
+		return nil, fmt.Errorf("error retrieving validator config: %s", result.SimulateResponse.TxnGroups[0].FailureMessage)
+	}
 	return ValidatorConfigFromABIReturn(result.MethodResults[0].ReturnValue)
 }
 

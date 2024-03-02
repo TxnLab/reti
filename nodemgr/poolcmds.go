@@ -240,7 +240,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	ledger, err := App.retiClient.GetStakerLedger(info.Pools[poolID-1].PoolAppID)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to GetStakerLedger: %w", err)
 	}
 
 	pools, err := App.retiClient.GetValidatorPools(info.Config.ID, signerAddr)
@@ -262,8 +262,9 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	}
 	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
 	tw.Flush()
-	fmt.Print(out.String())
-	return err
+	slog.Info(out.String())
+	//fmt.Print(out.String())
+	return nil
 }
 
 func PoolAdd(ctx context.Context, command *cli.Command) error {

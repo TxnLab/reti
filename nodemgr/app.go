@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"strconv"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/urfave/cli/v3"
+	"golang.org/x/term"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
@@ -19,10 +21,32 @@ import (
 var logLevel = new(slog.LevelVar) // Info by default
 
 func initApp() *RetiApp {
-	h := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
-	slog.SetDefault(slog.New(h))
+	log.SetFlags(0)
+	var logger *slog.Logger
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		// Are we running on something where output is a tty - so we're being run as CLI vs as a daemon
+		logger = slog.New(misc.NewMinimalHandler(os.Stdout,
+			misc.MinimalHandlerOptions{SlogOpts: slog.HandlerOptions{Level: logLevel}}))
 
-	logger := slog.Default()
+		//logger = slog.Default()
+		//logger = slog.NewLogLogger()
+		//logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel,
+		//	ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+		//		if a.Key == slog.TimeKey ||
+		//			a.Key == slog.LevelKey {
+		//			return slog.Attr{}
+		//		}
+		//		//if a.Key == slog.TimeKey && len(groups) == 0 {
+		//		//	return slog.Attr{}
+		//		//} else if a.Key == slog.LevelKey && len(groups) == 0 {
+		//		//	return slog.Attr{}
+		//		//}
+		//		return a
+		//	}}))
+	} else {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	}
+	slog.SetDefault(logger)
 	if os.Getenv("DEBUG") == "1" {
 		logLevel.Set(slog.LevelDebug)
 	}
