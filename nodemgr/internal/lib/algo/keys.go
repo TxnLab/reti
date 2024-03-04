@@ -18,25 +18,40 @@ type ParticipationKey struct {
 	EffectiveLastValid  uint64 `json:"effective-last-valid"`
 	Id                  string `json:"id"`
 	Key                 struct {
-		SelectionParticipationKey string `json:"selection-participation-key"`
-		StateProofKey             string `json:"state-proof-key"`
+		SelectionParticipationKey []byte `json:"selection-participation-key"`
+		StateProofKey             []byte `json:"state-proof-key"`
 		VoteFirstValid            uint64 `json:"vote-first-valid"`
 		VoteKeyDilution           uint64 `json:"vote-key-dilution"`
 		VoteLastValid             uint64 `json:"vote-last-valid"`
-		VoteParticipationKey      string `json:"vote-participation-key"`
+		VoteParticipationKey      []byte `json:"vote-participation-key"`
 	} `json:"key"`
 	LastBlockProposal uint64 `json:"last-block-proposal"`
 	LastVote          uint64 `json:"last-vote"`
 }
 
-func GetParticipationKeys(ctx context.Context, algoClient *algod.Client) ([]ParticipationKey, error) {
+type PartKeysByAddress map[string][]ParticipationKey
+
+func GetParticipationKeys(ctx context.Context, algoClient *algod.Client) (PartKeysByAddress, error) {
 	var response []ParticipationKey
 
 	err := (*common.Client)(algoClient).Get(ctx, &response, fmt.Sprintf("/v2/participation"), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get participation keys")
 	}
-	return response, nil
+	// collate and return the ParticipationKey slice into a map by 'Address' within the ParticipationKey
+	participationKeys := PartKeysByAddress{}
+	for _, key := range response {
+		// decode the base64 values
+		//vpk, _ := base64.StdEncoding.DecodeString(key.Key.VoteParticipationKey)
+		//selpk, _ := base64.StdEncoding.DecodeString(key.Key.SelectionParticipationKey)
+		//stproofk, _ := base64.StdEncoding.DecodeString(key.Key.StateProofKey)
+		//key.Key.VoteParticipationKey = string(vpk)
+		//key.Key.SelectionParticipationKey = string(selpk)
+		//key.Key.StateProofKey = string(stproofk)
+
+		participationKeys[key.Address] = append(participationKeys[key.Address], key)
+	}
+	return participationKeys, nil
 }
 
 type GenerateParticipationKeysParams struct {
@@ -50,6 +65,11 @@ type GenerateParticipationKeysParams struct {
 	Last uint64 `form:"last" url:"last" json:"last"`
 }
 
+// GenerateParticipationKey generates a participation key for an account within a specific validity window.
+// It sends a POST request to the Algorand node API to generate the participation key.
+// After the request is sent, it polls the node every 10 seconds to check if the key has been generated.
+// If the key is successfully generated, it returns the participation key.
+// If the key is not generated within 30 minutes, it returns an error.
 func GenerateParticipationKey(ctx context.Context, algoClient *algod.Client, logger *slog.Logger, account string, firstValid, lastValid uint64) (*ParticipationKey, error) {
 	var response struct{}
 	var params = GenerateParticipationKeysParams{
@@ -73,11 +93,13 @@ func GenerateParticipationKey(ctx context.Context, algoClient *algod.Client, log
 			if err != nil {
 				return nil, fmt.Errorf("unable to get part keys as part of polling after key generation request, err:%w", err)
 			}
-			for _, key := range partKeys {
-				if key.Address == account && key.Key.VoteFirstValid == firstValid {
-					// this is our key - we're good, it's been successfully created !
-					misc.Infof(logger, "Participation key generated for account:%s, first valid:%d", account, firstValid)
-					return &key, nil
+			for _, keys := range partKeys {
+				for _, key := range keys {
+					if key.Address == account && key.Key.VoteFirstValid == firstValid {
+						// this is our key - we're good, it's been successfully created !
+						misc.Infof(logger, "Participation key generated for account:%s, first valid:%d", account, firstValid)
+						return &key, nil
+					}
 				}
 			}
 		case <-time.After(30 * time.Minute):
@@ -85,4 +107,14 @@ func GenerateParticipationKey(ctx context.Context, algoClient *algod.Client, log
 			return nil, fmt.Errorf("something went wrong - 30 minutes and no key was generated for:%s - aborting", account)
 		}
 	}
+}
+
+func DeleteParticipationKey(ctx context.Context, algoClient *algod.Client, logger *slog.Logger, partKeyID string) error {
+	var response string
+	misc.Infof(logger, "delete part key id:%s", partKeyID)
+	err := (*common.Client)(algoClient).Delete(ctx, &response, fmt.Sprintf("/v2/participation/%s", partKeyID), nil, nil)
+	if err != nil {
+		return fmt.Errorf("error delete participation key for id:%s, err:%w", partKeyID, err)
+	}
+	return nil
 }

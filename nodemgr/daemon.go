@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
 	"log/slog"
-	"slices"
+	"maps"
+	"sort"
 	"sync"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
+
+const OnlineStatus = "Online"
 
 // Daemon provides a 'little' separation in that we initalize it with some data from the App global set up by
 // the process startup, but the Daemon tries to be fairly retrieval with its data retrieval and use.
@@ -98,17 +101,13 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 type onlineInfo struct {
 	poolAppID                 uint64
 	isOnline                  bool
-	selectionParticipationKey string
+	selectionParticipationKey []byte
 	firstValid                uint64
 }
 
-const OnlineStatus = "Online"
-
 func (d *Daemon) checkPools(ctx context.Context) {
-	managerAddr, _ := types.DecodeAddress(d.info.Config.Manager)
-
 	// get online status and partkey info for all our accounts (ignoring any that don't have balances yet)
-	var poolAcounts = map[string]onlineInfo{}
+	var poolAccounts = map[string]onlineInfo{}
 	for _, pool := range d.info.Pools {
 		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
 		if err != nil {
@@ -118,11 +117,11 @@ func (d *Daemon) checkPools(ctx context.Context) {
 		info := onlineInfo{
 			poolAppID:                 pool.PoolAppID,
 			isOnline:                  acctInfo.Status == OnlineStatus,
-			selectionParticipationKey: string(acctInfo.Participation.SelectionParticipationKey),
+			selectionParticipationKey: acctInfo.Participation.SelectionParticipationKey,
 			firstValid:                acctInfo.Participation.VoteFirstValid,
 		}
 		if acctInfo.Amount-acctInfo.MinBalance > 1e6 {
-			poolAcounts[crypto.GetApplicationAddress(pool.PoolAppID).String()] = info
+			poolAccounts[crypto.GetApplicationAddress(pool.PoolAppID).String()] = info
 		}
 	}
 	// now get all the current participation keys for our node
@@ -133,56 +132,16 @@ func (d *Daemon) checkPools(ctx context.Context) {
 	}
 	// filter partKeys to just the accounts matching our pools.
 	// Other accounts aren't our problem or under our control
-	partKeys = slices.DeleteFunc(partKeys, func(key algo.ParticipationKey) bool {
-		_, found := poolAcounts[key.Address]
+	maps.DeleteFunc(partKeys, func(address string, keys []algo.ParticipationKey) bool {
+		_, found := poolAccounts[address]
 		return !found
 	})
 
-	// get accounts without part. keys at all.
-	missingAccounts := getAccountsWithoutPartKeys(partKeys, poolAcounts)
-	// for accounts w/ no keys at all - we just create keys and instantly go online with them
-	if len(missingAccounts) > 0 {
-		for account := range missingAccounts {
-			_, err := d.createPartKey(ctx, account, 0)
-			if err != nil {
-				misc.Errorf(d.logger, "error generating part key for missing account:%s, err:%v", account, err)
-				return
-			}
-		}
-		// go online, etc. as part of normal checks - so just return now and next pass will fix
+	err = d.ensureParticipation(ctx, poolAccounts, partKeys)
+	if err != nil {
+		misc.Errorf(d.logger, "error ensuring participation: %v", err)
 		return
 	}
-	// TODO do we have keys that we just haven't gone online for yet ?
-	for account, info := range poolAcounts {
-		if !info.isOnline {
-			// go online - get part key waiting for this account
-			idx := slices.IndexFunc(partKeys, func(key algo.ParticipationKey) bool {
-				return key.Address == account
-			})
-			if idx == -1 {
-				misc.Errorf(d.logger, "unable to find participation key to go online for account:%s [pool app id:%d]", account, info.poolAppID)
-				return
-			}
-			vpk, _ := base64.StdEncoding.DecodeString(partKeys[idx].Key.VoteParticipationKey)
-			selpk, _ := base64.StdEncoding.DecodeString(partKeys[idx].Key.SelectionParticipationKey)
-			stproofk, _ := base64.StdEncoding.DecodeString(partKeys[idx].Key.StateProofKey)
-
-			err = App.retiClient.GoOnline(d.info, info.poolAppID, managerAddr,
-				vpk, selpk, stproofk,
-				partKeys[idx].Key.VoteFirstValid, partKeys[idx].Key.VoteLastValid, partKeys[idx].Key.VoteKeyDilution)
-			if err != nil {
-				misc.Errorf(d.logger, "unable to go online for account:%s [pool app id:%d]", account, info.poolAppID)
-				return
-			}
-			misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppID)
-		}
-	}
-
-	// what keys do we have with mixed ranges (active now but something that we're waiting to rotate into)
-
-	partKeys = d.getExpiringKeys(partKeys)
-	misc.Debugf(d.logger, "accounts w/out participation keys: %v", missingAccounts)
-	misc.Debugf(d.logger, "accounts w/ soon to expire keys: %v", partKeys)
 }
 
 func (d *Daemon) updatePoolVersions(ctx context.Context) {
@@ -248,7 +207,7 @@ func (d *Daemon) setAverageBlockTime(ctx context.Context) error {
 // getExpiringKeys checks the expiration status of each key in the given list
 // based on the current node status and average block time. It returns a list of
 // keys that will expire within 1 week.
-func (d *Daemon) getExpiringKeys(keys []algo.ParticipationKey) []algo.ParticipationKey {
+func (d *Daemon) getExpiringKeys(partKeys algo.PartKeysByAddress) []algo.ParticipationKey {
 	status, err := d.algoClient.Status().Do(context.Background())
 	if err != nil {
 		d.logger.Warn("failure in getting current node status w/in getExpiringKeys", "error", err)
@@ -257,19 +216,21 @@ func (d *Daemon) getExpiringKeys(keys []algo.ParticipationKey) []algo.Participat
 	curRound := status.LastRound
 	avgBlockTime := d.AverageBlockTime()
 
-	// check keys that will expire within 1 week based on average block time (avgBlockTime)
+	// check partKeys that will expire within 1 week based on average block time (avgBlockTime)
 	// the last valid round of the key has to be compared to curRound and based on block time, determine if
 	// its near expiration
 	var expiringKeys []algo.ParticipationKey
-	for _, key := range keys {
-		if key.EffectiveFirstValid > curRound {
-			// key isn't even in range yet ignore for now
-			continue
-		}
-		expValidDistance := time.Duration(key.Key.VoteLastValid-curRound) * avgBlockTime
-		if expValidDistance.Hours() < 24*7 {
-			misc.Infof(d.logger, "key: %s for %s expiring in %v", key.Id, key.Address, expValidDistance)
-			expiringKeys = append(expiringKeys, key)
+	for _, keys := range partKeys {
+		for _, key := range keys {
+			if key.EffectiveFirstValid > curRound {
+				// key isn't even in range yet ignore for now
+				continue
+			}
+			expValidDistance := time.Duration(key.Key.VoteLastValid-curRound) * avgBlockTime
+			if expValidDistance.Hours() < 24*7 {
+				misc.Infof(d.logger, "key: %s for %s expiring in %v", key.Id, key.Address, expValidDistance)
+				expiringKeys = append(expiringKeys, key)
+			}
 		}
 	}
 	return expiringKeys
@@ -303,7 +264,7 @@ func (d *Daemon) refetchConfig() error {
 }
 
 func (d *Daemon) createPartKey(ctx context.Context, account string, firstValid uint64) (*algo.ParticipationKey, error) {
-	// generate keys good for one month based on current avg block time
+	// generate keys good for one month based on current avg block time - nothing is returned until key is actually created
 	status, err := d.algoClient.Status().Do(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch node status: %w", err)
@@ -316,20 +277,219 @@ func (d *Daemon) createPartKey(ctx context.Context, account string, firstValid u
 	return algo.GenerateParticipationKey(ctx, d.algoClient, d.logger, account, firstValid, lastValid)
 }
 
-func getAccountsWithoutPartKeys(partKeys []algo.ParticipationKey, poolAcounts map[string]onlineInfo) map[string]onlineInfo {
-	var partKeyAccounts = map[string]onlineInfo{}
-	for _, key := range partKeys {
-		partKeyAccounts[key.Address] = onlineInfo{
-			selectionParticipationKey: key.Key.SelectionParticipationKey,
-		}
+func (d *Daemon) ensureParticipation(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+	/** conditions to cover for participation keys / accounts
+	1) Part key found but expired - delete it
+	2) Account has NO local participation key (online or offline) (ie: they could've moved to new node)
+		Create brand new 1-month key - will go online as part of subsequent checks once part key becomes visible
+	3) Account is NOT online but has one or more part keys
+		Go online against newest part key - done
+	4) Account has ONE local part key AND IS ONLINE
+		Assumed 'steady state' - check lifetime of CURRENT key and if expiring within 1 week
+		If expiring soon, create new key w/ firstValid set to existing key's lastValid - 1 day of rounds.
+	5) Account is online and has multiple local part keys
+		If Online (assumed steady state when a future pending part key has been created)
+			Sort keys descending by first valid
+			If part key first valid is >= current round AND not current part. key id for account
+				Go online against this new key - done.  prior key will be removed a week later when it's out of valid range
+	*/
+	// 1) part key found that is expired - remove
+	if err := d.ensureParticipationRemoveExpired(ctx, poolAccounts, partKeys); err != nil {
+		return err
 	}
-	var filteredAccounts = map[string]onlineInfo{}
+	// 2) get accounts without (local) part. keys at all.
+	if err := d.ensureParticipationNoKeysYet(ctx, poolAccounts, partKeys); err != nil {
+		return err
+	}
+	// 3) Not online...
+	if err := d.ensureParticipationNotOnline(ctx, poolAccounts, partKeys); err != nil {
+		return err
+	}
+	// 4) Account has 1 part key, IS ONLINE and might expire soon (needing to generate new key)
+	if err := d.ensureParticipationCheckNeedsRenewed(ctx, poolAccounts, partKeys); err != nil {
+		return err
+	}
+	// 5 Account is online - see if there's a newer key to 'switch' to
+	if err := d.ensureParticipationCheckNeedsSwitched(ctx, poolAccounts, partKeys); err != nil {
+		return err
+	}
+	return nil
+}
 
-	for addr, info := range poolAcounts {
-		_, found := partKeyAccounts[addr]
-		if !found {
-			filteredAccounts[addr] = info
+// 1) Part key found but expired - delete it
+func (d *Daemon) ensureParticipationRemoveExpired(ctx context.Context, accounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+	status, err := d.algoClient.Status().Do(context.Background())
+	if err != nil {
+		return fmt.Errorf("unable to fetch node status: %w", err)
+	}
+	for _, keys := range partKeys {
+		for _, key := range keys {
+			if key.Key.VoteLastValid < status.LastRound {
+				misc.Infof(d.logger, "key:%s for account:%s is expired, removing", key.Id, key.Address)
+				err = algo.DeleteParticipationKey(ctx, d.algoClient, d.logger, key.Id)
+				if err != nil {
+					if err != nil {
+						return fmt.Errorf("error deleting participation key for id:%s, err:%w", key.Id, err)
+					}
+				}
+			}
 		}
 	}
-	return filteredAccounts
+	return nil
+}
+
+// Handle condition 2) in ensureParticipation
+// 2) Account has NO local participation key (online or offline)
+func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+	for account, _ := range poolAccounts {
+		// for accounts w/ no keys at all - we just create keys - we'll go online as part of later checks
+		if _, found := partKeys[account]; !found {
+			_, err := d.createPartKey(ctx, account, 0)
+			if err != nil {
+				misc.Errorf(d.logger, "error generating part key for missing account:%s, err:%v", account, err)
+				return nil
+			}
+		}
+	}
+	// go online, etc. as part of normal checks - so just return now and next pass will fix
+	return nil
+}
+
+// Handle condition 3) in ensureParticipation
+// 3) Account is NOT online but has one or more part keys - go online against newest
+func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+	var (
+		err            error
+		managerAddr, _ = types.DecodeAddress(d.info.Config.Manager)
+	)
+
+	for account, info := range poolAccounts {
+		if !info.isOnline {
+			keysForAccount, found := partKeys[account]
+			if !found {
+				continue
+			}
+			// sort the part keys by whichever has highest firstValid
+			sort.Slice(keysForAccount, func(i, j int) bool {
+				return keysForAccount[i].Key.VoteFirstValid > keysForAccount[j].Key.VoteFirstValid
+			})
+			keyToUse := keysForAccount[0]
+			misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToUse.Id)
+
+			err = App.retiClient.GoOnline(d.info, info.poolAppID, managerAddr,
+				keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey,
+				keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
+			if err != nil {
+				return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppID)
+			}
+			misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppID)
+		}
+	}
+	return nil
+}
+
+/*
+Account has 1 part key AND IS ONLINE
+
+	We only allow 1 part key so we don't keep trying to create new key when we're close to expiration.
+	Assumed 'steady state' - check lifetime of key and if expiring within 1 week
+	If expiring soon, create new key w/ firstValid set to existing key's lastValid - 1 day of rounds.  done
+*/
+func (d *Daemon) ensureParticipationCheckNeedsRenewed(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+	status, err := d.algoClient.Status().Do(context.Background())
+	if err != nil {
+		d.logger.Warn("failure in getting current node status w/in getExpiringKeys", "error", err)
+		return nil
+	}
+	curRound := status.LastRound
+	avgBlockTime := d.AverageBlockTime()
+
+	for account, info := range poolAccounts {
+		if !info.isOnline {
+			continue
+		}
+		if len(partKeys[account]) != 1 {
+			continue
+		}
+		activeKey := partKeys[account][0]
+		if bytes.Compare(activeKey.Key.SelectionParticipationKey, info.selectionParticipationKey) == 0 {
+			if activeKey.EffectiveFirstValid > curRound {
+				// activeKey isn't even in range yet ignore for now
+				continue
+			}
+			expValidDistance := time.Duration(activeKey.Key.VoteLastValid-curRound) * avgBlockTime
+			if expValidDistance.Hours() < 24*7 {
+				oneDayOfBlocks := (24 * time.Hour) / avgBlockTime
+				misc.Infof(d.logger, "activeKey: %s for %s expiring in %v, creating new key with ~1 day lead-time", activeKey.Id, activeKey.Address, expValidDistance)
+				d.createPartKey(ctx, account, activeKey.Key.VoteLastValid-uint64(oneDayOfBlocks))
+			}
+		}
+	}
+	return nil
+
+}
+
+/*
+*
+ 5. Account is online and has multiple local part keys
+    If Online (assumed steady state when a future pending part key has been created)
+    Sort keys descending by first valid
+    If part key first valid is >= current round AND not current part. key id for account
+    Go online against this new key - done.  prior key will be removed a week later when it's out of valid range
+*/
+func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+	managerAddr, _ := types.DecodeAddress(d.info.Config.Manager)
+
+	status, err := d.algoClient.Status().Do(context.Background())
+	if err != nil {
+		d.logger.Warn("failure in getting current node status w/in getExpiringKeys", "error", err)
+		return nil
+	}
+	curRound := status.LastRound
+
+	for account, info := range poolAccounts {
+		if !info.isOnline {
+			continue
+		}
+		keysForAccount, found := partKeys[account]
+		if !found {
+			continue
+		}
+		// get the CURRENTLY active key for this account by finding the key w/in keysForAccount that matches the
+		// selection key w/in info
+		var activeKey algo.ParticipationKey
+		for _, key := range keysForAccount {
+			if bytes.Compare(key.Key.SelectionParticipationKey, info.selectionParticipationKey) == 0 {
+				activeKey = key
+				break
+			}
+		}
+		if activeKey.Id == "" {
+			return fmt.Errorf("unable to find the participation key that is online against account:%s", account)
+		}
+		// sort the part keys by whichever has highest firstValid
+		sort.Slice(keysForAccount, func(i, j int) bool {
+			return keysForAccount[i].Key.VoteFirstValid > keysForAccount[j].Key.VoteFirstValid
+		})
+		keyToCheck := keysForAccount[0]
+		if keyToCheck.Id == activeKey.Id {
+			// newest key is key we're already online with... done
+			continue
+		}
+		if keyToCheck.EffectiveFirstValid > curRound {
+			// activeKey isn't even in range yet ignore for now
+			continue
+		}
+		// Ok, time to switch to the new key - it's in valid range
+		misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToCheck.Id)
+		err = App.retiClient.GoOnline(d.info, info.poolAppID, managerAddr,
+			keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey,
+			keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
+		if err != nil {
+			return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppID)
+		}
+		misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppID)
+	}
+	return nil
+
 }

@@ -21,14 +21,14 @@ import (
 var logLevel = new(slog.LevelVar) // Info by default
 
 func initApp() *RetiApp {
-	log.SetFlags(log.Lshortfile)
+	log.SetFlags(0)
 	var logger *slog.Logger
 	if term.IsTerminal(int(os.Stdout.Fd())) {
 		// Are we running on something where output is a tty - so we're being run as CLI vs as a daemon
-		logger = slog.New(misc.NewMinimalHandler(os.Stdout,
-			misc.MinimalHandlerOptions{SlogOpts: slog.HandlerOptions{Level: logLevel, AddSource: true}}))
+		//logger = slog.New(misc.NewMinimalHandler(os.Stdout,
+		//	misc.MinimalHandlerOptions{SlogOpts: slog.HandlerOptions{Level: logLevel, AddSource: true}}))
 
-		//logger = slog.Default()
+		logger = slog.Default()
 		//logger = slog.NewLogLogger()
 		//logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel,
 		//	ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {

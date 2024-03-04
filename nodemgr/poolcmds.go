@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/urfave/cli/v3"
 
@@ -164,20 +165,34 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	var totalRewards uint64
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "Pool (*=Local)\tPool App ID\tTotal Stakers\tTotal Staked\tReward Avail\t")
+	fmt.Fprintln(tw, "Pool (*=Local, O=Online)\tPool App ID\tTotal Stakers\tTotal Staked\tReward Avail\t")
 	for i, pool := range pools {
-		var isLocal string
+		var (
+			flags   []string
+			flagStr string
+		)
 		// Flag the pool id if it's a pool on this node
-		if slices.ContainsFunc(info.Pools, func(info reti.PersistedPoolInfo) bool {
-			return info.PoolAppID == pool.PoolAppID
-		}) {
-			isLocal = " (*)"
+		if slices.ContainsFunc(info.Pools, func(info reti.PersistedPoolInfo) bool { return info.PoolAppID == pool.PoolAppID }) {
+			flags = append(flags, "*")
 		} else if !command.Value("all").(bool) {
 			continue
 		}
+		acctInfo, err := algo.GetBareAccount(context.Background(), App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
+		if err != nil {
+			return fmt.Errorf("account fetch error, account:%s, err:%w", crypto.GetApplicationAddress(pool.PoolAppID).String(), err)
+		}
+		if acctInfo.Status == OnlineStatus {
+			flags = append(flags, "O")
+		}
+		if len(flags) == 1 {
+			flagStr = "(" + flags[0] + "  )"
+		} else if len(flags) == 2 {
+			flagStr = "(" + flags[0] + " " + flags[1] + ")"
+		}
+
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)
 		totalRewards += rewardAvail
-		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t\n", i+1, isLocal, pool.PoolAppID, pool.TotalStakers,
+		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t\n", i+1, flagStr, pool.PoolAppID, pool.TotalStakers,
 			algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail))
 	}
 	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
