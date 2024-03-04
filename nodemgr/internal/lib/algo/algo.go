@@ -36,10 +36,10 @@ func GetAlgoClient(log *slog.Logger, config NetworkConfig) (*algod.Client, error
 		err        error
 	)
 	if config.NodeDataDir != "" {
-		// Read address and token from main-net directory
+		// Read address and admin token from main-net directory
 		apiURL, apiToken, err = GetNetAndTokenFromFiles(
 			filepath.Join(config.NodeDataDir, "algod.net"),
-			filepath.Join(config.NodeDataDir, "algod.token"))
+			filepath.Join(config.NodeDataDir, "algod.admin.token"))
 		if err != nil {
 			return nil, fmt.Errorf("error reading config: %w", err)
 		}
@@ -143,4 +143,12 @@ func GetBareAccount(ctx context.Context, algoClient *algod.Client, account strin
 		return AccountWithMinBalance{}, err
 	}
 	return response, nil
+}
+
+func GetVersionString(ctx context.Context, algoClient *algod.Client) (string, error) {
+	vers, err := algoClient.Versions().Do(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error fetching /versions from algod: %w", err)
+	}
+	return fmt.Sprintf("%d.%d.%d %s [%s]", vers.Build.Major, vers.Build.Minor, vers.Build, vers.Build.Branch, vers.Build.CommitHash), nil
 }

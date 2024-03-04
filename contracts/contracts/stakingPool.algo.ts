@@ -50,6 +50,9 @@ export class StakingPool extends Contract {
     // Last timestamp of a payout - used to ensure payout call isn't cheated and called prior to agreed upon schedule
     LastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' });
 
+    // Version of algod this pool is connected to - should be updated regularly
+    AlgodVer = GlobalStateKey<string>({ key: 'algodVer' });
+
     // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
 
@@ -357,6 +360,19 @@ export class StakingPool extends Contract {
     }
 
     /**
+     * Update the (honor system) algod version for the node associated to this pool.  The node management daemon
+     * should compare its current nodes version to the version stored in global state, updating when different.
+     * The reti node daemon composes its own version string using format:
+     * {major}.{minor}.{build} {branch} [{commit hash}],
+     * ie: 3.22.0 rel/stable [6b508975]
+     * @param {string} algodVer - string representing the algorand node daemon version (reti node daemon composes its own meta version)
+     */
+    updateAlgodVer(algodVer: string): void {
+        assert(this.isOwnerOrManagerCaller());
+        this.AlgodVer.value = algodVer;
+    }
+
+    /**
      * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)
      * Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balance
      * compounds over time and staker can remove that amount at will.
@@ -364,7 +380,6 @@ export class StakingPool extends Contract {
      */
     epochBalanceUpdate(): void {
         assert(this.isOwnerOrManagerCaller());
-        increaseOpcodeBudget();
 
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({

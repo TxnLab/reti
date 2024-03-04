@@ -127,6 +127,20 @@
       }
     },
     {
+      "name": "updateAlgodVer",
+      "desc": "Update the (honor system) algod version for the node associated to this pool.  The node management daemonshould compare its current nodes version to the version stored in global state, updating when different.The reti node daemon composes its own version string using format:{major}.{minor}.{build}{branch}[{commit hash}],ie: 3.22.0 rel/stable [6b508975]",
+      "args": [
+        {
+          "name": "algodVer",
+          "type": "string",
+          "desc": "string representing the algorand node daemon version (reti node daemon composes its own meta version)"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "epochBalanceUpdate",
       "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.",
       "args": [],

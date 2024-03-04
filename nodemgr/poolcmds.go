@@ -141,14 +141,6 @@ func GetPoolCmdOpts() *cli.Command {
 	}
 }
 
-func checkConfigured(ctx context.Context, command *cli.Command) error {
-	_, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-	return nil
-}
-
 func PoolsList(ctx context.Context, command *cli.Command) error {
 	info, err := LoadValidatorInfo()
 	if err != nil {
@@ -282,7 +274,10 @@ func PoolAdd(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	slog.Info("added new pool", "key", poolKey.String())
-	info.Pools = append(info.Pools, reti.PersistedPoolInfo{PoolAppID: poolKey.PoolAppID})
+	info.Pools = append(info.Pools, reti.PersistedPoolInfo{
+		PoolID:    poolKey.PoolID,
+		PoolAppID: poolKey.PoolAppID,
+	})
 	return SaveValidatorInfo(info)
 }
 
@@ -321,7 +316,10 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("pool with ID %d has already been claimed by this validator", idToClaim)
 	}
 	// 0 out the totals we store in local state - we use same struct for convenience but these values aren't used
-	info.Pools = append(info.Pools, reti.PersistedPoolInfo{PoolAppID: pools[idToClaim-1].PoolAppID})
+	info.Pools = append(info.Pools, reti.PersistedPoolInfo{
+		PoolID:    uint64(idToClaim),
+		PoolAppID: pools[idToClaim-1].PoolAppID,
+	})
 
 	err = SaveValidatorInfo(info)
 

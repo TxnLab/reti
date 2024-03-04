@@ -21,12 +21,12 @@ import (
 var logLevel = new(slog.LevelVar) // Info by default
 
 func initApp() *RetiApp {
-	log.SetFlags(0)
+	log.SetFlags(log.Lshortfile)
 	var logger *slog.Logger
 	if term.IsTerminal(int(os.Stdout.Fd())) {
 		// Are we running on something where output is a tty - so we're being run as CLI vs as a daemon
 		logger = slog.New(misc.NewMinimalHandler(os.Stdout,
-			misc.MinimalHandlerOptions{SlogOpts: slog.HandlerOptions{Level: logLevel}}))
+			misc.MinimalHandlerOptions{SlogOpts: slog.HandlerOptions{Level: logLevel, AddSource: true}}))
 
 		//logger = slog.Default()
 		//logger = slog.NewLogLogger()
@@ -44,7 +44,7 @@ func initApp() *RetiApp {
 		//		return a
 		//	}}))
 	} else {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel, AddSource: true}))
 	}
 	slog.SetDefault(logger)
 	if os.Getenv("DEBUG") == "1" {
@@ -85,6 +85,7 @@ func initApp() *RetiApp {
 			GetDaemonCmdOpts(),
 			GetValidatorCmdOpts(),
 			GetPoolCmdOpts(),
+			GetKeyCmdOpts(),
 		},
 	}
 	return appConfig
@@ -164,5 +165,13 @@ func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 	}
 	ac.retiClient = retiClient
 
+	return nil
+}
+
+func checkConfigured(ctx context.Context, command *cli.Command) error {
+	_, err := LoadValidatorInfo()
+	if err != nil {
+		return fmt.Errorf("validator not configured: %w", err)
+	}
 	return nil
 }

@@ -59,6 +59,7 @@
       their relative % of the pool being based on their % of the total (minus the stake of the partial epoch stakers!).
     * The partial epoch holders will be full holders in the next epoch, assuming they don't add stake again.  Each time adding stake resets their clock in the epoch.
     * Some validators epochs might be as short as 1 day, so the differences will be small but preventing gaming is still critical.
+    * The node daemon via the epoch update will update the staking poools 'algod' version for public visibility
   * Users can remove stake at will as well as any awarded reward tokens (optionalº, being able to remove their tracked 'ledger balance' (which continues to 
     compound and grow as reward epochs occur).
     * The contract will allow anyone to call to 'pay out staker X' rewarded community tokens - this will allow projects to pay to do automated drops of their community 

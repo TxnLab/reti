@@ -55,9 +55,7 @@ func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 }
 
 func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uint64, caller types.Address) error {
-	var (
-		err error
-	)
+	var err error
 
 	// make sure we even have enough rewards to do the payout
 	pools, err := r.GetValidatorPools(info.Config.ID, caller)
@@ -156,7 +154,69 @@ func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uin
 	return nil
 }
 
+func (r *Reti) GoOnline(
+	info *ValidatorInfo,
+	poolAppID uint64,
+	caller types.Address,
+	votePK []byte,
+	selectionPK []byte,
+	stateProofPK []byte,
+	voteFirst uint64,
+	voteLast uint64,
+	voteKeyDilution uint64,
+) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	atc := transaction.AtomicTransactionComposer{}
+	goOnlineMethod, _ := r.poolContract.GetMethodByName("goOnline")
+
+	params.FlatFee = true
+	params.Fee = transaction.MinTxnFee * 3
+
+	err = atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:  poolAppID,
+		Method: goOnlineMethod,
+		MethodArgs: []any{
+			votePK,
+			selectionPK,
+			stateProofPK,
+			voteFirst,
+			voteLast,
+			voteKeyDilution,
+		},
+		ForeignApps:     []uint64{r.RetiAppID},
+		ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
+		BoxReferences: []types.AppBoxReference{
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          caller,
+		Signer:          algo.SignWithAccountForATC(r.signer, caller.String()),
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// PoolBalance just returns the currently available (minus MBR) balance for basic 'is this usable' check.
+func (r *Reti) PoolBalance(poolAppID uint64) uint64 {
+	return r.PoolAvailableRewards(poolAppID, 0)
+}
+
 func (r *Reti) PoolAvailableRewards(poolAppID uint64, totalAlgoStaked uint64) uint64 {
-	acctBalance, _ := algo.GetBareAccount(context.Background(), r.algoClient, crypto.GetApplicationAddress(poolAppID).String())
-	return acctBalance.Amount - totalAlgoStaked - acctBalance.MinBalance
+	acctInfo, _ := algo.GetBareAccount(context.Background(), r.algoClient, crypto.GetApplicationAddress(poolAppID).String())
+	return acctInfo.Amount - totalAlgoStaked - acctInfo.MinBalance
 }

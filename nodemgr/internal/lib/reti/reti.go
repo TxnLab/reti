@@ -13,11 +13,12 @@ import (
 )
 
 type Reti struct {
-	RetiAppID uint64
-
 	logger     *slog.Logger
 	algoClient *algod.Client
 	signer     algo.MultipleWalletSigner
+
+	// RetiAppID is simply the master validator contract id
+	RetiAppID uint64
 
 	validatorContract *abi.Contract
 	poolContract      *abi.Contract

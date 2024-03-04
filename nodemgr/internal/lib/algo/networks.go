@@ -97,19 +97,9 @@ func getDefaults(network string) NetworkConfig {
 	return cfg
 }
 
-// GetNetAndTokenFromFiles reads the address and token from the specified files in the local Algorand data directory.
-//
-// The function takes two arguments: netFile (string) and tokenFile (string), which represent the paths to the files.
-// It returns the API URL (string), the API token (string), and any error encountered.
-//
-// Example usage:
-//
-//	apiURL, apiToken, err := GetNetAndTokenFromFiles("algod.net", "algod.token")
-//
-// The function internally uses os.ReadFile function to read the address and token files.
-// It then trims any leading or trailing whitespace from the read contents and returns the cleaned values.
-// If any error occurs during file reading, the function returns an empty string for both API URL and API token,
-// along with an error indicating the specific file reading failure.
+// GetNetAndTokenFromFiles reads the address and token from files in the local Algorand data directory.
+// It takes two parameters: netFile (file path of the address file) and tokenFile (file path of the token file).
+// It returns apiURL (the API URL), apiToken (the API token), and an error (if any).
 func GetNetAndTokenFromFiles(netFile, tokenFile string) (string, string, error) {
 	// Read address and token from (local) algorand data directory
 	netPath, err := os.ReadFile(netFile)

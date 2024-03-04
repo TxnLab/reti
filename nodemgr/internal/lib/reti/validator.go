@@ -171,6 +171,7 @@ func ValidatorPoolKeyFromABIReturn(returnVal any) (*ValidatorPoolKey, error) {
 // the local node is using and so there's no confusion by user with stakers/staked numbers in local config file
 // that don't match what's on chain
 type PersistedPoolInfo struct {
+	PoolID    uint64 // pool id
 	PoolAppID uint64 // app id of staking pool contract instance
 }
 

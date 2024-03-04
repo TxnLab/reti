@@ -145,7 +145,15 @@ export class ValidatorRegistry extends Contract {
     getMbrAmounts(): MbrAmounts {
         return {
             AddValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorID>() + len<ValidatorInfo>()),
-            AddPoolMbr: this.minBalanceForAccount(1, 0, 0, 0, 0, StakingPool.schema.global.numUint, 0),
+            AddPoolMbr: this.minBalanceForAccount(
+                1,
+                0,
+                0,
+                0,
+                0,
+                StakingPool.schema.global.numUint,
+                StakingPool.schema.global.numByteSlice
+            ),
             PoolInitMbr:
                 ALGORAND_ACCOUNT_MIN_BALANCE +
                 this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL),
