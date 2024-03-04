@@ -1,9 +1,7 @@
 package reti
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -889,21 +887,6 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 	return nil
 }
 
-func GetValidatorListBoxName(id uint64) []byte {
-	prefix := []byte("v")
-	ibytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(ibytes, id)
-	return bytes.Join([][]byte{prefix, ibytes[:]}, nil)
-}
-
-func GetStakerPoolSetBoxName(stakerAccount types.Address) []byte {
-	return bytes.Join([][]byte{[]byte("sps"), stakerAccount[:]}, nil)
-}
-
-func GetStakerLedgerBoxName() []byte {
-	return []byte("stakers")
-}
-
 type MbrAmounts struct {
 	AddValidatorMbr uint64
 	AddPoolMbr      uint64
@@ -961,7 +944,7 @@ func (r *Reti) getNumValidators() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGloalState(appInfo.Params.GlobalState, "numV")
+	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrNumValidators)
 }
 
 func (r *Reti) poolTemplateAppID() uint64 {
@@ -970,7 +953,7 @@ func (r *Reti) poolTemplateAppID() uint64 {
 		if err != nil {
 			log.Panicln(err)
 		}
-		r.poolTmplAppID, _ = algo.GetIntFromGloalState(appInfo.Params.GlobalState, "poolTemplateAppID")
+		r.poolTmplAppID, _ = algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrPoolTmplID)
 	})
 	return r.poolTmplAppID
 }

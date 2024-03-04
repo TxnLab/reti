@@ -120,14 +120,25 @@ type AccountWithMinBalance struct {
 	MinBalance uint64 `json:"min-balance,omitempty"`
 }
 
-func GetIntFromGloalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
+func GetIntFromGlobalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
 	for _, gs := range globalState {
 		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
 		if string(rawKey) == keyName && gs.Value.Type == 2 {
 			return gs.Value.Uint, nil
 		}
 	}
-	return 0, fmt.Errorf("couldn't find int key:%s in global state", keyName)
+	return 0, ErrStateKeyNotFound
+}
+
+func GetStringFromGlobalState(globalState []models.TealKeyValue, keyName string) (string, error) {
+	for _, gs := range globalState {
+		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
+		if string(rawKey) == keyName && gs.Value.Type == 1 {
+			value, _ := base64.StdEncoding.DecodeString(gs.Value.Bytes)
+			return string(value), nil
+		}
+	}
+	return "", ErrStateKeyNotFound
 }
 
 // GetBareAccount just returns account information without asset data, but also includes the minimum balance that's
@@ -150,5 +161,5 @@ func GetVersionString(ctx context.Context, algoClient *algod.Client) (string, er
 	if err != nil {
 		return "", fmt.Errorf("error fetching /versions from algod: %w", err)
 	}
-	return fmt.Sprintf("%d.%d.%d %s [%s]", vers.Build.Major, vers.Build.Minor, vers.Build, vers.Build.Branch, vers.Build.CommitHash), nil
+	return fmt.Sprintf("%d.%d.%d %s [%s]", vers.Build.Major, vers.Build.Minor, vers.Build.BuildNumber, vers.Build.Branch, vers.Build.CommitHash), nil
 }

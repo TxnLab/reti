@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -86,6 +87,7 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 				// try later.
 				break
 			}
+			d.updatePoolVersions(ctx)
 			d.checkPools(ctx)
 		case <-time.After(30 * time.Minute):
 			d.setAverageBlockTime(ctx)
@@ -181,6 +183,31 @@ func (d *Daemon) checkPools(ctx context.Context) {
 	partKeys = d.getExpiringKeys(partKeys)
 	misc.Debugf(d.logger, "accounts w/out participation keys: %v", missingAccounts)
 	misc.Debugf(d.logger, "accounts w/ soon to expire keys: %v", partKeys)
+}
+
+func (d *Daemon) updatePoolVersions(ctx context.Context) {
+	managerAddr, _ := types.DecodeAddress(d.info.Config.Manager)
+
+	versString, err := algo.GetVersionString(ctx, d.algoClient)
+	if err != nil {
+		misc.Errorf(d.logger, "unable to fetch version string from algod instance, err:%v", err)
+		return
+	}
+	for _, pool := range d.info.Pools {
+		algodVer, err := App.retiClient.GetAlgodVer(pool.PoolAppID)
+		if err != nil && !errors.Is(err, algo.ErrStateKeyNotFound) {
+			misc.Errorf(d.logger, "unable to fetch algod version from staking pool app id:%d, err:%v", pool.PoolAppID, err)
+			return
+		}
+		if algodVer != versString {
+			// Update version in staking pool
+			err = App.retiClient.UpdateAlgodVer(d.info, pool.PoolAppID, versString, managerAddr)
+			if err != nil {
+				misc.Errorf(d.logger, "unable to update algod version in staking pool app id:%d, err:%v", pool.PoolAppID, err)
+				return
+			}
+		}
+	}
 }
 
 func (d *Daemon) AverageBlockTime() time.Duration {

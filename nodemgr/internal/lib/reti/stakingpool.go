@@ -51,7 +51,54 @@ func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGloalState(appInfo.Params.GlobalState, "lastPayout")
+	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolLastPayout)
+}
+
+func (r *Reti) GetAlgodVer(poolAppID uint64) (string, error) {
+	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
+	if err != nil {
+		return "", err
+	}
+	return algo.GetStringFromGlobalState(appInfo.Params.GlobalState, StakePoolAlgodVer)
+}
+
+func (r *Reti) UpdateAlgodVer(info *ValidatorInfo, poolAppID uint64, algodVer string, caller types.Address) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	atc := transaction.AtomicTransactionComposer{}
+	updateAlgodVerMethod, _ := r.poolContract.GetMethodByName("updateAlgodVer")
+
+	params.FlatFee = true
+	params.Fee = transaction.MinTxnFee * 2
+
+	err = atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:       poolAppID,
+		Method:      updateAlgodVerMethod,
+		MethodArgs:  []any{algodVer},
+		ForeignApps: []uint64{r.RetiAppID},
+		BoxReferences: []types.AppBoxReference{
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          caller,
+		Signer:          algo.SignWithAccountForATC(r.signer, caller.String()),
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uint64, caller types.Address) error {
@@ -189,8 +236,8 @@ func (r *Reti) GoOnline(
 			voteLast,
 			voteKeyDilution,
 		},
-		ForeignApps:     []uint64{r.RetiAppID},
-		ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
+		ForeignApps: []uint64{r.RetiAppID},
+		//ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
 		BoxReferences: []types.AppBoxReference{
 			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o

@@ -1478,12 +1478,6 @@ updateAlgodVer:
 	// this.AlgodVer.value = algodVer
 	byte 0x616c676f64566572 // "algodVer"
 	frame_dig -1 // algodVer: string
-	dup
-	len
-	itob
-	extract 6 2
-	swap
-	concat
 	app_global_put
 	retsub
 

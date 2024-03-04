@@ -51,7 +51,7 @@ export class StakingPool extends Contract {
     LastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' });
 
     // Version of algod this pool is connected to - should be updated regularly
-    AlgodVer = GlobalStateKey<string>({ key: 'algodVer' });
+    AlgodVer = GlobalStateKey<bytes>({ key: 'algodVer' });
 
     // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
