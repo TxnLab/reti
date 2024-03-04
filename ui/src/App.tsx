@@ -1,6 +1,7 @@
 import { DeflyWalletConnect } from '@blockshake/defly-connect'
 import { DaffiWalletConnect } from '@daffiwallet/connect'
 import { PeraWalletConnect } from '@perawallet/connect'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   PROVIDER_ID,
   ProvidersArray,
@@ -42,6 +43,8 @@ if (import.meta.env.VITE_ALGOD_NETWORK === '') {
   ]
 }
 
+const queryClient = new QueryClient()
+
 export default function App() {
   const algodConfig = getAlgodConfigFromViteEnvironment()
 
@@ -57,12 +60,14 @@ export default function App() {
   })
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <SnackbarProvider maxSnack={3}>
-        <WalletProvider value={walletProviders}>
-          <Home />
-        </WalletProvider>
-      </SnackbarProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <SnackbarProvider maxSnack={3}>
+          <WalletProvider value={walletProviders}>
+            <Home />
+          </WalletProvider>
+        </SnackbarProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }
