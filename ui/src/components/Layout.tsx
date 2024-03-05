@@ -1,16 +1,17 @@
+import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import { Crown } from 'lucide-react'
+import { Connect } from '@/components/Connect'
+import { ConnectedMenu } from '@/components/ConnectedMenu'
 import { MobileMenu } from '@/components/MobileMenu'
 import { ModeToggle } from '@/components/ModeToggle'
-import { ConnectedMenu } from '@/components/ConnectedMenu'
-import { Connect } from '@/components/Connect'
 
 interface LayoutProps {
   title?: string
   children: React.ReactNode
 }
 
-export function Layout({ title, children }: LayoutProps) {
+export function Layout({ children }: LayoutProps) {
   const { activeAddress } = useWallet()
 
   return (
@@ -23,7 +24,9 @@ export function Layout({ title, children }: LayoutProps) {
                 <MobileMenu />
               </div>
               <div className="flex flex-shrink-0 items-center">
-                <Crown className="h-8 w-auto" />
+                <Link to="/" activeOptions={{ exact: true }}>
+                  <Crown className="h-8 w-auto" />
+                </Link>
               </div>
               <div className="hidden md:ml-6 md:flex md:items-center md:space-x-4">
                 {/* <NavigationMenu>
@@ -47,22 +50,7 @@ export function Layout({ title, children }: LayoutProps) {
         </div>
       </nav>
 
-      <div className="py-10">
-        {title && (
-          <header>
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <h1 className="text-3xl font-bold leading-tight tracking-tight text-stone-900 dark:text-white">
-                {title}
-              </h1>
-            </div>
-          </header>
-        )}
-        <main>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="py-10">{children}</div>
-          </div>
-        </main>
-      </div>
+      <div className="py-10">{children}</div>
     </div>
   )
 }
