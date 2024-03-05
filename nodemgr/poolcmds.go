@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -160,12 +161,31 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 
+	// we just want the latest round so we can show last vote/proposal relative to current round
+	status, err := App.algoClient.Status().Do(ctx)
+
+	partKeys, err := algo.GetParticipationKeys(ctx, App.algoClient)
+	if err != nil {
+		return err
+	}
+	getParticipationData := func(account string, selectionPartKey []byte) (uint64, uint64) {
+		if keys, found := partKeys[account]; found {
+			for _, key := range keys {
+				if bytes.Compare(key.Key.SelectionParticipationKey, selectionPartKey) == 0 {
+					return key.LastVote, key.LastBlockProposal
+				}
+			}
+		}
+		return 0, 0
+	}
+
 	// Display user-friendly version of pool list inside info using the TabWriter class, displaying
 	// final output using fmt.Print type statements
 	var totalRewards uint64
+
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "Pool (*=Local, O=Online)\tPool App ID\tTotal Stakers\tTotal Staked\tReward Avail\t")
+	fmt.Fprintln(tw, "Pool (*=Local, O=Online)\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
 	for i, pool := range pools {
 		var (
 			flags   []string
@@ -189,11 +209,32 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		} else if len(flags) == 2 {
 			flagStr = "(" + flags[0] + " " + flags[1] + ")"
 		}
-
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)
 		totalRewards += rewardAvail
-		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t\n", i+1, flagStr, pool.PoolAppID, pool.TotalStakers,
-			algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail))
+
+		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppID).String(), acctInfo.Participation.SelectionParticipationKey)
+		var (
+			voteData string
+			partData string
+		)
+		if lastVote != 0 {
+			// round might get behind last vote/proposal so handle that as well.
+			if status.LastRound <= lastVote {
+				voteData = "latest"
+			} else {
+				voteData = fmt.Sprintf("-%d", status.LastRound-lastVote)
+			}
+		}
+		if lastProposal != 0 {
+			if status.LastRound <= lastProposal {
+				partData = "latest"
+			} else {
+				partData = fmt.Sprintf("-%d", status.LastRound-lastProposal)
+			}
+		}
+		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, flagStr, pool.PoolAppID, pool.TotalStakers,
+			algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
+			voteData, partData)
 	}
 	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
 		algo.FormattedAlgoAmount(totalRewards))
@@ -245,9 +286,9 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetStakerLedger(info.Pools[poolID-1].PoolAppID)
+	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[poolID-1].PoolAppID)
 	if err != nil {
-		return fmt.Errorf("unable to GetStakerLedger: %w", err)
+		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
 	}
 
 	pools, err := App.retiClient.GetValidatorPools(info.Config.ID, signerAddr)

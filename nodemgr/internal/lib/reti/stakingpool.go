@@ -22,7 +22,7 @@ type StakedInfo struct {
 	EntryTime          uint64
 }
 
-func (r *Reti) GetStakerLedger(poolAppID uint64) ([]StakedInfo, error) {
+func (r *Reti) GetLedgerforPool(poolAppID uint64) ([]StakedInfo, error) {
 	var retLedger []StakedInfo
 	boxData, err := r.algoClient.GetApplicationBoxByName(poolAppID, GetStakerLedgerBoxName()).Do(context.Background())
 	if err != nil {

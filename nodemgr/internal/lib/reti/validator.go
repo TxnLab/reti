@@ -683,10 +683,10 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 		return nil, err
 	}
 
-	// has this staker ever staked anything?
-	poolKeys, err := r.GetStakedPoolsForAccount(staker)
-
-	if len(poolKeys) == 0 {
+	// has this staker ever staked anything - getStakedPoolsForAccount can be empty but they could've staked before
+	// so check the box itself.
+	data, err := r.algoClient.GetApplicationBoxByName(r.RetiAppID, GetStakerPoolSetBoxName(staker)).Do(context.Background())
+	if len(data.Value) == 0 || err != nil {
 		misc.Infof(r.logger, "Adding %s ALGO to stake to cover first-time MBR", algo.FormattedAlgoAmount(mbrs.AddStakerMbr))
 		amountToStake += mbrs.AddStakerMbr
 	}

@@ -78,12 +78,17 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 	d.setAverageBlockTime(ctx)
 	d.checkPools(ctx)
 
+	checkTime := time.NewTicker(1 * time.Minute)
+	blockTimeUpdate := time.NewTicker(30 * time.Minute)
+	defer checkTime.Stop()
+	defer blockTimeUpdate.Stop()
+
 	// Check our key validity once a minute
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(1 * time.Minute):
+		case <-checkTime.C:
 			// Make sure our 'config' is fresh in case the user updated it
 			err := d.refetchConfig()
 			if err != nil {
@@ -92,7 +97,7 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 			}
 			d.updatePoolVersions(ctx)
 			d.checkPools(ctx)
-		case <-time.After(30 * time.Minute):
+		case <-blockTimeUpdate.C:
 			d.setAverageBlockTime(ctx)
 		}
 	}
@@ -200,7 +205,7 @@ func (d *Daemon) setAverageBlockTime(ctx context.Context) error {
 	d.Lock()
 	d.avgBlockTime = totalBlockTime / time.Duration(len(blockTimes)-1)
 	d.Unlock()
-	misc.Infof(d.logger, "average block time set to:%v", d.avgBlockTime)
+	misc.Infof(d.logger, "average block time set to:%v", d.AverageBlockTime())
 	return nil
 }
 
