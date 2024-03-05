@@ -128,6 +128,12 @@ func (d *Daemon) checkPools(ctx context.Context) {
 		if acctInfo.Amount-acctInfo.MinBalance > 1e6 {
 			poolAccounts[crypto.GetApplicationAddress(pool.PoolAppID).String()] = info
 		}
+		// ensure pools were initialized properly (since it's a two-step process - the second step may have been skipped?)
+		App.retiClient.CheckAndInitStakingPoolStorage(d.info, &reti.ValidatorPoolKey{
+			ID:        d.info.Config.ID,
+			PoolID:    pool.PoolID,
+			PoolAppID: pool.PoolAppID,
+		})
 	}
 	// now get all the current participation keys for our node
 	partKeys, err := algo.GetParticipationKeys(ctx, d.algoClient)

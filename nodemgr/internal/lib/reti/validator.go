@@ -587,6 +587,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	// Now try to actually create the pool !!
 	atc := transaction.AtomicTransactionComposer{}
 
+	misc.Infof(r.logger, "adding staking pool")
 	addPoolMethod, _ := r.validatorContract.GetMethodByName("addPool")
 	// We have to pay MBR into the Validator contract itself for adding a pool
 	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), mbrs.AddPoolMbr, nil, "", params)
@@ -627,13 +628,42 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 		return nil, err
 	}
 
+	err = r.CheckAndInitStakingPoolStorage(info, poolKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return poolKey, err
+}
+
+func (r *Reti) CheckAndInitStakingPoolStorage(info *ValidatorInfo, poolKey *ValidatorPoolKey) error {
+	// First determine if we NEED to initialize this pool !
+	if val, err := r.algoClient.GetApplicationBoxByName(poolKey.PoolAppID, GetStakerLedgerBoxName()).Do(context.Background()); err == nil {
+		if len(val.Value) > 0 {
+			// we have value already - we're already initialized.
+			return nil
+		}
+	}
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
+
+	mbrs, err := r.getMbrAmounts(managerAddr)
+	if err != nil {
+		return err
+	}
+
 	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
 	initStorageMethod, _ := r.poolContract.GetMethodByName("initStorage")
 
-	misc.Debugf(r.logger, "adding staking pool, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
-	atc = transaction.AtomicTransactionComposer{}
-	paymentTxn, err = transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppID).String(), mbrs.PoolInitMbr, nil, "", params)
-	payTxWithSigner = transaction.TransactionWithSigner{
+	misc.Infof(r.logger, "initializing staking pool storage, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
+	atc := transaction.AtomicTransactionComposer{}
+	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppID).String(), mbrs.PoolInitMbr, nil, "", params)
+	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, managerAddr.String()),
 	}
@@ -658,12 +688,11 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 		Sender:          managerAddr,
 		Signer:          algo.SignWithAccountForATC(r.signer, managerAddr.String()),
 	})
-	result, err = atc.Execute(r.algoClient, context.Background(), 4)
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	return poolKey, err
+	return nil
 }
 
 func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64) (*ValidatorPoolKey, error) {
@@ -904,7 +933,6 @@ func (r *Reti) getMbrAmounts(caller types.Address) (MbrAmounts, error) {
 	if err != nil {
 		return MbrAmounts{}, err
 	}
-	r.logger.Info("caller addr is:", "caller", caller.String())
 	atc := transaction.AtomicTransactionComposer{}
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:           r.RetiAppID,

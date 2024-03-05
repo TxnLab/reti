@@ -244,14 +244,23 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	return err
 }
 
+func determinePoolID(info *reti.ValidatorInfo, poolID uint64) (int, error) {
+	for i, pool := range info.Pools {
+		if pool.PoolID == poolID {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("invalid pool ID")
+}
+
 func PoolLedger(ctx context.Context, command *cli.Command) error {
 	info, err := LoadValidatorInfo()
 	if err != nil {
 		return fmt.Errorf("validator not configured: %w", err)
 	}
-	poolID := int(command.Value("pool").(uint64))
-	if poolID < 1 || poolID > len(info.Pools) {
-		return fmt.Errorf("invalid pool ID")
+	localPoolIdx, err := determinePoolID(info, command.Value("pool").(uint64))
+	if err != nil {
+		return err
 	}
 
 	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
@@ -264,7 +273,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		nextPayTime   time.Time
 		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
 	)
-	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
+	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[localPoolIdx].PoolAppID)
 	if err == nil {
 		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
@@ -286,7 +295,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[poolID-1].PoolAppID)
+	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[localPoolIdx].PoolAppID)
 	if err != nil {
 		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
 	}
@@ -296,7 +305,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 
-	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolID-1].PoolAppID, pools[poolID-1].TotalAlgoStaked)
+	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[localPoolIdx].PoolAppID, pools[info.Pools[localPoolIdx].PoolID-1].TotalAlgoStaked)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
@@ -417,7 +426,6 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	validatorID := command.Value("validator").(uint64)
-	poolID := command.Value("pool").(uint64)
 	var poolKey *reti.ValidatorPoolKey
 	// This staker must have staked something!
 	poolKeys, err := App.retiClient.GetStakedPoolsForAccount(stakerAddr)
@@ -425,7 +433,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	for _, key := range poolKeys {
-		if key.ID == validatorID && key.PoolID == poolID {
+		if key.ID == validatorID && key.PoolID == command.Value("pool").(uint64) {
 			poolKey = key
 			break
 		}
@@ -447,11 +455,11 @@ func PayoutPool(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("validator not configured: %w", err)
 	}
-	poolID := int(command.Value("pool").(uint64))
-	if poolID < 1 || poolID > len(info.Pools) {
-		return fmt.Errorf("invalid pool ID")
+	localPoolIdx, err := determinePoolID(info, command.Value("pool").(uint64))
+	if err != nil {
+		return err
 	}
 	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
-	return App.retiClient.EpochBalanceUpdate(info, poolID, info.Pools[poolID-1].PoolAppID, signerAddr)
+	return App.retiClient.EpochBalanceUpdate(info, int(info.Pools[localPoolIdx].PoolID), info.Pools[localPoolIdx].PoolAppID, signerAddr)
 }
