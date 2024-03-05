@@ -385,7 +385,7 @@ func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts 
 				keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey,
 				keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
 			if err != nil {
-				return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppID)
+				return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err:%w", account, info.poolAppID, err)
 			}
 			misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppID)
 		}

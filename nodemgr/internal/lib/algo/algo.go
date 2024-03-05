@@ -24,7 +24,11 @@ import (
 const DefaultValidRoundRange = 100
 
 func FormattedAlgoAmount(microAlgos uint64) string {
-	return fmt.Sprintf("%.6f", types.MicroAlgos(microAlgos).ToAlgos())
+	formattedAmount := fmt.Sprintf("%.6f", float64(microAlgos)/1000000)
+	// chop trailing 0's and decimal (if nothing else)
+	formattedAmount = strings.TrimRight(formattedAmount, "0")
+	formattedAmount = strings.TrimRight(formattedAmount, ".")
+	return formattedAmount
 }
 
 func GetAlgoClient(log *slog.Logger, config NetworkConfig) (*algod.Client, error) {

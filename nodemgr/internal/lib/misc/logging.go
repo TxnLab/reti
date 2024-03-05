@@ -53,7 +53,7 @@ func (h *MinimalHandler) Handle(ctx context.Context, r slog.Record) error {
 	if r.NumAttrs() > 0 {
 		fields := make(map[string]any, r.NumAttrs())
 		r.Attrs(func(a slog.Attr) bool {
-			fields[a.Key] = a.Value.Any()
+			fields[a.Key] = fmt.Sprintf("%v", a.Value.Any())
 
 			return true
 		})

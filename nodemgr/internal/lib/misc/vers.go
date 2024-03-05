@@ -5,15 +5,6 @@ import (
 	"slices"
 )
 
-// Variables set at build time using govv flags (https://github.com/ahmetb/govvv)
-//var (
-//	GitSummary     string // This will contain xxxx-dirty in many cases because of things removed from docker build
-//	GitCommit      string // .. so we'll just use the commit.
-//	GitBranch      string
-//	BuildDate      string
-//	VersionSummary = fmt.Sprintf("%s:%s [%s]", GitCommit, GitBranch, BuildDate)
-//)
-
 const version = "v0.0.1"
 
 func GetVersionInfo() string {

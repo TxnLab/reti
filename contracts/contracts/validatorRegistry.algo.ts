@@ -450,11 +450,11 @@ export class ValidatorRegistry extends Contract {
     stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, amountToAdd: uint64): void {
         this.verifyPoolKeyCaller(poolKey);
 
-        // Remove the specified amount of stake - update pool stats, then total validator stats
+        // Update the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToAdd;
 
-        // Re-validate the NFD as well while we're here
+        // Re-validate the NFD as well while we're here, removing as associated nfd if no longer owner
         this.reverifyNFDOwnership(poolKey.ID);
     }
 
@@ -480,9 +480,9 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked -= amountRemoved;
         if (stakerRemoved) {
-            // remove form that pool
+            // remove from that pool
             this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalStakers -= 1;
-            // . then update the staker set.
+            // then update the staker set.
             const stakerOutOfThisValidator = this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
                 ID: poolKey.ID,
                 PoolID: poolKey.PoolID,
@@ -521,7 +521,7 @@ export class ValidatorRegistry extends Contract {
                     increaseOpcodeBudget();
                 }
                 if (poolSet[i].ID === validatorID) {
-                    // Not new to this validator - but might still be out of room in this slot.
+                    // Staker isn't new to this validator - but might still be out of room in this slot.
                     isBrandNewStaker = false;
                     if (
                         this.ValidatorList(validatorID).value.Pools[poolSet[i].PoolID - 1].TotalAlgoStaked +
