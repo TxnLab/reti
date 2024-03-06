@@ -1,10 +1,11 @@
 import * as React from 'react'
 import { Menu } from 'lucide-react'
+import { Navigation } from '@/components/Navigation'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
+  // SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -28,12 +29,15 @@ export function MobileMenu() {
       </SheetTrigger>
       <SheetContent side="left" className="text-left">
         <SheetHeader className="text-left">
-          <SheetTitle>Mobile Menu</SheetTitle>
-          <SheetDescription>
+          <SheetTitle>Reti Staking</SheetTitle>
+          {/* <SheetDescription>
             This is a placeholder for the mobile menu. It will contain the main navigation and other
             actions.
-          </SheetDescription>
+          </SheetDescription> */}
         </SheetHeader>
+        <div className="py-6">
+          <Navigation orientation="vertical" />
+        </div>
       </SheetContent>
     </Sheet>
   )

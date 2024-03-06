@@ -5,6 +5,7 @@ import { Connect } from '@/components/Connect'
 import { ConnectedMenu } from '@/components/ConnectedMenu'
 import { MobileMenu } from '@/components/MobileMenu'
 import { ModeToggle } from '@/components/ModeToggle'
+import { Navigation } from '@/components/Navigation'
 
 interface LayoutProps {
   title?: string
@@ -29,15 +30,7 @@ export function Layout({ children }: LayoutProps) {
                 </Link>
               </div>
               <div className="hidden md:ml-6 md:flex md:items-center md:space-x-4">
-                {/* <NavigationMenu>
-                  <NavigationMenuList>
-                    <NavigationMenuItem>
-                      <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                        Documentation
-                      </NavigationMenuLink>
-                    </NavigationMenuItem>
-                  </NavigationMenuList>
-                </NavigationMenu> */}
+                <Navigation />
               </div>
             </div>
             <div className="flex items-center gap-x-2">

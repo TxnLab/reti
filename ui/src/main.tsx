@@ -14,6 +14,7 @@ import { SnackbarProvider } from 'notistack'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import '@/styles/main.css'
 import {
@@ -82,6 +83,7 @@ function AppProviders() {
           </WalletProvider>
         </SnackbarProvider>
       </QueryClientProvider>
+      <Toaster />
     </ThemeProvider>
   )
 }
