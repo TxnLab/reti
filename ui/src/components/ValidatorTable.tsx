@@ -319,6 +319,7 @@ export function ValidatorTable() {
           </div>
         )
       },
+      size: 120,
     },
   ]
 
