@@ -130,6 +130,37 @@
       }
     },
     {
+      "name": "getNodePoolAssignments",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "((uint64[4])[12])"
+      }
+    },
+    {
+      "name": "updateNodePoolAssignments",
+      "desc": "Updates the node pool assignments for a validator.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "The ID of the validator."
+        },
+        {
+          "name": "assignments",
+          "type": "((uint64[4])[12])",
+          "desc": "The configuration of the node pool assignments."
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "getNFDRegistryID",
       "args": [],
       "returns": {

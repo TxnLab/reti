@@ -70,10 +70,19 @@ type PoolInfo = {
     TotalAlgoStaked: uint64;
 };
 
+type NodeConfig = {
+    PoolAppIDs: StaticArray<uint64, typeof MAX_POOLS_PER_NODE>;
+};
+
+type NodePoolAssignmentConfig = {
+    Nodes: StaticArray<NodeConfig, typeof MAX_NODES>;
+};
+
 type ValidatorInfo = {
     Config: ValidatorConfig;
     State: ValidatorCurState;
     Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
+    NodePoolAssignments: NodePoolAssignmentConfig;
 };
 
 type MbrAmounts = {
@@ -250,6 +259,31 @@ export class ValidatorRegistry extends Contract {
             }
         }
         return retData;
+    }
+
+    // @abi.readonly
+    getNodePoolAssignments(validatorID: uint64): NodePoolAssignmentConfig {
+        assert(this.ValidatorList(validatorID).exists);
+
+        return this.ValidatorList(validatorID).value.NodePoolAssignments;
+    }
+
+    /**
+     * Updates the node pool assignments for a validator.
+     * @param {number} validatorID - The ID of the validator.
+     * @param {Object} assignments - The configuration of the node pool assignments.
+     * @throws {Error} Throws an error if the validator does not exist or if the caller is not the owner or manager of the validator.
+     */
+    updateNodePoolAssignments(validatorID: uint64, assignments: NodePoolAssignmentConfig): void {
+        assert(this.ValidatorList(validatorID).exists);
+
+        // Must be called by the owner or manager of the validator.
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
+        );
+
+        this.ValidatorList(validatorID).value.NodePoolAssignments = assignments;
     }
 
     getNFDRegistryID(): uint64 {

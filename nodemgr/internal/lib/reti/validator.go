@@ -429,7 +429,7 @@ func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey, sender types.Addre
 	atc := transaction.AtomicTransactionComposer{}
 
 	getPoolInfoMethod, _ := r.validatorContract.GetMethodByName("getPoolInfo")
-	atc.AddMethodCall(transaction.AddMethodCallParams{
+	_ = atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:       r.RetiAppID,
 		Method:      getPoolInfoMethod,
 		MethodArgs:  []any{poolKey.ID, poolKey.PoolID, poolKey.PoolAppID},

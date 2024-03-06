@@ -11,7 +11,6 @@ import {
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing';
-import { transferAlgos } from '@algorandfoundation/algokit-utils';
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
 import { expect } from '@jest/globals';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
