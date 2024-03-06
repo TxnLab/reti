@@ -71,7 +71,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "generate-clients": "algokit generate client ../contracts/contracts/artifacts/ --language typescript  --output src/contracts/{contract_name}Client.ts",
     "test": "jest --coverage --passWithNoTests",
     "playwright:test": "playwright test",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
