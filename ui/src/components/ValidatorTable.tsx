@@ -338,8 +338,8 @@ export function ValidatorTable() {
     <DataTable
       columns={columns}
       data={data}
-      columnPinningState={{ left: ['validator'], right: [] }}
-      columnPinningThreshold="lg"
+      // columnPinningState={{ left: ['id', 'validator'], right: [] }}
+      // columnPinningThreshold="lg"
     />
   )
 }
