@@ -208,6 +208,10 @@ describe('StakeAdds', () => {
         expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
         expect(stateData.TotalStakers).toEqual(BigInt(0));
 
+        const validatorGlobalState = await validatorMasterClient.appClient.getGlobalState();
+        expect(validatorGlobalState.staked.value).toEqual(0);
+        expect(validatorGlobalState.numStakers.value).toEqual(0);
+
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
         expect(poolInfo.PoolAppID).toBe(BigInt(poolAppId));
         expect(poolInfo.TotalStakers).toEqual(0);
@@ -258,6 +262,10 @@ describe('StakeAdds', () => {
 
         expect((await getValidatorState(validatorMasterClient, validatorID)).TotalStakers).toEqual(BigInt(1));
 
+        let validatorGlobalState = await validatorMasterClient.appClient.getGlobalState();
+        expect(validatorGlobalState.staked.value).toEqual(stakeAmount1.microAlgos - Number(stakerMbr));
+        expect(validatorGlobalState.numStakers.value).toEqual(1);
+
         const poolBalance1 = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
         expect(poolBalance1.amount).toBe(origStakePoolInfo.amount + stakeAmount1.microAlgos - Number(stakerMbr));
 
@@ -272,6 +280,10 @@ describe('StakeAdds', () => {
         poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
         expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos - Number(stakerMbr)));
         expect((await getValidatorState(validatorMasterClient, validatorID)).TotalStakers).toEqual(BigInt(1));
+
+        validatorGlobalState = await validatorMasterClient.appClient.getGlobalState();
+        expect(validatorGlobalState.staked.value).toEqual(stakeAmount1.microAlgos - Number(stakerMbr));
+        expect(validatorGlobalState.numStakers.value).toEqual(1);
 
         // stake again for 1000 more - should go to same pool (!)
         const stakeAmount2 = AlgoAmount.Algos(1000);
@@ -291,6 +303,12 @@ describe('StakeAdds', () => {
         expect(poolInfo.TotalAlgoStaked).toEqual(
             BigInt(stakeAmount1.microAlgos - Number(stakerMbr) + stakeAmount2.microAlgos)
         );
+        // and global state changed
+        validatorGlobalState = await validatorMasterClient.appClient.getGlobalState();
+        expect(validatorGlobalState.staked.value).toEqual(
+            stakeAmount1.microAlgos - Number(stakerMbr) + stakeAmount2.microAlgos
+        );
+
         // ....and verify data for the 'staker' is correct as well
         const stakerInfo = await getStakerInfo(ourPoolClient, stakerAccount);
         expect(encodeAddress(stakerInfo.Staker.publicKey)).toBe(stakerAccount.addr);
@@ -324,6 +342,11 @@ describe('StakeAdds', () => {
             BigInt(stakeAmount1.microAlgos + stakeAmount2.microAlgos - Number(stakerMbr))
         );
         expect(stateData.TotalStakers).toEqual(BigInt(1));
+        // and.. globally
+        validatorGlobalState = await validatorMasterClient.appClient.getGlobalState();
+        expect(validatorGlobalState.staked.value).toEqual(
+            stakeAmount1.microAlgos + stakeAmount2.microAlgos - Number(stakerMbr)
+        );
     });
 
     // Creates new staker account

@@ -324,8 +324,8 @@
         }
       ],
       "returns": {
-        "type": "((uint64,uint64,uint64),bool)",
-        "desc": "{ValidatorPoolKey, boolean}- The pool for the staker and true/false on whether the staker is 'new' to this validator"
+        "type": "((uint64,uint64,uint64),bool,bool)",
+        "desc": "{ValidatorPoolKey, boolean, boolean}- The pool for the staker, true/false on whether the staker is 'new'to this validator, and true/false if staker is new to the protocol."
       }
     }
   ]

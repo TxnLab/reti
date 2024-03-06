@@ -8,6 +8,7 @@ import (
 	"log"
 	"log/slog"
 	"maps"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -58,14 +59,6 @@ func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup) {
 		defer wg.Done()
 		d.KeyWatcher(ctx)
 	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer d.logger.Info("exiting daemon start function")
-		<-ctx.Done()
-	}()
-
 }
 
 // KeyWatcher keeps track of both active pools for this node (updated via configuration file) as well
@@ -75,7 +68,11 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 	d.logger.Info("Starting KeyWatcher")
 
 	// make sure avg block time is set first
-	d.setAverageBlockTime(ctx)
+	err := d.setAverageBlockTime(ctx)
+	if err != nil {
+		misc.Errorf(d.logger, "unable to fetch blocks to determine block times: %v", err)
+		os.Exit(1)
+	}
 	d.checkPools(ctx)
 
 	checkTime := time.NewTicker(1 * time.Minute)
