@@ -1,4 +1,5 @@
-export function PageHeader({ title }: { title: string }) {
+export function PageHeader({ title }: { title?: string | null }) {
+  if (!title) return null
   return (
     <header>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

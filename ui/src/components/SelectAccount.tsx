@@ -17,7 +17,7 @@ interface SelectAccountProps {
 export function SelectAccount({ accounts, activeAccount, onValueChange }: SelectAccountProps) {
   return (
     <Select value={activeAccount?.address} onValueChange={onValueChange}>
-      <SelectTrigger className="w-[180px] dark:bg-black/50">
+      <SelectTrigger className="w-[180px] bg-background/50">
         <SelectValue placeholder="Select account" />
       </SelectTrigger>
       <SelectContent>
