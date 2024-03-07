@@ -36,7 +36,7 @@ export function MobileMenu() {
           </SheetDescription> */}
         </SheetHeader>
         <div className="py-6">
-          <Navigation orientation="vertical" />
+          <Navigation orientation="vertical" showHome />
         </div>
       </SheetContent>
     </Sheet>
