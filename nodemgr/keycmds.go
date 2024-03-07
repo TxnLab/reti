@@ -17,6 +17,7 @@ func GetKeyCmdOpts() *cli.Command {
 		Name:    "key",
 		Aliases: []string{"k"},
 		Usage:   "Participation key related commands",
+		Before:  checkConfigured,
 		Commands: []*cli.Command{
 			{
 				Name:    "list",
@@ -36,16 +37,12 @@ func GetKeyCmdOpts() *cli.Command {
 }
 
 func KeysList(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
 	partKeys, err := algo.GetParticipationKeys(ctx, App.algoClient)
 	if err != nil {
 		return err
 	}
-	for _, pool := range info.Pools {
-		addr := crypto.GetApplicationAddress(pool.PoolAppID)
+	for _, poolAppID := range App.retiClient.Info.LocalPools {
+		addr := crypto.GetApplicationAddress(poolAppID)
 		for account, keys := range partKeys {
 			if !command.Value("all").(bool) && addr.String() != account {
 				continue

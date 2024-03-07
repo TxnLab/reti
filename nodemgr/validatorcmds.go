@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"regexp"
 	"strconv"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v3"
 
-	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
@@ -31,29 +29,12 @@ func GetValidatorCmdOpts() *cli.Command {
 			{
 				Name:   "info",
 				Usage:  "Display info about the validator from the chain",
-				Action: ValidatorInfo,
+				Action: DisplayValidatorInfo,
 			},
 			{
 				Name:   "state",
 				Usage:  "Display info about the validator's current state from the chain",
-				Action: ValidatorState,
-			},
-			{
-				Name:  "claim",
-				Usage: "Claim a validator from chain, using manager address as verified. Signing keys must be present for this address to load",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "account",
-						Usage:    "Account (owner or manager) you can sign for that will claim this validator for this node",
-						Required: true,
-					},
-					&cli.UintFlag{
-						Name:     "id",
-						Usage:    "Validator ID to claim (you must be owner or manager!)",
-						Required: true,
-					},
-				},
-				Action: ClaimValidator,
+				Action: DisplayValidatorState,
 			},
 			{
 				Name:  "change",
@@ -78,57 +59,34 @@ func GetValidatorCmdOpts() *cli.Command {
 }
 
 func InitValidator(ctx context.Context, cmd *cli.Command) error {
-	v, err := LoadValidatorInfo()
-	if err == nil {
+	if App.retiClient.IsConfigured() {
 		result, _ := yesNo("A validator configuration already appears to exist, do you REALLY want to add an entirely new validator configuration")
 		if result != "y" {
 			return nil
 		}
 		return DefineValidator()
 	}
-	if errors.Is(err, os.ErrNotExist) {
-		result, _ := yesNo("Validator not configured.  Create brand new validator")
-		if result != "y" {
-			return nil
-		}
-		return DefineValidator()
+	result, _ := yesNo("Validator not configured.  Create brand new validator")
+	if result != "y" {
+		return nil
 	}
-	if err != nil {
-		return cli.Exit(err, 1)
+	return DefineValidator()
+}
+
+func DisplayValidatorInfo(ctx context.Context, command *cli.Command) error {
+	if !App.retiClient.IsConfigured() {
+		return fmt.Errorf("validator not configured")
 	}
-	slog.Info("validator", "id", v.Config.ID)
+	fmt.Println(App.retiClient.Info.Config.String())
 	return nil
 }
 
-func ValidatorInfo(ctx context.Context, command *cli.Command) error {
-	v, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
+func DisplayValidatorState(ctx context.Context, command *cli.Command) error {
+	if !App.retiClient.IsConfigured() {
+		return fmt.Errorf("validator not configured")
 	}
 	// Get information from the chain about the current state
-	ownerAddr, err := types.DecodeAddress(v.Config.Owner)
-	if err != nil {
-		return err
-	}
-	config, err := App.retiClient.GetValidatorConfig(v.Config.ID, ownerAddr)
-	if err != nil {
-		return err
-	}
-	fmt.Println(config.String())
-	return err
-}
-
-func ValidatorState(ctx context.Context, command *cli.Command) error {
-	v, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-	// Get information from the chain about the current state
-	ownerAddr, err := types.DecodeAddress(v.Config.Owner)
-	if err != nil {
-		return err
-	}
-	state, err := App.retiClient.GetValidatorState(v.Config.ID, ownerAddr)
+	state, err := App.retiClient.GetValidatorState(App.retiClient.Info.Config.ID)
 	if err != nil {
 		return err
 	}
@@ -136,53 +94,12 @@ func ValidatorState(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func ClaimValidator(ctx context.Context, command *cli.Command) error {
-	_, err := LoadValidatorInfo()
-	if err == nil {
-		return cli.Exit(errors.New("validator configuration already defined"), 1)
-	}
-	// load from chain
-	addr, err := types.DecodeAddress(command.Value("account").(string))
-	if err != nil {
-		return fmt.Errorf("invalid address specified: %w", err)
-	}
-
-	if !App.signer.HasAccount(addr.String()) {
-		return fmt.Errorf("account:%s isn't an account you have keys to!", addr.String())
-	}
-	id := command.Value("id").(uint64)
-
-	App.logger.Info("Claiming validator", "id", id)
-
-	config, err := App.retiClient.GetValidatorConfig(id, addr)
-	if err != nil {
-		return fmt.Errorf("error fetching config from chain: %w", err)
-	}
-	if config.Owner != addr.String() && config.Manager != addr.String() {
-		return fmt.Errorf("you are not the owner or manager of valid validator:%d, account:%s is owner", id, config.Owner)
-	}
-	info := &reti.ValidatorInfo{Config: *config}
-
-	err = SaveValidatorInfo(info)
-
-	misc.Infof(App.logger, "You have successfully imported/claimed this validator, but you must now claim pools for this node as none will be assigned")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func ChangeCommission(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
+	if !App.retiClient.IsConfigured() {
+		return fmt.Errorf("validator not configured")
 	}
 
-	if len(info.Pools) >= info.Config.PoolsPerNode {
-		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
-	}
-
-	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
+	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info.Config.Owner, App.retiClient.Info.Config.Manager})
 	if err != nil {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
 	}
@@ -193,13 +110,11 @@ func ChangeCommission(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 
-	err = App.retiClient.ChangeValidatorCommissionAddress(info.Config.ID, signerAddr, commissionAddress)
+	err = App.retiClient.ChangeValidatorCommissionAddress(App.retiClient.Info.Config.ID, signerAddr, commissionAddress)
 	if err != nil {
 		return err
 	}
-	info.Config.ValidatorCommissionAddress = commissionAddress.String()
-	// Update the local config
-	return SaveValidatorInfo(info)
+	return App.retiClient.LoadState(ctx)
 }
 
 func DefineValidator() error {
@@ -277,8 +192,7 @@ func DefineValidator() error {
 	}
 	info.Config.ID = validatorID
 	slog.Info("New Validator added, your Validator ID is:", "id", info.Config.ID)
-
-	return SaveValidatorInfo(info)
+	return App.retiClient.LoadState(context.Background())
 }
 
 func getInt(prompt string, defVal int, minVal int, maxVal int) (int, error) {

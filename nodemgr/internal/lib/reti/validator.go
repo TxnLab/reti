@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
@@ -18,13 +18,48 @@ import (
 )
 
 const (
+	// These MUST match the contracts !
 	MaxNodes        = 12
-	MaxPoolsPerNode = 6
+	MaxPoolsPerNode = 4
 )
 
+// ValidatorInfo is loaded at startup but also on-demand via Reti.LoadStateFromChain
 type ValidatorInfo struct {
-	Config ValidatorConfig
-	Pools  []PersistedPoolInfo `json:"pools,omitempty"`
+	Config              ValidatorConfig
+	Pools               []PoolInfo
+	NodePoolAssignments NodePoolAssignmentConfig
+
+	// A generated map of pool ID's and the App ID assigned to it - for 'our' node
+	// determined via Pools and NodePoolAssignments
+	LocalPools map[uint64]uint64
+}
+
+type NodeConfig struct {
+	PoolAppIDs []uint64
+}
+
+type NodePoolAssignmentConfig struct {
+	Nodes []NodeConfig
+}
+
+func (npac *NodePoolAssignmentConfig) AddPoolToNode(nodeNum uint64, poolAppID uint64) error {
+	if len(npac.Nodes) != MaxNodes {
+		return errors.New("invalid NodePoolAssignmentConfig data ! nodes list should be fixed length")
+	}
+	if nodeNum == 0 || int(nodeNum) > len(npac.Nodes) {
+		return fmt.Errorf("invalid nodeNum value, must be between 1 and %d", MaxNodes)
+	}
+	// make sure the passed in poolAppID isn't set in ANY node
+	for i, node := range npac.Nodes {
+		if slices.Contains(node.PoolAppIDs, poolAppID) {
+			return fmt.Errorf("pool app id:%d already assigned to node number:%d", poolAppID, i+1)
+		}
+	}
+	if len(npac.Nodes[nodeNum-1].PoolAppIDs) >= MaxPoolsPerNode {
+		return fmt.Errorf("node number:%d is full", nodeNum)
+	}
+	npac.Nodes[nodeNum-1].PoolAppIDs = append(npac.Nodes[nodeNum-1].PoolAppIDs, poolAppID)
+	return nil
 }
 
 type ValidatorConfig struct {
@@ -165,14 +200,6 @@ func ValidatorPoolKeyFromABIReturn(returnVal any) (*ValidatorPoolKey, error) {
 	return nil, errCantFetchPoolKey
 }
 
-// PersistedPoolInfo is simpler version of PoolInfo struct (on-chain data) to just track what pools
-// the local node is using and so there's no confusion by user with stakers/staked numbers in local config file
-// that don't match what's on chain
-type PersistedPoolInfo struct {
-	PoolID    uint64 // pool id
-	PoolAppID uint64 // app id of staking pool contract instance
-}
-
 type PoolInfo struct {
 	PoolAppID       uint64 // The App ID of this staking pool contract instance
 	TotalStakers    int
@@ -296,7 +323,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	return 0, nil
 }
 
-func (r *Reti) GetValidatorConfig(id uint64, sender types.Address) (*ValidatorConfig, error) {
+func (r *Reti) GetValidatorConfig(id uint64) (*ValidatorConfig, error) {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -304,6 +331,10 @@ func (r *Reti) GetValidatorConfig(id uint64, sender types.Address) (*ValidatorCo
 		return nil, err
 	}
 
+	dummyAddr, err := r.getLocalSignerForSimulateCalls()
+	if err != nil {
+		return nil, err
+	}
 	// Now try to actually create the validator !!
 	atc := transaction.AtomicTransactionComposer{}
 
@@ -321,7 +352,7 @@ func (r *Reti) GetValidatorConfig(id uint64, sender types.Address) (*ValidatorCo
 		},
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
-		Sender:          sender,
+		Sender:          dummyAddr,
 		Signer:          transaction.EmptyTransactionSigner{},
 	})
 
@@ -338,10 +369,15 @@ func (r *Reti) GetValidatorConfig(id uint64, sender types.Address) (*ValidatorCo
 	return ValidatorConfigFromABIReturn(result.MethodResults[0].ReturnValue)
 }
 
-func (r *Reti) GetValidatorState(id uint64, sender types.Address) (*ValidatorCurState, error) {
+func (r *Reti) GetValidatorState(id uint64) (*ValidatorCurState, error) {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	dummyAddr, err := r.getLocalSignerForSimulateCalls()
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +399,7 @@ func (r *Reti) GetValidatorState(id uint64, sender types.Address) (*ValidatorCur
 		},
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
-		Sender:          sender,
+		Sender:          dummyAddr,
 		Signer:          transaction.EmptyTransactionSigner{},
 	})
 
@@ -377,10 +413,15 @@ func (r *Reti) GetValidatorState(id uint64, sender types.Address) (*ValidatorCur
 	return ValidatorCurStateFromABIReturn(result.MethodResults[0].ReturnValue)
 }
 
-func (r *Reti) GetValidatorPools(id uint64, sender types.Address) ([]PoolInfo, error) {
+func (r *Reti) GetValidatorPools(id uint64) ([]PoolInfo, error) {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	dummyAddr, err := r.getLocalSignerForSimulateCalls()
 	if err != nil {
 		return nil, err
 	}
@@ -402,8 +443,8 @@ func (r *Reti) GetValidatorPools(id uint64, sender types.Address) ([]PoolInfo, e
 		},
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
-		Sender:          sender,
-		Signer:          algo.SignWithAccountForATC(r.signer, sender.String()),
+		Sender:          dummyAddr,
+		Signer:          transaction.EmptyTransactionSigner{},
 	})
 
 	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
@@ -417,10 +458,15 @@ func (r *Reti) GetValidatorPools(id uint64, sender types.Address) ([]PoolInfo, e
 	return ValidatorPoolsFromABIReturn(result.MethodResults[0].ReturnValue)
 }
 
-func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey, sender types.Address) (*PoolInfo, error) {
+func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey) (*PoolInfo, error) {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	dummyAddr, err := r.getLocalSignerForSimulateCalls()
 	if err != nil {
 		return nil, err
 	}
@@ -440,8 +486,8 @@ func (r *Reti) GetValidatorPoolInfo(poolKey ValidatorPoolKey, sender types.Addre
 		},
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
-		Sender:          sender,
-		Signer:          algo.SignWithAccountForATC(r.signer, sender.String()),
+		Sender:          dummyAddr,
+		Signer:          transaction.EmptyTransactionSigner{},
 	})
 
 	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
@@ -497,6 +543,77 @@ func (r *Reti) GetStakedPoolsForAccount(staker types.Address) ([]*ValidatorPoolK
 	}
 
 	return nil, fmt.Errorf("unknown result type:%#v", result.MethodResults)
+}
+
+func (r *Reti) GetValidatorNodePoolAssignments(id uint64) (*NodePoolAssignmentConfig, error) {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	dummyAddr, err := r.getLocalSignerForSimulateCalls()
+	if err != nil {
+		return nil, err
+	}
+
+	// Now try to actually create the validator !!
+	atc := transaction.AtomicTransactionComposer{}
+
+	getNodePoolAssignmentsMethod, err := r.validatorContract.GetMethodByName("getNodePoolAssignments")
+	if err != nil {
+		return nil, err
+	}
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:      r.RetiAppID,
+		Method:     getNodePoolAssignmentsMethod,
+		MethodArgs: []any{id},
+		BoxReferences: []types.AppBoxReference{
+			{AppID: 0, Name: GetValidatorListBoxName(id)},
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          dummyAddr,
+		Signer:          transaction.EmptyTransactionSigner{},
+	})
+
+	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowMoreLogging:      true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return NodePoolAssignmentFromABIReturn(result.MethodResults[0].ReturnValue)
+}
+
+func NodePoolAssignmentFromABIReturn(returnVal any) (*NodePoolAssignmentConfig, error) {
+	// getNodePoolAssignments(uint64)((uint64[4])[12])
+	var retPAC = &NodePoolAssignmentConfig{}
+	if arrReturn, ok := returnVal.([]any); ok {
+		for _, nodeConfigAny := range arrReturn {
+			if nodes, ok := nodeConfigAny.([]any); ok {
+				for _, pools := range nodes {
+					if poolIDs, ok := pools.([]any); ok {
+						var ids []uint64
+						for _, id := range poolIDs[0].([]any) {
+							convertedID := id.(uint64)
+							if convertedID == 0 {
+								continue
+							}
+							ids = append(ids, convertedID)
+						}
+						retPAC.Nodes = append(retPAC.Nodes, NodeConfig{PoolAppIDs: ids})
+					}
+				}
+			}
+		}
+		return retPAC, nil
+	}
+	return nil, errCantFetchPoolKey
 }
 
 func (r *Reti) FindPoolForStaker(id uint64, staker types.Address, amount uint64) (*ValidatorPoolKey, error) {
@@ -568,7 +685,7 @@ func (r *Reti) ChangeValidatorCommissionAddress(id uint64, sender types.Address,
 
 }
 
-func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
+func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -576,7 +693,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 		return nil, err
 	}
 
-	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
 
 	// first determine how much we have to add in MBR to the validator for adding a staking pool
 	mbrs, err := r.getMbrAmounts(managerAddr)
@@ -587,7 +704,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	// Now try to actually create the pool !!
 	atc := transaction.AtomicTransactionComposer{}
 
-	misc.Infof(r.logger, "adding staking pool")
+	misc.Infof(r.logger, "adding staking pool to node:%d", nodeNum)
 	addPoolMethod, _ := r.validatorContract.GetMethodByName("addPool")
 	// We have to pay MBR into the Validator contract itself for adding a pool
 	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), mbrs.AddPoolMbr, nil, "", params)
@@ -606,11 +723,12 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 			// MBR payment
 			payTxWithSigner,
 			// --
-			info.Config.ID,
+			r.Info.Config.ID,
+			nodeNum,
 		},
 		ForeignApps: []uint64{r.poolTemplateAppID()},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: 0, Name: GetValidatorListBoxName(info.Config.ID)},
+			{AppID: 0, Name: GetValidatorListBoxName(r.Info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
@@ -628,7 +746,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 		return nil, err
 	}
 
-	err = r.CheckAndInitStakingPoolStorage(info, poolKey)
+	err = r.CheckAndInitStakingPoolStorage(poolKey)
 	if err != nil {
 		return nil, err
 	}
@@ -636,7 +754,7 @@ func (r *Reti) AddStakingPool(info *ValidatorInfo) (*ValidatorPoolKey, error) {
 	return poolKey, err
 }
 
-func (r *Reti) CheckAndInitStakingPoolStorage(info *ValidatorInfo, poolKey *ValidatorPoolKey) error {
+func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	// First determine if we NEED to initialize this pool !
 	if val, err := r.algoClient.GetApplicationBoxByName(poolKey.PoolAppID, GetStakerLedgerBoxName()).Do(context.Background()); err == nil {
 		if len(val.Value) > 0 {
@@ -650,7 +768,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(info *ValidatorInfo, poolKey *Vali
 		return err
 	}
 
-	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
 
 	mbrs, err := r.getMbrAmounts(managerAddr)
 	if err != nil {
@@ -712,10 +830,11 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 		return nil, err
 	}
 
-	// has this staker ever staked anything - getStakedPoolsForAccount can be empty but they could've staked before
-	// so check the box itself.
-	data, err := r.algoClient.GetApplicationBoxByName(r.RetiAppID, GetStakerPoolSetBoxName(staker)).Do(context.Background())
-	if len(data.Value) == 0 || err != nil {
+	mbrPaymentNeeded, err := r.doesStakerNeedToPayMBR(staker)
+	if err != nil {
+		return nil, err
+	}
+	if mbrPaymentNeeded {
 		misc.Infof(r.logger, "Adding %s ALGO to stake to cover first-time MBR", algo.FormattedAlgoAmount(mbrs.AddStakerMbr))
 		amountToStake += mbrs.AddStakerMbr
 	}
@@ -967,6 +1086,40 @@ func (r *Reti) getMbrAmounts(caller types.Address) (MbrAmounts, error) {
 	return MbrAmounts{}, fmt.Errorf("unknown result type:%#v", result.MethodResults)
 }
 
+func (r *Reti) doesStakerNeedToPayMBR(staker types.Address) (bool, error) {
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return false, err
+	}
+
+	method, err := r.validatorContract.GetMethodByName("doesStakerNeedToPayMBR")
+	if err != nil {
+		return false, err
+	}
+	atc := transaction.AtomicTransactionComposer{}
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:           r.RetiAppID,
+		Method:          method,
+		MethodArgs:      []any{staker},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          staker,
+		Signer:          transaction.EmptyTransactionSigner{},
+	})
+	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return false, err
+	}
+	val := result.MethodResults[0].ReturnValue
+	if boolReturn, ok := val.(bool); ok {
+		return boolReturn, nil
+	}
+	return false, errors.New("unknown return value from doesStakerNeedToPayMBR")
+}
+
 func (r *Reti) getNumValidators() (uint64, error) {
 	appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppID).Do(context.Background())
 	if err != nil {
@@ -976,12 +1129,5 @@ func (r *Reti) getNumValidators() (uint64, error) {
 }
 
 func (r *Reti) poolTemplateAppID() uint64 {
-	r.oneTimeInit.Do(func() {
-		appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppID).Do(context.Background())
-		if err != nil {
-			log.Panicln(err)
-		}
-		r.poolTmplAppID, _ = algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrPoolTmplID)
-	})
 	return r.poolTmplAppID
 }

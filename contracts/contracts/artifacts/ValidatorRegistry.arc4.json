@@ -24,6 +24,7 @@
     },
     {
       "name": "getMbrAmounts",
+      "desc": "Returns the MBR amounts needed for various actions:[AddValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contractAddPoolMbr: uint64 - mbr needed to add a new pool - paid to validatorPoolInitMbr: uint64 - mbr needed to initStorage() of pool - paid to pool itselfAddStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)]",
       "args": [],
       "returns": {
         "type": "(uint64,uint64,uint64,uint64)"
@@ -116,6 +117,19 @@
       }
     },
     {
+      "name": "doesStakerNeedToPayMBR",
+      "desc": "Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount",
+      "args": [
+        {
+          "name": "staker",
+          "type": "account"
+        }
+      ],
+      "returns": {
+        "type": "bool"
+      }
+    },
+    {
       "name": "getStakedPoolsForAccount",
       "desc": "Retrieves the staked pools for an account.",
       "args": [
@@ -139,25 +153,6 @@
       ],
       "returns": {
         "type": "((uint64[4])[12])"
-      }
-    },
-    {
-      "name": "updateNodePoolAssignments",
-      "desc": "Updates the node pool assignments for a validator.",
-      "args": [
-        {
-          "name": "validatorID",
-          "type": "uint64",
-          "desc": "The ID of the validator."
-        },
-        {
-          "name": "assignments",
-          "type": "((uint64[4])[12])",
-          "desc": "The configuration of the node pool assignments."
-        }
-      ],
-      "returns": {
-        "type": "void"
       }
     },
     {
@@ -262,6 +257,11 @@
           "name": "validatorID",
           "type": "uint64",
           "desc": "is ID of validator to pool to (must be owner or manager)"
+        },
+        {
+          "name": "nodeNum",
+          "type": "uint64",
+          "desc": "is node number to add to"
         }
       ],
       "returns": {
@@ -357,6 +357,27 @@
       "returns": {
         "type": "((uint64,uint64,uint64),bool,bool)",
         "desc": "{ValidatorPoolKey, boolean, boolean}- The pool for the staker, true/false on whether the staker is 'new'to this validator, and true/false if staker is new to the protocol."
+      }
+    },
+    {
+      "name": "movePoolToNode",
+      "desc": "Find the specified pool (in any node number) and move it to the specified node.No-op if success, asserts if not found or can't move  (no space in target)",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        },
+        {
+          "name": "poolAppID",
+          "type": "uint64"
+        },
+        {
+          "name": "nodeNum",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "void"
       }
     }
   ]

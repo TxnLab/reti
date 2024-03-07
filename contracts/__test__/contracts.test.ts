@@ -171,6 +171,7 @@ describe('StakeAdds', () => {
             MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
             MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
             PercentToValidator: 50000, // 5%
+            PoolsPerNode: 4,
         });
 
         validatorID = await addValidator(
@@ -186,6 +187,7 @@ describe('StakeAdds', () => {
             fixture.context,
             validatorMasterClient,
             validatorID,
+            1,
             validatorOwnerAccount,
             poolMbr,
             poolInitMbr
@@ -409,7 +411,7 @@ describe('StakeAdds', () => {
         expect(poolInfo.TotalAlgoStaked).toBe(BigInt(AlgoAmount.Algos(4000).microAlgos - Number(stakerMbr)));
     });
 
-    test('add3PoolsAndFill', async () => {
+    test('add4PoolsAndFill', async () => {
         const pools = [];
         const stakers = [];
         const poolsToCreate = 4;
@@ -424,6 +426,7 @@ describe('StakeAdds', () => {
                 fixture.context,
                 validatorMasterClient,
                 validatorID,
+                2, // add to different node - otherwise we'll fail
                 validatorOwnerAccount,
                 poolMbr,
                 poolInitMbr
@@ -734,6 +737,7 @@ describe('StakeWRewards', () => {
             fixture.context,
             validatorMasterClient,
             validatorID,
+            1,
             validatorOwnerAccount,
             poolMbr,
             poolInitMbr
@@ -1062,6 +1066,7 @@ describe('ValidatorWFullPoolWRewards', () => {
     let firstPoolClient: StakingPoolClient;
 
     const PctToValidator = 5;
+    const NumStakers = 100;
 
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
@@ -1080,7 +1085,7 @@ describe('ValidatorWFullPoolWRewards', () => {
             Owner: validatorOwnerAccount.addr,
             Manager: validatorOwnerAccount.addr,
             MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            MaxAlgoPerPool: BigInt(AlgoAmount.Algos(1000 * NumStakers).microAlgos), // this comes into play in later tests !!
             PercentToValidator: PctToValidator * 10000,
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
         });
@@ -1097,6 +1102,7 @@ describe('ValidatorWFullPoolWRewards', () => {
             fixture.context,
             validatorMasterClient,
             validatorID,
+            1,
             validatorOwnerAccount,
             poolMbr,
             poolInitMbr
@@ -1134,8 +1140,7 @@ describe('ValidatorWFullPoolWRewards', () => {
     test(
         'addStakers',
         async () => {
-            // for (let i = 0; i < 20; i += 1) {
-            for (let i = 0; i < 101; i += 1) {
+            for (let i = 0; i < NumStakers + 1; i += 1) {
                 const stakerAccount = await getTestAccount(
                     { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
                     fixture.context.algod,
@@ -1150,7 +1155,7 @@ describe('ValidatorWFullPoolWRewards', () => {
                     AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
                 );
                 let stakedPoolKey: ValidatorPoolKey;
-                if (i < 100) {
+                if (i < NumStakers) {
                     stakedPoolKey = await addStake(
                         fixture.context,
                         validatorMasterClient,
@@ -1181,7 +1186,7 @@ describe('ValidatorWFullPoolWRewards', () => {
                 );
             }
         },
-        2 * 60 * 1000
+        4 * 60 * 1000 // 4 mins
     );
 
     test('testFirstRewards', async () => {

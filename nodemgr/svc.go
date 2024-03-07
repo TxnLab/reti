@@ -26,6 +26,10 @@ func GetDaemonCmdOpts() *cli.Command {
 func runAsDaemon(ctx context.Context, _ *cli.Command) error {
 	var wg sync.WaitGroup
 
+	if err := App.retiClient.LoadState(ctx); err != nil {
+		return err
+	}
+
 	// Create channel used by both the signal handler and server goroutines
 	// to notify the main goroutine when to stop the server.
 	errc := make(chan error)

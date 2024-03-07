@@ -46,6 +46,14 @@ func (r *Reti) GetLedgerforPool(poolAppID uint64) ([]StakedInfo, error) {
 	return retLedger, nil
 }
 
+func (r *Reti) GetPoolID(poolAppID uint64) (uint64, error) {
+	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
+	if err != nil {
+		return 0, err
+	}
+	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolPoolID)
+}
+
 func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
 	if err != nil {
@@ -62,7 +70,7 @@ func (r *Reti) GetAlgodVer(poolAppID uint64) (string, error) {
 	return algo.GetStringFromGlobalState(appInfo.Params.GlobalState, StakePoolAlgodVer)
 }
 
-func (r *Reti) UpdateAlgodVer(info *ValidatorInfo, poolAppID uint64, algodVer string, caller types.Address) error {
+func (r *Reti) UpdateAlgodVer(poolAppID uint64, algodVer string, caller types.Address) error {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -82,7 +90,7 @@ func (r *Reti) UpdateAlgodVer(info *ValidatorInfo, poolAppID uint64, algodVer st
 		MethodArgs:  []any{algodVer},
 		ForeignApps: []uint64{r.RetiAppID},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
@@ -101,11 +109,11 @@ func (r *Reti) UpdateAlgodVer(info *ValidatorInfo, poolAppID uint64, algodVer st
 	return nil
 }
 
-func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uint64, caller types.Address) error {
+func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Address) error {
 	var err error
 
 	// make sure we even have enough rewards to do the payout
-	pools, err := r.GetValidatorPools(info.Config.ID, caller)
+	pools, err := r.GetValidatorPools(r.Info.Config.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
@@ -133,7 +141,7 @@ func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uin
 			Method:      gasMethod,
 			ForeignApps: []uint64{r.RetiAppID},
 			BoxReferences: []types.AppBoxReference{
-				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
+				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
 				{AppID: 0, Name: nil}, // extra i/o
 			},
 			SuggestedParams: params,
@@ -153,7 +161,7 @@ func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uin
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:           poolAppID,
 			Method:          epochUpdateMethod,
-			ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
+			ForeignAccounts: []string{r.Info.Config.ValidatorCommissionAddress},
 			BoxReferences: []types.AppBoxReference{
 				{AppID: 0, Name: GetStakerLedgerBoxName()},
 				{AppID: 0, Name: nil}, // extra i/o
@@ -201,17 +209,7 @@ func (r *Reti) EpochBalanceUpdate(info *ValidatorInfo, poolID int, poolAppID uin
 	return nil
 }
 
-func (r *Reti) GoOnline(
-	info *ValidatorInfo,
-	poolAppID uint64,
-	caller types.Address,
-	votePK []byte,
-	selectionPK []byte,
-	stateProofPK []byte,
-	voteFirst uint64,
-	voteLast uint64,
-	voteKeyDilution uint64,
-) error {
+func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -239,7 +237,7 @@ func (r *Reti) GoOnline(
 		ForeignApps: []uint64{r.RetiAppID},
 		//ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(info.Config.ID)},
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,

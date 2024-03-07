@@ -159,6 +159,14 @@ export class ValidatorRegistry extends Contract {
     // Cost for creator of validator contract itself is (but not really our problem - it's a bootstrap issue only)
     // this.minBalanceForAccount(0, 0, 0, 0, 0, 4, 0)
 
+    /**
+     * Returns the MBR amounts needed for various actions:
+     * [AddValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contract
+     *  AddPoolMbr: uint64 - mbr needed to add a new pool - paid to validator
+     *  PoolInitMbr: uint64 - mbr needed to initStorage() of pool - paid to pool itself
+     *  AddStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)
+     *  ]
+     */
     getMbrAmounts(): MbrAmounts {
         return {
             AddValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorID>() + len<ValidatorInfo>()),
@@ -241,6 +249,18 @@ export class ValidatorRegistry extends Contract {
         return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1];
     }
 
+    // @abi.readonly
+    /**
+     * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
+     * @param staker
+     */
+    doesStakerNeedToPayMBR(staker: AccountReference): boolean {
+        if (this.StakerPoolSet(staker).exists) {
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Retrieves the staked pools for an account.
      *
@@ -266,24 +286,6 @@ export class ValidatorRegistry extends Contract {
         assert(this.ValidatorList(validatorID).exists);
 
         return this.ValidatorList(validatorID).value.NodePoolAssignments;
-    }
-
-    /**
-     * Updates the node pool assignments for a validator.
-     * @param {number} validatorID - The ID of the validator.
-     * @param {Object} assignments - The configuration of the node pool assignments.
-     * @throws {Error} Throws an error if the validator does not exist or if the caller is not the owner or manager of the validator.
-     */
-    updateNodePoolAssignments(validatorID: uint64, assignments: NodePoolAssignmentConfig): void {
-        assert(this.ValidatorList(validatorID).exists);
-
-        // Must be called by the owner or manager of the validator.
-        assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
-        );
-
-        this.ValidatorList(validatorID).value.NodePoolAssignments = assignments;
     }
 
     getNFDRegistryID(): uint64 {
@@ -341,7 +343,11 @@ export class ValidatorRegistry extends Contract {
      * @param {string} nfdName - The name of the NFD (which must match)
      */
     changeValidatorNFD(validatorID: ValidatorID, nfdAppID: uint64, nfdName: string): void {
-        assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
+        // Must be called by the owner or manager of the validator.
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
+        );
         // verify nfd is real, and owned by owner or manager
         sendAppCall({
             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
@@ -369,10 +375,11 @@ export class ValidatorRegistry extends Contract {
      * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
      * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of adding a new pool
      * @param {uint64} validatorID is ID of validator to pool to (must be owner or manager)
+     * @param {uint64} nodeNum is node number to add to
      * @returns {ValidatorPoolKey} pool key to created pool
      *
      */
-    addPool(mbrPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
+    addPool(mbrPayment: PayTxn, validatorID: ValidatorID, nodeNum: uint64): ValidatorPoolKey {
         verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr, receiver: this.app.address });
 
         assert(this.ValidatorList(validatorID).exists);
@@ -412,6 +419,7 @@ export class ValidatorRegistry extends Contract {
         // We don't need to manipulate anything in the Pools array as the '0' values are all correct for PoolInfo
         // No stakers, no algo staked
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
+        this.addPoolToNode(validatorID, this.itxn.createdApplicationID.id, nodeNum);
 
         // PoolID is 1-based, 0 is invalid id
         return { ID: validatorID, PoolID: numPools as uint64, PoolAppID: this.itxn!.createdApplicationID.id };
@@ -519,8 +527,9 @@ export class ValidatorRegistry extends Contract {
      * @param stakerRemoved
      */
     stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
-        increaseOpcodeBudget();
-
+        if (globals.opcodeBudget < 300) {
+            increaseOpcodeBudget();
+        }
         this.verifyPoolKeyCaller(poolKey);
 
         // Yup - we've been called by an official staking pool telling us about stake that was removed from it,
@@ -623,6 +632,26 @@ export class ValidatorRegistry extends Contract {
         }
         // Not found is poolID 0
         return [{ ID: validatorID, PoolID: 0, PoolAppID: 0 }, isNewStakerToValidator, isNewStakerToProtocol];
+    }
+
+    /**
+     * Find the specified pool (in any node number) and move it to the specified node.
+     * No-op if success, asserts if not found or can't move  (no space in target)
+     */
+    movePoolToNode(validatorID: ValidatorID, poolAppID: uint64, nodeNum: uint64): void {
+        const nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments);
+        assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
+        // iterate  all the PoolAppIDs slots to find the specified poolAppID
+        for (let i = 0; i < MAX_POOLS_PER_NODE; i += 1) {
+            if (nodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] === poolAppID) {
+                // found it - clear this slot
+                this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] = 0;
+                // now - move it..
+                this.addPoolToNode(validatorID, poolAppID, nodeNum);
+                return;
+            }
+        }
+        throw Error("couldn't find pool app id in nodes to move");
     }
 
     /**
@@ -765,5 +794,21 @@ export class ValidatorRegistry extends Contract {
         }
         // Are they completely out of the staking pool ?
         return [inSameValidatorPoolCount === 0, inAnyPoolCount === 0];
+    }
+
+    private addPoolToNode(validatorID: ValidatorID, poolAppID: uint64, nodeNum: uint64) {
+        const nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments);
+        const maxPoolsPerNodeForThisValidator = this.ValidatorList(validatorID).value.Config.PoolsPerNode as uint64;
+        // add the new staking pool to the specified node number - if there is room
+        assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
+        // iterate  all the PoolAppIDs slots to see if any are free (non 0)
+        for (let i = 0; i < maxPoolsPerNodeForThisValidator; i += 1) {
+            if (nodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] === 0) {
+                // update box data
+                this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] = poolAppID;
+                return;
+            }
+        }
+        throw Error('no available space in specified node for this pool');
     }
 }

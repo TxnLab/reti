@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"maps"
 	"os"
@@ -31,23 +30,15 @@ type Daemon struct {
 	logger     *slog.Logger
 	algoClient *algod.Client
 
-	info *reti.ValidatorInfo
-
 	// embed mutex for locking state for members below the mutex
 	sync.RWMutex
 	avgBlockTime time.Duration
 }
 
 func newDaemon() *Daemon {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		log.Fatalf("Failed to load validator info: %v", err)
-	}
-
 	return &Daemon{
 		logger:     App.logger,
 		algoClient: App.algoClient,
-		info:       info,
 	}
 }
 
@@ -110,26 +101,26 @@ type onlineInfo struct {
 func (d *Daemon) checkPools(ctx context.Context) {
 	// get online status and partkey info for all our accounts (ignoring any that don't have balances yet)
 	var poolAccounts = map[string]onlineInfo{}
-	for _, pool := range d.info.Pools {
-		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
+	for poolID, poolAppID := range App.retiClient.Info.LocalPools {
+		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(poolAppID).String())
 		if err != nil {
-			d.logger.Warn("account fetch error", "account", crypto.GetApplicationAddress(pool.PoolAppID).String(), "error", err)
+			d.logger.Warn("account fetch error", "account", crypto.GetApplicationAddress(poolAppID).String(), "error", err)
 			return
 		}
 		info := onlineInfo{
-			poolAppID:                 pool.PoolAppID,
+			poolAppID:                 poolAppID,
 			isOnline:                  acctInfo.Status == OnlineStatus,
 			selectionParticipationKey: acctInfo.Participation.SelectionParticipationKey,
 			firstValid:                acctInfo.Participation.VoteFirstValid,
 		}
 		if acctInfo.Amount-acctInfo.MinBalance > 1e6 {
-			poolAccounts[crypto.GetApplicationAddress(pool.PoolAppID).String()] = info
+			poolAccounts[crypto.GetApplicationAddress(poolAppID).String()] = info
 		}
 		// ensure pools were initialized properly (since it's a two-step process - the second step may have been skipped?)
-		App.retiClient.CheckAndInitStakingPoolStorage(d.info, &reti.ValidatorPoolKey{
-			ID:        d.info.Config.ID,
-			PoolID:    pool.PoolID,
-			PoolAppID: pool.PoolAppID,
+		App.retiClient.CheckAndInitStakingPoolStorage(&reti.ValidatorPoolKey{
+			ID:        App.retiClient.Info.Config.ID,
+			PoolID:    poolID,
+			PoolAppID: poolAppID,
 		})
 	}
 	// now get all the current participation keys for our node
@@ -153,24 +144,24 @@ func (d *Daemon) checkPools(ctx context.Context) {
 }
 
 func (d *Daemon) updatePoolVersions(ctx context.Context) {
-	managerAddr, _ := types.DecodeAddress(d.info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
 
 	versString, err := algo.GetVersionString(ctx, d.algoClient)
 	if err != nil {
 		misc.Errorf(d.logger, "unable to fetch version string from algod instance, err:%v", err)
 		return
 	}
-	for _, pool := range d.info.Pools {
-		algodVer, err := App.retiClient.GetAlgodVer(pool.PoolAppID)
+	for _, poolAppID := range App.retiClient.Info.LocalPools {
+		algodVer, err := App.retiClient.GetAlgodVer(poolAppID)
 		if err != nil && !errors.Is(err, algo.ErrStateKeyNotFound) {
-			misc.Errorf(d.logger, "unable to fetch algod version from staking pool app id:%d, err:%v", pool.PoolAppID, err)
+			misc.Errorf(d.logger, "unable to fetch algod version from staking pool app id:%d, err:%v", poolAppID, err)
 			return
 		}
 		if algodVer != versString {
 			// Update version in staking pool
-			err = App.retiClient.UpdateAlgodVer(d.info, pool.PoolAppID, versString, managerAddr)
+			err = App.retiClient.UpdateAlgodVer(poolAppID, versString, managerAddr)
 			if err != nil {
-				misc.Errorf(d.logger, "unable to update algod version in staking pool app id:%d, err:%v", pool.PoolAppID, err)
+				misc.Errorf(d.logger, "unable to update algod version in staking pool app id:%d, err:%v", poolAppID, err)
 				return
 			}
 		}
@@ -248,7 +239,7 @@ func (d *Daemon) refetchConfig() error {
 	var err error
 	err = repeat.Repeat(
 		repeat.Fn(func() error {
-			d.info, err = LoadValidatorInfo()
+			err = App.retiClient.LoadState(context.Background())
 			if err != nil {
 				return repeat.HintTemporary(err)
 			}
@@ -368,7 +359,7 @@ func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts 
 func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	var (
 		err            error
-		managerAddr, _ = types.DecodeAddress(d.info.Config.Manager)
+		managerAddr, _ = types.DecodeAddress(App.retiClient.Info.Config.Manager)
 	)
 
 	for account, info := range poolAccounts {
@@ -384,9 +375,7 @@ func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts 
 			keyToUse := keysForAccount[0]
 			misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToUse.Id)
 
-			err = App.retiClient.GoOnline(d.info, info.poolAppID, managerAddr,
-				keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey,
-				keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
+			err = App.retiClient.GoOnline(info.poolAppID, managerAddr, keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey, keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
 			if err != nil {
 				return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err:%w", account, info.poolAppID, err)
 			}
@@ -446,7 +435,7 @@ func (d *Daemon) ensureParticipationCheckNeedsRenewed(ctx context.Context, poolA
     Go online against this new key - done.  prior key will be removed a week later when it's out of valid range
 */
 func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
-	managerAddr, _ := types.DecodeAddress(d.info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
 
 	status, err := d.algoClient.Status().Do(context.Background())
 	if err != nil {
@@ -490,9 +479,7 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 		}
 		// Ok, time to switch to the new key - it's in valid range
 		misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToCheck.Id)
-		err = App.retiClient.GoOnline(d.info, info.poolAppID, managerAddr,
-			keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey,
-			keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
+		err = App.retiClient.GoOnline(info.poolAppID, managerAddr, keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey, keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
 		if err != nil {
 			return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppID)
 		}

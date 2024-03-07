@@ -41,7 +41,18 @@ func (lk *localKeyStore) HasAccount(publicAddress string) bool {
 	return found
 }
 
+// FindFirstSigner finds the first signer among the given addresses.
+// If addresses slice is empty, it returns the first signer from the localKeyStore's keys map.
+// Otherwise, it checks each address in the addresses slice against the localKeyStore's keys map.
+// If a signer is found, it returns the signer's address.
+// If no signer is found for any of the addresses, it returns an error.
 func (lk *localKeyStore) FindFirstSigner(addresses []string) (string, error) {
+	if len(addresses) == 0 {
+		// just grab first
+		for addr, _ := range lk.keys {
+			return addr, nil
+		}
+	}
 	for _, address := range addresses {
 		if lk.HasAccount(address) {
 			return address, nil

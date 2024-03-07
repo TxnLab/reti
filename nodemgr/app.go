@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -77,7 +78,22 @@ func initApp() *RetiApp {
 				Usage:       "The application ID of the Reti master validator contract",
 				Sources:     cli.EnvVars("RETI_APPID"),
 				Destination: &appConfig.retiAppID,
-				Aliases:     []string{"i"},
+				OnlyOnce:    true,
+			},
+			&cli.UintFlag{
+				Name:        "validator",
+				Usage:       "The Validator ID for your validator.  Can be unset if defining for first time.",
+				Sources:     cli.EnvVars("RETI_VALIDATORID"),
+				Value:       0,
+				Destination: &appConfig.retiValidatorID,
+				OnlyOnce:    true,
+			},
+			&cli.UintFlag{
+				Name:        "node",
+				Usage:       "The node number (1+) this node represents in those configured for this validator. Configuration is updated/configured based on this node",
+				Sources:     cli.EnvVars("RETI_NODENUM"),
+				Value:       0,
+				Destination: &appConfig.retiNodeNum,
 				OnlyOnce:    true,
 			},
 		},
@@ -100,13 +116,15 @@ type RetiApp struct {
 	retiClient *reti.Reti
 
 	// just here for flag bootstrapping destination
-	retiAppID uint64
+	retiAppID       uint64
+	retiValidatorID uint64
+	retiNodeNum     uint64
 }
 
 // initClients initializes both an an algod client (to correct network - which it
 // also validates) and an nfd nfdApi clinet - for nfd updates or fetches if caller
 // desires
-func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
+func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	network := cmd.Value("network").(string)
 
 	// quick validity check on possible network names...
@@ -132,15 +150,16 @@ func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 		return err
 	}
 	ac.retiAppID = cfg.RetiAppID
+	// allow secondary override of the IDs via the network specific .env file we just loaded which we couldn't
+	// have known until we'd processed the 'network' override - but only if not already set via CLI, etc.
 	if ac.retiAppID == 0 {
-		// allow secondary override (and apologize as this is getting a bit spaghetti) of app id via
-		// the network sepcific .env file we just loaded.
-		if idStr := os.Getenv("RETI_APPID"); idStr != "" {
-			ac.retiAppID, err = strconv.ParseUint(idStr, 10, 64)
-			if err != nil {
-				return err
-			}
-		}
+		setIntFromEnv(&ac.retiAppID, "RETI_APPID")
+	}
+	if ac.retiValidatorID == 0 {
+		setIntFromEnv(&ac.retiValidatorID, "RETI_VALIDATORID")
+	}
+	if ac.retiNodeNum == 0 {
+		setIntFromEnv(&ac.retiNodeNum, "RETI_NODENUM")
 	}
 	if ac.retiAppID == 0 {
 		return fmt.Errorf("the ID of the Reti Validator contract must be set using either -id or RETI_APPID env var!")
@@ -159,19 +178,28 @@ func (ac *RetiApp) initClients(_ context.Context, cmd *cli.Command) error {
 	ac.nfdApi = api
 
 	// Initialize the 'reti' client
-	retiClient, err := reti.New(ac.retiAppID, ac.logger, ac.algoClient, ac.signer)
+	retiClient, err := reti.New(ac.retiAppID, ac.logger, ac.algoClient, ac.signer, ac.retiValidatorID, ac.retiNodeNum)
 	if err != nil {
 		return err
 	}
 	ac.retiClient = retiClient
+	return retiClient.LoadState(ctx)
+}
 
+func setIntFromEnv(val *uint64, envName string) error {
+	if strVal := os.Getenv("envName"); strVal != "" {
+		intVal, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return err
+		}
+		*val = intVal
+	}
 	return nil
 }
 
 func checkConfigured(ctx context.Context, command *cli.Command) error {
-	_, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
+	if !App.retiClient.IsConfigured() {
+		return errors.New("validator not configured")
 	}
 	return nil
 }

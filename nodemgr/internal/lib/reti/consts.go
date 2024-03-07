@@ -24,6 +24,9 @@ const (
 	StakePoolAlgodVer      = "algodVer"
 )
 
+// Algorand address to use as sender for read-only simulate calls (not signed but still has to be valid address)
+var DummyAlgoSender, _ = types.DecodeAddress("DUMMYE34NWB6LZ6QGVLHE6N43M6TN65VRBI4LSITTEIHCF4ILVMRCB42ZE")
+
 func GetValidatorListBoxName(id uint64) []byte {
 	prefix := []byte("v")
 	ibytes := make([]byte, 8)

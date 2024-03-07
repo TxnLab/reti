@@ -39,7 +39,7 @@ export class ValidatorConfig {
 
     MaxAlgoPerPool: bigint; // maximum stake allowed per pool (to keep under incentive limits)
 
-    PoolsPerNode: number; // Number of pools to allow per node (max of 4 is recommended)
+    PoolsPerNode: number; // Number of pools to allow per node (max of 3 is recommended)
 
     // getValidatorConfig(uint64)(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)
     // constructor to take array of values like ABI string above and set into the named instance vars
@@ -294,6 +294,7 @@ export async function addStakingPool(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
     validatorID: number,
+    nodeNum: number,
     vldtrAcct: Account,
     poolMbr: bigint,
     poolInitMbr: bigint
@@ -315,10 +316,12 @@ export async function addStakingPool(
         // Now add a staking pool
         addPoolResults = await validatorClient
             .compose()
+            .gas({})
             .addPool(
                 {
                     mbrPayment: { transaction: payPoolMbr, signer: context.testAccount },
                     validatorID,
+                    nodeNum,
                 },
                 {
                     sendParams: {
@@ -337,7 +340,7 @@ export async function addStakingPool(
         console.log((exception as LogicError).message);
         throw exception;
     }
-    const poolKey = new ValidatorPoolKey(addPoolResults.returns![0]);
+    const poolKey = new ValidatorPoolKey(addPoolResults.returns![1]);
 
     // Pay the mbr to the newly created staking pool contract to cover its upcoming box mbr storage req
     const payStakingPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
@@ -354,6 +357,7 @@ export async function addStakingPool(
     );
     await newPoolClient
         .compose()
+        .gas({})
         .initStorage(
             {
                 // the required MBR payment transaction
@@ -424,16 +428,19 @@ export async function addStake(
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
 
         const dummy = (
-            await validatorClient.findPoolForStaker(
-                { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
-                {
-                    sendParams: {
-                        fee: AlgoAmount.MicroAlgos(2000),
-                        populateAppCallResources: true,
-                    },
-                }
-            )
-        ).return!;
+            await validatorClient
+                .compose()
+                .gas({})
+                .findPoolForStaker(
+                    { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
+                    {
+                        sendParams: {
+                            fee: AlgoAmount.MicroAlgos(2000),
+                        },
+                    }
+                )
+                .simulate({ allowUnnamedResources: true })
+        ).returns![1];
 
         const poolKey = new ValidatorPoolKey(dummy[0]);
         const willBeNewStaker = dummy[1];

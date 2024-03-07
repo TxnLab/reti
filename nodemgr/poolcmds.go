@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -59,6 +58,13 @@ func GetPoolCmdOpts() *cli.Command {
 				Usage:    "Add a new staking pool to this node",
 				Category: "pool",
 				Action:   PoolAdd,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:  "node",
+						Usage: "The node number (1+) to add this pool to - defaults to root config",
+						Value: 0,
+					},
+				},
 			},
 			{
 				Name:  "claim",
@@ -144,21 +150,9 @@ func GetPoolCmdOpts() *cli.Command {
 }
 
 func PoolsList(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
-
-	state, err := App.retiClient.GetValidatorState(info.Config.ID, signerAddr)
+	state, err := App.retiClient.GetValidatorState(App.retiClient.Info.Config.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get validator state: %w", err)
-	}
-
-	// Walk every pool (and also see if it's on this node)
-	pools, err := App.retiClient.GetValidatorPools(info.Config.ID, signerAddr)
-	if err != nil {
-		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 
 	// we just want the latest round so we can show last vote/proposal relative to current round
@@ -186,15 +180,18 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Pool (*=Local, O=Online)\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
-	for i, pool := range pools {
+	for i, pool := range App.retiClient.Info.Pools {
 		var (
 			flags   []string
 			flagStr string
 		)
 		// Flag the pool id if it's a pool on this node
-		if slices.ContainsFunc(info.Pools, func(info reti.PersistedPoolInfo) bool { return info.PoolAppID == pool.PoolAppID }) {
-			flags = append(flags, "*")
-		} else if !command.Value("all").(bool) {
+		for _, poolAppID := range App.retiClient.Info.LocalPools {
+			if poolAppID == pool.PoolAppID {
+				flags = append(flags, "*")
+			}
+		}
+		if len(flags) == 0 && !command.Value("all").(bool) {
 			continue
 		}
 		acctInfo, err := algo.GetBareAccount(context.Background(), App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
@@ -244,38 +241,19 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	return err
 }
 
-func determinePoolID(info *reti.ValidatorInfo, poolID uint64) (int, error) {
-	for i, pool := range info.Pools {
-		if pool.PoolID == poolID {
-			return i, nil
-		}
-	}
-	return 0, fmt.Errorf("invalid pool ID")
-}
-
 func PoolLedger(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-	localPoolIdx, err := determinePoolID(info, command.Value("pool").(uint64))
-	if err != nil {
-		return err
-	}
-
-	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
-	if err != nil {
-		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
-	}
-	signerAddr, _ := types.DecodeAddress(signer)
-
 	var (
 		nextPayTime   time.Time
-		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
+		epochDuration = time.Duration(App.retiClient.Info.Config.PayoutEveryXMins) * time.Minute
 	)
-	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[localPoolIdx].PoolAppID)
+	poolID := command.Value("pool").(uint64)
+	if _, found := App.retiClient.Info.LocalPools[poolID]; !found {
+		return fmt.Errorf("pool num:%d not on this node", poolID)
+	}
+
+	lastPayout, err := App.retiClient.GetLastPayout(App.retiClient.Info.LocalPools[poolID])
 	if err == nil {
-		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
+		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(App.retiClient.Info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
 		nextPayTime = time.Now()
 	}
@@ -295,17 +273,12 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[localPoolIdx].PoolAppID)
+	ledger, err := App.retiClient.GetLedgerforPool(App.retiClient.Info.LocalPools[poolID])
 	if err != nil {
 		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
 	}
 
-	pools, err := App.retiClient.GetValidatorPools(info.Config.ID, signerAddr)
-	if err != nil {
-		return fmt.Errorf("failed to get validator pools: %w", err)
-	}
-
-	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[localPoolIdx].PoolAppID, pools[info.Pools[localPoolIdx].PoolID-1].TotalAlgoStaked)
+	rewardAvail := App.retiClient.PoolAvailableRewards(App.retiClient.Info.LocalPools[poolID], App.retiClient.Info.Pools[poolID-1].TotalAlgoStaked)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
@@ -325,68 +298,45 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 }
 
 func PoolAdd(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
+	nodeNum := command.Value("node").(uint64)
+	if nodeNum == 0 {
+		nodeNum = App.retiNodeNum
 	}
-
-	if len(info.Pools) >= info.Config.PoolsPerNode {
+	if len(App.retiClient.Info.LocalPools) >= App.retiClient.Info.Config.PoolsPerNode {
 		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
 	}
 
-	poolKey, err := App.retiClient.AddStakingPool(info)
+	poolKey, err := App.retiClient.AddStakingPool(nodeNum)
 	if err != nil {
 		return err
 	}
 	slog.Info("added new pool", "key", poolKey.String())
-	info.Pools = append(info.Pools, reti.PersistedPoolInfo{
-		PoolID:    poolKey.PoolID,
-		PoolAppID: poolKey.PoolAppID,
-	})
-	return SaveValidatorInfo(info)
+	return App.retiClient.LoadState(ctx)
 }
 
 func ClaimPool(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-
-	if len(info.Pools) >= info.Config.PoolsPerNode {
+	if len(App.retiClient.Info.LocalPools) >= App.retiClient.Info.Config.PoolsPerNode {
 		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
 	}
 
-	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
+	_, err := App.signer.FindFirstSigner([]string{App.retiClient.Info.Config.Owner, App.retiClient.Info.Config.Manager})
 	if err != nil {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
 	}
-	signerAddr, _ := types.DecodeAddress(signer)
 
-	// Walk every pool (and also see if it's on this node)
-	pools, err := App.retiClient.GetValidatorPools(info.Config.ID, signerAddr)
-	if err != nil {
-		return fmt.Errorf("failed to get validator pools: %w", err)
-	}
-
-	idToClaim := int(command.Value("pool").(uint64))
-	if idToClaim == 0 {
+	poolID := command.Value("pool").(uint64)
+	if poolID == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
-	if idToClaim > len(pools) {
-		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", idToClaim)
+	if _, found := App.retiClient.Info.LocalPools[poolID]; found {
+		return fmt.Errorf("pool with ID %d has already been claimed by this validator", poolID)
 	}
-	if slices.ContainsFunc(info.Pools, func(info reti.PersistedPoolInfo) bool {
-		return info.PoolAppID == pools[idToClaim-1].PoolAppID
-	}) {
-		return fmt.Errorf("pool with ID %d has already been claimed by this validator", idToClaim)
+	if poolID > uint64(len(App.retiClient.Info.Pools)) {
+		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
 	}
-	// 0 out the totals we store in local state - we use same struct for convenience but these values aren't used
-	info.Pools = append(info.Pools, reti.PersistedPoolInfo{
-		PoolID:    uint64(idToClaim),
-		PoolAppID: pools[idToClaim-1].PoolAppID,
-	})
 
-	err = SaveValidatorInfo(info)
+	// TODO
+	// Move the pool in its node pool assignments to this node
 
 	misc.Infof(App.logger, "You have successfully imported/claimed the pool")
 	if err != nil {
@@ -396,11 +346,6 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 }
 
 func StakeAdd(ctx context.Context, command *cli.Command) error {
-	_, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-
 	// account, amount, validator
 	stakerAddr, err := types.DecodeAddress(command.Value("account").(string))
 	if err != nil {
@@ -415,11 +360,6 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 }
 
 func StakeRemove(ctx context.Context, command *cli.Command) error {
-	_, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
-	}
-
 	// account, amount, validator, pool
 	stakerAddr, err := types.DecodeAddress(command.Value("account").(string))
 	if err != nil {
@@ -451,15 +391,11 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 }
 
 func PayoutPool(ctx context.Context, command *cli.Command) error {
-	info, err := LoadValidatorInfo()
-	if err != nil {
-		return fmt.Errorf("validator not configured: %w", err)
+	poolID := command.Value("pool").(uint64)
+	if _, found := App.retiClient.Info.LocalPools[poolID]; !found {
+		return fmt.Errorf("pool num:%d not on this node", poolID)
 	}
-	localPoolIdx, err := determinePoolID(info, command.Value("pool").(uint64))
-	if err != nil {
-		return err
-	}
-	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
+	signerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
 
-	return App.retiClient.EpochBalanceUpdate(info, int(info.Pools[localPoolIdx].PoolID), info.Pools[localPoolIdx].PoolAppID, signerAddr)
+	return App.retiClient.EpochBalanceUpdate(int(poolID), App.retiClient.Info.LocalPools[poolID], signerAddr)
 }
