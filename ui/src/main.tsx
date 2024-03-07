@@ -52,7 +52,13 @@ if (import.meta.env.VITE_ALGOD_NETWORK === '') {
 const queryClient = new QueryClient()
 
 // Tanstack Router instance
-const router = createRouter({ routeTree })
+const router = createRouter({
+  routeTree,
+  context: {
+    queryClient,
+  },
+  defaultPreloadStaleTime: 0,
+})
 
 declare module '@tanstack/react-router' {
   interface Register {

@@ -1,26 +1,27 @@
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { Navigate, createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ValidatorTable } from '@/components/ValidatorTable'
 
-export const Route = createLazyFileRoute('/')({
+export const Route = createFileRoute('/')({
   component: Index,
 })
 
 function Index() {
   const { providers, activeAddress, isReady } = useWallet()
 
+  if (activeAddress) {
+    return <Navigate to="/dashboard" />
+  }
+
   return (
     <>
       <PageHeader title={activeAddress ? 'Staking Dashboard' : null} />
       <PageMain>
-        {activeAddress ? (
-          <ValidatorTable />
-        ) : isReady ? (
-          <div className="flex items-center justify-center h-96">
+        {isReady ? (
+          <div className="flex items-center justify-center py-24">
             <Card className="w-[350]">
               <CardHeader>
                 <CardTitle>Connect your wallet</CardTitle>
