@@ -300,7 +300,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 func PoolAdd(ctx context.Context, command *cli.Command) error {
 	nodeNum := command.Value("node").(uint64)
 	if nodeNum == 0 {
-		nodeNum = App.retiNodeNum
+		nodeNum = App.retiClient.NodeNum
 	}
 	if len(App.retiClient.Info.LocalPools) >= App.retiClient.Info.Config.PoolsPerNode {
 		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
@@ -334,11 +334,12 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 	if poolID > uint64(len(App.retiClient.Info.Pools)) {
 		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
 	}
+	err = App.retiClient.MovePoolToNode(App.retiClient.Info.Pools[poolID-1].PoolAppID, App.retiClient.NodeNum)
+	if err != nil {
+		return fmt.Errorf("error in call to MovePoolToNode, err:%w", err)
+	}
 
-	// TODO
-	// Move the pool in its node pool assignments to this node
-
-	misc.Infof(App.logger, "You have successfully imported/claimed the pool")
+	misc.Infof(App.logger, "You have successfully moved the pool")
 	if err != nil {
 		return err
 	}

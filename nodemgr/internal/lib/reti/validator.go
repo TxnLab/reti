@@ -754,6 +754,45 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 	return poolKey, err
 }
 
+func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
+
+	atc := transaction.AtomicTransactionComposer{}
+	misc.Infof(r.logger, "trying to move pool app id:%d to node number:%d", poolAppID, nodeNum)
+	movePoolMethod, _ := r.validatorContract.GetMethodByName("movePoolToNode")
+
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:  r.RetiAppID,
+		Method: movePoolMethod,
+		MethodArgs: []any{
+			r.Info.Config.ID,
+			poolAppID,
+			nodeNum,
+		},
+		ForeignApps: []uint64{r.poolTemplateAppID()},
+		BoxReferences: []types.AppBoxReference{
+			{AppID: 0, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          managerAddr,
+		Signer:          algo.SignWithAccountForATC(r.signer, managerAddr.String()),
+	})
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	// First determine if we NEED to initialize this pool !
 	if val, err := r.algoClient.GetApplicationBoxByName(poolKey.PoolAppID, GetStakerLedgerBoxName()).Do(context.Background()); err == nil {

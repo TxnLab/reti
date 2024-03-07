@@ -637,18 +637,27 @@ export class ValidatorRegistry extends Contract {
     /**
      * Find the specified pool (in any node number) and move it to the specified node.
      * No-op if success, asserts if not found or can't move  (no space in target)
+     * Only callable by owner or manager
      */
     movePoolToNode(validatorID: ValidatorID, poolAppID: uint64, nodeNum: uint64): void {
+        // Must be called by the owner or manager of the validator.
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
+        );
+
         const nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments);
         assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
         // iterate  all the PoolAppIDs slots to find the specified poolAppID
-        for (let i = 0; i < MAX_POOLS_PER_NODE; i += 1) {
-            if (nodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] === poolAppID) {
-                // found it - clear this slot
-                this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] = 0;
-                // now - move it..
-                this.addPoolToNode(validatorID, poolAppID, nodeNum);
-                return;
+        for (let srcNode = 0; srcNode < MAX_NODES; srcNode += 1) {
+            for (let i = 0; i < MAX_POOLS_PER_NODE; i += 1) {
+                if (nodePoolAssignments.Nodes[srcNode].PoolAppIDs[i] === poolAppID) {
+                    // found it - clear this slot
+                    this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[srcNode].PoolAppIDs[i] = 0;
+                    // now - add it to desired node
+                    this.addPoolToNode(validatorID, poolAppID, nodeNum);
+                    return;
+                }
             }
         }
         throw Error("couldn't find pool app id in nodes to move");
