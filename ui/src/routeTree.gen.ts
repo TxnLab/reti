@@ -11,11 +11,18 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as ValidatorsImport } from './routes/validators'
 import { Route as DashboardImport } from './routes/dashboard'
 import { Route as AddImport } from './routes/add'
 import { Route as IndexImport } from './routes/index'
+import { Route as ValidatorsValidatorIdImport } from './routes/validators_.$validatorId'
 
 // Create/Update Routes
+
+const ValidatorsRoute = ValidatorsImport.update({
+  path: '/validators',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const DashboardRoute = DashboardImport.update({
   path: '/dashboard',
@@ -29,6 +36,11 @@ const AddRoute = AddImport.update({
 
 const IndexRoute = IndexImport.update({
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ValidatorsValidatorIdRoute = ValidatorsValidatorIdImport.update({
+  path: '/validators/$validatorId',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -48,6 +60,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardImport
       parentRoute: typeof rootRoute
     }
+    '/validators': {
+      preLoaderRoute: typeof ValidatorsImport
+      parentRoute: typeof rootRoute
+    }
+    '/validators/$validatorId': {
+      preLoaderRoute: typeof ValidatorsValidatorIdImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -57,6 +77,8 @@ export const routeTree = rootRoute.addChildren([
   IndexRoute,
   AddRoute,
   DashboardRoute,
+  ValidatorsRoute,
+  ValidatorsValidatorIdRoute,
 ])
 
 /* prettier-ignore-end */

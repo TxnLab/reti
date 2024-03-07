@@ -62,7 +62,10 @@ export function getValidatorState(
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
-export async function fetchValidator(id: number | bigint, client?: ValidatorRegistryClient) {
+export async function fetchValidator(
+  id: string | number | bigint,
+  client?: ValidatorRegistryClient,
+) {
   try {
     const activeAddress = getActiveWalletAddress()
 
@@ -72,9 +75,11 @@ export async function fetchValidator(id: number | bigint, client?: ValidatorRegi
 
     const validatorClient = client || makeSimulateValidatorClient(activeAddress)
 
+    const validatorId = Number(id)
+
     const [config, state] = await Promise.all([
-      getValidatorConfig(id, validatorClient),
-      getValidatorState(id, validatorClient),
+      getValidatorConfig(validatorId, validatorClient),
+      getValidatorState(validatorId, validatorClient),
     ])
 
     const rawConfig = config.returns![0] as ValidatorConfigRaw
@@ -140,7 +145,7 @@ export const validatorsQueryOptions = queryOptions({
   queryFn: () => fetchValidators(),
 })
 
-export const validatorQueryOptions = (validatorId: number | bigint) =>
+export const validatorQueryOptions = (validatorId: string) =>
   queryOptions({
     queryKey: ['validator', { validatorId }],
     queryFn: () => fetchValidator(validatorId),

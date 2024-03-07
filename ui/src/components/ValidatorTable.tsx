@@ -1,4 +1,5 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { Link } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal } from 'lucide-react'
 import { DataTable } from '@/components/DataTable'
@@ -7,7 +8,9 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Validator } from '@/interfaces/validator'
@@ -122,10 +125,23 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled={stakingDisabled}>Stake</DropdownMenuItem>
-                <DropdownMenuItem disabled={stakingDisabled}>Restake</DropdownMenuItem>
-                <DropdownMenuItem disabled={stakingDisabled}>Unstake</DropdownMenuItem>
-                <DropdownMenuItem disabled={stakingDisabled}>Claim rewards</DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem disabled={stakingDisabled}>Stake</DropdownMenuItem>
+                  <DropdownMenuItem disabled={stakingDisabled}>Restake</DropdownMenuItem>
+                  <DropdownMenuItem disabled={stakingDisabled}>Unstake</DropdownMenuItem>
+                  <DropdownMenuItem disabled={stakingDisabled}>Claim rewards</DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/validators/$validatorId"
+                      params={{ validatorId: row.original.id.toString() }}
+                    >
+                      View Details
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
