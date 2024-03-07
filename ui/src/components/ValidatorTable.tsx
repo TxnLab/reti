@@ -1,6 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { Link } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
+import { useWallet } from '@txnlab/use-wallet'
 import { MoreHorizontal } from 'lucide-react'
 import { DataTable } from '@/components/DataTable'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
@@ -22,6 +23,8 @@ interface ValidatorTableProps {
 }
 
 export function ValidatorTable({ validators }: ValidatorTableProps) {
+  const { activeAddress } = useWallet()
+
   const columns: ColumnDef<Validator>[] = [
     {
       accessorKey: 'id',
@@ -113,6 +116,8 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
           row.original.totalStaked >= row.original.maxStake ||
           row.original.numPools == 0
 
+        const isManager = row.original.manager === activeAddress
+
         return (
           <div className="flex items-center gap-x-2">
             <Button size="sm" disabled={stakingDisabled}>
@@ -125,7 +130,7 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuGroup>
                   <DropdownMenuItem disabled={stakingDisabled}>Stake</DropdownMenuItem>
                   <DropdownMenuItem disabled={stakingDisabled}>Restake</DropdownMenuItem>
@@ -142,6 +147,16 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                       View Details
                     </Link>
                   </DropdownMenuItem>
+                  {isManager && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        to="/validators/$validatorId/manage"
+                        params={{ validatorId: row.original.id.toString() }}
+                      >
+                        Manage
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
