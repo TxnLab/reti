@@ -116,7 +116,9 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
           row.original.totalStaked >= row.original.maxStake ||
           row.original.numPools == 0
 
+        const isOwner = row.original.owner === activeAddress
         const isManager = row.original.manager === activeAddress
+        const canEdit = isOwner || isManager
 
         return (
           <div className="flex items-center gap-x-2">
@@ -144,19 +146,9 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                       to="/validators/$validatorId"
                       params={{ validatorId: row.original.id.toString() }}
                     >
-                      View Details
+                      {canEdit ? 'Manage' : 'View'}
                     </Link>
                   </DropdownMenuItem>
-                  {isManager && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        to="/validators/$validatorId/manage"
-                        params={{ validatorId: row.original.id.toString() }}
-                      >
-                        Manage
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
