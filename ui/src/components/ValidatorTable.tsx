@@ -69,6 +69,7 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => 100 - row.numStakers,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Spaces Left" />,
       cell: ({ row }) => {
+        if (row.original.numPools == 0) return '--'
         const maxStakers = 100
         const spacesLeft = maxStakers - row.original.numStakers
         return spacesLeft
