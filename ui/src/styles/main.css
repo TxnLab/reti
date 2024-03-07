@@ -57,3 +57,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+@font-face {
+  font-family: 'Algo';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/Algo.woff2') format('woff2'), url('/fonts/Algo.woff') format('woff'),
+    url('/fonts/Algo.ttf') format('truetype');
+}
