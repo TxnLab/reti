@@ -611,7 +611,12 @@ export class StakingPool extends Contract {
     }
 
     goOffline(): void {
-        assert(this.isOwnerOrManagerCaller());
+        // we can be called by validator contract if we're being moved (which in turn only is allowed to be called
+        // by validator owner or manager), but if not - must be owner or manager
+        if (this.txn.sender !== AppID.fromUint64(this.CreatingValidatorContractAppID.value).address) {
+            assert(this.isOwnerOrManagerCaller());
+        }
+
         sendOfflineKeyRegistration({});
     }
 

@@ -78,8 +78,10 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 			return
 		case <-checkTime.C:
 			// Make sure our 'config' is fresh in case the user updated it
+			// they could have added new pools, moved them between nodes, etc.
 			err := d.refetchConfig()
 			if err != nil {
+				misc.Warnf(d.logger, "error in fetching configuration, will retry.  err:%v", err)
 				// try later.
 				break
 			}

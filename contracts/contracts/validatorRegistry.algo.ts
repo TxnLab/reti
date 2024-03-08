@@ -636,6 +636,8 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Find the specified pool (in any node number) and move it to the specified node.
+     * The pool account is forced offline if moved so prior node will still run for 320 rounds but
+     * new key goes online on new node soon after (320 rounds after it goes online)
      * No-op if success, asserts if not found or can't move  (no space in target)
      * Only callable by owner or manager
      */
@@ -649,11 +651,18 @@ export class ValidatorRegistry extends Contract {
         const nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments);
         assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
         // iterate  all the PoolAppIDs slots to find the specified poolAppID
-        for (let srcNode = 0; srcNode < MAX_NODES; srcNode += 1) {
+        for (let srcNodeIdx = 0; srcNodeIdx < MAX_NODES; srcNodeIdx += 1) {
             for (let i = 0; i < MAX_POOLS_PER_NODE; i += 1) {
-                if (nodePoolAssignments.Nodes[srcNode].PoolAppIDs[i] === poolAppID) {
+                if (nodePoolAssignments.Nodes[srcNodeIdx].PoolAppIDs[i] === poolAppID) {
+                    assert(nodeNum - 1 !== srcNodeIdx, "can't move to same node");
                     // found it - clear this slot
-                    this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[srcNode].PoolAppIDs[i] = 0;
+                    this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[srcNodeIdx].PoolAppIDs[i] = 0;
+
+                    // Force that pool offline since it's moving nodes !
+                    sendMethodCall<typeof StakingPool.prototype.goOffline>({
+                        applicationID: AppID.fromUint64(poolAppID),
+                    });
+
                     // now - add it to desired node
                     this.addPoolToNode(validatorID, poolAppID, nodeNum);
                     return;

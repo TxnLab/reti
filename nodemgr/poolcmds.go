@@ -179,20 +179,32 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(tw, "Viewing pools for our Node:", App.retiClient.NodeNum)
 	fmt.Fprintln(tw, "Pool (*=Local, O=Online)\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
 	for i, pool := range App.retiClient.Info.Pools {
 		var (
 			flags   []string
 			flagStr string
 		)
-		// Flag the pool id if it's a pool on this node
-		for _, poolAppID := range App.retiClient.Info.LocalPools {
-			if poolAppID == pool.PoolAppID {
-				flags = append(flags, "*")
+		// find the pool in the node assignments (so we can show node num if necessary)
+		nodeNum := 0
+		for nodeIdx, nodeConfigs := range App.retiClient.Info.NodePoolAssignments.Nodes {
+			for _, appID := range nodeConfigs.PoolAppIDs {
+				if appID == pool.PoolAppID {
+					nodeNum = nodeIdx + 1
+					break
+				}
 			}
 		}
-		if len(flags) == 0 && !command.Value("all").(bool) {
+		if nodeNum == 0 {
+			return fmt.Errorf("unable to determine node number for pool appid:%d", pool.PoolAppID)
+		}
+		if uint64(nodeNum) == App.retiClient.NodeNum {
+			flags = append(flags, "*")
+		} else if !command.Value("all").(bool) {
 			continue
+		} else {
+			flags = append(flags, fmt.Sprintf("Node:%d", nodeNum))
 		}
 		acctInfo, err := algo.GetBareAccount(context.Background(), App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
 		if err != nil {
@@ -202,9 +214,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 			flags = append(flags, "O")
 		}
 		if len(flags) == 1 {
-			flagStr = "(" + flags[0] + "  )"
+			flagStr = " (" + flags[0] + "  )"
 		} else if len(flags) == 2 {
-			flagStr = "(" + flags[0] + " " + flags[1] + ")"
+			flagStr = " (" + flags[0] + " " + flags[1] + ")"
 		}
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)
 		totalRewards += rewardAvail

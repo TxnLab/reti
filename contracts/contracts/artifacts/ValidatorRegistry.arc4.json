@@ -361,7 +361,7 @@
     },
     {
       "name": "movePoolToNode",
-      "desc": "Find the specified pool (in any node number) and move it to the specified node.No-op if success, asserts if not found or can't move  (no space in target)Only callable by owner or manager",
+      "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is sNo-op if success, asserts if not found or can't move  (no space in target)Only callable by owner or manager",
       "args": [
         {
           "name": "validatorID",

@@ -2501,12 +2501,25 @@ goOnline:
 goOffline:
 	proto 0 0
 
-	// contracts/stakingPool.algo.ts:614
+	// *if30_condition
+	// contracts/stakingPool.algo.ts:616
+	// this.txn.sender !== AppID.fromUint64(this.CreatingValidatorContractAppID.value).address
+	txn Sender
+	byte 0x63726561746f72417070 // "creatorApp"
+	app_global_get
+	app_params_get AppAddress
+	pop
+	!=
+	bz *if30_end
+
+	// *if30_consequent
+	// contracts/stakingPool.algo.ts:617
 	// assert(this.isOwnerOrManagerCaller())
 	callsub isOwnerOrManagerCaller
 	assert
 
-	// contracts/stakingPool.algo.ts:615
+*if30_end:
+	// contracts/stakingPool.algo.ts:620
 	// sendOfflineKeyRegistration({})
 	itxn_begin
 	int keyreg
@@ -2542,12 +2555,12 @@ linkToNFD:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:622
+	// contracts/stakingPool.algo.ts:627
 	// assert(this.isOwnerOrManagerCaller())
 	callsub isOwnerOrManagerCaller
 	assert
 
-	// contracts/stakingPool.algo.ts:624
+	// contracts/stakingPool.algo.ts:629
 	// registryID = sendMethodCall<typeof ValidatorRegistry.prototype.getNFDRegistryID>({
 	//             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
 	//             methodArgs: [],
@@ -2558,13 +2571,13 @@ linkToNFD:
 	method "getNFDRegistryID()uint64"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:625
+	// contracts/stakingPool.algo.ts:630
 	// applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:626
+	// contracts/stakingPool.algo.ts:631
 	// methodArgs: []
 	// Fee field not set, defaulting to 0
 	int 0
@@ -2580,7 +2593,7 @@ linkToNFD:
 	btoi
 	frame_bury 0 // registryID: uint64
 
-	// contracts/stakingPool.algo.ts:629
+	// contracts/stakingPool.algo.ts:634
 	// sendAppCall({
 	//             applicationID: AppID.fromUint64(registryID),
 	//             applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)],
@@ -2589,12 +2602,12 @@ linkToNFD:
 	int appl
 	itxn_field TypeEnum
 
-	// contracts/stakingPool.algo.ts:630
+	// contracts/stakingPool.algo.ts:635
 	// applicationID: AppID.fromUint64(registryID)
 	frame_dig 0 // registryID: uint64
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:631
+	// contracts/stakingPool.algo.ts:636
 	// applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)]
 	byte 0x7665726966795f6e66645f61646472 // "verify_nfd_addr"
 	itxn_field ApplicationArgs
@@ -2629,12 +2642,12 @@ getEntryTime:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:647
+	// contracts/stakingPool.algo.ts:652
 	// entryTime = globals.latestTimestamp
 	global LatestTimestamp
 	frame_bury 0 // entryTime: uint64
 
-	// contracts/stakingPool.algo.ts:650
+	// contracts/stakingPool.algo.ts:655
 	// return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10;
 	frame_dig 0 // entryTime: uint64
 	int 896

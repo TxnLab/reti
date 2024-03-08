@@ -714,7 +714,7 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 	}
 
 	params.FlatFee = true
-	params.Fee = types.MicroAlgos(max(uint64(params.Fee), 1000) + params.MinFee)
+	params.Fee = types.MicroAlgos(max(uint64(params.MinFee), 1000) + params.MinFee)
 
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppID,
@@ -768,6 +768,10 @@ func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
 	misc.Infof(r.logger, "trying to move pool app id:%d to node number:%d", poolAppID, nodeNum)
 	movePoolMethod, _ := r.validatorContract.GetMethodByName("movePoolToNode")
 
+	// pay for go offline call as well
+	params.FlatFee = true
+	params.Fee = types.MicroAlgos(max(uint64(params.MinFee), 1000) + (2 * params.MinFee))
+
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppID,
 		Method: movePoolMethod,
@@ -776,7 +780,10 @@ func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
 			poolAppID,
 			nodeNum,
 		},
-		ForeignApps: []uint64{r.poolTemplateAppID()},
+		ForeignApps: []uint64{
+			r.poolTemplateAppID(),
+			poolAppID,
+		},
 		BoxReferences: []types.AppBoxReference{
 			{AppID: 0, Name: GetValidatorListBoxName(r.Info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
