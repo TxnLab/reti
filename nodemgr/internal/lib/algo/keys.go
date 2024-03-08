@@ -41,14 +41,6 @@ func GetParticipationKeys(ctx context.Context, algoClient *algod.Client) (PartKe
 	// collate and return the ParticipationKey slice into a map by 'Address' within the ParticipationKey
 	participationKeys := PartKeysByAddress{}
 	for _, key := range response {
-		// decode the base64 values
-		//vpk, _ := base64.StdEncoding.DecodeString(key.Key.VoteParticipationKey)
-		//selpk, _ := base64.StdEncoding.DecodeString(key.Key.SelectionParticipationKey)
-		//stproofk, _ := base64.StdEncoding.DecodeString(key.Key.StateProofKey)
-		//key.Key.VoteParticipationKey = string(vpk)
-		//key.Key.SelectionParticipationKey = string(selpk)
-		//key.Key.StateProofKey = string(stproofk)
-
 		participationKeys[key.Address] = append(participationKeys[key.Address], key)
 	}
 	return participationKeys, nil
