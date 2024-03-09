@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"net/http"
 	"os"
 	"sort"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/ssgreg/repeat"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
@@ -42,7 +44,7 @@ func newDaemon() *Daemon {
 	}
 }
 
-func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup) {
+func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, errc chan error) {
 	d.logger.Info("Starting Réti daemon")
 
 	wg.Add(1)
@@ -50,6 +52,35 @@ func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup) {
 		defer wg.Done()
 		d.KeyWatcher(ctx)
 	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		http.Handle("/ready", isReady())
+		http.Handle("/metrics", promhttp.Handler())
+
+		host := ":http"
+		srv := &http.Server{Addr: host} // default to http/80
+		go func() {
+			misc.Infof(d.logger, "HTTP server listening on %q", host)
+			srv.ListenAndServe()
+		}()
+
+		<-ctx.Done()
+		misc.Infof(d.logger, "shutting down HTTP server at %q", host)
+
+		// Shutdown gracefully with a 30s max wait.
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		_ = srv.Shutdown(ctx)
+	}()
+}
+
+func isReady() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 }
 
 // KeyWatcher keeps track of both active pools for this node (updated via configuration file) as well
@@ -85,6 +116,7 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 				// try later.
 				break
 			}
+
 			d.updatePoolVersions(ctx)
 			d.checkPools(ctx)
 		case <-blockTimeUpdate.C:

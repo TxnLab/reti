@@ -23,7 +23,7 @@ const (
 	MaxPoolsPerNode = 4
 )
 
-// ValidatorInfo is loaded at startup but also on-demand via Reti.LoadStateFromChain
+// ValidatorInfo is loaded at startup but also on-demand via Reti.LoadState
 type ValidatorInfo struct {
 	Config              ValidatorConfig
 	Pools               []PoolInfo

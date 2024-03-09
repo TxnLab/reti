@@ -71,6 +71,11 @@ func (r *Reti) IsConfigured() bool {
 	return r.RetiAppID != 0 && r.ValidatorID != 0 && r.NodeNum != 0
 }
 
+// LoadState loads the state of the Reti instance by retrieving information from
+// the chain and setting the local values to the on-chain current state.
+// It also verifies that the validator has either owner or manager keys present, and match the
+// keys we have available (which will have to sign for either owner or manager depending on call)
+// Prometheus metrics are also updated based on loaded state.
 func (r *Reti) LoadState(ctx context.Context) error {
 	if r.RetiAppID == 0 {
 		return errors.New("reti App ID not defined")
@@ -92,11 +97,15 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("neither owner or manager address for validator id:%d has local keys present", r.ValidatorID)
 		}
-
+		//state, err := r.GetValidatorState(r.ValidatorID)
+		//if err != nil {
+		//	return fmt.Errorf("unable to GetValidatorState: %w", err)
+		//}
 		pools, err := r.GetValidatorPools(r.ValidatorID)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorPools: %w", err)
 		}
+
 		assignments, err := r.GetValidatorNodePoolAssignments(r.ValidatorID)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorNodePoolAssignments: %w", err)
@@ -114,13 +123,36 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		//misc.Infof(r.Logger, "test")
 		//r.Logger.Info("state loaded", "validator", r.ValidatorID, "node", r.NodeNum)
 
+		// Just report metrics for OUR node - validators will presumably scrape metrics from all their nodes
+		var (
+			localStakers      uint64
+			localTotalStaked  uint64
+			localTotalRewards float64
+		)
 		for _, poolAppID := range r.Info.NodePoolAssignments.Nodes[r.NodeNum-1].PoolAppIDs {
-			poolID, err := r.GetPoolID(poolAppID)
-			if err != nil {
-				return fmt.Errorf("couldn't fetch pool id for staking pool app id:%d, err:%w", poolAppID, err)
+			var poolID uint64
+			for poolIdx, pool := range pools {
+				if pool.PoolAppID == poolAppID {
+					localStakers += uint64(pool.TotalStakers)
+					localTotalStaked += pool.TotalAlgoStaked
+					localTotalRewards += float64(r.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)) / 1e6
+
+					poolID = uint64(poolIdx + 1)
+					break
+				}
+			}
+			if poolID == 0 {
+				return fmt.Errorf("couldn't fetch pool id for staking pool app id:%d", poolAppID)
 			}
 			r.Info.LocalPools[poolID] = poolAppID
+
 		}
+
+		promNumPools.Set(float64(len(r.Info.LocalPools)))
+		promNumStakers.Set(float64(localStakers))
+		promTotalStaked.Set(float64(localTotalStaked) / 1e6)
+
+		promRewardAvailable.Set(localTotalRewards)
 	}
 	return nil
 }
