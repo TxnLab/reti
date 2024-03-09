@@ -16,7 +16,7 @@ import (
 )
 
 type Reti struct {
-	logger     *slog.Logger
+	Logger     *slog.Logger
 	algoClient *algod.Client
 	signer     algo.MultipleWalletSigner
 
@@ -47,7 +47,7 @@ func New(
 		ValidatorID: validatorID,
 		NodeNum:     nodeNum,
 
-		logger:     logger,
+		Logger:     logger,
 		algoClient: algoClient,
 		signer:     signer,
 	}
@@ -61,6 +61,8 @@ func New(
 	}
 	retReti.validatorContract = validatorContract
 	retReti.poolContract = poolContract
+
+	logger.Info("client initialized", "validator", validatorID, "node", nodeNum)
 
 	return retReti, nil
 }
@@ -105,8 +107,13 @@ func (r *Reti) LoadState(ctx context.Context) error {
 
 		r.Info.LocalPools = map[uint64]uint64{}
 		if r.NodeNum == 0 || int(r.NodeNum) > len(r.Info.NodePoolAssignments.Nodes) {
-			return fmt.Errorf("configured Node number:%d is too high for number of on-chain nodes configured: %d", len(r.Info.NodePoolAssignments.Nodes))
+			return fmt.Errorf("configured Node number:%d is invalid for number of on-chain nodes configured: %d", len(r.Info.NodePoolAssignments.Nodes))
 		}
+
+		//r.Logger = r.Logger.With("validator", r.ValidatorID, "node", r.NodeNum)
+		//misc.Infof(r.Logger, "test")
+		//r.Logger.Info("state loaded", "validator", r.ValidatorID, "node", r.NodeNum)
+
 		for _, poolAppID := range r.Info.NodePoolAssignments.Nodes[r.NodeNum-1].PoolAppIDs {
 			poolID, err := r.GetPoolID(poolAppID)
 			if err != nil {

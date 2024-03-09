@@ -42,8 +42,20 @@ type MinimalHandlerOptions struct {
 }
 
 type MinimalHandler struct {
-	slog.Handler
-	l *log.Logger
+	handler slog.Handler
+	l       *log.Logger
+}
+
+func (h *MinimalHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.handler.Enabled(ctx, level)
+}
+
+func (h *MinimalHandler) WithGroup(name string) slog.Handler {
+	return &MinimalHandler{l: h.l, handler: h.handler.WithGroup(name)}
+}
+
+func (h *MinimalHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &MinimalHandler{l: h.l, handler: h.handler.WithAttrs(attrs)} //return NewMinimalHandler(h.level, h.handler.WithAttrs(attrs))
 }
 
 func (h *MinimalHandler) Handle(ctx context.Context, r slog.Record) error {
@@ -72,11 +84,6 @@ func (h *MinimalHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 func NewMinimalHandler(out io.Writer, opts MinimalHandlerOptions) *MinimalHandler {
-	//h := &MinimalHandler{
-	//	Handler: slog.Default().Handler(),
-	//	l:       log.New(out, "", 0),
-	//}
-	//h.Handler.
 	opts.SlogOpts.ReplaceAttr = func(groups []string, a slog.Attr) slog.Attr {
 		//if a.Key == slog.TimeKey && len(groups) == 0 {
 		//	return slog.Attr{}
@@ -86,7 +93,8 @@ func NewMinimalHandler(out io.Writer, opts MinimalHandlerOptions) *MinimalHandle
 		return a
 	}
 	h := &MinimalHandler{
-		Handler: slog.NewJSONHandler(out, &opts.SlogOpts),
+		//handler: slog.NewTextHandler(out, &opts.SlogOpts),
+		handler: slog.NewJSONHandler(out, &opts.SlogOpts),
 		l:       log.New(out, "", 0),
 	}
 

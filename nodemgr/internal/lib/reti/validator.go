@@ -704,7 +704,7 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 	// Now try to actually create the pool !!
 	atc := transaction.AtomicTransactionComposer{}
 
-	misc.Infof(r.logger, "adding staking pool to node:%d", nodeNum)
+	misc.Infof(r.Logger, "adding staking pool to node:%d", nodeNum)
 	addPoolMethod, _ := r.validatorContract.GetMethodByName("addPool")
 	// We have to pay MBR into the Validator contract itself for adding a pool
 	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(r.RetiAppID).String(), mbrs.AddPoolMbr, nil, "", params)
@@ -765,7 +765,7 @@ func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
 	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
 
 	atc := transaction.AtomicTransactionComposer{}
-	misc.Infof(r.logger, "trying to move pool app id:%d to node number:%d", poolAppID, nodeNum)
+	misc.Infof(r.Logger, "trying to move pool app id:%d to node number:%d", poolAppID, nodeNum)
 	movePoolMethod, _ := r.validatorContract.GetMethodByName("movePoolToNode")
 
 	// pay for go offline call as well
@@ -824,7 +824,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
 	initStorageMethod, _ := r.poolContract.GetMethodByName("initStorage")
 
-	misc.Infof(r.logger, "initializing staking pool storage, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
+	misc.Infof(r.Logger, "initializing staking pool storage, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
 	atc := transaction.AtomicTransactionComposer{}
 	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppID).String(), mbrs.PoolInitMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
@@ -881,7 +881,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 		return nil, err
 	}
 	if mbrPaymentNeeded {
-		misc.Infof(r.logger, "Adding %s ALGO to stake to cover first-time MBR", algo.FormattedAlgoAmount(mbrs.AddStakerMbr))
+		misc.Infof(r.Logger, "Adding %s ALGO to stake to cover first-time MBR", algo.FormattedAlgoAmount(mbrs.AddStakerMbr))
 		amountToStake += mbrs.AddStakerMbr
 	}
 

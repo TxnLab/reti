@@ -58,7 +58,7 @@ async function main() {
     // Write the mnemonic to a .sandbox file in ../../nodemgr directory
     fs.writeFileSync(
         '../../nodemgr/.env.sandbox',
-        `ALGO_MNEMONIC_1=${secretKeyToMnemonic(dispAcct.sk)}\nRETI_APPID=${validatorApp.appId}\nALGO_MNEMONIC_2=${secretKeyToMnemonic(staker1.sk)}\nALGO_MNEMONIC_3=${secretKeyToMnemonic(staker2.sk)}\n`
+        `ALGO_MNEMONIC_${dispAcct.addr.substring(0, 4)}=${secretKeyToMnemonic(dispAcct.sk)}\nRETI_APPID=${validatorApp.appId}\nALGO_MNEMONIC_${staker1.addr.substring(0, 4)}=${secretKeyToMnemonic(staker1.sk)}\nALGO_MNEMONIC_${staker2.addr.substring(0, 4)}=${secretKeyToMnemonic(staker2.sk)}\n`
     );
     console.log('Modified .env.sandbox in nodemgr directory with these values for testing');
 }

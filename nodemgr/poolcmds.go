@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -175,16 +176,24 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 
 	// Display user-friendly version of pool list inside info using the TabWriter class, displaying
 	// final output using fmt.Print type statements
-	var totalRewards uint64
+	var (
+		totalRewards uint64
+		showAll      = command.Value("all").(bool)
+	)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Viewing pools for our Node:", App.retiClient.NodeNum)
-	fmt.Fprintln(tw, "Pool (*=Local, O=Online)\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+	if !showAll {
+		fmt.Fprintln(tw, "Pool (O=Online)\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+	} else {
+		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+
+	}
 	for i, pool := range App.retiClient.Info.Pools {
 		var (
-			flags   []string
-			flagStr string
+			onlineStr = " "
+			nodeStr   string
 		)
 		// find the pool in the node assignments (so we can show node num if necessary)
 		nodeNum := 0
@@ -200,24 +209,20 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 			return fmt.Errorf("unable to determine node number for pool appid:%d", pool.PoolAppID)
 		}
 		if uint64(nodeNum) == App.retiClient.NodeNum {
-			flags = append(flags, "*")
-		} else if !command.Value("all").(bool) {
+			nodeStr = "*"
+		} else if !showAll {
 			continue
 		} else {
-			flags = append(flags, fmt.Sprintf("Node:%d", nodeNum))
+			nodeStr = strconv.Itoa(nodeNum)
 		}
 		acctInfo, err := algo.GetBareAccount(context.Background(), App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
 		if err != nil {
 			return fmt.Errorf("account fetch error, account:%s, err:%w", crypto.GetApplicationAddress(pool.PoolAppID).String(), err)
 		}
 		if acctInfo.Status == OnlineStatus {
-			flags = append(flags, "O")
+			onlineStr = "O"
 		}
-		if len(flags) == 1 {
-			flagStr = " (" + flags[0] + "  )"
-		} else if len(flags) == 2 {
-			flagStr = " (" + flags[0] + " " + flags[1] + ")"
-		}
+
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)
 		totalRewards += rewardAvail
 
@@ -241,9 +246,16 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 				partData = fmt.Sprintf("-%d", status.LastRound-lastProposal)
 			}
 		}
-		fmt.Fprintf(tw, "%d%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, flagStr, pool.PoolAppID, pool.TotalStakers,
-			algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
-			voteData, partData)
+		if !showAll {
+			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppID, pool.TotalStakers,
+				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
+				voteData, partData)
+		} else {
+			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppID, pool.TotalStakers,
+				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
+				voteData, partData)
+
+		}
 	}
 	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
 		algo.FormattedAlgoAmount(totalRewards))
@@ -258,12 +270,15 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		nextPayTime   time.Time
 		epochDuration = time.Duration(App.retiClient.Info.Config.PayoutEveryXMins) * time.Minute
 	)
-	poolID := command.Value("pool").(uint64)
-	if _, found := App.retiClient.Info.LocalPools[poolID]; !found {
-		return fmt.Errorf("pool num:%d not on this node", poolID)
+	poolID := int(command.Value("pool").(uint64))
+	if poolID == 0 {
+		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
+	}
+	if poolID > len(App.retiClient.Info.Pools) {
+		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
 	}
 
-	lastPayout, err := App.retiClient.GetLastPayout(App.retiClient.Info.LocalPools[poolID])
+	lastPayout, err := App.retiClient.GetLastPayout(App.retiClient.Info.Pools[poolID-1].PoolAppID)
 	if err == nil {
 		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(App.retiClient.Info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
@@ -285,12 +300,12 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetLedgerforPool(App.retiClient.Info.LocalPools[poolID])
+	ledger, err := App.retiClient.GetLedgerforPool(App.retiClient.Info.Pools[poolID-1].PoolAppID)
 	if err != nil {
 		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
 	}
 
-	rewardAvail := App.retiClient.PoolAvailableRewards(App.retiClient.Info.LocalPools[poolID], App.retiClient.Info.Pools[poolID-1].TotalAlgoStaked)
+	rewardAvail := App.retiClient.PoolAvailableRewards(App.retiClient.Info.Pools[poolID-1].PoolAppID, App.retiClient.Info.Pools[poolID-1].TotalAlgoStaked)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)

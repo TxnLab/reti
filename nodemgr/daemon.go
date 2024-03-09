@@ -37,7 +37,7 @@ type Daemon struct {
 
 func newDaemon() *Daemon {
 	return &Daemon{
-		logger:     App.logger,
+		logger:     App.retiClient.Logger,
 		algoClient: App.algoClient,
 	}
 }
