@@ -395,8 +395,7 @@ export class StakingPool extends Contract {
         // Reward available needs to be at lest 1 algo.
         assert(rewardAvailable > 1_000_000, 'Reward to payout not high enough');
 
-        increaseOpcodeBudget(); // for logging costs
-        log(concat('reward avail is: ', rewardAvailable.toString()));
+        log(concat('reward avail: %i', itob(rewardAvailable)));
 
         if (payoutConfig.PercentToValidator !== 0) {
             // determine the % that goes to validator...
@@ -409,15 +408,13 @@ export class StakingPool extends Contract {
             // ---
             // pay the validator their cut...
             if (validatorPay > 0) {
-                increaseOpcodeBudget();
-                log(concat('paying validator: ', validatorPay.toString()));
+                log(concat('paying validator: %i', itob(validatorPay)));
                 sendPayment({
                     amount: validatorPay,
                     receiver: payoutConfig.ValidatorCommissionAddress,
                     note: 'validator reward',
                 });
-                increaseOpcodeBudget();
-                log(concat('remaining reward avail: ', rewardAvailable.toString()));
+                log(concat('remaining reward: %i', itob(rewardAvailable)));
             }
         }
 
@@ -438,7 +435,7 @@ export class StakingPool extends Contract {
         const epochInSecs = payoutMins * 60;
         if (this.LastPayout.exists) {
             const secsSinceLastPayout = curTime - this.LastPayout.value;
-            log(concat('secs since last payout: ', secsSinceLastPayout.toString()));
+            log(concat('secs since last payout: %i', itob(secsSinceLastPayout)));
 
             // We've had one payout - so we need to be at least one epoch past the last payout.
             // depending on epoch size, allow caller to call slightly early to allow for daemon/clock issues
@@ -482,20 +479,15 @@ export class StakingPool extends Contract {
         // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
         // remaining participants.
         let partialStakersTotalStake: uint64 = 0;
-        // log(concat('cur time: ', this.itoa(curTime)));
         for (let i = 0; i < this.Stakers.value.length; i += 1) {
             if (globals.opcodeBudget < 400) {
                 increaseOpcodeBudget();
             }
             const cmpStaker = clone(this.Stakers.value[i]);
             if (cmpStaker.Account !== globals.zeroAddress) {
-                // log(concat('idx:', i.toString()));
-                // increaseOpcodeBudget();
-                // log(concat(i.toString(), concat(': entry time: ', cmpStaker.EntryTime.toString())));
                 if (cmpStaker.EntryTime > curTime) {
                     // due to 'forward dating' entry time this could be possible
                     // in this case it definitely means they get 0%
-                    log("staker past 'now' - skipping");
                     partialStakersTotalStake += cmpStaker.Balance;
                 } else {
                     // Reward is % of users stake in pool,
@@ -508,16 +500,11 @@ export class StakingPool extends Contract {
                         partialStakersTotalStake += cmpStaker.Balance;
                         timePercentage = (timeInPool * 1000) / epochInSecs;
 
-                        increaseOpcodeBudget();
-                        increaseOpcodeBudget();
-                        log(concat('time pct:', timePercentage.toString()));
-                        log(concat('staker balance:', cmpStaker.Balance.toString()));
                         // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                         const stakerReward = wideRatio(
                             [cmpStaker.Balance, rewardAvailable, timePercentage],
                             [this.TotalAlgoStaked.value, 1000]
                         );
-                        log(concat('staker partial rewarded: ', stakerReward.toString()));
 
                         // reduce the reward available (that we're accounting for) so that the subsequent
                         // 'full' pays are based on what's left
@@ -534,8 +521,7 @@ export class StakingPool extends Contract {
                 }
             }
         }
-        increaseOpcodeBudget();
-        log(concat('partial staker total stake: ', partialStakersTotalStake.toString()));
+        log(concat('partial staker total stake: %i', itob(partialStakersTotalStake)));
 
         // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
         // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
@@ -562,8 +548,6 @@ export class StakingPool extends Contract {
                         cmpStaker.Balance += stakerReward;
                         cmpStaker.TotalRewarded += stakerReward;
                         increasedStake += stakerReward;
-                        // increaseOpcodeBudget()
-                        // log(concat('full staker rewarded: ', stakerReward.toString()));
                     }
                     // Update the box w/ the new data
                     this.Stakers.value[i] = cmpStaker;
@@ -575,8 +559,7 @@ export class StakingPool extends Contract {
         // determined stake increases
         this.TotalAlgoStaked.value += increasedStake;
 
-        increaseOpcodeBudget();
-        log(concat('increased stake: ', increasedStake.toString()));
+        log(concat('increased stake: %i', itob(increasedStake)));
 
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it
@@ -620,7 +603,7 @@ export class StakingPool extends Contract {
         sendOfflineKeyRegistration({});
     }
 
-    // TODO support linking a staking pool's contract account to an NFD.
+    // Links the staking pool's account address to an NFD
     // can only be called by owner or manager.
     // the contract account address must already be set into the NFD's u.cav.algo.a field pending verification
     linkToNFD(nfdAppID: uint64, nfdName: string): void {

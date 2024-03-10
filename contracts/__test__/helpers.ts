@@ -29,6 +29,14 @@ export class ValidatorConfig {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: bigint;
 
+    MustHoldCreatorNFT: string;
+
+    CreatorNFTMinBalance: bigint;
+
+    RewardTokenID: bigint;
+
+    RewardPerPayout: bigint;
+
     PayoutEveryXMins: number; // // Payout frequency in minutes (can be no shorter than this)
 
     PercentToValidator: number; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
@@ -48,17 +56,40 @@ export class ValidatorConfig {
         Owner,
         Manager,
         NFDForInfo,
+        MustHoldCreatorNFT,
+        CreatorNFTMinBalance,
+        RewardTokenID,
+        RewardPerPayout,
         PayoutEveryXMins,
         PercentToValidator,
         ValidatorCommissionAddress,
         MinEntryStake,
         MaxAlgoPerPool,
         PoolsPerNode,
-    ]: [bigint, string, string, bigint, number, number, string, bigint, bigint, number]) {
+    ]: [
+        bigint,
+        string,
+        string,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint,
+        number,
+        number,
+        string,
+        bigint,
+        bigint,
+        number,
+    ]) {
         this.ID = ID;
         this.Owner = Owner;
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
+        this.MustHoldCreatorNFT = MustHoldCreatorNFT;
+        this.CreatorNFTMinBalance = CreatorNFTMinBalance;
+        this.RewardTokenID = RewardTokenID;
+        this.RewardPerPayout = RewardPerPayout;
         this.PayoutEveryXMins = PayoutEveryXMins;
         this.PercentToValidator = PercentToValidator;
         this.ValidatorCommissionAddress = ValidatorCommissionAddress;
@@ -73,6 +104,10 @@ const DefaultValidatorConfig: ValidatorConfig = {
     Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     NFDForInfo: BigInt(0),
+    MustHoldCreatorNFT: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    CreatorNFTMinBalance: BigInt(0),
+    RewardTokenID: BigInt(0),
+    RewardPerPayout: BigInt(0),
     PayoutEveryXMins: 60 * 24, // daily payout
     PercentToValidator: 10000, // 1.0000%
     ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
@@ -92,6 +127,10 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.Owner,
         configObj.Manager,
         configObj.NFDForInfo,
+        configObj.MustHoldCreatorNFT,
+        configObj.CreatorNFTMinBalance,
+        configObj.RewardTokenID,
+        configObj.RewardPerPayout,
         configObj.PayoutEveryXMins,
         configObj.PercentToValidator,
         configObj.ValidatorCommissionAddress,
@@ -103,12 +142,16 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
 
 function validatorConfigAsArray(
     config: ValidatorConfig
-): [bigint, string, string, bigint, number, number, string, bigint, bigint, number] {
+): [bigint, string, string, bigint, string, bigint, bigint, bigint, number, number, string, bigint, bigint, number] {
     return [
         config.ID,
         config.Owner,
         config.Manager,
         config.NFDForInfo,
+        config.MustHoldCreatorNFT,
+        config.CreatorNFTMinBalance,
+        config.RewardTokenID,
+        config.RewardPerPayout,
         config.PayoutEveryXMins,
         config.PercentToValidator,
         config.ValidatorCommissionAddress,
@@ -467,6 +510,7 @@ export async function addStake(
                 {
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     validatorID: vldtrId,
+                    tokenToVerify: 0,
                 },
                 { sendParams: { fee: fees }, sender: staker }
             )
@@ -494,6 +538,7 @@ export async function addStake(
                 {
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     validatorID: vldtrId,
+                    tokenToVerify: 0,
                 },
                 { sendParams: { fee: fees }, sender: staker }
             )
@@ -521,13 +566,6 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
                             fee: AlgoAmount.MicroAlgos(4000),
                         },
                         sender: staker,
-                        // apps: [Number(validatorAppID)],
-                        // boxes: [
-                        //     { appId: 0, name: getStakersBoxName() },
-                        //     { appId: 0, name: '' }, // buy more i/o
-                        //     { appId: 0, name: '' }, // buy more i/o
-                        //     { appId: 0, name: '' }, // buy more i/o
-                        // ],
                     }
                 )
                 .execute({ populateAppCallResources: true })
@@ -537,6 +575,36 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
         throw exception;
     }
+}
+
+function dumpLogs(logs: Uint8Array[]) {
+    logs.forEach((uint8array) => {
+        consoleLogger.info(new TextDecoder().decode(uint8array));
+    });
+    // logs.forEach((uint8array) => {
+    //     let strVal = new TextDecoder().decode(uint8array);
+    //
+    //     // Get the indices where '%i' exists
+    //     const foundIndices = [...strVal.matchAll(/%i/g)].map((e) => e.index);
+    //
+    //     // Start index so we know where to start reading for the 64-bit big endian number
+    //     const endIndex = strVal.lastIndexOf('%i') + 2; // includes the two characters in '%i'
+    //
+    //     // Change Uint8Array to ArrayBuffer
+    //     const arrayBuffer = ArrayBuffer.from(uint8array.buffer);
+    //     const dataView = new DataView(arrayBuffer, endIndex);
+    //
+    //     // Replace each '%i' with their corresponding integers
+    //     foundIndices.reverse().forEach((index, iteration) => {
+    //         // 64-bit big endian integer
+    //         const integer64Bit = dataView.getBigInt64(iteration * 8);
+    //
+    //         // Replace the '%i' with the integer
+    //         strVal = strVal.substring(0, index) + integer64Bit + strVal.substring(index! + 2);
+    //     });
+    //
+    //     consoleLogger.info(strVal);
+    // });
 }
 
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
@@ -550,9 +618,7 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
     const { logs } = await simulateResults.simulateResponse.txnGroups[0].txnResults[1].txnResult;
     // verify logs isn't undefined
     if (logs !== undefined) {
-        logs.forEach((uint8array) => {
-            consoleLogger.info(new TextDecoder().decode(uint8array));
-        });
+        dumpLogs(logs);
     }
     // our two outers + however many inners were used.
     fees = AlgoAmount.MicroAlgos(

@@ -379,7 +379,12 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	poolKey, err := App.retiClient.AddStake(command.Value("validator").(uint64), stakerAddr, command.Value("amount").(uint64)*1e6)
+	poolKey, err := App.retiClient.AddStake(
+		command.Value("validator").(uint64),
+		stakerAddr,
+		command.Value("amount").(uint64)*1e6,
+		0, // TODO handle token gating in CLI ?
+	)
 	if err != nil {
 		return err
 	}

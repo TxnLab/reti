@@ -47,7 +47,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)"
+        "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8)"
       }
     },
     {
@@ -81,7 +81,7 @@
         {
           "name": "validatorID",
           "type": "uint64",
-          "desc": "@return{poolInfo[]}- array of poolsNot callable from other contracts because>1K return but can be called w/ simulate which bumps log returns"
+          "desc": "@return{PoolInfo[]}- array of poolsNot callable from other contracts because>1K return but can be called w/ simulate which bumps log returns"
         }
       ],
       "returns": {
@@ -122,7 +122,7 @@
       "args": [
         {
           "name": "staker",
-          "type": "account"
+          "type": "address"
         }
       ],
       "returns": {
@@ -135,7 +135,7 @@
       "args": [
         {
           "name": "staker",
-          "type": "account",
+          "type": "address",
           "desc": "The account to retrieve staked pools for.@return{ValidatorPoolKey[]}- The array of staked pools for the account."
         }
       ],
@@ -178,7 +178,7 @@
         },
         {
           "name": "config",
-          "type": "(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)",
+          "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -245,6 +245,35 @@
       }
     },
     {
+      "name": "changeValidatorRewardInfo",
+      "desc": "Allow the additional rewards (gating entry, additional token rewards) information be changed at will.The validator may want to adjust the tokens or amounts.TODO: should there be limits on how often it can be changed?",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64"
+        },
+        {
+          "name": "MustHoldCreatorNFT",
+          "type": "address"
+        },
+        {
+          "name": "CreatorNFTMinBalance",
+          "type": "uint64"
+        },
+        {
+          "name": "RewardTokenID",
+          "type": "uint64"
+        },
+        {
+          "name": "RewardPerPayout",
+          "type": "uint64"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "addPool",
       "desc": "Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.",
       "args": [
@@ -282,6 +311,11 @@
           "name": "validatorID",
           "type": "uint64",
           "desc": "The ID of the validator."
+        },
+        {
+          "name": "tokenToVerify",
+          "type": "uint64",
+          "desc": "only if validator requires a token to enter, this is ID of token to offer up asmatching the validators requirement. If set, ensures staker posseses token (and optionally correct amount) andthat the token was created by the correct creator."
         }
       ],
       "returns": {
@@ -361,7 +395,7 @@
     },
     {
       "name": "movePoolToNode",
-      "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is sNo-op if success, asserts if not found or can't move  (no space in target)Only callable by owner or manager",
+      "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)Only callable by owner or manager",
       "args": [
         {
           "name": "validatorID",

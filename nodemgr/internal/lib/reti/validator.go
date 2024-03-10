@@ -72,6 +72,23 @@ type ValidatorConfig struct {
 	// Optional NFD AppID which the validator uses to describe their validator pool
 	NFDForInfo uint64
 
+	// MustHoldCreatorNFT specifies an optional creator address for assets which stakers must hold.  It will be the
+	// responsibility of the staker (txn composer really) to pick an asset to check that meets the criteria if this
+	// is set
+	MustHoldCreatorNFT string
+
+	// CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
+	// creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
+	// 10000[.000000] of token
+	CreatorNFTMinBalance uint64
+
+	// Reward token ASA ID and reward rate (Optional): A validator can define a token that users are awarded in addition to
+	// the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own
+	// token.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs and all
+	// stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
+	RewardTokenID   uint64
+	RewardPerPayout uint64
+
 	// Payout frequency in minutes (can be no shorter than this)
 	PayoutEveryXMins int
 	// Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
@@ -88,7 +105,7 @@ type ValidatorConfig struct {
 
 func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
-		if len(arrReturn) != 10 {
+		if len(arrReturn) != 14 {
 			return nil, fmt.Errorf("should be 10 elements returned in ValidatorConfig response")
 		}
 		pkAsString := func(pk []uint8) string {
@@ -100,12 +117,16 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.Owner = pkAsString(arrReturn[1].([]uint8))
 		config.Manager = pkAsString(arrReturn[2].([]uint8))
 		config.NFDForInfo = arrReturn[3].(uint64)
-		config.PayoutEveryXMins = int(arrReturn[4].(uint16))
-		config.PercentToValidator = int(arrReturn[5].(uint32))
-		config.ValidatorCommissionAddress = pkAsString(arrReturn[6].([]uint8))
-		config.MinEntryStake = arrReturn[7].(uint64)
-		config.MaxAlgoPerPool = arrReturn[8].(uint64)
-		config.PoolsPerNode = int(arrReturn[9].(uint8))
+		config.MustHoldCreatorNFT = pkAsString(arrReturn[4].([]uint8))
+		config.CreatorNFTMinBalance = arrReturn[5].(uint64)
+		config.RewardTokenID = arrReturn[6].(uint64)
+		config.RewardPerPayout = arrReturn[7].(uint64)
+		config.PayoutEveryXMins = int(arrReturn[8].(uint16))
+		config.PercentToValidator = int(arrReturn[9].(uint32))
+		config.ValidatorCommissionAddress = pkAsString(arrReturn[10].([]uint8))
+		config.MinEntryStake = arrReturn[11].(uint64)
+		config.MaxAlgoPerPool = arrReturn[12].(uint64)
+		config.PoolsPerNode = int(arrReturn[13].(uint8))
 
 		return config, nil
 	}
@@ -142,6 +163,13 @@ func (v *ValidatorConfig) String() string {
 	if v.NFDForInfo != 0 {
 		out.WriteString(fmt.Sprintf("NFD ID: %d\n", v.NFDForInfo))
 	}
+	if v.MustHoldCreatorNFT != types.ZeroAddress.String() {
+		out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: %s\n", v.MustHoldCreatorNFT))
+		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.CreatorNFTMinBalance))
+		out.WriteString(fmt.Sprintf("Reward Token ID: %d\n", v.RewardTokenID))
+		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
+	}
+
 	out.WriteString(fmt.Sprintf("Payout Every %s\n", formattedMinutes(v.PayoutEveryXMins)))
 	out.WriteString(fmt.Sprintf("Min Entry Stake: %s\n", algo.FormattedAlgoAmount(v.MinEntryStake)))
 	out.WriteString(fmt.Sprintf("Max Algo Per Pool: %s\n", algo.FormattedAlgoAmount(v.MaxAlgoPerPool)))
@@ -252,6 +280,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	ownerAddr, _ := types.DecodeAddress(info.Config.Owner)
 	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
 	commissionAddr, _ := types.DecodeAddress(info.Config.ValidatorCommissionAddress)
+	mustHoldCreatorAddr, _ := types.DecodeAddress(info.Config.MustHoldCreatorNFT)
 
 	// first determine how much we have to add in MBR to the validator
 	mbrs, err := r.getMbrAmounts(ownerAddr)
@@ -262,7 +291,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	// Now try to actually create the validator !!
 	atc := transaction.AtomicTransactionComposer{}
 
-	method, err := r.validatorContract.GetMethodByName("addValidator")
+	addValidatorMethod, err := r.validatorContract.GetMethodByName("addValidator")
 	if err != nil {
 		return 0, err
 	}
@@ -283,7 +312,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppID,
-		Method: method,
+		Method: addValidatorMethod,
 		MethodArgs: []any{
 			// MBR payment
 			payTxWithSigner,
@@ -294,6 +323,10 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				ownerAddr,
 				managerAddr,
 				info.Config.NFDForInfo,
+				mustHoldCreatorAddr,
+				info.Config.CreatorNFTMinBalance,
+				info.Config.RewardTokenID,
+				info.Config.RewardPerPayout,
 				uint16(info.Config.PayoutEveryXMins),
 				uint16(info.Config.PercentToValidator),
 				commissionAddr,
@@ -859,7 +892,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	return nil
 }
 
-func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64) (*ValidatorPoolKey, error) {
+func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64, assetIDToCheck uint64) (*ValidatorPoolKey, error) {
 	var (
 		err           error
 		amountToStake = uint64(amount)
@@ -937,6 +970,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64)
 				payTxWithSigner,
 				// --
 				validatorID,
+				assetIDToCheck,
 			},
 			ForeignApps: []uint64{futurePoolKey.PoolAppID},
 			BoxReferences: []types.AppBoxReference{

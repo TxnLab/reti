@@ -1,5 +1,6 @@
 import { Contract } from '@algorandfoundation/tealscript';
 // eslint-disable-next-line import/no-cycle
+import AccountAssetInformation from 'algosdk/dist/types/client/v2/algod/accountAssetInformation';
 import { StakedInfo, StakingPool } from './stakingPool.algo';
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
@@ -32,23 +33,30 @@ export type ValidatorPoolKey = {
 export type ValidatorConfig = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
-    Manager: Address; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
+
+    // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign
+    // for the transactions
+    Manager: Address;
     // Optional NFD AppID which the validator uses to describe their validator pool
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: uint64;
-    /**
-     * TODO:
-     * Add config for
-     * MustHoldCreatorNFT: Address
-     * CreatorNFTMinBalance: uint64
-     *  NFTs by Creator and min amount(Optional): A project running a validator can set a creator account such that all stakers must hold an ASA created
-     *  by this account (w/ optional minimum amount [for tokens].  This can be used to restrict validator pools to members of a particular community.
-     * RewardToken: uint64
-     * RewardPerPayout: uint64
-     * Reward token and reward rate (Optional): A validator can define a token that users are awarded in addition to the ALGO they receive for being in the pool.
-     * This will allow projects to allow rewarding members their own token for eg.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs
-     * and all stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
-     */
+
+    // MustHoldCreatorNFT specifies an optional creator address for assets which stakers must hold.  It will be the
+    // responsibility of the staker (txn composer really) to pick an asset to check that meets the criteria if this
+    // is set
+    MustHoldCreatorNFT: Address;
+
+    // CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
+    // creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
+    // 10000[.000000] of token
+    CreatorNFTMinBalance: uint64;
+
+    // Reward token ASA ID and reward rate (Optional): A validator can define a token that users are awarded in addition to
+    // the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own
+    // token.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs and all
+    // stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
+    RewardTokenID: uint64;
+    RewardPerPayout: uint64;
 
     PayoutEveryXMins: uint16; // Payout frequency in minutes (can be no shorter than this)
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
@@ -220,7 +228,7 @@ export class ValidatorRegistry extends Contract {
     /**
      * Return list of all pools for this validator.
      * @param {uint64} validatorID
-     * @return {poolInfo[]} - array of pools
+     * @return {PoolInfo[]} - array of pools
      * Not callable from other contracts because >1K return but can be called w/ simulate which bumps log returns
      */
     getPools(validatorID: ValidatorID): PoolInfo[] {
@@ -254,7 +262,7 @@ export class ValidatorRegistry extends Contract {
      * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
      * @param staker
      */
-    doesStakerNeedToPayMBR(staker: AccountReference): boolean {
+    doesStakerNeedToPayMBR(staker: Address): boolean {
         if (this.StakerPoolSet(staker).exists) {
             return false;
         }
@@ -264,10 +272,10 @@ export class ValidatorRegistry extends Contract {
     /**
      * Retrieves the staked pools for an account.
      *
-     * @param {Account} staker - The account to retrieve staked pools for.
+     * @param {Address} staker - The account to retrieve staked pools for.
      * @return {ValidatorPoolKey[]} - The array of staked pools for the account.
      */
-    getStakedPoolsForAccount(staker: AccountReference): ValidatorPoolKey[] {
+    getStakedPoolsForAccount(staker: Address): ValidatorPoolKey[] {
         if (!this.StakerPoolSet(staker).exists) {
             return [];
         }
@@ -371,6 +379,29 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
+     * Allow the additional rewards (gating entry, additional token rewards) information be changed at will.
+     * The validator may want to adjust the tokens or amounts.
+     * TODO: should there be limits on how often it can be changed?
+     */
+    changeValidatorRewardInfo(
+        validatorID: ValidatorID,
+        MustHoldCreatorNFT: Address,
+        CreatorNFTMinBalance: uint64,
+        RewardTokenID: uint64,
+        RewardPerPayout: uint64
+    ): void {
+        // Must be called by the owner or manager of the validator.
+        assert(
+            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
+                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
+        );
+        this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT = MustHoldCreatorNFT;
+        this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance = CreatorNFTMinBalance;
+        this.ValidatorList(validatorID).value.Config.RewardTokenID = RewardTokenID;
+        this.ValidatorList(validatorID).value.Config.RewardPerPayout = RewardPerPayout;
+    }
+
+    /**
      * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
      * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
      * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of adding a new pool
@@ -430,18 +461,42 @@ export class ValidatorRegistry extends Contract {
      *
      * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
      * @param {ValidatorID} validatorID - The ID of the validator.
+     * @param {uint64} tokenToVerify - only if validator requires a token to enter, this is ID of token to offer up as
+     * matching the validators requirement. If set, ensures staker posseses token (and optionally correct amount) and
+     * that the token was created by the correct creator.
      * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
-    addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey {
+    addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID, tokenToVerify: uint64): ValidatorPoolKey {
         assert(this.ValidatorList(validatorID).exists);
 
         const staker = this.txn.sender;
-        // The prior transaction should be a payment to this pool for the amount specified
-        // plus enough in fees to cover our itxn fee to send to the staking pool (not our problem to figure out)
+        // The prior transaction should be a payment to this pool for the amount specified.  If this is stakers
+        // first time staking, then we subtract the required MBR from their payment as that MBR amount needs to stay
+        // behind in this contract to cover the MBR needed for creating the 'StakerPoolSet' storage.
         verifyPayTxn(stakedAmountPayment, {
             sender: staker,
             receiver: this.app.address,
         });
+
+        // If the validator specified that a specific token creator is required to stake, verify that the required
+        // balance is held by the staker, and that the asset they offered up to validate was created by the account
+        // the validator defined as its creator requirement.
+        if (this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT !== globals.zeroAddress) {
+            assert(tokenToVerify !== 0);
+            let balRequired = this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance;
+            if (balRequired === 0) {
+                balRequired = 1;
+            }
+            assert(
+                staker.assetBalance(AssetID.fromUint64(tokenToVerify)) === balRequired,
+                'must have required minimum balance of validator defined token to add stake'
+            );
+            assert(
+                AssetID.fromUint64(tokenToVerify).creator ===
+                    this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT,
+                'specified asset must be created by creator that the validator defined as a requirement to stake'
+            );
+        }
 
         let realAmount = stakedAmountPayment.amount;
         let mbrAmtLeftBehind: uint64 = 0;
