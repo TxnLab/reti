@@ -377,10 +377,10 @@ export class StakingPool extends Contract {
      * Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balance
      * compounds over time and staker can remove that amount at will.
      * The validator is paid their percentage each epoch payout.
+     *
+     * Note: ANYONE can call this.
      */
     epochBalanceUpdate(): void {
-        assert(this.isOwnerOrManagerCaller());
-
         // call the validator contract to get our payout data
         const payoutConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
@@ -438,19 +438,7 @@ export class StakingPool extends Contract {
             log(concat('secs since last payout: %i', itob(secsSinceLastPayout)));
 
             // We've had one payout - so we need to be at least one epoch past the last payout.
-            // depending on epoch size, allow caller to call slightly early to allow for daemon/clock issues
-            let fudgeInSecs = 4;
-            if (epochInSecs > 60 * 60) {
-                // at least an hour?  allow 1 minute fudge
-                fudgeInSecs = 60;
-            } else if (epochInSecs > 60 * 60 * 24) {
-                // at least a day - allow 5 minute fudge.
-                fudgeInSecs = 5 * 60;
-            }
-            assert(
-                secsSinceLastPayout >= epochInSecs - fudgeInSecs,
-                "Can't payout earlier than last payout + epoch time"
-            );
+            assert(secsSinceLastPayout >= epochInSecs, "Can't payout earlier than last payout + epoch time");
         }
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.

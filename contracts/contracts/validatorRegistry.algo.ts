@@ -1,6 +1,5 @@
 import { Contract } from '@algorandfoundation/tealscript';
 // eslint-disable-next-line import/no-cycle
-import AccountAssetInformation from 'algosdk/dist/types/client/v2/algod/accountAssetInformation';
 import { StakedInfo, StakingPool } from './stakingPool.algo';
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
@@ -15,10 +14,11 @@ import {
     SSC_VALUE_UINT,
 } from './constants.algo';
 
-const MAX_NODES = 12; // more just as a reasonable limit and cap on contract storage
-const MAX_POOLS_PER_NODE = 4; // max number of pools per node - more than 4 gets dicey - preference is 3(!)
+const MAX_NODES = 4; // more just as a reasonable limit and cap on contract storage
+const MAX_POOLS_PER_NODE = 3; // max number of pools per node
 // MAX_POOLS must be under 56 total to keep <1K (max 'log' return - thus max getPools() return
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
+
 const MIN_PAYOUT_MINS = 1;
 const MAX_PAYOUT_MINS = 10080; // 7 days in minutes
 const MAX_POOLS_PER_STAKER = 6;

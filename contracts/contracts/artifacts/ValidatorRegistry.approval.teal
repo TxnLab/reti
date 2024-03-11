@@ -215,7 +215,7 @@ getMbrAmounts:
 	//                     3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER
 	//                 ), // size of key + all values
 	//         };
-	int 1466
+	int 530
 	callsub costForBoxStorage
 	itob
 	int 1
@@ -416,14 +416,14 @@ getPools:
 	// contracts/validatorRegistry.algo.ts:236
 	// poolSet = clone(this.ValidatorList(validatorID).value.Pools)
 	int 209 // headOffset
-	int 864
+	int 216
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 1 // poolSet: (uint64,uint16,uint64)[48]
+	frame_bury 1 // poolSet: (uint64,uint16,uint64)[12]
 
 	// contracts/validatorRegistry.algo.ts:237
 	// for (let i = 0; i < poolSet.length; i += 1)
@@ -434,14 +434,14 @@ getPools:
 	// contracts/validatorRegistry.algo.ts:237
 	// i < poolSet.length
 	frame_dig 2 // i: uint64
-	int 48
+	int 12
 	<
 	bz *for_0_end
 
 	// *if0_condition
 	// contracts/validatorRegistry.algo.ts:238
 	// poolSet[i].PoolAppID === 0
-	frame_dig 1 // poolSet: (uint64,uint16,uint64)[48]
+	frame_dig 1 // poolSet: (uint64,uint16,uint64)[12]
 	frame_dig 2 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -461,7 +461,7 @@ getPools:
 	// contracts/validatorRegistry.algo.ts:242
 	// retData.push(poolSet[i])
 	frame_dig 0 // retData: PoolInfo[]
-	frame_dig 1 // poolSet: (uint64,uint16,uint64)[48]
+	frame_dig 1 // poolSet: (uint64,uint16,uint64)[12]
 	frame_dig 2 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -524,7 +524,7 @@ getPoolAppID:
 	dup
 	bz *skip_and0
 	frame_dig -2 // poolID: uint64
-	int 48
+	int 12
 	<=
 	&&
 
@@ -791,7 +791,7 @@ getStakedPoolsForAccount:
 	popn 2
 	retsub
 
-// getNodePoolAssignments(uint64)((uint64[4])[12])
+// getNodePoolAssignments(uint64)((uint64[3])[4])
 *abi_route_getNodePoolAssignments:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -800,7 +800,7 @@ getStakedPoolsForAccount:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute getNodePoolAssignments(uint64)((uint64[4])[12])
+	// execute getNodePoolAssignments(uint64)((uint64[3])[4])
 	callsub getNodePoolAssignments
 	concat
 	log
@@ -824,8 +824,8 @@ getNodePoolAssignments:
 
 	// contracts/validatorRegistry.algo.ts:296
 	// return this.ValidatorList(validatorID).value.NodePoolAssignments;
-	int 1073 // headOffset
-	int 384
+	int 425 // headOffset
+	int 96
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: uint64
 	itob
@@ -966,7 +966,7 @@ addValidator:
 	frame_dig 0 // validatorID: uint64
 	itob
 	concat
-	int 1457
+	int 521
 	box_create
 	pop
 
@@ -1532,7 +1532,7 @@ addPool:
 	// contracts/validatorRegistry.algo.ts:425
 	// (numPools as uint64) >= MAX_POOLS
 	frame_dig 0 // numPools: uint16
-	int 48
+	int 12
 	>=
 	bz *if5_end
 
@@ -2885,14 +2885,14 @@ findPoolForStaker:
 	// contracts/validatorRegistry.algo.ts:677
 	// pools = clone(this.ValidatorList(validatorID).value.Pools)
 	int 209 // headOffset
-	int 864
+	int 216
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 5 // pools: (uint64,uint16,uint64)[48]
+	frame_bury 5 // pools: (uint64,uint16,uint64)[12]
 
 	// contracts/validatorRegistry.algo.ts:678
 	// curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64
@@ -2923,7 +2923,7 @@ findPoolForStaker:
 	// *if19_condition
 	// contracts/validatorRegistry.algo.ts:680
 	// pools[i].TotalAlgoStaked + amountToStake <= maxPerPool
-	frame_dig 5 // pools: (uint64,uint16,uint64)[48]
+	frame_dig 5 // pools: (uint64,uint16,uint64)[12]
 	frame_dig 7 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -2952,7 +2952,7 @@ findPoolForStaker:
 	+
 	itob
 	concat
-	frame_dig 5 // pools: (uint64,uint16,uint64)[48]
+	frame_dig 5 // pools: (uint64,uint16,uint64)[12]
 	frame_dig 7 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -3082,15 +3082,15 @@ movePoolToNode:
 
 	// contracts/validatorRegistry.algo.ts:706
 	// nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments)
-	int 1073 // headOffset
-	int 384
+	int 425 // headOffset
+	int 96
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 0 // nodePoolAssignments: ((uint64[4])[12])
+	frame_bury 0 // nodePoolAssignments: ((uint64[3])[4])
 
 	// contracts/validatorRegistry.algo.ts:707
 	// assert(nodeNum >= 1 && nodeNum <= MAX_NODES)
@@ -3100,7 +3100,7 @@ movePoolToNode:
 	dup
 	bz *skip_and2
 	frame_dig -3 // nodeNum: uint64
-	int 12
+	int 4
 	<=
 	&&
 
@@ -3116,7 +3116,7 @@ movePoolToNode:
 	// contracts/validatorRegistry.algo.ts:709
 	// srcNodeIdx < MAX_NODES
 	frame_dig 1 // srcNodeIdx: uint64
-	int 12
+	int 4
 	<
 	bz *for_4_end
 
@@ -3129,17 +3129,17 @@ movePoolToNode:
 	// contracts/validatorRegistry.algo.ts:710
 	// i < MAX_POOLS_PER_NODE
 	frame_dig 2 // i: uint64
-	int 4
+	int 3
 	<
 	bz *for_5_end
 
 	// *if20_condition
 	// contracts/validatorRegistry.algo.ts:711
 	// nodePoolAssignments.Nodes[srcNodeIdx].PoolAppIDs[i] === poolAppID
-	frame_dig 0 // nodePoolAssignments: ((uint64[4])[12])
+	frame_dig 0 // nodePoolAssignments: ((uint64[3])[4])
 	int 0
 	frame_dig 1 // srcNodeIdx: uint64
-	int 32
+	int 24
 	* // acc * typeLength
 	+
 	int 0
@@ -3169,9 +3169,9 @@ movePoolToNode:
 
 	// contracts/validatorRegistry.algo.ts:714
 	// this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[srcNodeIdx].PoolAppIDs[i] = 0
-	int 1073
+	int 425
 	frame_dig 1 // srcNodeIdx: uint64
-	int 32
+	int 24
 	* // acc * typeLength
 	+
 	int 0
@@ -3428,7 +3428,7 @@ validateConfig:
 	frame_dig -1 // config: ValidatorConfig
 	extract 182 8
 	btoi
-	int 20000000000000
+	int 50000000000000
 	<=
 
 	// enforce hard constraint to be safe to the network
@@ -3446,7 +3446,7 @@ validateConfig:
 	frame_dig -1 // config: ValidatorConfig
 	extract 190 1
 	btoi
-	int 4
+	int 3
 	<=
 	&&
 
@@ -4051,15 +4051,15 @@ addPoolToNode:
 
 	// contracts/validatorRegistry.algo.ts:873
 	// nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments)
-	int 1073 // headOffset
-	int 384
+	int 425 // headOffset
+	int 96
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 0 // nodePoolAssignments: ((uint64[4])[12])
+	frame_bury 0 // nodePoolAssignments: ((uint64[3])[4])
 
 	// contracts/validatorRegistry.algo.ts:874
 	// maxPoolsPerNodeForThisValidator = this.ValidatorList(validatorID).value.Config.PoolsPerNode as uint64
@@ -4082,7 +4082,7 @@ addPoolToNode:
 	dup
 	bz *skip_and7
 	frame_dig -3 // nodeNum: uint64
-	int 12
+	int 4
 	<=
 	&&
 
@@ -4105,12 +4105,12 @@ addPoolToNode:
 	// *if33_condition
 	// contracts/validatorRegistry.algo.ts:879
 	// nodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] === 0
-	frame_dig 0 // nodePoolAssignments: ((uint64[4])[12])
+	frame_dig 0 // nodePoolAssignments: ((uint64[3])[4])
 	int 0
 	frame_dig -3 // nodeNum: uint64
 	int 1
 	-
-	int 32
+	int 24
 	* // acc * typeLength
 	+
 	int 0
@@ -4129,11 +4129,11 @@ addPoolToNode:
 	// *if33_consequent
 	// contracts/validatorRegistry.algo.ts:881
 	// this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] = poolAppID
-	int 1073
+	int 425
 	frame_dig -3 // nodeNum: uint64
 	int 1
 	-
-	int 32
+	int 24
 	* // acc * typeLength
 	+
 	int 0
@@ -4187,7 +4187,7 @@ addPoolToNode:
 	method "getPoolInfo((uint64,uint64,uint64))(uint64,uint16,uint64)"
 	method "doesStakerNeedToPayMBR(address)bool"
 	method "getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]"
-	method "getNodePoolAssignments(uint64)((uint64[4])[12])"
+	method "getNodePoolAssignments(uint64)((uint64[3])[4])"
 	method "getNFDRegistryID()uint64"
 	method "addValidator(pay,string,(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8))uint64"
 	method "changeValidatorManager(uint64,address)void"

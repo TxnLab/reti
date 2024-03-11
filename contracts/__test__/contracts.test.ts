@@ -25,7 +25,8 @@ import {
     ValidatorPoolKey,
     verifyRewardAmounts,
 } from './helpers';
-// import { algoKitLogCaptureFixture } from '@algorandfoundation/algokit-utils/testing'
+
+const MaxPoolsPerNode = 3;
 
 const fixture = algorandFixture({ testAccountFunding: AlgoAmount.Algos(10000) });
 const logs = algoKitLogCaptureFixture();
@@ -171,7 +172,7 @@ describe('StakeAdds', () => {
             MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
             MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
             PercentToValidator: 50000, // 5%
-            PoolsPerNode: 4,
+            PoolsPerNode: MaxPoolsPerNode,
         });
 
         validatorID = await addValidator(
@@ -411,15 +412,15 @@ describe('StakeAdds', () => {
         expect(poolInfo.TotalAlgoStaked).toBe(BigInt(AlgoAmount.Algos(4000).microAlgos - Number(stakerMbr)));
     });
 
-    test('add4PoolsAndFill', async () => {
+    test('addMaxPoolsAndFill', async () => {
         const pools = [];
         const stakers = [];
-        const poolsToCreate = 4;
+        const poolsToCreate = MaxPoolsPerNode;
 
         // capture current 'total' state for all pools
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorID);
 
-        // we create 4 new pools (on top of the first pool we added as part of beforeAll)
+        // we create 'max pools per node' new pools on new node (first pool is still there which wee added as part of beforeAll)
         for (let i = 0; i < poolsToCreate; i += 1) {
             // eslint-disable-next-line no-await-in-loop
             const newPool = await addStakingPool(
@@ -442,7 +443,7 @@ describe('StakeAdds', () => {
             expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(0));
         }
 
-        // now create 4 new stakers
+        // now create X new stakers
         for (let i = 0; i < poolsToCreate; i += 1) {
             // fund some new staker accounts (4)
             const stakerAccount = await getTestAccount(
@@ -455,7 +456,7 @@ describe('StakeAdds', () => {
             );
             stakers.push(stakerAccount);
         }
-        // have the first 3 of the 4 new stakers - add such that each pool is basically completely full but just
+        // have the first max-1 of the max new stakers - add such that each pool is basically completely full but just
         // short so we can still add a small amount later in a test.
         // add stake for each - each time should work and go to new pool (starting with first pool we added - the one
         // that's already there shouldn't have room).  Then next add of same size should fail.. then next add of something
@@ -476,60 +477,60 @@ describe('StakeAdds', () => {
 
             expect(await getStakedPoolsForAccount(validatorMasterClient, stakers[i])).toEqual([stakedPoolKey]);
         }
-        // now try to add larger stake from staker 4... should fail... nothing free
+        // now try to add larger stake from staker max-1... should fail... nothing free
         await expect(
             addStake(
                 fixture.context,
                 validatorMasterClient,
                 validatorID,
-                stakers[3],
+                stakers[MaxPoolsPerNode - 1],
                 AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(1000).microAlgos)
             )
         ).rejects.toThrowError();
 
-        // For staker 4 - get their staked pool list - should be empty
-        expect(await getStakedPoolsForAccount(validatorMasterClient, stakers[3])).toHaveLength(0);
-        // have staker4 stake large amount - just barely under max - so should only fit in last pool
+        // For last staker - get their staked pool list - should be empty
+        expect(await getStakedPoolsForAccount(validatorMasterClient, stakers[MaxPoolsPerNode - 1])).toHaveLength(0);
+        // have stakermaxPools-1 stake large amount - just barely under max - so should only fit in last pool
         const fitTestStake1 = await addStake(
             fixture.context,
             validatorMasterClient,
             validatorID,
-            stakers[3],
+            stakers[MaxPoolsPerNode - 1],
             AlgoAmount.MicroAlgos(MaxAlgoPerPool - AlgoAmount.Algos(1000).microAlgos)
         );
-        expect(fitTestStake1.ID).toBe(pools[3].ID);
-        expect(fitTestStake1.PoolID).toBe(pools[3].PoolID);
-        expect(fitTestStake1.PoolAppID).toBe(pools[3].PoolAppID);
+        expect(fitTestStake1.ID).toBe(pools[MaxPoolsPerNode - 1].ID);
+        expect(fitTestStake1.PoolID).toBe(pools[MaxPoolsPerNode - 1].PoolID);
+        expect(fitTestStake1.PoolAppID).toBe(pools[MaxPoolsPerNode - 1].PoolAppID);
 
-        // Now have staker 4 stake 1000 - it'll fit in last pool (just) since it first tries pools staker is already in
+        // Now have staker maxPools-1 stake 1000 - it'll fit in last pool (just) since it first tries pools staker is already in
         const fitTestStake2 = await addStake(
             fixture.context,
             validatorMasterClient,
             validatorID,
-            stakers[3],
+            stakers[MaxPoolsPerNode - 1],
             AlgoAmount.Algos(1000)
         );
-        expect(fitTestStake2.ID).toBe(pools[3].ID);
-        expect(fitTestStake2.PoolID).toBe(pools[3].PoolID);
-        expect(fitTestStake2.PoolAppID).toBe(pools[3].PoolAppID);
+        expect(fitTestStake2.ID).toBe(pools[MaxPoolsPerNode - 1].ID);
+        expect(fitTestStake2.PoolID).toBe(pools[MaxPoolsPerNode - 1].PoolID);
+        expect(fitTestStake2.PoolAppID).toBe(pools[MaxPoolsPerNode - 1].PoolAppID);
 
-        // now try to add smallish stake from staker 4... should go to very first pool
+        // now try to add smallish stake from staker maxPools-1... should go to very first pool
         // # of stakers shouldn't increase!  They're new entrant into pool but already staked somewhere else !
         const fitTestStake3 = await addStake(
             fixture.context,
             validatorMasterClient,
             validatorID,
-            stakers[3],
+            stakers[MaxPoolsPerNode - 1],
             AlgoAmount.Algos(1000)
         );
         expect(fitTestStake3.ID).toBe(firstPoolKey.ID);
         expect(fitTestStake3.PoolID).toBe(firstPoolKey.PoolID);
         expect(fitTestStake3.PoolAppID).toBe(firstPoolKey.PoolAppID);
 
-        // For staker 4 - get their staked pool list - should now be two entries - pool 5 (pool 4 we added) then pool 1 (order of staking)
-        const lastStakerPools = await getStakedPoolsForAccount(validatorMasterClient, stakers[3]);
+        // For staker maxPools-1 - get their staked pool list - should now be two entries - pool maxPools+1 (pool #maxpools we added) then pool 1 (order of staking)
+        const lastStakerPools = await getStakedPoolsForAccount(validatorMasterClient, stakers[MaxPoolsPerNode - 1]);
         expect(lastStakerPools).toHaveLength(2);
-        expect(lastStakerPools[0]).toEqual(pools[3]);
+        expect(lastStakerPools[0]).toEqual(pools[MaxPoolsPerNode - 1]);
         expect(lastStakerPools[1]).toEqual(firstPoolKey);
 
         // Get 'total' staked from validator contract
@@ -537,20 +538,14 @@ describe('StakeAdds', () => {
         consoleLogger.info(
             `num pools: ${stateData.NumPools}, total staked:${stateData.TotalAlgoStaked}, stakers:${stateData.TotalStakers}`
         );
-        expect(stateData.NumPools).toEqual(BigInt(5));
+        expect(stateData.NumPools).toEqual(BigInt(MaxPoolsPerNode + 1));
         expect(stateData.TotalAlgoStaked).toEqual(
             origValidatorState.TotalAlgoStaked +
-                BigInt(stakeAmount.microAlgos * 4) -
-                BigInt(stakerMbr * BigInt(4)) +
+                BigInt(stakeAmount.microAlgos * MaxPoolsPerNode) -
+                BigInt(stakerMbr * BigInt(MaxPoolsPerNode)) +
                 BigInt(AlgoAmount.Algos(2000).microAlgos)
         );
-        expect(stateData.TotalStakers).toEqual(BigInt(6));
-
-        // let i = 0;
-        // stakers.forEach((staker) => {
-        //     consoleLogger.info(`staker ${i}: ${staker.addr}`)
-        //     i+=1;
-        // })
+        expect(stateData.TotalStakers).toEqual(BigInt(MaxPoolsPerNode+2));
     });
 
     test('addThenRemoveStake', async () => {
