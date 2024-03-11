@@ -1,6 +1,6 @@
-import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
+import { ErrorComponent, Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
-import { validatorQueryOptions } from '@/api/contracts'
+import { ValidatorNotFoundError, validatorQueryOptions } from '@/api/contracts'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { ValidatorDetails } from '@/components/ValidatorDetails'
@@ -19,10 +19,10 @@ export const Route = createFileRoute('/validators/$validatorId')({
   component: Dashboard,
   pendingComponent: () => <div>Loading...</div>,
   errorComponent: ({ error }) => {
-    if (error instanceof Error) {
-      return <div>{error?.message}</div>
+    if (error instanceof ValidatorNotFoundError) {
+      return <div>{error.message}</div>
     }
-    return <div>Error loading validator</div>
+    return <ErrorComponent error={error} />
   },
 })
 

@@ -85,6 +85,10 @@ export async function fetchValidator(
     const rawConfig = config.returns![0] as ValidatorConfigRaw
     const rawState = state.returns![0] as ValidatorStateRaw
 
+    if (!rawConfig || !rawState) {
+      throw new ValidatorNotFoundError(`Validator with id "${id}" not found!`)
+    }
+
     // Transform raw data to Validator object
     const validator: Validator = transformValidatorData(rawConfig, rawState)
     return validator
@@ -149,4 +153,7 @@ export const validatorQueryOptions = (validatorId: string) =>
   queryOptions({
     queryKey: ['validator', { validatorId }],
     queryFn: () => fetchValidator(validatorId),
+    retry: false,
   })
+
+export class ValidatorNotFoundError extends Error {}
