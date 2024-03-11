@@ -15,12 +15,16 @@ export function transformValidatorData(
     Owner: rawConfig[1],
     Manager: rawConfig[2],
     NFDForInfo: rawConfig[3],
-    PayoutEveryXMins: rawConfig[4],
-    PercentToValidator: rawConfig[5],
-    ValidatorCommissionAddress: rawConfig[6],
-    MinEntryStake: rawConfig[7],
-    MaxAlgoPerPool: rawConfig[8],
-    PoolsPerNode: rawConfig[9],
+    MustHoldCreatorNFT: rawConfig[4],
+    CreatorNFTMinBalance: rawConfig[5],
+    RewardTokenID: rawConfig[6],
+    RewardPerPayout: rawConfig[7],
+    PayoutEveryXMins: rawConfig[8],
+    PercentToValidator: rawConfig[9],
+    ValidatorCommissionAddress: rawConfig[10],
+    MinEntryStake: rawConfig[11],
+    MaxAlgoPerPool: rawConfig[12],
+    PoolsPerNode: rawConfig[13],
   }
 
   const state: ValidatorState = {

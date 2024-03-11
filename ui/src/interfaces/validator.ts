@@ -3,6 +3,10 @@ export type ValidatorConfigRaw = [
   string,
   string,
   bigint,
+  string,
+  bigint,
+  bigint,
+  bigint,
   number,
   number,
   string,
@@ -16,6 +20,10 @@ export interface ValidatorConfig {
   Owner: string // Account that controls config - presumably cold-wallet
   Manager: string // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
   NFDForInfo: bigint
+  MustHoldCreatorNFT: string
+  CreatorNFTMinBalance: bigint
+  RewardTokenID: bigint
+  RewardPerPayout: bigint
   PayoutEveryXMins: number // Payout frequency in minutes (can be no shorter than this)
   PercentToValidator: number // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
   ValidatorCommissionAddress: string // account that receives the validation commission each epoch payout (can be ZeroAddress)

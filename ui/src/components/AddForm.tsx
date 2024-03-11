@@ -48,6 +48,30 @@ const formSchema = z
         message: 'NFD name is invalid',
       })
       .optional(),
+    MustHoldCreatorNFT: z
+      .string()
+      .refine((val) => val === '' || algosdk.isValidAddress(val), {
+        message: 'Manager address is invalid',
+      })
+      .optional(),
+    CreatorNFTMinBalance: z
+      .string()
+      .refine((val) => val === '' || Number(val) >= 1, {
+        message: 'Minimum balance must be at least 1',
+      })
+      .optional(),
+    RewardTokenID: z
+      .string()
+      .refine((val) => val === '' || Number(val) >= 1, {
+        message: 'Reward token ID is invalid',
+      })
+      .optional(),
+    RewardPerPayout: z
+      .string()
+      .refine((val) => val === '' || Number(val) >= 1, {
+        message: 'Reward amount per payout is invalid',
+      })
+      .optional(),
     PayoutEveryXMins: z.string().refine((val) => Number(val) >= 1, {
       message: 'Payout frequency must be at least 1 minute',
     }),
@@ -90,6 +114,10 @@ export function AddForm() {
       Owner: '',
       Manager: '',
       NFDForInfo: '',
+      MustHoldCreatorNFT: '',
+      CreatorNFTMinBalance: '',
+      RewardTokenID: '',
+      RewardPerPayout: '',
       PayoutEveryXMins: '',
       PercentToValidator: '',
       ValidatorCommissionAddress: '',
@@ -130,6 +158,11 @@ export function AddForm() {
         Owner: values.Owner,
         Manager: values.Manager,
         NFDForInfo: BigInt(values.NFDForInfo),
+        MustHoldCreatorNFT:
+          values.MustHoldCreatorNFT || 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+        CreatorNFTMinBalance: BigInt(values.CreatorNFTMinBalance || 0),
+        RewardTokenID: BigInt(values.RewardTokenID || 0),
+        RewardPerPayout: BigInt(values.RewardPerPayout || 0),
         PayoutEveryXMins: Number(values.PayoutEveryXMins),
         PercentToValidator: Number(values.PercentToValidator) * 10000,
         ValidatorCommissionAddress: values.ValidatorCommissionAddress,
@@ -175,6 +208,10 @@ export function AddForm() {
             validatorConfig.Owner,
             validatorConfig.Manager,
             validatorConfig.NFDForInfo,
+            validatorConfig.MustHoldCreatorNFT,
+            validatorConfig.CreatorNFTMinBalance,
+            validatorConfig.RewardTokenID,
+            validatorConfig.RewardPerPayout,
             validatorConfig.PayoutEveryXMins,
             validatorConfig.PercentToValidator,
             validatorConfig.ValidatorCommissionAddress,
@@ -242,6 +279,73 @@ export function AddForm() {
                   <FormItem>
                     <FormLabel>
                       Associated NFD <span className="ml-2 text-xs text-white/50">optional</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="MustHoldCreatorNFT"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Must Hold Creator NFT{' '}
+                      <span className="ml-2 text-xs text-white/50">optional</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="CreatorNFTMinBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Creator NFT Minimum Balance{' '}
+                      <span className="ml-2 text-xs text-white/50">optional</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="RewardTokenID"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Reward Token ID <span className="ml-2 text-xs text-white/50">optional</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="RewardPerPayout"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Reward Token Amount Per Payout{' '}
+                      <span className="ml-2 text-xs text-white/50">optional</span>
                     </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
