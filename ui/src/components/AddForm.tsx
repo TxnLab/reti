@@ -2,6 +2,7 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import algosdk from 'algosdk'
 import * as React from 'react'
@@ -107,6 +108,8 @@ const NFD_REGISTRY_APP_ID = getNfdRegistryAppIdFromViteEnvironment()
 
 export function AddForm() {
   const { signer, activeAddress } = useWallet()
+
+  const navigate = useNavigate({ from: '/add' })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -228,6 +231,8 @@ export function AddForm() {
         id: `${TOAST_ID}-validator`,
         duration: 5000,
       })
+
+      navigate({ to: '/dashboard' })
     } catch (error) {
       toast.error('Failed to create validator', { id: `${TOAST_ID}-validator` })
       console.error(error)
