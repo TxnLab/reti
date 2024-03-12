@@ -7,7 +7,12 @@ import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { addStake, isNewStakerToValidator, mbrQueryOptions } from '@/api/contracts'
+import {
+  addStake,
+  doesStakerNeedToPayMbr,
+  isNewStakerToValidator,
+  mbrQueryOptions,
+} from '@/api/contracts'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import {
@@ -77,6 +82,8 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
 
       const { stakerMbr } = await queryClient.ensureQueryData(mbrQueryOptions)
+      const isMbrRequired = await doesStakerNeedToPayMbr(activeAddress)
+      const totalAmount = isMbrRequired ? amountToStake + stakerMbr : amountToStake
 
       const isNewStaker = await isNewStakerToValidator(
         validator.id,
@@ -86,13 +93,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
-      const { poolId } = await addStake(
-        validator.id,
-        amountToStake,
-        stakerMbr,
-        signer,
-        activeAddress,
-      )
+      const { poolId } = await addStake(validator.id, totalAmount, signer, activeAddress)
 
       toast.success(`Stake added to pool ${poolId}!`, {
         id: toastId,
@@ -109,7 +110,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
           return {
             ...prevData,
             numStakers: isNewStaker ? prevData.numStakers + 1 : prevData.numStakers,
-            totalStaked: prevData.totalStaked + amountToStake,
+            totalStaked: prevData.totalStaked + totalAmount,
           }
         },
       )
@@ -124,7 +125,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
             return {
               ...v,
               numStakers: isNewStaker ? v.numStakers + 1 : v.numStakers,
-              totalStaked: v.totalStaked + amountToStake,
+              totalStaked: v.totalStaked + totalAmount,
             }
           }
 

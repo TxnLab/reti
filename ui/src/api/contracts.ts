@@ -379,7 +379,6 @@ export async function doesStakerNeedToPayMbr(
 export async function addStake(
   validatorID: number,
   stakeAmount: number, // microalgos
-  stakerMbr: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
@@ -388,13 +387,10 @@ export async function addStake(
   const validatorAppRef = await validatorClient.appClient.getAppReference()
   const suggestedParams = await algodClient.getTransactionParams().do()
 
-  const isMbrRequired = await doesStakerNeedToPayMbr(activeAddress)
-  const amount = isMbrRequired ? stakeAmount + stakerMbr : stakeAmount
-
   const stakeTransferPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
     to: validatorAppRef.appAddress,
-    amount,
+    amount: stakeAmount,
     suggestedParams,
   })
 
