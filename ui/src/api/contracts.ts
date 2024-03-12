@@ -12,6 +12,7 @@ import {
   RawNodePoolAssignmentConfig,
   Validator,
   ValidatorConfigRaw,
+  ValidatorPoolKey,
   ValidatorStateRaw,
 } from '@/interfaces/validator'
 import { transformNodePoolAssignment, transformValidatorData } from '@/utils/contracts'
@@ -274,6 +275,12 @@ export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise
   }
 }
 
+export const mbrQueryOptions = queryOptions({
+  queryKey: ['mbr'],
+  queryFn: () => fetchMbrAmounts(),
+  staleTime: Infinity,
+})
+
 export async function addStakingPool(
   validatorID: number,
   nodeNum: number,
@@ -351,4 +358,123 @@ export async function initStakingPoolStorage(
       },
     })
     .execute({ populateAppCallResources: true })
+}
+
+export async function doesStakerNeedToPayMbr(
+  activeAddress: string,
+  client?: ValidatorRegistryClient,
+): Promise<boolean> {
+  const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+
+  const result = await validatorClient
+    .compose()
+    .doesStakerNeedToPayMbr({
+      staker: activeAddress,
+    })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  return result.returns![0]
+}
+
+export async function addStake(
+  validatorID: number,
+  stakeAmount: number, // microalgos
+  stakerMbr: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+): Promise<ValidatorPoolKey> {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  const validatorAppRef = await validatorClient.appClient.getAppReference()
+  const suggestedParams = await algodClient.getTransactionParams().do()
+
+  const isMbrRequired = await doesStakerNeedToPayMbr(activeAddress)
+  const amount = isMbrRequired ? stakeAmount + stakerMbr : stakeAmount
+
+  const stakeTransferPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    to: validatorAppRef.appAddress,
+    amount,
+    suggestedParams,
+  })
+
+  let fees = AlgoAmount.MicroAlgos(240_000)
+
+  const simulateResults = await validatorClient
+    .compose()
+    .gas({})
+    .addStake(
+      {
+        stakedAmountPayment: {
+          transaction: stakeTransferPayment,
+          signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+        },
+        validatorID,
+        tokenToVerify: 0,
+      },
+      { sendParams: { fee: fees } },
+    )
+    .simulate({ allowUnnamedResources: true })
+
+  stakeTransferPayment.group = undefined
+
+  // @todo: switch to Joe's new method(s)
+  fees = AlgoAmount.MicroAlgos(
+    2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+  )
+
+  const results = await validatorClient
+    .compose()
+    .gas({})
+    .addStake(
+      {
+        stakedAmountPayment: {
+          transaction: stakeTransferPayment,
+          signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+        },
+        validatorID,
+        tokenToVerify: 0,
+      },
+      { sendParams: { fee: fees } },
+    )
+    .execute({ populateAppCallResources: true })
+
+  const [valId, poolId, poolAppId] = results.returns![1]
+
+  return {
+    poolId: Number(poolId),
+    appId: Number(poolAppId),
+    validatorId: Number(valId),
+  }
+}
+
+export async function callFindPoolForStaker(
+  validatorID: number | bigint,
+  staker: string,
+  amountToStake: number | bigint,
+  validatorClient: ValidatorRegistryClient,
+) {
+  return validatorClient
+    .compose()
+    .findPoolForStaker({ validatorID, staker, amountToStake })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
+
+export async function isNewStakerToValidator(
+  validatorID: number | bigint,
+  staker: string,
+  minStake: number,
+) {
+  const activeAddress = getActiveWalletAddress()
+
+  if (!activeAddress) {
+    throw new Error('No active wallet found')
+  }
+
+  const validatorClient = makeSimulateValidatorClient(activeAddress)
+  const result = await callFindPoolForStaker(validatorID, staker, minStake, validatorClient)
+
+  const [_, isNewStaker] = result.returns![0]
+
+  return isNewStaker
 }

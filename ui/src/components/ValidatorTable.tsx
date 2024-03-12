@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet'
 import { MoreHorizontal } from 'lucide-react'
+import { AddStakeModal } from '@/components/AddStakeModal'
 import { DataTable } from '@/components/DataTable'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { Button } from '@/components/ui/button'
@@ -36,11 +37,13 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => row.owner,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
-        const nfdAppId = row.original.nfd
+        const validator = row.original
+
+        const nfdAppId = validator.nfd
         if (nfdAppId > 0) {
-          return ellipseAddress(row.original.owner) // @todo: fetch NFD by appId
+          return ellipseAddress(validator.owner) // @todo: fetch NFD by appId
         }
-        return ellipseAddress(row.original.owner)
+        return ellipseAddress(validator.owner)
       },
     },
     {
@@ -72,9 +75,11 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => 100 - row.numStakers,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Spaces Left" />,
       cell: ({ row }) => {
-        if (row.original.numPools == 0) return '--'
+        const validator = row.original
+
+        if (validator.numPools == 0) return '--'
         const maxStakers = 100
-        const spacesLeft = maxStakers - row.original.numStakers
+        const spacesLeft = maxStakers - validator.numStakers
         return spacesLeft
       },
     },
@@ -111,20 +116,20 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
     {
       id: 'actions',
       cell: ({ row }) => {
-        const stakingDisabled =
-          row.original.numStakers >= 100 ||
-          row.original.totalStaked >= row.original.maxStake ||
-          row.original.numPools == 0
+        const validator = row.original
 
-        const isOwner = row.original.owner === activeAddress
-        const isManager = row.original.manager === activeAddress
+        const stakingDisabled =
+          validator.numStakers >= 100 ||
+          validator.totalStaked >= validator.maxStake ||
+          validator.numPools == 0
+
+        const isOwner = validator.owner === activeAddress
+        const isManager = validator.manager === activeAddress
         const canEdit = isOwner || isManager
 
         return (
           <div className="flex items-center gap-x-2">
-            <Button size="sm" disabled={stakingDisabled}>
-              Stake
-            </Button>
+            <AddStakeModal validator={validator} disabled={stakingDisabled} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -144,7 +149,7 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                   <DropdownMenuItem asChild>
                     <Link
                       to="/validators/$validatorId"
-                      params={{ validatorId: row.original.id.toString() }}
+                      params={{ validatorId: validator.id.toString() }}
                     >
                       {canEdit ? 'Manage' : 'View'}
                     </Link>
@@ -159,16 +164,5 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
     },
   ]
 
-  // if (!data) {
-  //   return null
-  // }
-
-  return (
-    <DataTable
-      columns={columns}
-      data={validators}
-      // columnPinningState={{ left: ['id', 'validator'], right: [] }}
-      // columnPinningThreshold="lg"
-    />
-  )
+  return <DataTable columns={columns} data={validators} />
 }

@@ -5,7 +5,7 @@ import * as React from 'react'
 import { fetchNodePoolAssignments } from '@/api/contracts'
 import { Overview } from '@/components/_Overview'
 import { AddPoolModal } from '@/components/AddPoolModal'
-import { AlgoAmount } from '@/components/AlgoAmount'
+import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -50,11 +50,12 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
-              <AlgoAmount
+              <AlgoDisplayAmount
                 amount={validator.totalStaked}
                 microalgos
                 maxLength={13}
                 compactPrecision={2}
+                mutedRemainder
               />
             </div>
             {/* <p className="text-xs text-muted-foreground">+20.1% from last month</p> */}
@@ -192,7 +193,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                     Minimum Entry Stake
                   </dt>
                   <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                    <AlgoAmount amount={validator.minStake} microalgos />
+                    <AlgoDisplayAmount amount={validator.minStake} microalgos />
                   </dd>
                 </div>
                 <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
@@ -200,7 +201,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                     Maximum Total Stake
                   </dt>
                   <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                    <AlgoAmount amount={validator.maxStake} microalgos />
+                    <AlgoDisplayAmount amount={validator.maxStake} microalgos />
                   </dd>
                 </div>
               </dl>

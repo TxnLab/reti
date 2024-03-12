@@ -3,23 +3,25 @@ import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { convertFromBaseUnits, formatWithPrecision } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
-interface AlgoAmountProps {
+interface AlgoDisplayAmountProps {
   amount: number | bigint | string
   microalgos?: boolean
   trim?: boolean
   maxLength?: number
   compactPrecision?: number
+  mutedRemainder?: boolean
   className?: string
 }
 
-export function AlgoAmount({
+export function AlgoDisplayAmount({
   amount,
   microalgos = false,
   trim = true,
   maxLength,
   compactPrecision = 1,
+  mutedRemainder = false,
   className = '',
-}: AlgoAmountProps) {
+}: AlgoDisplayAmountProps) {
   const classes = cn('whitespace-nowrap', className)
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
 
@@ -49,7 +51,9 @@ export function AlgoAmount({
       <AlgoSymbol />
       &nbsp;{parts[0]}
       <span
-        className={cn(parts[1] === '' ? 'hidden' : 'text-muted-foreground/50')}
+        className={cn(
+          parts[1] === '' ? 'hidden' : mutedRemainder ? 'text-muted-foreground/50' : '',
+        )}
       >{`.${parts[1]}`}</span>
     </span>
   )
