@@ -34,19 +34,19 @@ const formSchema = z.object({
   nodeNum: z.string(),
 })
 
-interface AddPoolProps {
+interface AddPoolModalProps {
   validatorId: string
   nodePoolAssignment: NodePoolAssignmentConfig
   poolsPerNode: number
   disabled?: boolean
 }
 
-export function AddPool({
+export function AddPoolModal({
   validatorId,
   nodePoolAssignment,
   poolsPerNode,
   disabled = false,
-}: AddPoolProps) {
+}: AddPoolModalProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()

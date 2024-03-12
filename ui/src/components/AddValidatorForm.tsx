@@ -106,7 +106,7 @@ const algodClient = algokit.getAlgoClient({
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 const NFD_REGISTRY_APP_ID = getNfdRegistryAppIdFromViteEnvironment()
 
-export function AddForm() {
+export function AddValidatorForm() {
   const { signer, activeAddress } = useWallet()
 
   const navigate = useNavigate({ from: '/add' })

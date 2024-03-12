@@ -4,7 +4,7 @@ import { Coins, Pencil, Percent, Users, Waves } from 'lucide-react'
 import * as React from 'react'
 import { fetchNodePoolAssignments } from '@/api/contracts'
 import { Overview } from '@/components/_Overview'
-import { AddPool } from '@/components/AddPool'
+import { AddPoolModal } from '@/components/AddPoolModal'
 import { AlgoAmount } from '@/components/AlgoAmount'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -79,7 +79,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
             <div className="flex items-center gap-x-2 text-2xl font-bold lg:text-xl xl:text-2xl">
               {Number(validator.numPools)}
               {canAddPool && (
-                <AddPool
+                <AddPoolModal
                   validatorId={String(validator.id)}
                   nodePoolAssignment={nodePoolAssignmentQuery.data!}
                   poolsPerNode={validator.poolsPerNode}

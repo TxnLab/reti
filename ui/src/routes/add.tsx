@@ -2,7 +2,7 @@ import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
-import { AddForm } from '@/components/AddForm'
+import { AddValidatorForm } from '@/components/AddValidatorForm'
 import { isWalletConnected } from '@/utils/wallets'
 
 export const Route = createFileRoute('/add')({
@@ -31,7 +31,7 @@ function AddValidator() {
           <div>Loading...</div>
         ) : (
           <div className="py-10">
-            <AddForm />
+            <AddValidatorForm />
           </div>
         )}
       </PageMain>
