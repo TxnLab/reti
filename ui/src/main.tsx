@@ -13,6 +13,7 @@ import algosdk from 'algosdk'
 import { SnackbarProvider } from 'notistack'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { HelmetProvider } from 'react-helmet-async'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/providers/ThemeProvider'
@@ -82,13 +83,15 @@ function AppProviders() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <QueryClientProvider client={queryClient}>
-        <SnackbarProvider maxSnack={3}>
-          <WalletProvider value={walletProviders}>
-            <RouterProvider router={router} />
-          </WalletProvider>
-        </SnackbarProvider>
-      </QueryClientProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <SnackbarProvider maxSnack={3}>
+            <WalletProvider value={walletProviders}>
+              <RouterProvider router={router} />
+            </WalletProvider>
+          </SnackbarProvider>
+        </QueryClientProvider>
+      </HelmetProvider>
       <Toaster />
     </ThemeProvider>
   )

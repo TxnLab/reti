@@ -1,6 +1,7 @@
 import { ErrorComponent, Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import { ValidatorNotFoundError, validatorQueryOptions } from '@/api/contracts'
+import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { ValidatorDetails } from '@/components/ValidatorDetails'
@@ -37,6 +38,7 @@ function Dashboard() {
 
   return (
     <>
+      <Meta title={`Validator ${validator.id}`} />
       <PageHeader title={`Validator ${validator.id}`} />
       <PageMain>
         <ValidatorDetails validator={validator} />

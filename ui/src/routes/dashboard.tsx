@@ -1,11 +1,12 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
+import { useWallet } from '@txnlab/use-wallet'
+import { validatorsQueryOptions } from '@/api/contracts'
+import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { ValidatorTable } from '@/components/ValidatorTable'
-import { validatorsQueryOptions } from '@/api/contracts'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { isWalletConnected } from '@/utils/wallets'
-import { useWallet } from '@txnlab/use-wallet'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: async () => {
@@ -38,6 +39,7 @@ function Dashboard() {
 
   return (
     <>
+      <Meta title="Dashboard" />
       <PageHeader title="Staking Dashboard" />
       <PageMain>
         <ValidatorTable validators={validators} />

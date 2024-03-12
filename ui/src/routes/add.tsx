@@ -1,5 +1,6 @@
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
+import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { AddValidatorForm } from '@/components/AddValidatorForm'
@@ -25,6 +26,7 @@ function AddValidator() {
 
   return (
     <>
+      <Meta title="Add Validator" />
       <PageHeader title={activeAddress ? 'Add a Validator' : null} />
       <PageMain>
         {!isReady ? (
