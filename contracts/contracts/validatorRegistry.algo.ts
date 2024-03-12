@@ -100,6 +100,17 @@ type MbrAmounts = {
     AddStakerMbr: uint64;
 };
 
+type Constraints = {
+    EpochPayoutMinsMin: uint64;
+    EpochPayoutMinsMax: uint64;
+    MinPctToValidatorWFourDecimals: uint64;
+    MaxPctToValidatorWFourDecimals: uint64;
+    MinEntryStake: uint64; // in microAlgo
+    MaxAlgoPerPool: uint64; // in microAlgo
+    MaxNodes: uint64;
+    MaxPoolsPerNode: uint64;
+};
+
 // eslint-disable-next-line no-unused-vars
 export class ValidatorRegistry extends Contract {
     programVersion = 10;
@@ -169,11 +180,12 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Returns the MBR amounts needed for various actions:
-     * [AddValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contract
+     * [
+     *  AddValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contract
      *  AddPoolMbr: uint64 - mbr needed to add a new pool - paid to validator
      *  PoolInitMbr: uint64 - mbr needed to initStorage() of pool - paid to pool itself
      *  AddStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)
-     *  ]
+     * ]
      */
     getMbrAmounts(): MbrAmounts {
         return {
@@ -195,6 +207,22 @@ export class ValidatorRegistry extends Contract {
                 this.costForBoxStorage(
                     3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER
                 ), // size of key + all values
+        };
+    }
+
+    /**
+     * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
+     */
+    getProtocolConstraints(): Constraints {
+        return {
+            EpochPayoutMinsMax: MIN_PAYOUT_MINS,
+            EpochPayoutMinsMin: MAX_PAYOUT_MINS,
+            MinPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
+            MaxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
+            MinEntryStake: MIN_ALGO_STAKE_PER_POOL,
+            MaxAlgoPerPool: MAX_ALGO_PER_POOL,
+            MaxNodes: MAX_NODES,
+            MaxPoolsPerNode: MAX_POOLS_PER_NODE,
         };
     }
 
