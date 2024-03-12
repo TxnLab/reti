@@ -55,3 +55,19 @@ export type Validator = {
   numStakers: number
   totalStaked: number
 }
+
+export interface MbrAmounts {
+  validatorMbr: number
+  poolMbr: number
+  poolInitMbr: number
+  stakerMbr: number
+}
+
+export type NodeConfig = [bigint, ...bigint[]]
+export type RawNodePoolAssignmentConfig = [[NodeConfig][]]
+export type NodePoolAssignmentConfig = NodeConfig[]
+
+export type NodeInfo = {
+  index: number
+  availableSlots: number
+}

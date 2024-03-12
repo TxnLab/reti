@@ -1,13 +1,18 @@
-import { Coins, Pencil, Percent, Plus, Users, Waves } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { useWallet } from '@txnlab/use-wallet'
+import { Coins, Pencil, Percent, Users, Waves } from 'lucide-react'
+import * as React from 'react'
+import { fetchNodePoolAssignments } from '@/api/contracts'
 import { Overview } from '@/components/_Overview'
+import { AddPool } from '@/components/AddPool'
 import { AlgoAmount } from '@/components/AlgoAmount'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Validator } from '@/interfaces/validator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { NodePoolAssignmentConfig, Validator } from '@/interfaces/validator'
+import { validatorHasAvailableSlots } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
-import { Button } from '@/components/ui/button'
-import { useWallet } from '@txnlab/use-wallet'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 interface ValidatorDetailsProps {
   validator: Validator
@@ -19,7 +24,21 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
   const isManager = validator.manager === activeAddress
   const isOwner = validator.owner === activeAddress
   const canEdit = isManager || isOwner
-  const canAddPool = isManager && validator.numPools < validator.maxPools
+
+  const nodePoolAssignmentQuery = useQuery<NodePoolAssignmentConfig>({
+    queryKey: ['nodePoolAssignment', validator.id],
+    queryFn: () => fetchNodePoolAssignments(validator.id),
+    staleTime: Infinity,
+    enabled: canEdit,
+  })
+
+  const hasAvailableSlots = React.useMemo(() => {
+    return nodePoolAssignmentQuery.data
+      ? validatorHasAvailableSlots(nodePoolAssignmentQuery.data, validator.maxPools)
+      : false
+  }, [nodePoolAssignmentQuery.data, validator.maxPools, validator.numPools])
+
+  const canAddPool = canEdit && hasAvailableSlots
 
   return (
     <div className="py-10 space-y-4">
@@ -59,19 +78,12 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
           <CardContent>
             <div className="flex items-center gap-x-2 text-2xl font-bold lg:text-xl xl:text-2xl">
               {Number(validator.numPools)}
-              {canEdit && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="-my-2" disabled={!canAddPool}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Manage pools</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              {canAddPool && (
+                <AddPool
+                  validatorId={String(validator.id)}
+                  nodePoolAssignment={nodePoolAssignmentQuery.data!}
+                  maxPoolsPerNode={validator.maxPools}
+                />
               )}
             </div>
             {/* <p className="text-xs text-muted-foreground">+201 since last hour</p> */}
