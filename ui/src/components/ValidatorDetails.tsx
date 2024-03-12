@@ -34,9 +34,9 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
 
   const hasAvailableSlots = React.useMemo(() => {
     return nodePoolAssignmentQuery.data
-      ? validatorHasAvailableSlots(nodePoolAssignmentQuery.data, validator.maxPools)
+      ? validatorHasAvailableSlots(nodePoolAssignmentQuery.data, validator.poolsPerNode)
       : false
-  }, [nodePoolAssignmentQuery.data, validator.maxPools, validator.numPools])
+  }, [nodePoolAssignmentQuery.data, validator.poolsPerNode, validator.numPools])
 
   const canAddPool = canEdit && hasAvailableSlots
 
@@ -82,7 +82,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                 <AddPool
                   validatorId={String(validator.id)}
                   nodePoolAssignment={nodePoolAssignmentQuery.data!}
-                  maxPoolsPerNode={validator.maxPools}
+                  poolsPerNode={validator.poolsPerNode}
                 />
               )}
             </div>

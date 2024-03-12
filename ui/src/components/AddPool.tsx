@@ -37,14 +37,14 @@ const formSchema = z.object({
 interface AddPoolProps {
   validatorId: string
   nodePoolAssignment: NodePoolAssignmentConfig
-  maxPoolsPerNode: number
+  poolsPerNode: number
   disabled?: boolean
 }
 
 export function AddPool({
   validatorId,
   nodePoolAssignment,
-  maxPoolsPerNode,
+  poolsPerNode,
   disabled = false,
 }: AddPoolProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
@@ -56,7 +56,7 @@ export function AddPool({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nodeNum: findFirstAvailableNode(nodePoolAssignment, maxPoolsPerNode)?.toString() || '1',
+      nodeNum: findFirstAvailableNode(nodePoolAssignment, poolsPerNode)?.toString() || '1',
     },
   })
 
@@ -164,13 +164,13 @@ export function AddPool({
                     {nodePoolAssignment && (
                       <NodeSelect
                         nodes={nodePoolAssignment}
-                        maxPoolsPerNode={maxPoolsPerNode}
+                        poolsPerNode={poolsPerNode}
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       />
                     )}
                     <FormDescription>
-                      Select a node with an available slot (max: {maxPoolsPerNode})
+                      Select a node with an available slot (max: {poolsPerNode})
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -46,7 +46,7 @@ export function transformValidatorData(
     commissionAccount: config.ValidatorCommissionAddress,
     minStake: Number(config.MinEntryStake),
     maxStake: Number(config.MaxAlgoPerPool),
-    maxPools: Number(config.PoolsPerNode),
+    poolsPerNode: Number(config.PoolsPerNode),
     numPools: Number(state.NumPools),
     numStakers: Number(state.TotalStakers),
     totalStaked: Number(state.TotalAlgoStaked),
@@ -61,11 +61,11 @@ export function transformNodePoolAssignment(
 
 export function processNodePoolAssignment(
   nodes: NodePoolAssignmentConfig,
-  maxPoolsPerNode: number,
+  poolsPerNode: number,
 ): NodeInfo[] {
   return nodes.map((nodeConfig, index) => {
     const availableSlots = nodeConfig.filter(
-      (slot, i) => i < maxPoolsPerNode && slot === BigInt(0),
+      (slot, i) => i < poolsPerNode && slot === BigInt(0),
     ).length
 
     return {
@@ -77,21 +77,21 @@ export function processNodePoolAssignment(
 
 export function validatorHasAvailableSlots(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
-  maxPoolsPerNode: number,
+  poolsPerNode: number,
 ): boolean {
   return nodePoolAssignmentConfig.some((nodeConfig) => {
     const slotIndex = nodeConfig.indexOf(BigInt(0))
-    return slotIndex !== -1 && slotIndex < maxPoolsPerNode
+    return slotIndex !== -1 && slotIndex < poolsPerNode
   })
 }
 
 export function findFirstAvailableNode(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
-  maxPoolsPerNode: number,
+  poolsPerNode: number,
 ): number | null {
   for (let nodeIndex = 0; nodeIndex < nodePoolAssignmentConfig.length; nodeIndex++) {
     const slotIndex = nodePoolAssignmentConfig[nodeIndex].indexOf(BigInt(0))
-    if (slotIndex !== -1 && slotIndex < maxPoolsPerNode) {
+    if (slotIndex !== -1 && slotIndex < poolsPerNode) {
       return nodeIndex + 1
     }
   }

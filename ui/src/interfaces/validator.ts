@@ -50,7 +50,7 @@ export type Validator = {
   commissionAccount: string
   minStake: number
   maxStake: number
-  maxPools: number
+  poolsPerNode: number
   numPools: number
   numStakers: number
   totalStaked: number

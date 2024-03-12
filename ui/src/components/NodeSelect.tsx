@@ -11,18 +11,18 @@ import { processNodePoolAssignment } from '@/utils/contracts'
 
 interface NodeSelectProps {
   nodes: NodePoolAssignmentConfig
-  maxPoolsPerNode: number
+  poolsPerNode: number
   onValueChange: (value: string) => void
   defaultValue: string
 }
 
 export function NodeSelect({
   nodes,
-  maxPoolsPerNode,
+  poolsPerNode,
   onValueChange,
   defaultValue,
 }: NodeSelectProps) {
-  const nodeInfo = processNodePoolAssignment(nodes, maxPoolsPerNode)
+  const nodeInfo = processNodePoolAssignment(nodes, poolsPerNode)
 
   return (
     <Select onValueChange={onValueChange} defaultValue={defaultValue}>
