@@ -134,7 +134,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
 
       router.invalidate()
     } catch (error) {
-      toast.error('Failed to create staking pool', { id: toastId })
+      toast.error('Failed to add stake to pool', { id: toastId })
       console.error(error)
     }
   }
