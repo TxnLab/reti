@@ -128,18 +128,38 @@ export class StakingPool extends Contract {
     /**
      * Called after we're created and then funded so we can create our large stakers ledger storage
      * Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost
+     * If this is pool 1 AND the validator has specified a reward token, opt-in to that token
+     * so that the validator can seed the pool with future rewards of that token.
      * @param mbrPayment payment from caller which covers mbr increase of new staking pools' storage
      */
     initStorage(mbrPayment: PayTxn): void {
+        assert(!this.Stakers.exists, 'staking pool already initialized');
+
         const PoolInitMbr =
             ALGORAND_ACCOUNT_MIN_BALANCE +
             this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL);
 
+        // the pay transaction must exactly match our MBR requirement.
         verifyPayTxn(mbrPayment, { amount: PoolInitMbr });
+        this.Stakers.create();
 
-        if (!this.Stakers.exists) {
-            this.Stakers.create();
+        // Get the config of our validator to determine if we issue reward tokens
+        const validatorConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+            methodArgs: [this.ValidatorID.value],
+        });
+        const isTokenEligible = validatorConfig.RewardTokenID !== 0;
+
+        if (isTokenEligible && this.PoolID.value === 1) {
+            // opt ourselves in to the reward token if we're pool 1
+            sendAssetTransfer({
+                xferAsset: AssetID.fromUint64(validatorConfig.RewardTokenID),
+                assetReceiver: this.app.address,
+                assetAmount: 0,
+            });
         }
+
+        // If this is pool 1 and our validator
     }
 
     /**
@@ -220,8 +240,8 @@ export class StakingPool extends Contract {
     }
 
     /**
-     * Removes stake on behalf of caller (removing own stake).  Also notifies the validator contract for this pools
-     * validator of the staker / balance changes.
+     * Removes stake on behalf of caller (removing own stake).  If any token rewards exist, those are always sent in
+     * full. Also notifies the validator contract for this pools validator of the staker / balance changes.
      *
      * @param {uint64} amountToUnstake - The amount of stake to be removed.  Specify 0 to remove all stake.
      * @throws {Error} If the account has insufficient balance or if the account is not found.
@@ -247,6 +267,31 @@ export class StakingPool extends Contract {
                 }
                 cmpStaker.Balance -= amountToUnstake;
                 this.TotalAlgoStaked.value -= amountToUnstake;
+
+                let amountRewardTokenRemoved = 0;
+                if (cmpStaker.RewardTokenBalance > 0) {
+                    // If and only if this is pool 1 (where the reward token is held - then we can pay it out)
+                    if (this.PoolID.value === 1) {
+                        const validatorConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
+                            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+                            methodArgs: [this.ValidatorID.value],
+                        });
+
+                        sendAssetTransfer({
+                            xferAsset: AssetID.fromUint64(validatorConfig.RewardTokenID),
+                            assetReceiver: staker,
+                            assetAmount: cmpStaker.RewardTokenBalance,
+                        });
+                        amountRewardTokenRemoved = cmpStaker.RewardTokenBalance;
+                        cmpStaker.RewardTokenBalance = 0;
+                    } else {
+                        // If we're in different pool, then we set amountRewardTokenRemoved to amount of reward token to remove
+                        // but the stakeRemoved call to the validator will see that a pool other than 1 called it, and
+                        // then issues call to pool 1 to do the token payout via 'payTokenReward' method in our contract
+                        amountRewardTokenRemoved = cmpStaker.RewardTokenBalance;
+                        cmpStaker.RewardTokenBalance = 0;
+                    }
+                }
 
                 // don't let them reduce their balance below the MinEntryStake UNLESS they're removing it all!
                 assert(
@@ -274,14 +319,14 @@ export class StakingPool extends Contract {
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it
-                // stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void
-                // ABI: stakeRemoved((uint64,uint64,uint64),address,uint64,bool)void
+                // stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, rewardRemoved: uint64, stakerRemoved: boolean): void
                 sendMethodCall<typeof ValidatorRegistry.prototype.stakeRemoved>({
                     applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
                     methodArgs: [
                         { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
                         staker,
                         amountToUnstake,
+                        amountRewardTokenRemoved,
                         stakerRemoved,
                     ],
                 });
@@ -289,46 +334,6 @@ export class StakingPool extends Contract {
             }
         }
         throw Error('Account not found');
-    }
-
-    /**
-     * Remove a specified amount of 'community token' rewards for a staker.
-     * Anyone can call on behalf of the staker, but the tokens are only sent to the staker.
-     * This is so projects can call this on behalf of the staker and cause the staker to be airdropped their
-     * rewarded amount.
-     * @param {Address} staker - the staker account to send rewards to
-     * @param {uint64} amountToRemove - The amount of community tokens to be removed.  Specify 0 to remove all rewarded.
-     */
-    removeTokenReward(staker: Address, amountToRemove: uint64): void {
-        // TODO - fetch reward token from validator config
-        const rewardToken = 1;
-        for (let i = 0; i < this.Stakers.value.length; i += 1) {
-            if (globals.opcodeBudget < 300) {
-                increaseOpcodeBudget();
-            }
-            const cmpStaker = clone(this.Stakers.value[i]);
-            if (cmpStaker.Account === staker) {
-                if (amountToRemove === 0) {
-                    // specifying 0 for unstake amount is requesting to UNSTAKE ALL
-                    amountToRemove = cmpStaker.RewardTokenBalance;
-                }
-                if (cmpStaker.RewardTokenBalance < amountToRemove) {
-                    throw Error('Insufficient reward token balance');
-                }
-                cmpStaker.RewardTokenBalance -= amountToRemove;
-
-                // Send the reward tokens to the staker
-                sendAssetTransfer({
-                    xferAsset: AssetID.fromUint64(rewardToken),
-                    assetReceiver: staker,
-                    assetAmount: amountToRemove,
-                });
-
-                // Update the box w/ the new staker data
-                this.Stakers.value[i] = cmpStaker;
-                return;
-            }
-        }
     }
 
     /**
@@ -351,12 +356,25 @@ export class StakingPool extends Contract {
         throw Error('Account not found');
     }
 
-    private isOwnerOrManagerCaller(): boolean {
-        const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
-            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
-            methodArgs: [this.ValidatorID.value],
+    /**
+     * Remove a specified amount of 'community token' rewards for a staker.
+     * This can ONLY be called by our validator and only if we're pool 1 - with the token.
+     * @param staker - the staker account to send rewards to
+     * @param rewardToken - ID of reward token (to avoid re-entrancy in calling validator back to get id)
+     * @param amountToSend - amount to send the staker (there is significant trust here(!) - also why only validator can call us
+     */
+    payTokenReward(staker: Address, rewardToken: uint64, amountToSend: uint64): void {
+        // account calling us has to be our creating validator contract
+        assert(this.txn.sender === AppID.fromUint64(this.CreatingValidatorContractAppID.value).address);
+        assert(this.PoolID.value === 1, 'must be pool 1 in order to be called to pay out token rewards');
+        assert(rewardToken !== 0, 'can only claim token rewards from validator that has them');
+
+        // Send the reward tokens to the staker
+        sendAssetTransfer({
+            xferAsset: AssetID.fromUint64(rewardToken),
+            assetReceiver: staker,
+            assetAmount: amountToSend,
         });
-        return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
     }
 
     /**
@@ -382,12 +400,12 @@ export class StakingPool extends Contract {
      */
     epochBalanceUpdate(): void {
         // call the validator contract to get our payout data
-        const payoutConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
+        const validatorConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
-        const payoutMins = payoutConfig.PayoutEveryXMins as uint64;
-        const isTokenEligible = payoutConfig.RewardTokenID !== 0;
+        const payoutMins = validatorConfig.PayoutEveryXMins as uint64;
+        const isTokenEligible = validatorConfig.RewardTokenID !== 0;
 
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which should never be counted - it's not payable]
@@ -408,23 +426,27 @@ export class StakingPool extends Contract {
                 });
                 poolOneAddress = AppID.fromUint64(poolOneAppID).address;
             }
-            const tokenRewardBal = poolOneAddress.assetBalance(AssetID.fromUint64(payoutConfig.RewardTokenID));
-            // if they have less tokens available then min payout - just ignore and act like no reward is avail.
-            if (tokenRewardBal >= payoutConfig.RewardPerPayout) {
-                tokenRewardAvail = payoutConfig.RewardPerPayout;
+            const tokenRewardBal = poolOneAddress.assetBalance(AssetID.fromUint64(validatorConfig.RewardTokenID));
+            // if they have less tokens available then min payout - just ignore and act like no reward is avail
+            // leaving tokenRewardAvail as 0
+            if (tokenRewardBal >= validatorConfig.RewardPerPayout) {
+                tokenRewardAvail = validatorConfig.RewardPerPayout;
             }
         }
         if (tokenRewardAvail === 0) {
-            // no token reward - then algo MSUT be paid out !
+            // no token reward - then algo MUST be paid out !
             // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
             assert(algoRewardAvail > 1_000_000, 'Reward needs to be at least 1 ALGO');
             log(concat('algo reward avail: %i', itob(algoRewardAvail)));
         }
 
-        if (payoutConfig.PercentToValidator !== 0) {
+        if (validatorConfig.PercentToValidator !== 0) {
             // determine the % that goes to validator...
             // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
-            const validatorPay = wideRatio([algoRewardAvail, payoutConfig.PercentToValidator as uint64], [1_000_000]);
+            const validatorPay = wideRatio(
+                [algoRewardAvail, validatorConfig.PercentToValidator as uint64],
+                [1_000_000]
+            );
 
             // and adjust reward for entire pool accordingly
             algoRewardAvail -= validatorPay;
@@ -435,7 +457,7 @@ export class StakingPool extends Contract {
                 log(concat('paying validator: %i', itob(validatorPay)));
                 sendPayment({
                     amount: validatorPay,
-                    receiver: payoutConfig.ValidatorCommissionAddress,
+                    receiver: validatorConfig.ValidatorCommissionAddress,
                     note: 'validator reward',
                 });
                 log(concat('remaining reward: %i', itob(algoRewardAvail)));
@@ -658,6 +680,14 @@ export class StakingPool extends Contract {
             applicationID: AppID.fromUint64(registryID),
             applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)],
         });
+    }
+
+    private isOwnerOrManagerCaller(): boolean {
+        const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+            methodArgs: [this.ValidatorID.value],
+        });
+        return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
     }
 
     /**

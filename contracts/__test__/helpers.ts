@@ -408,7 +408,11 @@ export async function addStakingPool(
                 // the required MBR payment transaction
                 mbrPayment: { transaction: payStakingPoolMbr, signer: context.testAccount },
             },
-            {}
+            {
+                sendParams: {
+                    fee: AlgoAmount.MicroAlgos(2000),
+                },
+            }
         )
         .execute({ populateAppCallResources: true });
 

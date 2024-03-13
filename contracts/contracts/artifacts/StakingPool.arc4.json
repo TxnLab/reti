@@ -46,7 +46,7 @@
     },
     {
       "name": "initStorage",
-      "desc": "Called after we're created and then funded so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost",
+      "desc": "Called after we're created and then funded so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.",
       "args": [
         {
           "name": "mbrPayment",
@@ -80,31 +80,12 @@
     },
     {
       "name": "removeStake",
-      "desc": "Removes stake on behalf of caller (removing own stake).  Also notifies the validator contract for this poolsvalidator of the staker / balance changes.",
+      "desc": "Removes stake on behalf of caller (removing own stake).  If any token rewards exist, those are always sent infull. Also notifies the validator contract for this pools validator of the staker / balance changes.",
       "args": [
         {
           "name": "amountToUnstake",
           "type": "uint64",
           "desc": "The amount of stake to be removed.  Specify 0 to remove all stake."
-        }
-      ],
-      "returns": {
-        "type": "void"
-      }
-    },
-    {
-      "name": "removeTokenReward",
-      "desc": "Remove a specified amount of 'community token' rewards for a staker.Anyone can call on behalf of the staker, but the tokens are only sent to the staker.This is so projects can call this on behalf of the staker and cause the staker to be airdropped theirrewarded amount.",
-      "args": [
-        {
-          "name": "staker",
-          "type": "address",
-          "desc": "the staker account to send rewards to"
-        },
-        {
-          "name": "amountToRemove",
-          "type": "uint64",
-          "desc": "The amount of community tokens to be removed.  Specify 0 to remove all rewarded."
         }
       ],
       "returns": {
@@ -124,6 +105,30 @@
       "returns": {
         "type": "(address,uint64,uint64,uint64,uint64)",
         "desc": "{StakedInfo}- The staked information for the given staker."
+      }
+    },
+    {
+      "name": "payTokenReward",
+      "desc": "Remove a specified amount of 'community token' rewards for a staker.This can ONLY be called by our validator and only if we're pool 1 - with the token.",
+      "args": [
+        {
+          "name": "staker",
+          "type": "address",
+          "desc": "the staker account to send rewards to"
+        },
+        {
+          "name": "rewardToken",
+          "type": "uint64",
+          "desc": "ID of reward token (to avoid re-entrancy in calling validator back to get id)"
+        },
+        {
+          "name": "amountToSend",
+          "type": "uint64",
+          "desc": "amount to send the staker (there is significant trust here(!) - also why only validator can call us"
+        }
+      ],
+      "returns": {
+        "type": "void"
       }
     },
     {

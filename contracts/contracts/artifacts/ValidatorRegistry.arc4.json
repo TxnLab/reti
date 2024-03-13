@@ -373,6 +373,11 @@
           "type": "uint64"
         },
         {
+          "name": "rewardRemoved",
+          "type": "uint64",
+          "desc": "amount of token reward removed (only pool 1 can set this - and only if this validator has a reward token)"
+        },
+        {
           "name": "stakerRemoved",
           "type": "bool"
         }

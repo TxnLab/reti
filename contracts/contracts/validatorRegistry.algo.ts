@@ -616,9 +616,16 @@ export class ValidatorRegistry extends Contract {
      * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
      * @param staker
      * @param amountRemoved
+     * @param rewardRemoved - amount of token reward removed (only pool 1 can set this - and only if this validator has a reward token)
      * @param stakerRemoved
      */
-    stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, stakerRemoved: boolean): void {
+    stakeRemoved(
+        poolKey: ValidatorPoolKey,
+        staker: Address,
+        amountRemoved: uint64,
+        rewardRemoved: uint64,
+        stakerRemoved: boolean
+    ): void {
         if (globals.opcodeBudget < 300) {
             increaseOpcodeBudget();
         }
@@ -632,6 +639,29 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked -= amountRemoved;
         this.TotalAlgoStaked.value -= amountRemoved;
+
+        if (rewardRemoved > 0) {
+            const rewardTokenID = this.ValidatorList(poolKey.ID).value.Config.RewardTokenID;
+            assert(rewardTokenID !== 0, "rewardRemoved can't be set if validator doesn't have reward token!");
+            assert(
+                this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack >= rewardRemoved,
+                'reward being removed must be covered by hold back amount'
+            );
+            // If pool 1 is calling us, then they already sent the reward token to the staker and we just need to have
+            // updated the RewardTokenHeldBack value and that's it.
+            this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack -= rewardRemoved;
+            // If a different pool called us, then they CAN'T send the token - we've already updated the
+            // RewardTokenHeldBack value and then call method in the pool that can only be called by us (the
+            // validator), and can only be called on pools 1 - to have it do the token payout.
+            if (poolKey.PoolID !== 1) {
+                sendMethodCall<typeof StakingPool.prototype.payTokenReward>({
+                    applicationID: AppID.fromUint64(
+                        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID
+                    ),
+                    methodArgs: [staker, rewardTokenID, rewardRemoved],
+                });
+            }
+        }
 
         if (stakerRemoved) {
             // remove from that pool
