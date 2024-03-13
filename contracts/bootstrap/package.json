@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/bootstrap/index.js",
-    "go": "npm run build && npm run start"
+    "bootstrap": "npm run build && npm run start"
   },
   "author": "",
   "license": "ISC",

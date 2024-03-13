@@ -165,14 +165,16 @@ type ValidatorCurState = {
     NumPools: number; // current number of pools this validator has - capped at MaxPools
     TotalStakers: bigint; // total number of stakers across all pools
     TotalAlgoStaked: bigint; // total amount staked to this validator across ALL of its pools
+    RewardTokenHeldBack: bigint; // amount of token held back for future payout to stakers
 };
 
-function createValidatorCurStateFromValues([NumPools, TotalStakers, TotalAlgoStaked]: [
+function createValidatorCurStateFromValues([NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack]: [
     number,
     bigint,
     bigint,
+    bigint,
 ]): ValidatorCurState {
-    return { NumPools, TotalStakers, TotalAlgoStaked };
+    return { NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack };
 }
 
 export class PoolInfo {

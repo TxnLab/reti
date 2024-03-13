@@ -99,13 +99,13 @@ export class StakingPool extends Contract {
     gas(): void {}
 
     private minBalanceForAccount(
-        contracts: number,
-        extraPages: number,
-        assets: number,
-        localInts: number,
-        localBytes: number,
-        globalInts: number,
-        globalBytes: number
+        contracts: uint64,
+        extraPages: uint64,
+        assets: uint64,
+        localInts: uint64,
+        localBytes: uint64,
+        globalInts: uint64,
+        globalBytes: uint64
     ): uint64 {
         let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
         minBal += contracts * APPLICATION_BASE_FEE;
@@ -118,7 +118,7 @@ export class StakingPool extends Contract {
         return minBal;
     }
 
-    private costForBoxStorage(totalNumBytes: number): uint64 {
+    private costForBoxStorage(totalNumBytes: uint64): uint64 {
         const SCBOX_PERBOX = 2500;
         const SCBOX_PERBYTE = 400;
 
@@ -387,23 +387,47 @@ export class StakingPool extends Contract {
             methodArgs: [this.ValidatorID.value],
         });
         const payoutMins = payoutConfig.PayoutEveryXMins as uint64;
+        const isTokenEligible = payoutConfig.RewardTokenID !== 0;
 
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
-        // [not counting MBR which should never be counted as a reward - it's not payable]
-        let rewardAvailable = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
-
-        // Reward available needs to be at lest 1 algo.
-        assert(rewardAvailable > 1_000_000, 'Reward to payout not high enough');
-
-        log(concat('reward avail: %i', itob(rewardAvailable)));
+        // [not counting MBR which should never be counted - it's not payable]
+        let algoRewardAvail = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
+        // check if tokens are rewarded by this validator and determine how much we have to hand out
+        // we'll track amount we actually assign out and let our validator know so it can mark that amount
+        // as being held back (for tracking what has been assigned for payout)
+        let tokenRewardAvail = 0;
+        let tokenRewardPaidOut = 0;
+        if (isTokenEligible) {
+            // if (this.txn.sender !== AppID.fromUint64(this.CreatingValidatorContractAppID.value).address) {
+            let poolOneAddress = this.app.address;
+            if (this.PoolID.value !== 1) {
+                // If we're not pool 1 - figure out its address..
+                const poolOneAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
+                    applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+                    methodArgs: [this.ValidatorID.value, 1],
+                });
+                poolOneAddress = AppID.fromUint64(poolOneAppID).address;
+            }
+            const tokenRewardBal = poolOneAddress.assetBalance(AssetID.fromUint64(payoutConfig.RewardTokenID));
+            // if they have less tokens available then min payout - just ignore and act like no reward is avail.
+            if (tokenRewardBal >= payoutConfig.RewardPerPayout) {
+                tokenRewardAvail = payoutConfig.RewardPerPayout;
+            }
+        }
+        if (tokenRewardAvail === 0) {
+            // no token reward - then algo MSUT be paid out !
+            // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
+            assert(algoRewardAvail > 1_000_000, 'Reward needs to be at least 1 ALGO');
+            log(concat('algo reward avail: %i', itob(algoRewardAvail)));
+        }
 
         if (payoutConfig.PercentToValidator !== 0) {
             // determine the % that goes to validator...
             // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
-            const validatorPay = wideRatio([rewardAvailable, payoutConfig.PercentToValidator as uint64], [1_000_000]);
+            const validatorPay = wideRatio([algoRewardAvail, payoutConfig.PercentToValidator as uint64], [1_000_000]);
 
             // and adjust reward for entire pool accordingly
-            rewardAvailable -= validatorPay;
+            algoRewardAvail -= validatorPay;
 
             // ---
             // pay the validator their cut...
@@ -414,13 +438,13 @@ export class StakingPool extends Contract {
                     receiver: payoutConfig.ValidatorCommissionAddress,
                     note: 'validator reward',
                 });
-                log(concat('remaining reward: %i', itob(rewardAvailable)));
+                log(concat('remaining reward: %i', itob(algoRewardAvail)));
             }
         }
 
-        if (rewardAvailable === 0) {
+        if (algoRewardAvail === 0 && tokenRewardAvail === 0) {
             // likely a personal validator node - probably had validator % at 1000 and we just issued the entire reward
-            // to them - we're done
+            // to them.  Since we also have no token reward to assign - we're done
             return;
         }
 
@@ -442,8 +466,8 @@ export class StakingPool extends Contract {
         }
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.
-
         let increasedStake = 0;
+
         /**
          * assume A)lice and B)ob have equal stake... and there is a reward of 100 to divide
          * |------|-------|...
@@ -488,21 +512,35 @@ export class StakingPool extends Contract {
                         partialStakersTotalStake += cmpStaker.Balance;
                         timePercentage = (timeInPool * 1000) / epochInSecs;
 
-                        // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
-                        const stakerReward = wideRatio(
-                            [cmpStaker.Balance, rewardAvailable, timePercentage],
-                            [this.TotalAlgoStaked.value, 1000]
-                        );
+                        if (algoRewardAvail > 0) {
+                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
+                            const stakerReward = wideRatio(
+                                [cmpStaker.Balance, algoRewardAvail, timePercentage],
+                                [this.TotalAlgoStaked.value, 1000]
+                            );
 
-                        // reduce the reward available (that we're accounting for) so that the subsequent
-                        // 'full' pays are based on what's left
-                        rewardAvailable -= stakerReward;
-                        // instead of sending them algo now - just increase their ledger balance, so they can claim
-                        // it at any time.
-                        cmpStaker.Balance += stakerReward;
-                        cmpStaker.TotalRewarded += stakerReward;
-                        increasedStake += stakerReward;
+                            // reduce the reward available (that we're accounting for) so that the subsequent
+                            // 'full' pays are based on what's left
+                            algoRewardAvail -= stakerReward;
+                            // instead of sending them algo now - just increase their ledger balance, so they can claim
+                            // it at any time.
+                            cmpStaker.Balance += stakerReward;
+                            cmpStaker.TotalRewarded += stakerReward;
+                            increasedStake += stakerReward;
+                        }
+                        if (tokenRewardAvail > 0) {
+                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
+                            const stakerTokenReward = wideRatio(
+                                [cmpStaker.Balance, tokenRewardAvail, timePercentage],
+                                [this.TotalAlgoStaked.value, 1000]
+                            );
 
+                            // reduce the reward available (that we're accounting for) so that the subsequent
+                            // 'full' pays are based on what's left
+                            tokenRewardAvail -= stakerTokenReward;
+                            cmpStaker.RewardTokenBalance += stakerTokenReward;
+                            tokenRewardPaidOut += stakerTokenReward;
+                        }
                         // Update the box w/ the new data
                         this.Stakers.value[i] = cmpStaker;
                     }
@@ -530,15 +568,27 @@ export class StakingPool extends Contract {
                     if (timeInPool >= epochInSecs) {
                         // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                         // payment
-                        const stakerReward = wideRatio([cmpStaker.Balance, rewardAvailable], [newPoolTotalStake]);
-                        // instead of sending them algo now - just increase their ledger balance, so they can claim
-                        // it at any time.
-                        cmpStaker.Balance += stakerReward;
-                        cmpStaker.TotalRewarded += stakerReward;
-                        increasedStake += stakerReward;
+                        if (algoRewardAvail > 0) {
+                            const stakerReward = wideRatio([cmpStaker.Balance, algoRewardAvail], [newPoolTotalStake]);
+                            // instead of sending them algo now - just increase their ledger balance, so they can claim
+                            // it at any time.
+                            cmpStaker.Balance += stakerReward;
+                            cmpStaker.TotalRewarded += stakerReward;
+                            increasedStake += stakerReward;
+                        }
+                        if (tokenRewardAvail > 0) {
+                            const stakerTokenReward = wideRatio(
+                                [cmpStaker.Balance, tokenRewardAvail],
+                                [newPoolTotalStake]
+                            );
+                            // instead of sending them algo now - just increase their ledger balance, so they can claim
+                            // it at any time.
+                            cmpStaker.RewardTokenBalance += stakerTokenReward;
+                            tokenRewardPaidOut += stakerTokenReward;
+                        }
+                        // Update the box w/ the new data
+                        this.Stakers.value[i] = cmpStaker;
                     }
-                    // Update the box w/ the new data
-                    this.Stakers.value[i] = cmpStaker;
                 }
             }
         }
@@ -548,6 +598,7 @@ export class StakingPool extends Contract {
         this.TotalAlgoStaked.value += increasedStake;
 
         log(concat('increased stake: %i', itob(increasedStake)));
+        log(concat('token reward paid out: %i', itob(tokenRewardPaidOut)));
 
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it
@@ -557,6 +608,7 @@ export class StakingPool extends Contract {
             methodArgs: [
                 { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
                 increasedStake,
+                tokenRewardPaidOut,
             ],
         });
         this.LastPayout.value = curTime;

@@ -68,8 +68,13 @@ export type ValidatorConfig = {
 
 type ValidatorCurState = {
     NumPools: uint16; // current number of pools this validator has - capped at MaxPools
-    TotalStakers: uint64; // total number of stakers across all pools
+    TotalStakers: uint64; // total number of stakers across all pools of THIS validator
     TotalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
+    // amount of the reward token held bcak in pool 1 for paying out stakers their rewards.
+    // as reward tokens are assigned to stakers - the amount as part of each epoch will be updated
+    // in this value and this amount has to be assumed 'spent' - only reducing this number as the token
+    // is actually sent out by request of the validator itself
+    RewardTokenHeldBack: uint64;
 };
 
 type PoolInfo = {
@@ -149,13 +154,13 @@ export class ValidatorRegistry extends Contract {
     gas(): void {}
 
     private minBalanceForAccount(
-        contracts: number,
-        extraPages: number,
-        assets: number,
-        localInts: number,
-        localBytes: number,
-        globalInts: number,
-        globalBytes: number
+        contracts: uint64,
+        extraPages: uint64,
+        assets: uint64,
+        localInts: uint64,
+        localBytes: uint64,
+        globalInts: uint64,
+        globalBytes: uint64
     ): uint64 {
         let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
         minBal += contracts * APPLICATION_BASE_FEE;
@@ -168,7 +173,7 @@ export class ValidatorRegistry extends Contract {
         return minBal;
     }
 
-    private costForBoxStorage(totalNumBytes: number): uint64 {
+    private costForBoxStorage(totalNumBytes: uint64): uint64 {
         const SCBOX_PERBOX = 2500;
         const SCBOX_PERBYTE = 400;
 
@@ -274,7 +279,8 @@ export class ValidatorRegistry extends Contract {
 
     // @abi.readonly
     // getPoolAppID is useful for callers to determine app to call for removing stake if they don't have staking or
-    // want to get staker list for an account
+    // want to get staker list for an account.  The staking pool also uses it to get the app id of staking pool 1
+    // (which contains reward tokens if being used) so that the amount available can be determined.
     getPoolAppID(validatorID: uint64, poolID: uint64): uint64 {
         assert(poolID !== 0 && poolID <= this.ValidatorList(validatorID).value.Pools.length);
         return this.ValidatorList(validatorID).value.Pools[poolID - 1].PoolAppID;
@@ -349,6 +355,7 @@ export class ValidatorRegistry extends Contract {
         this.ValidatorList(validatorID).create();
         this.ValidatorList(validatorID).value.Config = config;
         this.ValidatorList(validatorID).value.Config.ID = validatorID;
+        // all other values being 0 is correct (for 'State' for eg)
 
         if (config.NFDForInfo !== 0) {
             // verify nfd is real, and owned by sender
@@ -585,16 +592,18 @@ export class ValidatorRegistry extends Contract {
      * stake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
      * @param poolKey - ValidatorPoolKey type
-     * @param amountToAdd - amount this validator's total stake increased via rewards
+     * @param algoToAdd - amount this validator's total stake increased via rewards
+     * @param rewardAmountToAdd - amount this validator's total stake increased via rewards
      */
-    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, amountToAdd: uint64): void {
+    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, algoToAdd: uint64, rewardAmountToAdd: uint64): void {
         this.verifyPoolKeyCaller(poolKey);
 
-        // Update the specified amount of stake - update pool stats, then total validator stats
-        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += amountToAdd;
-        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += amountToAdd;
+        // Update the specified amount of stake (+reward tokens reserved) - update pool stats, then total validator stats
+        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += algoToAdd;
+        this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += algoToAdd;
+        this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack += rewardAmountToAdd;
 
-        this.TotalAlgoStaked.value += amountToAdd;
+        this.TotalAlgoStaked.value += algoToAdd;
 
         // Re-validate the NFD as well while we're here, removing as associated nfd if no longer owner
         this.reverifyNFDOwnership(poolKey.ID);

@@ -5,7 +5,7 @@ actor "Master Contract" as master
 database "Staking pool(*)" as pool
 group get mbr data
 validator -> master: [SIMULATE] getMbrAmounts()(uint64,uint64,uint64,uint64)
-master->validator: returns MBRs to add Validator, add Pool, pool init, new first-time Staker
+master->validator: returns MBRs to add Validator, add Pool, pool init, dnew first-time Staker
 end
 group Add self as new validator
 autonumber 0
@@ -31,6 +31,7 @@ group Add stake to validator
 autonumber 0
 staker -> master: [payment of stake (portion stays as MBR if first-time in protocol)
 staker -> master:  addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey
+note right: updating totals for validator and protocol
 autonumber stop
 master -> master: checks stakers existing staked pools w/ validator\nthen checks avail pools
 autonumber 0

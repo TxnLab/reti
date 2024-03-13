@@ -67,7 +67,7 @@
         }
       ],
       "returns": {
-        "type": "(uint16,uint64,uint64)"
+        "type": "(uint16,uint64,uint64,uint64)"
       }
     },
     {
@@ -341,7 +341,12 @@
           "desc": "ValidatorPoolKey type"
         },
         {
-          "name": "amountToAdd",
+          "name": "algoToAdd",
+          "type": "uint64",
+          "desc": "amount this validator's total stake increased via rewards"
+        },
+        {
+          "name": "rewardAmountToAdd",
           "type": "uint64",
           "desc": "amount this validator's total stake increased via rewards"
         }
