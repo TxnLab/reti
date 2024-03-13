@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
+	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/term"
 
@@ -66,6 +67,12 @@ func initApp() *RetiApp {
 			return appConfig.initClients(ctx, cmd)
 		},
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "envfile",
+				Usage:   "env file to load",
+				Aliases: []string{"e"},
+				Action:  loadNamedEnvFile,
+			},
 			&cli.StringFlag{
 				Name:    "network",
 				Usage:   "Algorand network to use",
@@ -202,4 +209,9 @@ func checkConfigured(ctx context.Context, command *cli.Command) error {
 		return errors.New("validator not configured")
 	}
 	return nil
+}
+
+func loadNamedEnvFile(ctx context.Context, command *cli.Command, envFile string) error {
+	misc.Infof(App.logger, "loading env file:%s", envFile)
+	return godotenv.Load(envFile)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
+	"github.com/TxnLab/reti/internal/lib/misc"
 )
 
 type Reti struct {
@@ -62,7 +63,7 @@ func New(
 	retReti.validatorContract = validatorContract
 	retReti.poolContract = poolContract
 
-	logger.Info("client initialized", "validator", validatorID, "node", nodeNum)
+	misc.Infof(logger, "client initialized, Protocol App ID:%d, Validator ID:%d, Node Number:%d", validatorAppID, validatorID, nodeNum)
 
 	return retReti, nil
 }
