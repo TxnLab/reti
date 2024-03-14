@@ -158,8 +158,6 @@ export class StakingPool extends Contract {
                 assetAmount: 0,
             });
         }
-
-        // If this is pool 1 and our validator
     }
 
     /**

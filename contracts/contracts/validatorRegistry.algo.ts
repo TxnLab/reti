@@ -119,6 +119,7 @@ type Constraints = {
     MaxAlgoPerPool: uint64; // in microAlgo
     MaxNodes: uint64;
     MaxPoolsPerNode: uint64;
+    MaxStakersPerPool: uint64;
 };
 
 // eslint-disable-next-line no-unused-vars
@@ -233,6 +234,7 @@ export class ValidatorRegistry extends Contract {
             MaxAlgoPerPool: MAX_ALGO_PER_POOL,
             MaxNodes: MAX_NODES,
             MaxPoolsPerNode: MAX_POOLS_PER_NODE,
+            MaxStakersPerPool: MAX_STAKERS_PER_POOL,
         };
     }
 
