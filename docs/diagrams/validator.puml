@@ -14,6 +14,7 @@ validator -> master: addValidator(mbrPayment: PayTxn, nfdName: string, config: V
 autonumber stop
 master -> validator: initializes new validator record, returns validator ID
 end
+
 group Add pool for validator
 autonumber 0
 validator -> master: [payment of mbr for new pool]
@@ -26,7 +27,19 @@ autonumber 0
 validator -> pool: [payment of box storage mbr for stakers ledger in pool]
 validator -> pool: initStorage(mbrPayment: PayTxn)
 autonumber stop
+pool -> pool: [If Pool 1 &\nif reward token set]\nOpt-In to Reward Token
+...  - If Reward Token Defined - ...
+validator -> pool: (sends reward token [at any time] to Pool 1 or future Reward Token rewards)
 end
+
+group Execute Epoch payouts
+autonumber 0
+validator -> pool: [technically, anyone can call] - epochBalanceUpdate() - can only be called every X minutes as defined by validator)
+pool -> validator: [itxn] (to validator's commission address) payment of validator's per-epoch commission - x% of available reward in pool.
+autonumber stop
+pool -> pool: updates 'ledger' for all stakers based on\ntime in epoch & stake %
+end
+
 group Add stake to validator
 autonumber 0
 staker -> master: [payment of stake (portion stays as MBR if first-time in protocol)
@@ -40,12 +53,23 @@ master -> pool: [itxn] addStake(stakedAmountPayment: PayTxn, staker: Address): u
 autonumber stop
 pool -> pool: updates 'ledger' for staker updating balance
 end
-group Remove stake from pool
+group Remove stake from pool (no reward token))
 autonumber 0
 staker -> pool: removeStake(amountToUnstake: uint64)
 autonumber 0
 pool -> staker: [itxn] [payment of amountToUnstake from pool, updating ledger balance as welll]
-pool -> master: [itxn] stakeRemoved(poolKey: ValidatorPoolKey, staker: Address,\namountRemoved: uint64, stakerRemoved: boolean)
+pool -> master: [itxn] stakeRemoved(poolKey: ValidatorPoolKey, staker: Address,\namountRemoved: uint64, rewardRemoved: uint64, stakerRemoved: boolean)
 note left: updates totals for validator for removed stake/staker
+end
+group Remove stake from pool (W/ reward token))
+autonumber 0
+staker -> pool: removeStake(amountToUnstake: uint64)
+autonumber 0
+pool -> staker: [itxn] [Only if unstaking from Pool 1!] Sends all of accumulated rewarded token to staker
+pool -> staker: [itxn] [payment of amountToUnstake from pool, updating ledger balance as welll]
+pool -> master: [itxn] stakeRemoved(poolKey: ValidatorPoolKey, staker: Address,\namountRemoved: uint64, rewardRemoved: uint64, stakerRemoved: boolean)
+note left: updates totals for validator for removed stake/staker
+master -> pool: [itxn] [only if called by pool other than 1!]\ncall Pool 1\npayTokenReward(staker; Address, rewardToken: uint64, amountToSend: uint64)
+pool -> staker: [itxn] [IF Pool 1!] Sends reward token to staker
 end
 @enduml
