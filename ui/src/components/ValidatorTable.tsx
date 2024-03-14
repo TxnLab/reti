@@ -212,13 +212,17 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
     <div>
       <div className="lg:flex items-center gap-x-2 py-4">
         <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
-        <Input
-          placeholder="Filter validators..."
-          value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
-          onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
-          className="max-w-sm"
-        />
-        <DataTableViewOptions table={table} className="hidden lg:flex h-9" />
+        {table.getFilteredRowModel().rows.length > 0 && (
+          <>
+            <Input
+              placeholder="Filter validators..."
+              value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
+              onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
+              className="max-w-sm"
+            />
+            <DataTableViewOptions table={table} className="hidden lg:flex h-9" />
+          </>
+        )}
       </div>
       <div className="rounded-md border">
         <Table className="border-collapse border-spacing-0">
@@ -249,9 +253,9 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                  No results
                 </TableCell>
               </TableRow>
             )}

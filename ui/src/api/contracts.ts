@@ -166,7 +166,7 @@ export async function fetchValidators(client?: ValidatorRegistryClient) {
     const numValidators = numValidatorsResponse.returns![0]
 
     if (!numValidators) {
-      throw new Error('No validators found')
+      return []
     }
 
     const allValidators: Array<Validator> = []

@@ -28,12 +28,15 @@ export function transformValidatorData(
     MinEntryStake: rawConfig[11],
     MaxAlgoPerPool: rawConfig[12],
     PoolsPerNode: rawConfig[13],
+    SunsettingOn: rawConfig[14],
+    SunsettingTo: rawConfig[15],
   }
 
   const state: ValidatorState = {
     NumPools: rawState[0],
     TotalStakers: rawState[1],
     TotalAlgoStaked: rawState[2],
+    RewardTokenHeldBack: rawState[3],
   }
 
   return {
@@ -47,9 +50,12 @@ export function transformValidatorData(
     minStake: Number(config.MinEntryStake),
     maxStake: Number(config.MaxAlgoPerPool),
     poolsPerNode: Number(config.PoolsPerNode),
+    sunsetOn: Number(config.SunsettingOn),
+    sunsetTo: Number(config.SunsettingTo),
     numPools: Number(state.NumPools),
     numStakers: Number(state.TotalStakers),
     totalStaked: Number(state.TotalAlgoStaked),
+    rewardTokenHeldBack: Number(state.RewardTokenHeldBack),
   }
 }
 

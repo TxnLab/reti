@@ -21,6 +21,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -93,6 +94,18 @@ const formSchema = z
     PoolsPerNode: z.string().refine((val) => Number(val) >= 1 && Number(val) <= 4, {
       message: 'Pools per node must be at least 1',
     }),
+    SunsettingOn: z
+      .string()
+      .refine((val) => val === '' || Number(val) >= 1, {
+        message: 'Timestamp is invalid',
+      })
+      .optional(),
+    SunsettingTo: z
+      .string()
+      .refine((val) => val === '' || Number(val) >= 1, {
+        message: 'Validator ID is invalid',
+      })
+      .optional(),
   })
   .required()
 
@@ -127,6 +140,8 @@ export function AddValidatorForm() {
       MinEntryStake: '',
       MaxAlgoPerPool: '',
       PoolsPerNode: '',
+      SunsettingOn: '',
+      SunsettingTo: '',
     },
   })
 
@@ -160,7 +175,7 @@ export function AddValidatorForm() {
       const validatorConfig = {
         Owner: values.Owner,
         Manager: values.Manager,
-        NFDForInfo: BigInt(values.NFDForInfo),
+        NFDForInfo: BigInt(values.NFDForInfo || 0),
         MustHoldCreatorNFT:
           values.MustHoldCreatorNFT || 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
         CreatorNFTMinBalance: BigInt(values.CreatorNFTMinBalance || 0),
@@ -172,6 +187,8 @@ export function AddValidatorForm() {
         MinEntryStake: BigInt(AlgoAmount.Algos(Number(values.MinEntryStake)).microAlgos),
         MaxAlgoPerPool: BigInt(AlgoAmount.Algos(Number(values.MaxAlgoPerPool)).microAlgos),
         PoolsPerNode: Number(values.PoolsPerNode),
+        SunsettingOn: BigInt(values.SunsettingOn || 0),
+        SunsettingTo: BigInt(values.SunsettingTo || 0),
       }
 
       const [validatorMbr] = (
@@ -221,6 +238,8 @@ export function AddValidatorForm() {
             validatorConfig.MinEntryStake,
             validatorConfig.MaxAlgoPerPool,
             validatorConfig.PoolsPerNode,
+            validatorConfig.SunsettingOn,
+            validatorConfig.SunsettingTo,
           ],
         })
         .execute({ populateAppCallResources: true })
@@ -244,20 +263,27 @@ export function AddValidatorForm() {
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <Card className="w-full max-w-[600px]">
           <CardHeader>
-            <CardTitle>Create a new validator</CardTitle>
-            <CardDescription>Define validator configuration below</CardDescription>
+            <CardTitle>New validator configuration</CardTitle>
+            <CardDescription>
+              Fields marked with <span className="text-red-500">*</span> are required
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid w-full items-center gap-4">
+            <div className="grid w-full items-center gap-8">
               <FormField
                 control={form.control}
                 name="Owner"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Owner address</FormLabel>
+                    <FormLabel>
+                      Owner address <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="font-mono dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Account that controls config (cold wallet recommended)
+                    </FormDescription>
                     <FormMessage>{errors.Owner?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -268,10 +294,15 @@ export function AddValidatorForm() {
                 name="Manager"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Manager address</FormLabel>
+                    <FormLabel>
+                      Manager address <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="font-mono dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Account that triggers payouts and keyreg transactions (must sign transactions)
+                    </FormDescription>
                     <FormMessage>{errors.Manager?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -282,12 +313,14 @@ export function AddValidatorForm() {
                 name="NFDForInfo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Associated NFD <span className="ml-2 text-xs text-white/50">optional</span>
-                    </FormLabel>
+                    <FormLabel>Associated NFD</FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      NFD App ID which the validator uses to describe their validator pool
+                      (optional)
+                    </FormDescription>
                     <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -298,14 +331,14 @@ export function AddValidatorForm() {
                 name="MustHoldCreatorNFT"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Must Hold Creator NFT{' '}
-                      <span className="ml-2 text-xs text-white/50">optional</span>
-                    </FormLabel>
+                    <FormLabel>Must Hold Creator NFT</FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
-                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                    <FormDescription>
+                      Stakers will be required to hold an asset created by this account (optional)
+                    </FormDescription>
+                    <FormMessage>{errors.MustHoldCreatorNFT?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -315,14 +348,14 @@ export function AddValidatorForm() {
                 name="CreatorNFTMinBalance"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Creator NFT Minimum Balance{' '}
-                      <span className="ml-2 text-xs text-white/50">optional</span>
-                    </FormLabel>
+                    <FormLabel>Creator NFT Minimum Balance</FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
-                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                    <FormDescription>
+                      Minimum required balance of the asset described above
+                    </FormDescription>
+                    <FormMessage>{errors.CreatorNFTMinBalance?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -332,13 +365,11 @@ export function AddValidatorForm() {
                 name="RewardTokenID"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Reward Token ID <span className="ml-2 text-xs text-white/50">optional</span>
-                    </FormLabel>
+                    <FormLabel>Reward Token ID</FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
-                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                    <FormMessage>{errors.RewardTokenID?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -348,14 +379,11 @@ export function AddValidatorForm() {
                 name="RewardPerPayout"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Reward Token Amount Per Payout{' '}
-                      <span className="ml-2 text-xs text-white/50">optional</span>
-                    </FormLabel>
+                    <FormLabel>Reward Token Amount Per Payout</FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
-                    <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
+                    <FormMessage>{errors.RewardPerPayout?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -365,10 +393,13 @@ export function AddValidatorForm() {
                 name="PayoutEveryXMins"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Payout frequency (minutes)</FormLabel>
+                    <FormLabel>
+                      Epoch length <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>Frequency of rewards payouts (in minutes)</FormDescription>
                     <FormMessage>{errors.PayoutEveryXMins?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -379,10 +410,15 @@ export function AddValidatorForm() {
                 name="PercentToValidator"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Payout percentage to validator</FormLabel>
+                    <FormLabel>
+                      Validator commission percent <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Payout percentage w/ up to four decimals (e.g., 5.0001)
+                    </FormDescription>
                     <FormMessage>{errors.PercentToValidator?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -393,10 +429,15 @@ export function AddValidatorForm() {
                 name="ValidatorCommissionAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Commission address</FormLabel>
+                    <FormLabel>
+                      Commission address <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="font-mono dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Account that receives validator commission payments
+                    </FormDescription>
                     <FormMessage>{errors.ValidatorCommissionAddress?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -407,10 +448,13 @@ export function AddValidatorForm() {
                 name="MinEntryStake"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Minimum stake</FormLabel>
+                    <FormLabel>
+                      Minimum entry stake <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>Minimum stake required to enter a pool</FormDescription>
                     <FormMessage>{errors.MinEntryStake?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -421,10 +465,15 @@ export function AddValidatorForm() {
                 name="MaxAlgoPerPool"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Maximum stake</FormLabel>
+                    <FormLabel>
+                      Maximum total stake <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Maximum stake allowed per pool (to keep under incentive limits)
+                    </FormDescription>
                     <FormMessage>{errors.MaxAlgoPerPool?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -435,11 +484,48 @@ export function AddValidatorForm() {
                 name="PoolsPerNode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Maximum pools per node</FormLabel>
+                    <FormLabel>
+                      Pools per node <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Number of pools to allow per node (max of 3 is recommended)
+                    </FormDescription>
                     <FormMessage>{errors.PoolsPerNode?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="SunsettingOn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sunset Time</FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormDescription>Timestamp when validator will sunset</FormDescription>
+                    <FormMessage>{errors.SunsettingOn?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="SunsettingTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sunset To (Validator ID)</FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Validator ID that the validator is moving to (if known)
+                    </FormDescription>
+                    <FormMessage>{errors.SunsettingTo?.message}</FormMessage>
                   </FormItem>
                 )}
               />

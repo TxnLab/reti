@@ -13,6 +13,8 @@ export type ValidatorConfigRaw = [
   bigint,
   bigint,
   number,
+  bigint,
+  bigint,
 ]
 
 export interface ValidatorConfig {
@@ -30,14 +32,17 @@ export interface ValidatorConfig {
   MinEntryStake: bigint // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
   MaxAlgoPerPool: bigint // maximum stake allowed per pool (to keep under incentive limits)
   PoolsPerNode: number // Number of pools to allow per node (max of 3 is recommended)
+  SunsettingOn: bigint // timestamp when validator will sunset (if != 0)
+  SunsettingTo: bigint // validator ID that validator is 'moving' to (if known)
 }
 
-export type ValidatorStateRaw = [number, bigint, bigint]
+export type ValidatorStateRaw = [number, bigint, bigint, bigint]
 
 export interface ValidatorState {
   NumPools: number // current number of pools this validator has - capped at MaxPools
   TotalStakers: bigint // total number of stakers across all pools
   TotalAlgoStaked: bigint // total amount staked to this validator across ALL of its pools
+  RewardTokenHeldBack: bigint // amount of token held back for future payout to stakers
 }
 
 export type Validator = {
@@ -51,9 +56,12 @@ export type Validator = {
   minStake: number
   maxStake: number
   poolsPerNode: number
+  sunsetOn: number
+  sunsetTo: number
   numPools: number
   numStakers: number
   totalStaked: number
+  rewardTokenHeldBack: number
 }
 
 export interface MbrAmounts {

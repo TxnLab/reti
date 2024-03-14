@@ -160,21 +160,24 @@ export function StakingTable({ delegations, isLoading }: StakingTableProps) {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  {isLoading ? 'Loading...' : 'No delegations'}
+                  {isLoading ? 'Loading...' : 'No results'}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{' '}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+
+      {table.getFilteredRowModel().rows.length > 0 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <div className="flex-1 text-sm text-muted-foreground">
+            {table.getFilteredSelectedRowModel().rows.length} of{' '}
+            {table.getFilteredRowModel().rows.length} row(s) selected.
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

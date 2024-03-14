@@ -32,7 +32,7 @@ function AddValidator() {
         {!isReady ? (
           <div>Loading...</div>
         ) : (
-          <div className="py-10">
+          <div className="py-8">
             <AddValidatorForm />
           </div>
         )}
