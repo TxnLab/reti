@@ -24,6 +24,18 @@ export type StakedInfo = {
 };
 
 // eslint-disable-next-line no-unused-vars
+/**
+ * StakingPool contract has a new instance deployed per staking pool added by any validator.  A single instance
+ * is initially immutably deployed, and the ID of that instance is used as a construction parameter in the immutable
+ * instance of the master ValidatoryRegistry contract.  It then uses that StakingPool instance as a 'factory template'
+ * for subsequent pool creations - using the on-chain bytecode of that deployed instance to create a new identical
+ * instance.
+ *
+ * Each instance is explicitly 'linked' to the validator master via its creation parameters.  The validator master
+ * contract only allows calls from staking pool contract instances that match data that only the validator master
+ * authoritatively has (validator id X, pool Y - has to come from contract address of that pool).  Calls the pools
+ * validate coming from the validator are only allowed if it matches the validator id it was created with.
+ */
 export class StakingPool extends Contract {
     programVersion = 10;
 
@@ -275,6 +287,9 @@ export class StakingPool extends Contract {
                             methodArgs: [this.ValidatorID.value],
                         });
 
+                        // ---------
+                        // SEND THE REWARD TOKEN NOW - it's in our pool
+                        // ---------
                         sendAssetTransfer({
                             xferAsset: AssetID.fromUint64(validatorConfig.RewardTokenID),
                             assetReceiver: staker,
@@ -297,7 +312,9 @@ export class StakingPool extends Contract {
                     'cannot reduce balance below minimum allowed stake unless all is removed'
                 );
 
+                // ---------
                 // Pay the staker back
+                // ---------
                 sendPayment({
                     amount: amountToUnstake,
                     receiver: staker,

@@ -16,7 +16,8 @@ import {
 
 const MAX_NODES = 4; // more just as a reasonable limit and cap on contract storage
 const MAX_POOLS_PER_NODE = 3; // max number of pools per node
-// MAX_POOLS must be under 56 total to keep <1K (max 'log' return - thus max getPools() return
+// This MAX_POOLS constant has to be explicitly specified in ValidatorInfo.Pools[ xxx ] StaticArray!
+// if this constant is changed, the calculated value must be put in manually into the StaticArray definition.
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
 
 const MIN_PAYOUT_MINS = 1;
@@ -99,7 +100,8 @@ type NodePoolAssignmentConfig = {
 type ValidatorInfo = {
     Config: ValidatorConfig;
     State: ValidatorCurState;
-    Pools: StaticArray<PoolInfo, typeof MAX_POOLS>;
+    // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
+    Pools: StaticArray<PoolInfo, 12>;
     NodePoolAssignments: NodePoolAssignmentConfig;
 };
 
@@ -123,6 +125,13 @@ type Constraints = {
 };
 
 // eslint-disable-next-line no-unused-vars
+/**
+ * ValidatorRegistry is the 'master contract' for the reti pooling protocol.
+ * A single immutable instance of this is deployed.  All state for all validators including information about their
+ * pools and nodes is stored via this contract in global state and box storage.  Data in the pools themselves is stored
+ * within the StakingPool contract instance, also in global state and box storage.
+ * See the StakingPool contract comments for details on how this contract creates new instances of them.
+ */
 export class ValidatorRegistry extends Contract {
     programVersion = 10;
 
@@ -379,6 +388,13 @@ export class ValidatorRegistry extends Contract {
         return validatorID;
     }
 
+    /**
+     * Changes the Validator Manager for a specific Validator ID.
+     * [ ONLY OWNER CAN CHANGE ]
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator to change the manager for.
+     * @param {Address} manager - The new manager address.
+     */
     changeValidatorManager(validatorID: ValidatorID, manager: Address): void {
         assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
         this.ValidatorList(validatorID).value.Config.Manager = manager;
@@ -386,7 +402,7 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Updates the sunset information for a given validator.
-     * [Prerequisites] Can only be called by owner.
+     * [ ONLY OWNER CAN CHANGE ]
      *
      * @param {ValidatorID} validatorID - The ID of the validator to update.
      * @param {uint64} sunsettingOn - The new sunset timestamp.
@@ -400,7 +416,7 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Changes the NFD for a validator in the ValidatorList contract.
-     * Only the owner or manager of the validator can make this change.
+     * [ ONLY OWNER OR MANAGER CAN CHANGE ]
      *
      * @param {ValidatorID} validatorID - The ID of the validator to update.
      * @param {uint64} nfdAppID - The application ID of the NFD to assign to the validator.
@@ -426,7 +442,8 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
-     * Change the commission address that validator rewards are sent to.  Can only be changed by that validator owner
+     * Change the commission address that validator rewards are sent to.
+     [ ONLY OWNER CAN CHANGE ]
      */
     changeValidatorCommissionAddress(validatorID: ValidatorID, commissionAddress: Address): void {
         assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
@@ -437,6 +454,7 @@ export class ValidatorRegistry extends Contract {
     /**
      * Allow the additional rewards (gating entry, additional token rewards) information be changed at will.
      * The validator may want to adjust the tokens or amounts.
+     * [ ONLY OWNER CAN CHANGE ]
      * TODO: should there be limits on how often it can be changed?
      */
     changeValidatorRewardInfo(
@@ -446,11 +464,8 @@ export class ValidatorRegistry extends Contract {
         RewardTokenID: uint64,
         RewardPerPayout: uint64
     ): void {
-        // Must be called by the owner or manager of the validator.
-        assert(
-            this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
-                this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
-        );
+        assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
+
         this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT = MustHoldCreatorNFT;
         this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance = CreatorNFTMinBalance;
         this.ValidatorList(validatorID).value.Config.RewardTokenID = RewardTokenID;
@@ -460,6 +475,8 @@ export class ValidatorRegistry extends Contract {
     /**
      * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
      * The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
+     *
+     * [ ONLY OWNER OR MANAGER CAN call ]
      * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of adding a new pool
      * @param {uint64} validatorID is ID of validator to pool to (must be owner or manager)
      * @param {uint64} nodeNum is node number to add to
@@ -467,17 +484,18 @@ export class ValidatorRegistry extends Contract {
      *
      */
     addPool(mbrPayment: PayTxn, validatorID: ValidatorID, nodeNum: uint64): ValidatorPoolKey {
-        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr, receiver: this.app.address });
-
-        assert(this.ValidatorList(validatorID).exists);
-
         // Must be called by the owner or manager of the validator.
         assert(
             this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner ||
                 this.txn.sender === this.ValidatorList(validatorID).value.Config.Manager
         );
 
-        let numPools = this.ValidatorList(validatorID).value.State.NumPools;
+        // must match MBR exactly
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().AddPoolMbr, receiver: this.app.address });
+
+        assert(this.ValidatorList(validatorID).exists);
+
+        let numPools: uint64 = this.ValidatorList(validatorID).value.State.NumPools as uint64;
         if ((numPools as uint64) >= MAX_POOLS) {
             throw Error('already at max pool size');
         }
@@ -502,7 +520,7 @@ export class ValidatorRegistry extends Contract {
             ],
         });
 
-        this.ValidatorList(validatorID).value.State.NumPools = numPools;
+        this.ValidatorList(validatorID).value.State.NumPools = numPools as uint16;
         // We don't need to manipulate anything in the Pools array as the '0' values are all correct for PoolInfo
         // No stakers, no algo staked
         this.ValidatorList(validatorID).value.Pools[numPools - 1].PoolAppID = this.itxn.createdApplicationID.id;
@@ -631,13 +649,15 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
-     * stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
+     * stakeRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removed
      * from the specified pool.  This is used to update the stats we have in our PoolInfo storage.
+     * If any amount of rewardRemoved is specified, then that amount of reward is sent to the use
      * The calling App ID is validated against our pool list as well.
+
      * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
      * @param staker
      * @param amountRemoved
-     * @param rewardRemoved - amount of token reward removed (only pool 1 can set this - and only if this validator has a reward token)
+     * @param rewardRemoved - if applicable, amount of token reward removed (by pool 1 caller) or TO remove and pay out (via pool 1 from different pool caller)
      * @param stakerRemoved
      */
     stakeRemoved(
@@ -671,6 +691,7 @@ export class ValidatorRegistry extends Contract {
             // If pool 1 is calling us, then they already sent the reward token to the staker and we just need to have
             // updated the RewardTokenHeldBack value and that's it.
             this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack -= rewardRemoved;
+
             // If a different pool called us, then they CAN'T send the token - we've already updated the
             // RewardTokenHeldBack value and then call method in the pool that can only be called by us (the
             // validator), and can only be called on pools 1 - to have it do the token payout.
