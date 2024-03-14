@@ -55,7 +55,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8)"
+        "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
       }
     },
     {
@@ -186,7 +186,7 @@
         },
         {
           "name": "config",
-          "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8)",
+          "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -205,6 +205,30 @@
         {
           "name": "manager",
           "type": "address"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "changeValidatorSunsetInfo",
+      "desc": "Updates the sunset information for a given validator.[Prerequisites] Can only be called by owner.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "The ID of the validator to update."
+        },
+        {
+          "name": "sunsettingOn",
+          "type": "uint64",
+          "desc": "The new sunset timestamp."
+        },
+        {
+          "name": "sunsettingTo",
+          "type": "uint64",
+          "desc": "The new sunset to validator ID."
         }
       ],
       "returns": {
@@ -408,7 +432,7 @@
       ],
       "returns": {
         "type": "((uint64,uint64,uint64),bool,bool)",
-        "desc": "{ValidatorPoolKey, boolean, boolean}- The pool for the staker, true/false on whether the staker is 'new'to this validator, and true/false if staker is new to the protocol."
+        "desc": "{ValidatorPoolKey, boolean, boolean}- The pool for the staker, true/false on whether the staker is 'new'to this VALIDATOR, and true/false if staker is new to the protocol."
       }
     },
     {

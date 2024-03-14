@@ -34,24 +34,25 @@ export type ValidatorConfig = {
     ID: ValidatorID; // ID of this validator (sequentially assigned)
     Owner: Address; // Account that controls config - presumably cold-wallet
 
-    // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign
+    // [CHANGEABLE] Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign
     // for the transactions
     Manager: Address;
-    // Optional NFD AppID which the validator uses to describe their validator pool
+
+    // [CHANGEABLE] Optional NFD AppID which the validator uses to describe their validator pool
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: uint64;
 
-    // MustHoldCreatorNFT specifies an optional creator address for assets which stakers must hold.  It will be the
+    // [CHANGEABLE] MustHoldCreatorNFT specifies an optional creator address for assets which stakers must hold.  It will be the
     // responsibility of the staker (txn composer really) to pick an asset to check that meets the criteria if this
     // is set
     MustHoldCreatorNFT: Address;
 
-    // CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
+    // [CHANGEABLE] CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
     // creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
     // 10000[.000000] of token
     CreatorNFTMinBalance: uint64;
 
-    // Reward token ASA ID and reward rate (Optional): A validator can define a token that users are awarded in addition to
+    // [CHANGEABLE] Reward token ASA ID and reward rate (Optional): A validator can define a token that users are awarded in addition to
     // the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own
     // token.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs and all
     // stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
@@ -60,10 +61,14 @@ export type ValidatorConfig = {
 
     PayoutEveryXMins: uint16; // Payout frequency in minutes (can be no shorter than this)
     PercentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
-    ValidatorCommissionAddress: Address; // account that receives the validation commission each epoch payout (can be ZeroAddress)
+
+    ValidatorCommissionAddress: Address; // [CHANGEABLE] account that receives the validation commission each epoch payout (can be ZeroAddress)
     MinEntryStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
     MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
+
+    SunsettingOn: uint64; // [CHANGEABLE] timestamp when validator will sunset (if != 0)
+    SunsettingTo: ValidatorID; // [CHANGEABLE] validator ID that validator is 'moving' to (if known)
 };
 
 type ValidatorCurState = {
@@ -375,6 +380,20 @@ export class ValidatorRegistry extends Contract {
     changeValidatorManager(validatorID: ValidatorID, manager: Address): void {
         assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
         this.ValidatorList(validatorID).value.Config.Manager = manager;
+    }
+
+    /**
+     * Updates the sunset information for a given validator.
+     * [Prerequisites] Can only be called by owner.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator to update.
+     * @param {uint64} sunsettingOn - The new sunset timestamp.
+     * @param {uint64} sunsettingTo - The new sunset to validator ID.
+     */
+    changeValidatorSunsetInfo(validatorID: ValidatorID, sunsettingOn: uint64, sunsettingTo: ValidatorID): void {
+        assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
+        this.ValidatorList(validatorID).value.Config.SunsettingOn = sunsettingOn;
+        this.ValidatorList(validatorID).value.Config.SunsettingTo = sunsettingTo;
     }
 
     /**
@@ -694,7 +713,7 @@ export class ValidatorRegistry extends Contract {
      * @param {Address} staker - The address of the staker.
      * @param {uint64} amountToStake - The amount to stake.
      * @returns {ValidatorPoolKey, boolean, boolean} - The pool for the staker, true/false on whether the staker is 'new'
-     * to this validator, and true/false if staker is new to the protocol.
+     * to this VALIDATOR, and true/false if staker is new to the protocol.
      */
     findPoolForStaker(
         validatorID: ValidatorID,

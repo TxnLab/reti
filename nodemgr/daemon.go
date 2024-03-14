@@ -18,6 +18,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/ssgreg/repeat"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
@@ -45,12 +46,19 @@ func newDaemon() *Daemon {
 }
 
 func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, errc chan error) {
-	d.logger.Info("Starting Réti daemon")
+	d.logger.Info("Réti daemon STARTED")
+	defer d.logger.Info("Réti daemon STOPPED")
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		d.KeyWatcher(ctx)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.EpochUpdater(ctx)
 	}()
 
 	wg.Add(1)
@@ -438,13 +446,12 @@ func (d *Daemon) ensureParticipationCheckNeedsRenewed(ctx context.Context, poolA
 }
 
 /*
-*
+Handle: Account is online and has multiple local part keys
 
-	Handle: Account is online and has multiple local part keys
-	   If Online (assumed steady state when a future pending part key has been created)
-	   Sort keys descending by first valid
-	   If part key first valid is >= current round AND not current part. key id for account
-	   Go online against this new key - done.  prior key will be removed a week later when it's out of valid range
+	If Online (assumed steady state when a future pending part key has been created)
+	Sort keys descending by first valid
+	If part key first valid is >= current round AND not current part. key id for account
+	Go online against this new key - done.  prior key will be removed a week later when it's out of valid range
 */
 func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	managerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
@@ -499,4 +506,43 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 	}
 	return nil
 
+}
+
+func (d *Daemon) EpochUpdater(ctx context.Context) {
+	defer d.logger.Info("EpochUpdater started")
+	d.logger.Info("EpochUpdater stopped")
+
+	signerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
+
+	epochMinutes := App.retiClient.Info.Config.PayoutEveryXMins
+
+	epochTimer := time.NewTimer(durationToNextEpoch(epochMinutes))
+	defer epochTimer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-epochTimer.C:
+			epochTimer.Reset(durationToNextEpoch(epochMinutes))
+			var eg errgroup.Group
+			for i, pool := range App.retiClient.Info.Pools {
+				if _, found := App.retiClient.Info.LocalPools[uint64(i+1)]; !found {
+					continue
+				}
+				eg.Go(func() error {
+					return App.retiClient.EpochBalanceUpdate(i+1, pool.PoolAppID, signerAddr)
+				})
+			}
+			err := eg.Wait()
+			if err != nil {
+				d.logger.Error("error returned from EpochUpdater", "error", err)
+			}
+		}
+	}
+}
+
+func durationToNextEpoch(epochMinutes int) time.Duration {
+	now := time.Now().UTC()
+	return now.Round(time.Duration(epochMinutes) * time.Minute).Sub(now)
 }

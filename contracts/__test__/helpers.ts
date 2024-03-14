@@ -49,6 +49,10 @@ export class ValidatorConfig {
 
     PoolsPerNode: number; // Number of pools to allow per node (max of 3 is recommended)
 
+    SunsettingOn: bigint; // timestamp when validator will sunset (if != 0)
+
+    SunsettingTo: bigint; // validator ID that validator is 'moving' to (if known)
+
     // getValidatorConfig(uint64)(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)
     // constructor to take array of values like ABI string above and set into the named instance vars
     constructor([
@@ -66,6 +70,8 @@ export class ValidatorConfig {
         MinEntryStake,
         MaxAlgoPerPool,
         PoolsPerNode,
+        SunsettingOn,
+        SunsettingTo,
     ]: [
         bigint,
         string,
@@ -81,6 +87,8 @@ export class ValidatorConfig {
         bigint,
         bigint,
         number,
+        bigint,
+        bigint,
     ]) {
         this.ID = ID;
         this.Owner = Owner;
@@ -96,6 +104,8 @@ export class ValidatorConfig {
         this.MinEntryStake = MinEntryStake;
         this.MaxAlgoPerPool = MaxAlgoPerPool;
         this.PoolsPerNode = PoolsPerNode;
+        this.SunsettingOn = SunsettingOn;
+        this.SunsettingTo = SunsettingTo;
     }
 }
 
@@ -114,6 +124,8 @@ const DefaultValidatorConfig: ValidatorConfig = {
     MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
     MaxAlgoPerPool: BigInt(AlgoAmount.Algos(200_000).microAlgos),
     PoolsPerNode: 3,
+    SunsettingOn: BigInt(0),
+    SunsettingTo: BigInt(0),
 };
 
 export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): ValidatorConfig {
@@ -137,12 +149,31 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.MinEntryStake,
         configObj.MaxAlgoPerPool,
         configObj.PoolsPerNode,
+        configObj.SunsettingOn,
+        configObj.SunsettingTo,
     ]);
 }
 
 function validatorConfigAsArray(
     config: ValidatorConfig
-): [bigint, string, string, bigint, string, bigint, bigint, bigint, number, number, string, bigint, bigint, number] {
+): [
+    bigint,
+    string,
+    string,
+    bigint,
+    string,
+    bigint,
+    bigint,
+    bigint,
+    number,
+    number,
+    string,
+    bigint,
+    bigint,
+    number,
+    bigint,
+    bigint,
+] {
     return [
         config.ID,
         config.Owner,
@@ -158,6 +189,8 @@ function validatorConfigAsArray(
         config.MinEntryStake,
         config.MaxAlgoPerPool,
         config.PoolsPerNode,
+        config.SunsettingOn,
+        config.SunsettingTo,
     ];
 }
 

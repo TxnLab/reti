@@ -399,13 +399,21 @@ export class StakingPool extends Contract {
      * Note: ANYONE can call this.
      */
     epochBalanceUpdate(): void {
-        // call the validator contract to get our payout data
+        // call the validator contract to get our payout config data
         const validatorConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
         const payoutMins = validatorConfig.PayoutEveryXMins as uint64;
         const isTokenEligible = validatorConfig.RewardTokenID !== 0;
+
+        // Get the validator state as well - so we know 'totals' for all pools
+        const validatorState = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorState>({
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+            methodArgs: [this.ValidatorID.value],
+        });
+        const validatorTotalStake = validatorState.TotalAlgoStaked;
+        const rewardTokenHeldBack = validatorState.RewardTokenHeldBack;
 
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which should never be counted - it's not payable]
@@ -426,11 +434,24 @@ export class StakingPool extends Contract {
                 });
                 poolOneAddress = AppID.fromUint64(poolOneAppID).address;
             }
-            const tokenRewardBal = poolOneAddress.assetBalance(AssetID.fromUint64(validatorConfig.RewardTokenID));
+            const tokenRewardBal =
+                poolOneAddress.assetBalance(AssetID.fromUint64(validatorConfig.RewardTokenID)) - rewardTokenHeldBack;
             // if they have less tokens available then min payout - just ignore and act like no reward is avail
             // leaving tokenRewardAvail as 0
             if (tokenRewardBal >= validatorConfig.RewardPerPayout) {
-                tokenRewardAvail = validatorConfig.RewardPerPayout;
+                // Now - adjust the token rewards to be relative based on this pools stake as % of 'total validator stake'
+                // ie: this pool 2 has 1000 algo staked and the validator has 10,000 staked total (9000 pool 1, 1000 pool 2)
+                // so this pool is 10% of the total and thus it gets 10% of the avail community token reward.
+                // ie: imagine reward total aval is 500
+                // ( {our pool stake) * (total token rwds per epoch) * 100 ) / ( total stake for validator )
+                // ( 1000 * 500 * 1000 ) / (10000 * 1000)
+                // Get our pools pct of all stake w/ 4 decimals
+                // ie, based on prior eg  - (1000 * 1e6) / 10000 = 100,000 (or 10%)
+                const ourPoolPctOfWhole = wideRatio([this.TotalAlgoStaked.value, 1_000_000], [validatorTotalStake]);
+
+                // now adjust the total reward to hand out for this pool based on this pools % of the whole
+                tokenRewardAvail = wideRatio([validatorConfig.RewardPerPayout, ourPoolPctOfWhole], [1_000_000]);
+                log(concat('token reward avail: %i', itob(algoRewardAvail)));
             }
         }
         if (tokenRewardAvail === 0) {

@@ -1,4 +1,4 @@
-export const MAX_STAKERS_PER_POOL = 100; // *64 (size of StakeInfo) = 6400 bytes
+export const MAX_STAKERS_PER_POOL = 200; // *64 (size of StakeInfo) = 12,800 bytes
 export const MIN_ALGO_STAKE_PER_POOL = 1_000_000; // 1 ALGO
 export const MAX_ALGO_PER_POOL = 50_000_000_000_000; // 50m (micro)Algo
 export const MIN_PCT_TO_VALIDATOR = 0; // minimum percentage is 0 - let the market decide

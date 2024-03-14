@@ -28,6 +28,9 @@ import {
 
 const MaxPoolsPerNode = 3;
 
+// Periodically set this to max amount allowed in protocol (200 atm) but when testing more frequently this should be lowered to something like 20 stakers
+const MaxStakersPerPool = 20;
+
 const fixture = algorandFixture({ testAccountFunding: AlgoAmount.Algos(10000) });
 const logs = algoKitLogCaptureFixture();
 
@@ -545,7 +548,7 @@ describe('StakeAdds', () => {
                 BigInt(stakerMbr * BigInt(MaxPoolsPerNode)) +
                 BigInt(AlgoAmount.Algos(2000).microAlgos)
         );
-        expect(stateData.TotalStakers).toEqual(BigInt(MaxPoolsPerNode+2));
+        expect(stateData.TotalStakers).toEqual(BigInt(MaxPoolsPerNode + 2));
     });
 
     test('addThenRemoveStake', async () => {
@@ -906,7 +909,7 @@ describe('StakeWRewards', () => {
 
         // this payout should work... between prior tests and just now - it's been a day..
         // validator will have received 5 algo (on the 100 we just put in the pool) - we account for that later...
-        const fees = await epochBalanceUpdate(firstPoolClient);
+        await epochBalanceUpdate(firstPoolClient);
 
         await transferAlgos(
             {
@@ -943,7 +946,7 @@ describe('StakeWRewards', () => {
         let algoAdded = 0;
         for (let i = 0; i < 24; i += 1) {
             try {
-                const fees = await epochBalanceUpdate(firstPoolClient);
+                await epochBalanceUpdate(firstPoolClient);
                 break;
             } catch (exception) {
                 // move the clock by issuing a txn.
@@ -1061,7 +1064,7 @@ describe('ValidatorWFullPoolWRewards', () => {
     let firstPoolClient: StakingPoolClient;
 
     const PctToValidator = 5;
-    const NumStakers = 100;
+    const NumStakers = MaxStakersPerPool;
 
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
@@ -1131,7 +1134,7 @@ describe('ValidatorWFullPoolWRewards', () => {
         expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(0));
     });
 
-    // Creates 100 stakers:
+    // Creates MaxStakersPerPool stakers:
     test(
         'addStakers',
         async () => {
@@ -1159,7 +1162,7 @@ describe('ValidatorWFullPoolWRewards', () => {
                         stakeAmount1
                     );
                 } else {
-                    // staker # 101 should fail because no pool is available!
+                    // staker # NumStakers + 1 should fail because no pool is available (because we exceeded max algo)
                     await expect(
                         addStake(fixture.context, validatorMasterClient, validatorID, stakerAccount, stakeAmount1)
                     ).rejects.toThrowError();

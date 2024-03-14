@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
@@ -101,11 +102,15 @@ type ValidatorConfig struct {
 	MaxAlgoPerPool uint64
 	// Number of pools to allow per node (max of 3 is recommended)
 	PoolsPerNode int
+
+	SunsettingOn uint64 // timestamp when validator will sunset (if != 0)
+	SunsettingTo uint64 // validator ID that validator is 'moving' to (if known)
+
 }
 
 func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
-		if len(arrReturn) != 14 {
+		if len(arrReturn) != 16 {
 			return nil, fmt.Errorf("should be 10 elements returned in ValidatorConfig response")
 		}
 		pkAsString := func(pk []uint8) string {
@@ -127,7 +132,8 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.MinEntryStake = arrReturn[11].(uint64)
 		config.MaxAlgoPerPool = arrReturn[12].(uint64)
 		config.PoolsPerNode = int(arrReturn[13].(uint8))
-
+		config.SunsettingOn = arrReturn[14].(uint64)
+		config.SunsettingTo = arrReturn[15].(uint64)
 		return config, nil
 	}
 	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)
@@ -174,6 +180,12 @@ func (v *ValidatorConfig) String() string {
 	out.WriteString(fmt.Sprintf("Min Entry Stake: %s\n", algo.FormattedAlgoAmount(v.MinEntryStake)))
 	out.WriteString(fmt.Sprintf("Max Algo Per Pool: %s\n", algo.FormattedAlgoAmount(v.MaxAlgoPerPool)))
 	out.WriteString(fmt.Sprintf("Max Pools per Node: %d\n", v.PoolsPerNode))
+	if v.SunsettingOn != 0 {
+		out.WriteString(fmt.Sprintf("Sunsetting On: %s\n", time.Unix(int64(v.SunsettingOn), 0).Format(time.RFC3339)))
+		if v.SunsettingTo != 0 {
+			out.WriteString(fmt.Sprintf("Sunsetting To: %d\n", v.SunsettingTo))
+		}
+	}
 
 	return out.String()
 }

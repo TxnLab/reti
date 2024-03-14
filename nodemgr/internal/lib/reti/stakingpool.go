@@ -132,8 +132,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		gasMethod, _ := r.poolContract.GetMethodByName("gas")
 		epochUpdateMethod, _ := r.poolContract.GetMethodByName("epochBalanceUpdate")
 
-		params.FlatFee = true
-		params.Fee = transaction.MinTxnFee
+		newParams := params
 
 		// we need to stack up references in this gas method for resource pooling
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
@@ -144,7 +143,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
 				{AppID: 0, Name: nil}, // extra i/o
 			},
-			SuggestedParams: params,
+			SuggestedParams: newParams,
 			OnComplete:      types.NoOpOC,
 			Sender:          caller,
 			Signer:          algo.SignWithAccountForATC(r.signer, caller.String()),
@@ -156,8 +155,8 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			// we're simulating so go with super high budget
 			feesToUse = 240 * transaction.MinTxnFee
 		}
-		params.FlatFee = true
-		params.Fee = types.MicroAlgos(feesToUse)
+		newParams.FlatFee = true
+		newParams.Fee = types.MicroAlgos(feesToUse)
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:           poolAppID,
 			Method:          epochUpdateMethod,
@@ -171,7 +170,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 			},
-			SuggestedParams: params,
+			SuggestedParams: newParams,
 			OnComplete:      types.NoOpOC,
 			Sender:          caller,
 			Signer:          algo.SignWithAccountForATC(r.signer, caller.String()),
