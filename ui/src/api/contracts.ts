@@ -5,7 +5,7 @@ import { queryOptions } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
-import { StakingPoolKey } from '@/interfaces/staking'
+import { ValidatorStake } from '@/interfaces/staking'
 import {
   MbrAmounts,
   NodePoolAssignmentConfig,
@@ -61,8 +61,19 @@ const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAddress: s
   )
 }
 
+const makeSimulateStakingPoolClient = (poolAppId: number | bigint, activeAddress: string) => {
+  return new StakingPoolClient(
+    {
+      sender: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
+      resolveBy: 'id',
+      id: poolAppId,
+    },
+    algodClient,
+  )
+}
+
 const makeStakingPoolClient = (
-  appId: number | bigint,
+  poolAppId: number | bigint,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ) => {
@@ -70,7 +81,7 @@ const makeStakingPoolClient = (
     {
       sender: { signer, addr: activeAddress } as TransactionSignerAccount,
       resolveBy: 'id',
-      id: appId,
+      id: poolAppId,
     },
     algodClient,
   )
@@ -165,8 +176,8 @@ export async function fetchValidators(client?: ValidatorRegistryClient) {
       const batchPromises = Array.from(
         { length: Math.min(batchSize, Number(numValidators) - i) },
         (_, index) => {
-          const validatorID = i + index + 1
-          return fetchValidator(validatorID, validatorClient)
+          const validatorId = i + index + 1
+          return fetchValidator(validatorId, validatorClient)
         },
       )
 
@@ -287,7 +298,7 @@ export async function addStakingPool(
   poolMbr: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
-): Promise<StakingPoolKey> {
+): Promise<ValidatorPoolKey> {
   const validatorClient = makeValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
@@ -322,9 +333,9 @@ export async function addStakingPool(
 
   const [valId, poolId, poolAppId] = addPoolResponse.returns![1]
 
-  const stakingPool = {
-    id: Number(poolId),
-    appId: Number(poolAppId),
+  const stakingPool: ValidatorPoolKey = {
+    poolId: Number(poolId),
+    poolAppId: Number(poolAppId),
     validatorId: Number(valId),
   }
 
@@ -439,7 +450,7 @@ export async function addStake(
 
   return {
     poolId: Number(poolId),
-    appId: Number(poolAppId),
+    poolAppId: Number(poolAppId),
     validatorId: Number(valId),
   }
 }
@@ -473,4 +484,111 @@ export async function isNewStakerToValidator(
   const [_, isNewStaker] = result.returns![0]
 
   return isNewStaker
+}
+
+export async function callGetStakedPoolsForAccount(
+  staker: string,
+  validatorClient: ValidatorRegistryClient,
+) {
+  return validatorClient
+    .compose()
+    .getStakedPoolsForAccount({ staker })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
+
+export async function fetchStakedPoolsForAccount(staker: string): Promise<ValidatorPoolKey[]> {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const validatorClient = makeSimulateValidatorClient(activeAddress)
+    const result = await callGetStakedPoolsForAccount(staker, validatorClient)
+
+    const stakedPools = result.returns![0]
+
+    return stakedPools.map(([validatorId, poolId, poolAppId]) => ({
+      validatorId: Number(validatorId),
+      poolId: Number(poolId),
+      poolAppId: Number(poolAppId),
+    }))
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export async function callGetStakerInfo(staker: string, stakingPoolClient: StakingPoolClient) {
+  return stakingPoolClient
+    .compose()
+    .getStakerInfo({ staker })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
+
+export async function fetchValidatorStake(
+  poolKey: ValidatorPoolKey,
+  staker: string,
+): Promise<ValidatorStake> {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const stakingPoolClient = makeSimulateStakingPoolClient(poolKey.poolAppId, activeAddress)
+
+    const result = await callGetStakerInfo(staker, stakingPoolClient)
+
+    const [account, balance, totalRewarded, rewardTokenBalance, entryTime] = result.returns![0]
+
+    return {
+      poolKey,
+      account,
+      balance: Number(balance),
+      totalRewarded: Number(totalRewarded),
+      rewardTokenBalance: Number(rewardTokenBalance),
+      entryTime: Number(entryTime),
+    }
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export async function fetchValidatorStakes(staker: string): Promise<ValidatorStake[]> {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const validatorPoolKeys = await fetchStakedPoolsForAccount(staker)
+
+    const allStakes: Array<ValidatorStake> = []
+    const batchSize = 10
+
+    for (let i = 0; i < validatorPoolKeys.length; i += batchSize) {
+      const batchPromises = Array.from(
+        { length: Math.min(batchSize, validatorPoolKeys.length - i) },
+        (_, index) => {
+          const poolKey = validatorPoolKeys[i + index]
+          return fetchValidatorStake(poolKey, staker)
+        },
+      )
+
+      // Run batch calls in parallel
+      const batchResults = await Promise.all(batchPromises)
+
+      allStakes.push(...batchResults)
+    }
+
+    return allStakes
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
 }

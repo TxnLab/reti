@@ -74,6 +74,6 @@ export type NodeInfo = {
 
 export interface ValidatorPoolKey {
   poolId: number
-  appId: number
+  poolAppId: number
   validatorId: number
 }
