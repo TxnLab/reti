@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { getAccountBalance } from '@/api/algod'
 import {
   addStake,
   doesStakerNeedToPayMbr,
@@ -35,12 +36,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Validator } from '@/interfaces/validator'
 
-const formSchema = z.object({
-  amountToStake: z.string().refine((val) => Number(val) >= 1, {
-    message: 'Amount to stake must be at least 1',
-  }),
-})
-
 interface AddStakeModalProps {
   validator: Validator
   disabled?: boolean
@@ -53,6 +48,41 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
   const router = useRouter()
   const { signer, activeAddress } = useWallet()
 
+  const { data: availableBalance } = useQuery({
+    queryKey: ['available-balance', activeAddress],
+    queryFn: () => getAccountBalance(activeAddress!),
+    enabled: !!activeAddress,
+    refetchInterval: 30000,
+  })
+
+  const formSchema = z.object({
+    amountToStake: z.string().superRefine((val, ctx) => {
+      const amount = AlgoAmount.Algos(Number(val)).microAlgos
+      const minimumAmount = validator.minStake
+      const maximumAmount = availableBalance || 0
+
+      if (amount < minimumAmount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.too_small,
+          minimum: minimumAmount,
+          type: 'number',
+          inclusive: true,
+          message: 'Amount to stake must meet the minimum required',
+        })
+      }
+
+      if (amount > maximumAmount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.too_big,
+          maximum: maximumAmount,
+          type: 'number',
+          inclusive: true,
+          message: 'Amount to stake must not exceed available balance',
+        })
+      }
+    }),
+  })
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,7 +93,6 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
   const { errors } = form.formState
 
   const mbrQuery = useQuery(mbrQueryOptions)
-
   const stakerMbr = mbrQuery.data?.stakerMbr
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
