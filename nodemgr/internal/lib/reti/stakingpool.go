@@ -141,6 +141,11 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			ForeignApps: []uint64{r.RetiAppID},
 			BoxReferences: []types.AppBoxReference{
 				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+				{AppID: 0, Name: GetStakerLedgerBoxName()},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 			},
 			SuggestedParams: newParams,
@@ -162,7 +167,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			Method:          epochUpdateMethod,
 			ForeignAccounts: []string{r.Info.Config.ValidatorCommissionAddress},
 			BoxReferences: []types.AppBoxReference{
-				{AppID: 0, Name: GetStakerLedgerBoxName()},
+				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o

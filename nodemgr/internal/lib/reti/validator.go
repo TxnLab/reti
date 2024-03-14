@@ -191,9 +191,10 @@ func (v *ValidatorConfig) String() string {
 }
 
 type ValidatorCurState struct {
-	NumPools        int    // current number of pools this validator has - capped at MaxPools
-	TotalStakers    uint64 // total number of stakers across all pools
-	TotalAlgoStaked uint64 // total amount staked to this validator across ALL of its pools
+	NumPools            int    // current number of pools this validator has - capped at MaxPools
+	TotalStakers        uint64 // total number of stakers across all pools
+	TotalAlgoStaked     uint64 // total amount staked to this validator across ALL of its pools
+	RewardTokenHeldBack uint64 // amount of reward tokens held back
 }
 
 func (v *ValidatorCurState) String() string {
@@ -202,13 +203,14 @@ func (v *ValidatorCurState) String() string {
 
 func ValidatorCurStateFromABIReturn(returnVal any) (*ValidatorCurState, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
-		if len(arrReturn) != 3 {
-			return nil, fmt.Errorf("should be 3 elements returned in ValidatorCurState response")
+		if len(arrReturn) != 4 {
+			return nil, fmt.Errorf("should be 4 elements returned in ValidatorCurState response")
 		}
 		state := &ValidatorCurState{}
 		state.NumPools = int(arrReturn[0].(uint16))
 		state.TotalStakers = arrReturn[1].(uint64)
 		state.TotalAlgoStaked = arrReturn[2].(uint64)
+		state.RewardTokenHeldBack = arrReturn[3].(uint64)
 
 		return state, nil
 	}
@@ -322,7 +324,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 		Signer: algo.SignWithAccountForATC(r.signer, ownerAddr.String()),
 	}
 
-	atc.AddMethodCall(transaction.AddMethodCallParams{
+	err = atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppID,
 		Method: addValidatorMethod,
 		MethodArgs: []any{
@@ -345,6 +347,8 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				info.Config.MinEntryStake,
 				info.Config.MaxAlgoPerPool,
 				uint8(info.Config.PoolsPerNode),
+				info.Config.SunsettingOn,
+				info.Config.SunsettingTo,
 			},
 		},
 		BoxReferences: []types.AppBoxReference{
@@ -357,6 +361,9 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 		Sender:          ownerAddr,
 		Signer:          algo.SignWithAccountForATC(r.signer, ownerAddr.String()),
 	})
+	if err != nil {
+		return 0, fmt.Errorf("error in atc compose: %w", err)
+	}
 
 	result, err := atc.Execute(r.algoClient, context.Background(), 4)
 	if err != nil {
@@ -867,6 +874,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	}
 
 	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
+	gasMethod, _ := r.poolContract.GetMethodByName("gas")
 	initStorageMethod, _ := r.poolContract.GetMethodByName("initStorage")
 
 	misc.Infof(r.Logger, "initializing staking pool storage, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
@@ -876,6 +884,26 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, managerAddr.String()),
 	}
+	// we need to stack up references in this gas method for resource pooling
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:  poolKey.PoolAppID,
+		Method: gasMethod,
+		BoxReferences: []types.AppBoxReference{
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(poolKey.ID)},
+			{AppID: 0, Name: GetStakerLedgerBoxName()},
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		ForeignApps:     []uint64{r.RetiAppID},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          managerAddr,
+		Signer:          algo.SignWithAccountForATC(r.signer, managerAddr.String()),
+	})
+	params.FlatFee = true
+	params.Fee = 3 * transaction.MinTxnFee
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  poolKey.PoolAppID,
 		Method: initStorageMethod,
@@ -884,7 +912,8 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 			payTxWithSigner,
 		},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: 0, Name: GetStakerLedgerBoxName()},
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
 			{AppID: 0, Name: nil}, // extra i/o
 			{AppID: 0, Name: nil}, // extra i/o
 			{AppID: 0, Name: nil}, // extra i/o

@@ -46,9 +46,7 @@ func newDaemon() *Daemon {
 }
 
 func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, errc chan error) {
-	d.logger.Info("Réti daemon STARTED")
-	defer d.logger.Info("Réti daemon STOPPED")
-
+	d.logger.Info("Réti daemon started")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -159,11 +157,15 @@ func (d *Daemon) checkPools(ctx context.Context) {
 			poolAccounts[crypto.GetApplicationAddress(poolAppID).String()] = info
 		}
 		// ensure pools were initialized properly (since it's a two-step process - the second step may have been skipped?)
-		App.retiClient.CheckAndInitStakingPoolStorage(&reti.ValidatorPoolKey{
+		err = App.retiClient.CheckAndInitStakingPoolStorage(&reti.ValidatorPoolKey{
 			ID:        App.retiClient.Info.Config.ID,
 			PoolID:    poolID,
 			PoolAppID: poolAppID,
 		})
+		if err != nil {
+			misc.Errorf(d.logger, "error ensuring participation init: %v", err)
+			return
+		}
 	}
 	// now get all the current participation keys for our node
 	partKeys, err := algo.GetParticipationKeys(ctx, d.algoClient)
@@ -531,7 +533,11 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 					continue
 				}
 				eg.Go(func() error {
-					return App.retiClient.EpochBalanceUpdate(i+1, pool.PoolAppID, signerAddr)
+					err := App.retiClient.EpochBalanceUpdate(i+1, pool.PoolAppID, signerAddr)
+					if err != nil {
+						return fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err)
+					}
+					return nil
 				})
 			}
 			err := eg.Wait()
@@ -544,5 +550,10 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 
 func durationToNextEpoch(epochMinutes int) time.Duration {
 	now := time.Now().UTC()
-	return now.Round(time.Duration(epochMinutes) * time.Minute).Sub(now)
+	dur := now.Round(time.Duration(epochMinutes) * time.Minute).Sub(now)
+	if dur < 0 {
+		return time.Duration(epochMinutes) * time.Minute
+	}
+	slog.Info(fmt.Sprintf("epoch duration in mins:%d, dur to next epoch:%v", epochMinutes, dur))
+	return dur
 }

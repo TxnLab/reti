@@ -75,7 +75,7 @@ type ValidatorCurState = {
     NumPools: uint16; // current number of pools this validator has - capped at MaxPools
     TotalStakers: uint64; // total number of stakers across all pools of THIS validator
     TotalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
-    // amount of the reward token held bcak in pool 1 for paying out stakers their rewards.
+    // amount of the reward token held back in pool 1 for paying out stakers their rewards.
     // as reward tokens are assigned to stakers - the amount as part of each epoch will be updated
     // in this value and this amount has to be assumed 'spent' - only reducing this number as the token
     // is actually sent out by request of the validator itself
