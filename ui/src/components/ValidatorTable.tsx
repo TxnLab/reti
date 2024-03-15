@@ -158,7 +158,7 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
         const canEdit = isOwner || isManager
 
         return (
-          <div className="flex items-center gap-x-2">
+          <div className="flex items-center justify-end gap-x-2">
             <AddStakeModal validator={validator} disabled={stakingDisabled} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -214,18 +214,18 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
 
   return (
     <div>
-      <div className="lg:flex items-center gap-x-2 py-4">
+      <div className="lg:flex items-center lg:gap-x-2 py-4">
         <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
         {table.getFilteredRowModel().rows.length > 0 && (
-          <>
+          <div className="flex items-center gap-x-3">
             <Input
               placeholder="Filter validators..."
               value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
               onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
-              className="max-w-sm"
+              className="sm:max-w-sm lg:w-64"
             />
-            <DataTableViewOptions table={table} className="hidden lg:flex h-9" />
-          </>
+            <DataTableViewOptions table={table} className="h-9" />
+          </div>
         )}
       </div>
       <div className="rounded-md border">
