@@ -315,7 +315,8 @@ export async function addStakingPool(
 
   const addPoolResponse = await validatorClient
     .compose()
-    .gas({})
+    .gas({}, { note: '1' })
+    .gas({}, { note: '2' })
     .addPool(
       {
         mbrPayment: {
@@ -333,7 +334,7 @@ export async function addStakingPool(
     )
     .execute({ populateAppCallResources: true })
 
-  const [valId, poolId, poolAppId] = addPoolResponse.returns![1]
+  const [valId, poolId, poolAppId] = addPoolResponse.returns![2]
 
   const stakingPool: ValidatorPoolKey = {
     poolId: Number(poolId),
@@ -363,13 +364,17 @@ export async function initStakingPoolStorage(
 
   await stakingPoolClient
     .compose()
-    .gas({})
-    .initStorage({
-      mbrPayment: {
-        transaction: payPoolInitStorageMbr,
-        signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+    .gas({}, { note: '1' })
+    .gas({}, { note: '2' })
+    .initStorage(
+      {
+        mbrPayment: {
+          transaction: payPoolInitStorageMbr,
+          signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+        },
       },
-    })
+      { sendParams: { fee: AlgoAmount.MicroAlgos(3000) } },
+    )
     .execute({ populateAppCallResources: true })
 }
 
@@ -617,8 +622,8 @@ export async function fetchProtocolConstraints(
     const result = await callGetProtocolConstraints(validatorClient)
 
     const [
-      payoutMinsMax, // @todo: flip payout min/max back when fixed in contract
       payoutMinsMin,
+      payoutMinsMax,
       commissionPctMin,
       commissionPctMax,
       minEntryStake,
