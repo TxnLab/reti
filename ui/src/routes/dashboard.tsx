@@ -10,7 +10,7 @@ import { ValidatorTable } from '@/components/ValidatorTable'
 import { isWalletConnected } from '@/utils/wallets'
 
 export const Route = createFileRoute('/dashboard')({
-  beforeLoad: async () => {
+  beforeLoad: () => {
     if (!isWalletConnected()) {
       throw redirect({
         to: '/',
