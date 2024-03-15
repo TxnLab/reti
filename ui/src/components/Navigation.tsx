@@ -36,7 +36,10 @@ export function Navigation({ showHome = false, orientation = 'horizontal' }: Nav
           <>
             <NavigationMenuItem>
               <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                <Link to="/add" className="[&.active]:font-bold">
+                <Link
+                  to="/add"
+                  className="[&.active]:font-bold [&.active]:bg-accent/50 [&.active]:hover:bg-accent"
+                >
                   Add Validator
                 </Link>
               </NavigationMenuLink>

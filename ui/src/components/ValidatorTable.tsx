@@ -1,11 +1,22 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { Link } from '@tanstack/react-router'
-import { ColumnDef } from '@tanstack/react-table'
+import {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet'
 import { MoreHorizontal } from 'lucide-react'
+import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
-import { DataTable } from '@/components/DataTable'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
+import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,15 +26,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Validator } from '@/interfaces/validator'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
+import { cn } from '@/utils/ui'
 
 interface ValidatorTableProps {
   validators: Validator[]
 }
 
 export function ValidatorTable({ validators }: ValidatorTableProps) {
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [rowSelection, setRowSelection] = React.useState({})
+
   const { activeAddress } = useWallet()
 
   const columns: ColumnDef<Validator>[] = [
@@ -164,5 +190,78 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
     },
   ]
 
-  return <DataTable columns={columns} data={validators} />
+  const table = useReactTable({
+    data: validators,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  })
+
+  return (
+    <div>
+      <div className="lg:flex items-center gap-x-2 py-4">
+        <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
+        {table.getFilteredRowModel().rows.length > 0 && (
+          <>
+            <Input
+              placeholder="Filter validators..."
+              value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
+              onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
+              className="max-w-sm"
+            />
+            <DataTableViewOptions table={table} className="hidden lg:flex h-9" />
+          </>
+        )}
+      </div>
+      <div className="rounded-md border">
+        <Table className="border-collapse border-spacing-0">
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} className={cn('first:px-4')}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className={cn('first:px-4')}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
 }

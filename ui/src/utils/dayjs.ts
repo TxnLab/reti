@@ -1,7 +1,9 @@
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
 
 dayjs.extend(duration)
+dayjs.extend(localizedFormat)
 
 // Utility function to format durations into human-readable strings
 export function formatDuration(minutes: number): string {
