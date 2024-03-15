@@ -346,7 +346,7 @@ export async function addStakingPool(
 }
 
 export async function initStakingPoolStorage(
-  appId: number,
+  poolAppId: number,
   poolInitMbr: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
@@ -355,12 +355,12 @@ export async function initStakingPoolStorage(
 
   const payPoolInitStorageMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
-    to: algosdk.getApplicationAddress(appId),
+    to: algosdk.getApplicationAddress(poolAppId),
     amount: poolInitMbr,
     suggestedParams,
   })
 
-  const stakingPoolClient = makeStakingPoolClient(appId, signer, activeAddress)
+  const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
 
   await stakingPoolClient
     .compose()
@@ -655,3 +655,44 @@ export const constraintsQueryOptions = queryOptions({
   queryFn: () => fetchProtocolConstraints(),
   staleTime: Infinity,
 })
+
+export async function removeStake(
+  poolAppId: number | bigint,
+  amountToUnstake: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
+
+  const simulateResult = await stakingPoolSimulateClient
+    .compose()
+    .gas({})
+    .removeStake(
+      {
+        amountToUnstake,
+      },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(5000) } },
+    )
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+
+  await stakingPoolClient
+    .compose()
+    .gas(
+      {},
+      {
+        apps: simulateResult.simulateResponse.txnGroups[0].unnamedResourcesAccessed!
+          .apps! as number[],
+        note: '1',
+      },
+    )
+    .gas({}, { note: '2' })
+    .removeStake(
+      {
+        amountToUnstake,
+      },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(5000) } },
+    )
+    .execute({ populateAppCallResources: true })
+}

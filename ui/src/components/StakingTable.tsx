@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { UnstakeModal } from '@/components/UnstakeModal'
 import { ValidatorStake } from '@/interfaces/staking'
 import { cn } from '@/utils/ui'
 
@@ -95,13 +96,13 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
     },
     {
       id: 'actions',
-      cell: () => {
+      cell: ({ row }) => {
+        const validatorStake = row.original
+
         return (
           <div className="flex items-center justify-end gap-x-2">
             <Button size="sm">Claim</Button>
-            <Button size="sm" variant="outline">
-              Unstake
-            </Button>
+            <UnstakeModal validatorStake={validatorStake} />
           </div>
         )
       },
