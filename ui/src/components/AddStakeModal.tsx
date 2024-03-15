@@ -34,7 +34,9 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { ValidatorStake } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
+import { dayjs } from '@/utils/dayjs'
 
 interface AddStakeModalProps {
   validator: Validator
@@ -122,12 +124,33 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
-      const { poolId } = await addStake(validator.id, totalAmount, signer, activeAddress)
+      const validatorPoolKey = await addStake(validator.id, totalAmount, signer, activeAddress)
 
-      toast.success(`Stake added to pool ${poolId}!`, {
+      toast.success(`Stake added to pool ${validatorPoolKey.poolId}!`, {
         id: toastId,
         duration: 5000,
       })
+
+      queryClient.setQueryData<ValidatorStake[]>(
+        ['stakes', { staker: activeAddress }],
+        (prevData) => {
+          if (!prevData) {
+            return prevData
+          }
+
+          return [
+            ...prevData,
+            {
+              poolKey: validatorPoolKey,
+              account: activeAddress,
+              balance: totalAmount,
+              totalRewarded: 0,
+              rewardTokenBalance: 0,
+              entryTime: dayjs().unix(),
+            },
+          ]
+        },
+      )
 
       queryClient.setQueryData<Validator>(
         ['validator', { validatorId: validator.id.toString() }],
