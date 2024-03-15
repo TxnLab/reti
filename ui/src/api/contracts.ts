@@ -7,8 +7,10 @@ import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { ValidatorStake } from '@/interfaces/staking'
 import {
+  Constraints,
   MbrAmounts,
   NodePoolAssignmentConfig,
+  RawConstraints,
   RawNodePoolAssignmentConfig,
   Validator,
   ValidatorConfigRaw,
@@ -592,3 +594,59 @@ export async function fetchValidatorStakes(staker: string): Promise<ValidatorSta
     throw error
   }
 }
+
+export async function callGetProtocolConstraints(validatorClient: ValidatorRegistryClient) {
+  return validatorClient
+    .compose()
+    .getProtocolConstraints({})
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
+
+export async function fetchProtocolConstraints(
+  client?: ValidatorRegistryClient,
+): Promise<Constraints> {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+
+    const result = await callGetProtocolConstraints(validatorClient)
+
+    const [
+      payoutMinsMax, // @todo: flip payout min/max back when fixed in contract
+      payoutMinsMin,
+      commissionPctMin,
+      commissionPctMax,
+      minEntryStake,
+      maxAlgoPerPool,
+      maxNodes,
+      maxPoolsPerNode,
+      maxStakersPerPool,
+    ] = result.returns![0] as RawConstraints
+
+    return {
+      payoutMinsMin: Number(payoutMinsMin),
+      payoutMinsMax: Number(payoutMinsMax),
+      commissionPctMin: Number(commissionPctMin),
+      commissionPctMax: Number(commissionPctMax),
+      minEntryStake: Number(minEntryStake),
+      maxAlgoPerPool: Number(maxAlgoPerPool),
+      maxNodes: Number(maxNodes),
+      maxPoolsPerNode: Number(maxPoolsPerNode),
+      maxStakersPerPool: Number(maxStakersPerPool),
+    }
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export const constraintsQueryOptions = queryOptions({
+  queryKey: ['constraints'],
+  queryFn: () => fetchProtocolConstraints(),
+  staleTime: Infinity,
+})

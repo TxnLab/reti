@@ -1,4 +1,8 @@
+import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import algosdk from 'algosdk'
+import { z } from 'zod'
 import {
+  Constraints,
   NodeInfo,
   NodePoolAssignmentConfig,
   RawNodePoolAssignmentConfig,
@@ -8,6 +12,8 @@ import {
   ValidatorState,
   ValidatorStateRaw,
 } from '@/interfaces/validator'
+import { dayjs } from '@/utils/dayjs'
+import { isValidName } from '@/utils/nfd'
 
 export function transformValidatorData(
   rawConfig: ValidatorConfigRaw,
@@ -102,4 +108,197 @@ export function findFirstAvailableNode(
     }
   }
   return null // No available slot found
+}
+
+export function getAddValidatorFormSchema(constraints: Constraints) {
+  return z
+    .object({
+      Owner: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => algosdk.isValidAddress(val), {
+          message: 'Invalid Algorand address',
+        }),
+      Manager: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => algosdk.isValidAddress(val), {
+          message: 'Invalid Algorand address',
+        }),
+      NFDForInfo: z
+        .string()
+        .refine((val) => val === '' || isValidName(val), {
+          message: 'NFD name is invalid',
+        })
+        .optional(),
+      MustHoldCreatorNFT: z
+        .string()
+        .refine((val) => val === '' || algosdk.isValidAddress(val), {
+          message: 'Invalid Algorand address',
+        })
+        .optional(),
+      CreatorNFTMinBalance: z
+        .string()
+        .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
+          message: 'Invalid minimum balance',
+        })
+        .optional(),
+      RewardTokenID: z
+        .string()
+        .refine(
+          (val) =>
+            val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
+          {
+            message: 'Invalid reward token ID',
+          },
+        )
+        .optional(),
+      RewardPerPayout: z
+        .string()
+        .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
+          message: 'Invalid reward amount per payout',
+        })
+        .optional(),
+      PayoutEveryXMins: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => !isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0, {
+          message: 'Must be a positive integer',
+        })
+        .superRefine((val, ctx) => {
+          const minutes = Number(val)
+          const { payoutMinsMin, payoutMinsMax } = constraints
+
+          if (minutes < payoutMinsMin) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_small,
+              minimum: payoutMinsMin,
+              type: 'number',
+              inclusive: true,
+              message: `Epoch length must be at least ${payoutMinsMin} minute${payoutMinsMin === 1 ? '' : 's'}`,
+            })
+          }
+
+          if (minutes > payoutMinsMax) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_big,
+              maximum: payoutMinsMax,
+              type: 'number',
+              inclusive: true,
+              message: `Epoch length cannot exceed ${payoutMinsMax} minutes`,
+            })
+          }
+        }),
+      PercentToValidator: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => !isNaN(parseFloat(val)), {
+          message: 'Invalid percent value',
+        })
+        .superRefine((val, ctx) => {
+          const percent = parseFloat(val)
+          const hasValidPrecision = parseFloat(percent.toFixed(4)) === percent
+
+          if (!hasValidPrecision) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Percent value cannot have more than 4 decimal places',
+            })
+          }
+
+          const percentMultiplied = percent * 10000
+          const { commissionPctMin, commissionPctMax } = constraints
+
+          if (percentMultiplied < commissionPctMin) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_small,
+              minimum: commissionPctMin,
+              type: 'number',
+              inclusive: true,
+              message: `Must be at least ${commissionPctMin / 10000} percent`,
+            })
+          }
+
+          if (percentMultiplied > commissionPctMax) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_big,
+              maximum: commissionPctMax,
+              type: 'number',
+              inclusive: true,
+              message: `Cannot exceed ${commissionPctMax / 10000} percent`,
+            })
+          }
+        }),
+      ValidatorCommissionAddress: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => algosdk.isValidAddress(val), {
+          message: 'Invalid Algorand address',
+        }),
+      MinEntryStake: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => !isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0, {
+          message: 'Must be a positive integer',
+        })
+        .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos >= constraints.minEntryStake, {
+          message: `Must be at least ${AlgoAmount.MicroAlgos(constraints.minEntryStake).algos} ALGO`,
+        }),
+      MaxAlgoPerPool: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => !isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0, {
+          message: 'Must be a positive integer',
+        })
+        .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos <= constraints.maxAlgoPerPool, {
+          message: `Cannot exceed ${AlgoAmount.MicroAlgos(constraints.maxAlgoPerPool).algos} ALGO`,
+        }),
+      PoolsPerNode: z
+        .string()
+        .refine((val) => val !== '', {
+          message: 'Required field',
+        })
+        .refine((val) => !isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0, {
+          message: 'Must be a positive integer',
+        })
+        .refine((val) => Number(val) <= constraints.maxPoolsPerNode, {
+          message: `Cannot exceed ${constraints.maxPoolsPerNode} pools per node`,
+        }),
+      SunsettingOn: z
+        .string()
+        .refine(
+          (val) =>
+            val === '' ||
+            (Number.isInteger(Number(val)) && dayjs.unix(Number(val)).isAfter(dayjs())),
+          {
+            message: 'Must be a valid UNIX timestamp and later than current time',
+          },
+        )
+        .optional(),
+      SunsettingTo: z
+        .string()
+        .refine(
+          (val) =>
+            val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
+          {
+            message: 'Invalid Validator ID',
+          },
+        )
+        .optional(),
+    })
+    .required()
 }

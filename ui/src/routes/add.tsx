@@ -1,5 +1,7 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
+import { constraintsQueryOptions } from '@/api/contracts'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
@@ -14,10 +16,21 @@ export const Route = createFileRoute('/add')({
       })
     }
   },
+  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(constraintsQueryOptions),
   component: AddValidator,
+  pendingComponent: () => <div>Loading...</div>,
+  errorComponent: ({ error }) => {
+    if (error instanceof Error) {
+      return <div>{error?.message}</div>
+    }
+    return <div>Error loading protocol constraints</div>
+  },
 })
 
 function AddValidator() {
+  const constraintsQuery = useSuspenseQuery(constraintsQueryOptions)
+  const constraints = constraintsQuery.data
+
   const { activeAddress, isReady } = useWallet()
 
   if (isReady && !activeAddress) {
@@ -27,13 +40,13 @@ function AddValidator() {
   return (
     <>
       <Meta title="Add Validator" />
-      <PageHeader title={activeAddress ? 'Add a Validator' : null} />
+      <PageHeader title="Add a Validator" />
       <PageMain>
         {!isReady ? (
           <div>Loading...</div>
         ) : (
           <div className="py-8">
-            <AddValidatorForm />
+            <AddValidatorForm constraints={constraints} />
           </div>
         )}
       </PageMain>
