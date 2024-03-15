@@ -625,7 +625,7 @@ export async function fetchProtocolConstraints(
       maxAlgoPerPool,
       maxNodes,
       maxPoolsPerNode,
-      // maxStakersPerPool,
+      maxStakersPerPool,
     ] = result.returns![0] as RawConstraints
 
     return {
@@ -637,7 +637,7 @@ export async function fetchProtocolConstraints(
       maxAlgoPerPool: Number(maxAlgoPerPool),
       maxNodes: Number(maxNodes),
       maxPoolsPerNode: Number(maxPoolsPerNode),
-      // maxStakersPerPool: Number(maxStakersPerPool),
+      maxStakersPerPool: Number(maxStakersPerPool),
     }
   } catch (error) {
     console.error(error)
