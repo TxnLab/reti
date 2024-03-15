@@ -25,7 +25,7 @@ export function Connect() {
         <DialogHeader>
           <DialogTitle>Connect</DialogTitle>
           <DialogDescription>
-            Connect your wallet to access your account and manage delegations.
+            Connect your wallet to access your account and manage staking.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

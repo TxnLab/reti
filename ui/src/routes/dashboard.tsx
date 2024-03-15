@@ -34,14 +34,14 @@ function Dashboard() {
 
   const { activeAddress, isReady } = useWallet()
 
-  const delegationsQuery = useQuery({
-    queryKey: ['delegations', { staker: activeAddress! }],
+  const stakesQuery = useQuery({
+    queryKey: ['stakes', { staker: activeAddress! }],
     queryFn: () => fetchValidatorStakes(activeAddress!),
     enabled: !!activeAddress,
     retry: false,
   })
 
-  const delegations = delegationsQuery.data
+  const stakes = stakesQuery.data
 
   if (isReady && !activeAddress) {
     return <Navigate to="/" />
@@ -53,10 +53,7 @@ function Dashboard() {
       <PageHeader title="Staking Dashboard" />
       <PageMain>
         <div className="mt-4 space-y-8">
-          <StakingTable
-            delegations={delegations || []}
-            isLoading={!isReady || delegationsQuery.isLoading}
-          />
+          <StakingTable stakes={stakes || []} isLoading={!isReady || stakesQuery.isLoading} />
           <ValidatorTable validators={validators || []} />
         </div>
       </PageMain>

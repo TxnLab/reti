@@ -26,7 +26,7 @@ function Index() {
               <CardHeader>
                 <CardTitle>Connect your wallet</CardTitle>
                 <CardDescription>
-                  Connect your wallet to access your account and manage delegations.
+                  Connect your wallet to access your account and manage staking.
                 </CardDescription>
               </CardHeader>
               <CardContent>

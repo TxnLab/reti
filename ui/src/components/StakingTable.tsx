@@ -27,11 +27,11 @@ import { ValidatorStake } from '@/interfaces/staking'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
-  delegations: ValidatorStake[]
+  stakes: ValidatorStake[]
   isLoading: boolean
 }
 
-export function StakingTable({ delegations, isLoading }: StakingTableProps) {
+export function StakingTable({ stakes, isLoading }: StakingTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -109,7 +109,7 @@ export function StakingTable({ delegations, isLoading }: StakingTableProps) {
   ]
 
   const table = useReactTable({
-    data: delegations,
+    data: stakes,
     columns,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
