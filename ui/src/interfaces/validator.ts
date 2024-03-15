@@ -85,3 +85,27 @@ export interface ValidatorPoolKey {
   poolAppId: number
   validatorId: number
 }
+
+export type RawConstraints = [
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+  // bigint,
+]
+
+export interface Constraints {
+  payoutMinsMin: number
+  payoutMinsMax: number
+  commissionPctMin: number
+  commissionPctMax: number
+  minEntryStake: number
+  maxAlgoPerPool: number
+  maxNodes: number
+  maxPoolsPerNode: number
+  // maxStakersPerPool: number
+}

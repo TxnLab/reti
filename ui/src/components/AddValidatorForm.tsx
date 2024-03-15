@@ -29,85 +29,13 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
-import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import { isValidName } from '@/utils/nfd'
+import { Constraints } from '@/interfaces/validator'
+import { getAddValidatorFormSchema } from '@/utils/contracts'
 import {
   getNfdRegistryAppIdFromViteEnvironment,
   getRetiAppIdFromViteEnvironment,
 } from '@/utils/env'
-
-const formSchema = z
-  .object({
-    Owner: z.string().refine((val) => algosdk.isValidAddress(val), {
-      message: 'Owner address is invalid',
-    }),
-    Manager: z.string().refine((val) => algosdk.isValidAddress(val), {
-      message: 'Manager address is invalid',
-    }),
-    NFDForInfo: z
-      .string()
-      .refine((val) => val === '' || isValidName(val), {
-        message: 'NFD name is invalid',
-      })
-      .optional(),
-    MustHoldCreatorNFT: z
-      .string()
-      .refine((val) => val === '' || algosdk.isValidAddress(val), {
-        message: 'Manager address is invalid',
-      })
-      .optional(),
-    CreatorNFTMinBalance: z
-      .string()
-      .refine((val) => val === '' || Number(val) >= 1, {
-        message: 'Minimum balance must be at least 1',
-      })
-      .optional(),
-    RewardTokenID: z
-      .string()
-      .refine((val) => val === '' || Number(val) >= 1, {
-        message: 'Reward token ID is invalid',
-      })
-      .optional(),
-    RewardPerPayout: z
-      .string()
-      .refine((val) => val === '' || Number(val) >= 1, {
-        message: 'Reward amount per payout is invalid',
-      })
-      .optional(),
-    PayoutEveryXMins: z.string().refine((val) => Number(val) >= 1, {
-      message: 'Payout frequency must be at least 1 minute',
-    }),
-    PercentToValidator: z
-      .string()
-      .refine((val) => val !== '' && Number(val) >= 0 && Number(val) <= 100, {
-        message: 'Payout percentage must be between 0 and 100',
-      }),
-    ValidatorCommissionAddress: z.string().refine((val) => algosdk.isValidAddress(val), {
-      message: 'Commission address is invalid',
-    }),
-    MinEntryStake: z.string().refine((val) => Number(val) >= 1, {
-      message: 'Minimum stake must be at least 1 ALGO',
-    }),
-    MaxAlgoPerPool: z.string().refine((val) => Number(val) >= 1, {
-      message: 'Maximum stake must be at least 1 ALGO',
-    }),
-    PoolsPerNode: z.string().refine((val) => Number(val) >= 1 && Number(val) <= 4, {
-      message: 'Pools per node must be at least 1',
-    }),
-    SunsettingOn: z
-      .string()
-      .refine((val) => val === '' || Number(val) >= 1, {
-        message: 'Timestamp is invalid',
-      })
-      .optional(),
-    SunsettingTo: z
-      .string()
-      .refine((val) => val === '' || Number(val) >= 1, {
-        message: 'Validator ID is invalid',
-      })
-      .optional(),
-  })
-  .required()
+import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -119,10 +47,16 @@ const algodClient = algokit.getAlgoClient({
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 const NFD_REGISTRY_APP_ID = getNfdRegistryAppIdFromViteEnvironment()
 
-export function AddValidatorForm() {
+interface AddValidatorFormProps {
+  constraints: Constraints
+}
+
+export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const { signer, activeAddress } = useWallet()
 
   const navigate = useNavigate({ from: '/add' })
+
+  const formSchema = getAddValidatorFormSchema(constraints)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -318,8 +252,7 @@ export function AddValidatorForm() {
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
                     <FormDescription>
-                      NFD App ID which the validator uses to describe their validator pool
-                      (optional)
+                      NFD which the validator uses to describe their validator pool (optional)
                     </FormDescription>
                     <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
                   </FormItem>
