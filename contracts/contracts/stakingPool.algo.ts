@@ -147,20 +147,21 @@ export class StakingPool extends Contract {
     initStorage(mbrPayment: PayTxn): void {
         assert(!this.Stakers.exists, 'staking pool already initialized');
 
-        const PoolInitMbr =
-            ALGORAND_ACCOUNT_MIN_BALANCE +
-            this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL);
-
-        // the pay transaction must exactly match our MBR requirement.
-        verifyPayTxn(mbrPayment, { amount: PoolInitMbr });
-        this.Stakers.create();
-
         // Get the config of our validator to determine if we issue reward tokens
         const validatorConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
         const isTokenEligible = validatorConfig.RewardTokenID !== 0;
+        const extraMBR = isTokenEligible && this.PoolID.value === 1 ? ASSET_HOLDING_FEE : 0;
+        const PoolInitMbr =
+            ALGORAND_ACCOUNT_MIN_BALANCE +
+            extraMBR +
+            this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL);
+
+        // the pay transaction must exactly match our MBR requirement.
+        verifyPayTxn(mbrPayment, { amount: PoolInitMbr });
+        this.Stakers.create();
 
         if (isTokenEligible && this.PoolID.value === 1) {
             // opt ourselves in to the reward token if we're pool 1
@@ -466,15 +467,18 @@ export class StakingPool extends Contract {
 
                 // now adjust the total reward to hand out for this pool based on this pools % of the whole
                 tokenRewardAvail = wideRatio([validatorConfig.RewardPerPayout, ourPoolPctOfWhole], [1_000_000]);
-                log(concat('token reward avail: %i', itob(algoRewardAvail)));
+                increaseOpcodeBudget();
+                log(concat('token reward avail: ', tokenRewardAvail.toString()));
+                // log(concat('token reward avail: %i', itob(tokenRewardAvail)));
             }
         }
         if (tokenRewardAvail === 0) {
             // no token reward - then algo MUST be paid out !
             // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
             assert(algoRewardAvail > 1_000_000, 'Reward needs to be at least 1 ALGO');
-            log(concat('algo reward avail: %i', itob(algoRewardAvail)));
         }
+        log(concat('algo reward avail: ', algoRewardAvail.toString()));
+        // log(concat('algo reward avail: %i', itob(algoRewardAvail)));
 
         if (validatorConfig.PercentToValidator !== 0) {
             // determine the % that goes to validator...
@@ -570,6 +574,19 @@ export class StakingPool extends Contract {
                         partialStakersTotalStake += cmpStaker.Balance;
                         timePercentage = (timeInPool * 1000) / epochInSecs;
 
+                        if (tokenRewardAvail > 0) {
+                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
+                            const stakerTokenReward = wideRatio(
+                                [cmpStaker.Balance, tokenRewardAvail, timePercentage],
+                                [this.TotalAlgoStaked.value, 1000]
+                            );
+
+                            // reduce the reward available (that we're accounting for) so that the subsequent
+                            // 'full' pays are based on what's left
+                            tokenRewardAvail -= stakerTokenReward;
+                            cmpStaker.RewardTokenBalance += stakerTokenReward;
+                            tokenRewardPaidOut += stakerTokenReward;
+                        }
                         if (algoRewardAvail > 0) {
                             // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                             const stakerReward = wideRatio(
@@ -585,19 +602,6 @@ export class StakingPool extends Contract {
                             cmpStaker.Balance += stakerReward;
                             cmpStaker.TotalRewarded += stakerReward;
                             increasedStake += stakerReward;
-                        }
-                        if (tokenRewardAvail > 0) {
-                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
-                            const stakerTokenReward = wideRatio(
-                                [cmpStaker.Balance, tokenRewardAvail, timePercentage],
-                                [this.TotalAlgoStaked.value, 1000]
-                            );
-
-                            // reduce the reward available (that we're accounting for) so that the subsequent
-                            // 'full' pays are based on what's left
-                            tokenRewardAvail -= stakerTokenReward;
-                            cmpStaker.RewardTokenBalance += stakerTokenReward;
-                            tokenRewardPaidOut += stakerTokenReward;
                         }
                         // Update the box w/ the new data
                         this.Stakers.value[i] = cmpStaker;
@@ -626,6 +630,26 @@ export class StakingPool extends Contract {
                     if (timeInPool >= epochInSecs) {
                         // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                         // payment
+                        // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
+                        if (tokenRewardAvail > 0) {
+                            increaseOpcodeBudget();
+                            log(concat('staker balance: ', cmpStaker.Balance.toString()));
+                            log(concat('tkn rwd avail: ', tokenRewardAvail.toString()));
+                            increaseOpcodeBudget();
+                            log(concat('new pool stake: ', newPoolTotalStake.toString()));
+
+                            const stakerTokenReward = wideRatio(
+                                [cmpStaker.Balance, tokenRewardAvail],
+                                [newPoolTotalStake]
+                            );
+                            increaseOpcodeBudget();
+                            log(concat('paying staker token reward: ', stakerTokenReward.toString()));
+
+                            // instead of sending them algo now - just increase their ledger balance, so they can claim
+                            // it at any time.
+                            cmpStaker.RewardTokenBalance += stakerTokenReward;
+                            tokenRewardPaidOut += stakerTokenReward;
+                        }
                         if (algoRewardAvail > 0) {
                             const stakerReward = wideRatio([cmpStaker.Balance, algoRewardAvail], [newPoolTotalStake]);
                             // instead of sending them algo now - just increase their ledger balance, so they can claim
@@ -634,16 +658,7 @@ export class StakingPool extends Contract {
                             cmpStaker.TotalRewarded += stakerReward;
                             increasedStake += stakerReward;
                         }
-                        if (tokenRewardAvail > 0) {
-                            const stakerTokenReward = wideRatio(
-                                [cmpStaker.Balance, tokenRewardAvail],
-                                [newPoolTotalStake]
-                            );
-                            // instead of sending them algo now - just increase their ledger balance, so they can claim
-                            // it at any time.
-                            cmpStaker.RewardTokenBalance += stakerTokenReward;
-                            tokenRewardPaidOut += stakerTokenReward;
-                        }
+
                         // Update the box w/ the new data
                         this.Stakers.value[i] = cmpStaker;
                     }

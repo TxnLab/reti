@@ -373,9 +373,9 @@
           "desc": "amount this validator's total stake increased via rewards"
         },
         {
-          "name": "rewardAmountToAdd",
+          "name": "rewardTokenAmountReserved",
           "type": "uint64",
-          "desc": "amount this validator's total stake increased via rewards"
+          "desc": "amount this validator's total stake increased via rewards (that should beseen as 'accounted for/pending spent')"
         }
       ],
       "returns": {
@@ -384,7 +384,7 @@
     },
     {
       "name": "stakeRemoved",
-      "desc": "stakerRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
+      "desc": "stakeRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.If any amount of rewardRemoved is specified, then that amount of reward is sent to the useThe calling App ID is validated against our pool list as well.",
       "args": [
         {
           "name": "poolKey",
@@ -402,7 +402,7 @@
         {
           "name": "rewardRemoved",
           "type": "uint64",
-          "desc": "amount of token reward removed (only pool 1 can set this - and only if this validator has a reward token)"
+          "desc": "if applicable, amount of token reward removed (by pool 1 caller) or TO remove and pay out (via pool 1 from different pool caller)"
         },
         {
           "name": "stakerRemoved",

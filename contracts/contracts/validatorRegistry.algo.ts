@@ -235,8 +235,8 @@ export class ValidatorRegistry extends Contract {
      */
     getProtocolConstraints(): Constraints {
         return {
-            EpochPayoutMinsMax: MIN_PAYOUT_MINS,
-            EpochPayoutMinsMin: MAX_PAYOUT_MINS,
+            EpochPayoutMinsMin: MIN_PAYOUT_MINS,
+            EpochPayoutMinsMax: MAX_PAYOUT_MINS,
             MinPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
             MaxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             MinEntryStake: MIN_ALGO_STAKE_PER_POOL,
@@ -632,15 +632,16 @@ export class ValidatorRegistry extends Contract {
      * The calling App ID is validated against our pool list as well.
      * @param poolKey - ValidatorPoolKey type
      * @param algoToAdd - amount this validator's total stake increased via rewards
-     * @param rewardAmountToAdd - amount this validator's total stake increased via rewards
+     * @param rewardTokenAmountReserved - amount this validator's total stake increased via rewards (that should be
+     * seen as 'accounted for/pending spent')
      */
-    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, algoToAdd: uint64, rewardAmountToAdd: uint64): void {
+    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, algoToAdd: uint64, rewardTokenAmountReserved: uint64): void {
         this.verifyPoolKeyCaller(poolKey);
 
         // Update the specified amount of stake (+reward tokens reserved) - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked += algoToAdd;
         this.ValidatorList(poolKey.ID).value.State.TotalAlgoStaked += algoToAdd;
-        this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack += rewardAmountToAdd;
+        this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack += rewardTokenAmountReserved;
 
         this.TotalAlgoStaked.value += algoToAdd;
 

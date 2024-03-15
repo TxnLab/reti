@@ -1,11 +1,13 @@
 import {
     Account,
     Address,
+    Algodv2,
     bytesToBigInt,
     decodeAddress,
     encodeAddress,
     encodeUint64,
     getApplicationAddress,
+    makeAssetCreateTxnWithSuggestedParamsFromObject,
     makePaymentTxnWithSuggestedParamsFromObject,
 } from 'algosdk';
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error';
@@ -394,7 +396,8 @@ export async function addStakingPool(
         // Now add a staking pool
         addPoolResults = await validatorClient
             .compose()
-            .gas({})
+            .gas({}, { note: '1' })
+            .gas({}, { note: '2' })
             .addPool(
                 {
                     mbrPayment: { transaction: payPoolMbr, signer: context.testAccount },
@@ -406,11 +409,6 @@ export async function addStakingPool(
                         fee: AlgoAmount.MicroAlgos(2000),
                     },
                     sender: vldtrAcct,
-                    // apps: [tmplPoolAppID], // needs to reference template to create new instance
-                    // boxes: [
-                    //     {appId: 0, name: getValidatorListBoxName(validatorID)},
-                    //     {appId: 0, name: ''}, // buy more i/o
-                    // ],
                 }
             )
             .execute({ populateAppCallResources: true });
@@ -418,7 +416,7 @@ export async function addStakingPool(
         console.log((exception as LogicError).message);
         throw exception;
     }
-    const poolKey = new ValidatorPoolKey(addPoolResults.returns![1]);
+    const poolKey = new ValidatorPoolKey(addPoolResults.returns![2]);
 
     // Pay the mbr to the newly created staking pool contract to cover its upcoming box mbr storage req
     const payStakingPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
@@ -433,9 +431,11 @@ export async function addStakingPool(
         { sender: vldtrAcct, resolveBy: 'id', id: poolKey.PoolAppID },
         context.algod
     );
+
     await newPoolClient
         .compose()
-        .gas({})
+        .gas({}, { note: '1' })
+        .gas({}, { note: '2' })
         .initStorage(
             {
                 // the required MBR payment transaction
@@ -443,7 +443,7 @@ export async function addStakingPool(
             },
             {
                 sendParams: {
-                    fee: AlgoAmount.MicroAlgos(2000),
+                    fee: AlgoAmount.MicroAlgos(3000),
                 },
             }
         )
@@ -592,23 +592,57 @@ export async function addStake(
 }
 
 export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
+    const simResults = await stakeClient
+        .compose()
+        .gas({})
+        .removeStake(
+            { amountToUnstake: unstakeAmount.microAlgos },
+            {
+                sendParams: {
+                    // pays us back and tells validator about balance changed
+                    fee: AlgoAmount.MicroAlgos(5000),
+                },
+                sender: staker,
+            }
+        )
+        .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
+    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.apps!.toString());
+    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.assets!.toString());
+    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.assetHoldings!.toString());
+    // // output the app and name values from each BoxReference in boxes param of unnamedResourcesAccessed
+    // consoleLogger.info(
+    //     simResults.simulateResponse.txnGroups[0]
+    //         .unnamedResourcesAccessed!.boxes!.map((box) => `${box.app} ${new TextDecoder().decode(box.name)}`)
+    //         .join(', ')
+    // );
+    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.boxes!.());
     try {
         return (
-            await stakeClient
-                .compose()
-                .gas({})
-                .removeStake(
-                    { amountToUnstake: unstakeAmount.microAlgos },
-                    {
-                        sendParams: {
-                            // pays us back and tells validator about balance changed
-                            fee: AlgoAmount.MicroAlgos(4000),
-                        },
-                        sender: staker,
-                    }
-                )
-                .execute({ populateAppCallResources: true })
-        ).returns![1]!;
+            (
+                await stakeClient
+                    .compose()
+                    // .gas({}, { apps: simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.apps! as number[] })
+                    .gas(
+                        {},
+                        {
+                            apps: simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.apps! as number[],
+                            note: '1',
+                        }
+                    )
+                    .gas({}, { note: '2' })
+                    .removeStake(
+                        { amountToUnstake: unstakeAmount.microAlgos },
+                        {
+                            sendParams: {
+                                // pays us back and tells validator about balance changed
+                                fee: AlgoAmount.MicroAlgos(5000),
+                            },
+                            sender: staker,
+                        }
+                    )
+                    .execute({ populateAppCallResources: true })
+            ).returns![2]!
+        );
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message);
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
@@ -650,24 +684,26 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
     let fees = AlgoAmount.MicroAlgos(240_000);
     const simulateResults = await stakeClient
         .compose()
-        .gas({})
+        .gas({}, { note: '1' })
+        .gas({}, { note: '2' })
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
         .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
 
-    const { logs } = await simulateResults.simulateResponse.txnGroups[0].txnResults[1].txnResult;
+    const { logs } = await simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult;
     // verify logs isn't undefined
     if (logs !== undefined) {
         dumpLogs(logs);
     }
-    // our two outers + however many inners were used.
+    // our 3 outers + however many inners were used.
     fees = AlgoAmount.MicroAlgos(
-        2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700)
+        3000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700)
     );
     consoleLogger.info(`epoch update fees of:${fees.toString()}`);
 
     await stakeClient
         .compose()
-        .gas({}, { sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+        .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+        .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
         .execute({ populateAppCallResources: true });
     return fees;
@@ -695,7 +731,7 @@ export async function logStakingPoolInfo(
         if (encodeAddress(stakers[i].Staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
             const entryTime = new Date(Number(stakers[i].EntryTime) * 1000);
             consoleLogger.info(
-                `${i}: Staker:${encodeAddress(stakers[i].Staker.publicKey)}, Balance:${stakers[i].Balance}, Entry:${entryTime.toUTCString()}`
+                `${i}: Staker:${encodeAddress(stakers[i].Staker.publicKey)}, Balance:${stakers[i].Balance}, Rwd Tokens:${stakers[i].RewardTokenBalance} Entry:${entryTime.toUTCString()}`
             );
         }
     }
@@ -801,4 +837,44 @@ export async function verifyRewardAmounts(
 export async function getPoolAvailBalance(context: AlgorandTestAutomationContext, poolKey: ValidatorPoolKey) {
     const poolAcctInfo = await context.algod.accountInformation(getApplicationAddress(poolKey.PoolAppID)).do();
     return BigInt(poolAcctInfo.amount - poolAcctInfo['min-balance']);
+}
+
+export async function addAsset(
+    client: Algodv2,
+    sender: Account,
+    assetName: string,
+    unitName: string,
+    total?: number,
+    decimals?: number
+) {
+    const newTotal = !total ? Math.floor(Math.random() * 100) + 20 : total;
+    const newDecimals = !decimals ? 6 : decimals;
+
+    const params = await client.getTransactionParams().do();
+
+    const txn = makeAssetCreateTxnWithSuggestedParamsFromObject({
+        from: sender.addr,
+        suggestedParams: params,
+        total: newTotal * 10 ** newDecimals,
+        decimals: newDecimals,
+        defaultFrozen: false,
+        unitName,
+        assetName,
+        manager: sender.addr,
+        reserve: sender.addr,
+        freeze: sender.addr,
+        clawback: sender.addr,
+        assetURL: 'https://path/to/my/asset/details',
+    });
+
+    const stxn = txn.signTxn(sender.sk);
+
+    let txid = await client.sendRawTransaction(stxn).do();
+    txid = txid.txId;
+
+    const ptx = await client.pendingTransactionInformation(txid).do();
+
+    const assetId = ptx['asset-index'];
+
+    return assetId;
 }

@@ -45,6 +45,12 @@ module.exports = {
     },
     overrides: [
         {
+            files: ['*.ts'],
+            rules: {
+                'no-continue': 'off',
+            },
+        },
+        {
             files: ['*.algo.ts'],
             rules: {
                 'import/no-extraneous-dependencies': 'off',
