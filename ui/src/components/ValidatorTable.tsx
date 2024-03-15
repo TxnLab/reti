@@ -36,6 +36,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Validator } from '@/interfaces/validator'
+import {
+  calculateMaxStake,
+  calculateMaxStakers,
+  canManageValidator,
+  isStakingDisabled,
+} from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
@@ -77,11 +83,13 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => row.minStake,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Min Entry" />,
       cell: ({ row }) => {
-        const amount = parseFloat(row.getValue('minEntry'))
-        const algoAmount = AlgoAmount.MicroAlgos(amount).algos
-        const formatted = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(algoAmount)
+        const validator = row.original
+        const minEntryStake = AlgoAmount.MicroAlgos(validator.minStake).algos
+        const minEntryStakeCompact = new Intl.NumberFormat(undefined, {
+          notation: 'compact',
+        }).format(minEntryStake)
 
-        return formatted
+        return minEntryStakeCompact
       },
     },
     {
@@ -89,19 +97,21 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => row.totalStaked,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Stake" />,
       cell: ({ row }) => {
-        const currentStake = AlgoAmount.MicroAlgos(Number(row.original.totalStaked)).algos
-        const currentStakeFormatted = new Intl.NumberFormat('en-US', {
+        const validator = row.original
+
+        const currentStake = AlgoAmount.MicroAlgos(validator.totalStaked).algos
+        const currentStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
         }).format(currentStake)
 
-        const maxStake = AlgoAmount.MicroAlgos(Number(row.original.maxStake)).algos
-        const maxStakeFormatted = new Intl.NumberFormat('en-US', {
+        const maxStake = calculateMaxStake(validator, true)
+        const maxStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
         }).format(maxStake)
 
         return (
-          <span>
-            {currentStakeFormatted} / {maxStakeFormatted}
+          <span className="whitespace-nowrap">
+            {currentStakeCompact} / {maxStakeCompact}
           </span>
         )
       },
@@ -116,10 +126,10 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
         if (validator.numPools == 0) return '--'
 
         const numStakers = validator.numStakers
-        const maxStakers = 200
+        const maxStakers = calculateMaxStakers(validator)
 
         return (
-          <span>
+          <span className="whitespace-nowrap">
             {numStakers} / {maxStakers}
           </span>
         )
@@ -130,7 +140,8 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => row.commission,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Commission" />,
       cell: ({ row }) => {
-        const percent = parseFloat(row.getValue('commission')) / 10000
+        const validator = row.original
+        const percent = validator.commission / 10000
         return `${percent}%`
       },
     },
@@ -139,23 +150,17 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       accessorFn: (row) => row.payoutFrequency,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Payout Frequency" />,
       cell: ({ row }) => {
-        const minutes = parseInt(row.getValue('payoutFrequency'))
-        return <span className="capitalize">{formatDuration(minutes)}</span>
+        const validator = row.original
+        const frequencyFormatted = formatDuration(validator.payoutFrequency)
+        return <span className="capitalize">{frequencyFormatted}</span>
       },
     },
     {
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
-
-        const stakingDisabled =
-          validator.numStakers >= 100 ||
-          validator.totalStaked >= validator.maxStake ||
-          validator.numPools == 0
-
-        const isOwner = validator.owner === activeAddress
-        const isManager = validator.manager === activeAddress
-        const canEdit = isOwner || isManager
+        const stakingDisabled = isStakingDisabled(validator)
+        const canManage = canManageValidator(validator, activeAddress!)
 
         return (
           <div className="flex items-center justify-end gap-x-2">
@@ -181,7 +186,7 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
                       to="/validators/$validatorId"
                       params={{ validatorId: validator.id.toString() }}
                     >
-                      {canEdit ? 'Manage' : 'View'}
+                      {canManage ? 'Manage' : 'View'}
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
