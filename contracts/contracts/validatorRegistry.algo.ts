@@ -43,21 +43,24 @@ export type ValidatorConfig = {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: uint64;
 
-    // [CHANGEABLE] MustHoldCreatorNFT specifies an optional creator address for assets which stakers must hold.  It will be the
+    // [CHANGEABLE] MustHoldCreatorASA specifies an optional creator address for assets which stakers must hold.  It will be the
     // responsibility of the staker (txn composer really) to pick an asset to check that meets the criteria if this
     // is set
-    MustHoldCreatorNFT: Address;
+    MustHoldCreatorASA: Address;
 
     // [CHANGEABLE] CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
     // creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
     // 10000[.000000] of token
     CreatorNFTMinBalance: uint64;
 
-    // [CHANGEABLE] Reward token ASA ID and reward rate (Optional): A validator can define a token that users are awarded in addition to
+    // Optional reward token info
+    // Reward token ASA ID: A validator can define a token that users are awarded in addition to
     // the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own
     // token.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs and all
     // stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
     RewardTokenID: uint64;
+    // [CHANGEABLE] Reward rate : Defines the amount of RewardTokenID that is rewarded per epoch across all pools
+    // (by their % stake of the validators total)
     RewardPerPayout: uint64;
 
     PayoutEveryXMins: uint16; // Payout frequency in minutes (can be no shorter than this)
@@ -456,19 +459,18 @@ export class ValidatorRegistry extends Contract {
      * The validator may want to adjust the tokens or amounts.
      * [ ONLY OWNER CAN CHANGE ]
      * TODO: should there be limits on how often it can be changed?
+     * TODO: when they change the RewardTokenID - pool 1 has to opt-in to it !  should it send back the remaining of prior token ?
      */
     changeValidatorRewardInfo(
         validatorID: ValidatorID,
-        MustHoldCreatorNFT: Address,
+        MustHoldCreatorASA: Address,
         CreatorNFTMinBalance: uint64,
-        RewardTokenID: uint64,
         RewardPerPayout: uint64
     ): void {
         assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
 
-        this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT = MustHoldCreatorNFT;
+        this.ValidatorList(validatorID).value.Config.MustHoldCreatorASA = MustHoldCreatorASA;
         this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance = CreatorNFTMinBalance;
-        this.ValidatorList(validatorID).value.Config.RewardTokenID = RewardTokenID;
         this.ValidatorList(validatorID).value.Config.RewardPerPayout = RewardPerPayout;
     }
 
@@ -555,7 +557,7 @@ export class ValidatorRegistry extends Contract {
         // If the validator specified that a specific token creator is required to stake, verify that the required
         // balance is held by the staker, and that the asset they offered up to validate was created by the account
         // the validator defined as its creator requirement.
-        if (this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT !== globals.zeroAddress) {
+        if (this.ValidatorList(validatorID).value.Config.MustHoldCreatorASA !== globals.zeroAddress) {
             assert(tokenToVerify !== 0);
             let balRequired = this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance;
             if (balRequired === 0) {
@@ -567,7 +569,7 @@ export class ValidatorRegistry extends Contract {
             );
             assert(
                 AssetID.fromUint64(tokenToVerify).creator ===
-                    this.ValidatorList(validatorID).value.Config.MustHoldCreatorNFT,
+                    this.ValidatorList(validatorID).value.Config.MustHoldCreatorASA,
                 'specified asset must be created by creator that the validator defined as a requirement to stake'
             );
         }

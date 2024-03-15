@@ -31,7 +31,7 @@ export class ValidatorConfig {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: bigint;
 
-    MustHoldCreatorNFT: string;
+    MustHoldCreatorASA: string;
 
     CreatorNFTMinBalance: bigint;
 
@@ -62,7 +62,7 @@ export class ValidatorConfig {
         Owner,
         Manager,
         NFDForInfo,
-        MustHoldCreatorNFT,
+        MustHoldCreatorASA,
         CreatorNFTMinBalance,
         RewardTokenID,
         RewardPerPayout,
@@ -96,7 +96,7 @@ export class ValidatorConfig {
         this.Owner = Owner;
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
-        this.MustHoldCreatorNFT = MustHoldCreatorNFT;
+        this.MustHoldCreatorASA = MustHoldCreatorASA;
         this.CreatorNFTMinBalance = CreatorNFTMinBalance;
         this.RewardTokenID = RewardTokenID;
         this.RewardPerPayout = RewardPerPayout;
@@ -116,7 +116,7 @@ const DefaultValidatorConfig: ValidatorConfig = {
     Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     NFDForInfo: BigInt(0),
-    MustHoldCreatorNFT: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    MustHoldCreatorASA: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     CreatorNFTMinBalance: BigInt(0),
     RewardTokenID: BigInt(0),
     RewardPerPayout: BigInt(0),
@@ -141,7 +141,7 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.Owner,
         configObj.Manager,
         configObj.NFDForInfo,
-        configObj.MustHoldCreatorNFT,
+        configObj.MustHoldCreatorASA,
         configObj.CreatorNFTMinBalance,
         configObj.RewardTokenID,
         configObj.RewardPerPayout,
@@ -181,7 +181,7 @@ function validatorConfigAsArray(
         config.Owner,
         config.Manager,
         config.NFDForInfo,
-        config.MustHoldCreatorNFT,
+        config.MustHoldCreatorASA,
         config.CreatorNFTMinBalance,
         config.RewardTokenID,
         config.RewardPerPayout,

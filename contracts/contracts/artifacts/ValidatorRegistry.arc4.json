@@ -281,22 +281,18 @@
     },
     {
       "name": "changeValidatorRewardInfo",
-      "desc": "Allow the additional rewards (gating entry, additional token rewards) information be changed at will.The validator may want to adjust the tokens or amounts.[ ONLY OWNER CAN CHANGE ]TODO: should there be limits on how often it can be changed?",
+      "desc": "Allow the additional rewards (gating entry, additional token rewards) information be changed at will.The validator may want to adjust the tokens or amounts.[ ONLY OWNER CAN CHANGE ]TODO: should there be limits on how often it can be changed?TODO: when they change the RewardTokenID - pool 1 has to opt-in to it !  should it send back the remaining of prior token ?",
       "args": [
         {
           "name": "validatorID",
           "type": "uint64"
         },
         {
-          "name": "MustHoldCreatorNFT",
+          "name": "MustHoldCreatorASA",
           "type": "address"
         },
         {
           "name": "CreatorNFTMinBalance",
-          "type": "uint64"
-        },
-        {
-          "name": "RewardTokenID",
           "type": "uint64"
         },
         {
