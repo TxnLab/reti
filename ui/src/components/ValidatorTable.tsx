@@ -73,11 +73,11 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       },
     },
     {
-      id: 'minStake',
+      id: 'minEntry',
       accessorFn: (row) => row.minStake,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Min Stake" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Min Entry" />,
       cell: ({ row }) => {
-        const amount = parseFloat(row.getValue('minStake'))
+        const amount = parseFloat(row.getValue('minEntry'))
         const algoAmount = AlgoAmount.MicroAlgos(amount).algos
         const formatted = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(algoAmount)
 
@@ -85,40 +85,44 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       },
     },
     {
-      id: 'maxStake',
-      accessorFn: (row) => row.maxStake,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Max Stake" />,
+      id: 'stake',
+      accessorFn: (row) => row.totalStaked,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Stake" />,
       cell: ({ row }) => {
-        const amount = parseFloat(row.getValue('maxStake'))
-        const algoAmount = AlgoAmount.MicroAlgos(amount).algos
-        const formatted = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(algoAmount)
+        const currentStake = AlgoAmount.MicroAlgos(Number(row.original.totalStaked)).algos
+        const currentStakeFormatted = new Intl.NumberFormat('en-US', {
+          notation: 'compact',
+        }).format(currentStake)
 
-        return formatted
+        const maxStake = AlgoAmount.MicroAlgos(Number(row.original.maxStake)).algos
+        const maxStakeFormatted = new Intl.NumberFormat('en-US', {
+          notation: 'compact',
+        }).format(maxStake)
+
+        return (
+          <span>
+            {currentStakeFormatted} / {maxStakeFormatted}
+          </span>
+        )
       },
     },
     {
-      id: 'spacesLeft',
-      accessorFn: (row) => 100 - row.numStakers,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Spaces Left" />,
+      id: 'stakers',
+      accessorFn: (row) => row.numStakers,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Stakers" />,
       cell: ({ row }) => {
         const validator = row.original
 
         if (validator.numPools == 0) return '--'
-        const maxStakers = 100
-        const spacesLeft = maxStakers - validator.numStakers
-        return spacesLeft
-      },
-    },
-    {
-      id: 'totalStaked',
-      accessorFn: (row) => row.totalStaked,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Current Stake" />,
-      cell: ({ row }) => {
-        const amount = parseFloat(row.getValue('totalStaked'))
-        const algoAmount = AlgoAmount.MicroAlgos(amount).algos
-        const formatted = new Intl.NumberFormat('en-US', { notation: 'compact' }).format(algoAmount)
 
-        return formatted
+        const numStakers = validator.numStakers
+        const maxStakers = 200
+
+        return (
+          <span>
+            {numStakers} / {maxStakers}
+          </span>
+        )
       },
     },
     {
@@ -136,7 +140,7 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Payout Frequency" />,
       cell: ({ row }) => {
         const minutes = parseInt(row.getValue('payoutFrequency'))
-        return formatDuration(minutes)
+        return <span className="capitalize">{formatDuration(minutes)}</span>
       },
     },
     {
