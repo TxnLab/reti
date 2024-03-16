@@ -151,7 +151,7 @@ func GetPoolCmdOpts() *cli.Command {
 }
 
 func PoolsList(ctx context.Context, command *cli.Command) error {
-	state, err := App.retiClient.GetValidatorState(App.retiClient.Info.Config.ID)
+	state, err := App.retiClient.GetValidatorState(App.retiClient.Info().Config.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get validator state: %w", err)
 	}
@@ -179,6 +179,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	var (
 		totalRewards uint64
 		showAll      = command.Value("all").(bool)
+		info         = App.retiClient.Info()
 	)
 
 	out := new(strings.Builder)
@@ -190,14 +191,14 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
 
 	}
-	for i, pool := range App.retiClient.Info.Pools {
+	for i, pool := range info.Pools {
 		var (
 			onlineStr = " "
 			nodeStr   string
 		)
 		// find the pool in the node assignments (so we can show node num if necessary)
 		nodeNum := 0
-		for nodeIdx, nodeConfigs := range App.retiClient.Info.NodePoolAssignments.Nodes {
+		for nodeIdx, nodeConfigs := range info.NodePoolAssignments.Nodes {
 			for _, appID := range nodeConfigs.PoolAppIDs {
 				if appID == pool.PoolAppID {
 					nodeNum = nodeIdx + 1
@@ -268,19 +269,20 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 func PoolLedger(ctx context.Context, command *cli.Command) error {
 	var (
 		nextPayTime   time.Time
-		epochDuration = time.Duration(App.retiClient.Info.Config.PayoutEveryXMins) * time.Minute
+		info          = App.retiClient.Info()
+		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
 	)
 	poolID := int(command.Value("pool").(uint64))
 	if poolID == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
-	if poolID > len(App.retiClient.Info.Pools) {
+	if poolID > len(info.Pools) {
 		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
 	}
 
-	lastPayout, err := App.retiClient.GetLastPayout(App.retiClient.Info.Pools[poolID-1].PoolAppID)
+	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
 	if err == nil {
-		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(App.retiClient.Info.Config.PayoutEveryXMins) * time.Minute)
+		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
 		nextPayTime = time.Now()
 	}
@@ -300,12 +302,12 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetLedgerforPool(App.retiClient.Info.Pools[poolID-1].PoolAppID)
+	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[poolID-1].PoolAppID)
 	if err != nil {
 		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
 	}
 
-	rewardAvail := App.retiClient.PoolAvailableRewards(App.retiClient.Info.Pools[poolID-1].PoolAppID, App.retiClient.Info.Pools[poolID-1].TotalAlgoStaked)
+	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolID-1].PoolAppID, info.Pools[poolID-1].TotalAlgoStaked)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
@@ -329,7 +331,7 @@ func PoolAdd(ctx context.Context, command *cli.Command) error {
 	if nodeNum == 0 {
 		nodeNum = App.retiClient.NodeNum
 	}
-	if len(App.retiClient.Info.LocalPools) >= App.retiClient.Info.Config.PoolsPerNode {
+	if len(App.retiClient.Info().LocalPools) >= App.retiClient.Info().Config.PoolsPerNode {
 		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
 	}
 
@@ -342,11 +344,12 @@ func PoolAdd(ctx context.Context, command *cli.Command) error {
 }
 
 func ClaimPool(ctx context.Context, command *cli.Command) error {
-	if len(App.retiClient.Info.LocalPools) >= App.retiClient.Info.Config.PoolsPerNode {
+	var info = App.retiClient.Info()
+	if len(info.LocalPools) >= info.Config.PoolsPerNode {
 		return fmt.Errorf("maximum number of pools have been reached on this node. No more can be added")
 	}
 
-	_, err := App.signer.FindFirstSigner([]string{App.retiClient.Info.Config.Owner, App.retiClient.Info.Config.Manager})
+	_, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
 	if err != nil {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
 	}
@@ -355,13 +358,13 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 	if poolID == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
-	if _, found := App.retiClient.Info.LocalPools[poolID]; found {
+	if _, found := info.LocalPools[poolID]; found {
 		return fmt.Errorf("pool with ID %d has already been claimed by this validator", poolID)
 	}
-	if poolID > uint64(len(App.retiClient.Info.Pools)) {
+	if poolID > uint64(len(info.Pools)) {
 		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
 	}
-	err = App.retiClient.MovePoolToNode(App.retiClient.Info.Pools[poolID-1].PoolAppID, App.retiClient.NodeNum)
+	err = App.retiClient.MovePoolToNode(info.Pools[poolID-1].PoolAppID, App.retiClient.NodeNum)
 	if err != nil {
 		return fmt.Errorf("error in call to MovePoolToNode, err:%w", err)
 	}
@@ -383,7 +386,7 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 		command.Value("validator").(uint64),
 		stakerAddr,
 		command.Value("amount").(uint64)*1e6,
-		0, // TODO handle token gating in CLI ?
+		0, // TODO do we bother handle token gating in CLI ?  prob not
 	)
 	if err != nil {
 		return err
@@ -424,11 +427,12 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 }
 
 func PayoutPool(ctx context.Context, command *cli.Command) error {
+	var info = App.retiClient.Info()
 	poolID := command.Value("pool").(uint64)
-	if _, found := App.retiClient.Info.LocalPools[poolID]; !found {
+	if _, found := info.LocalPools[poolID]; !found {
 		return fmt.Errorf("pool num:%d not on this node", poolID)
 	}
-	signerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
+	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
-	return App.retiClient.EpochBalanceUpdate(int(poolID), App.retiClient.Info.LocalPools[poolID], signerAddr)
+	return App.retiClient.EpochBalanceUpdate(int(poolID), info.LocalPools[poolID], signerAddr)
 }

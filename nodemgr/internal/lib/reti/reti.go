@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/algorand/go-algorand-sdk/v2/abi"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
@@ -26,12 +27,27 @@ type Reti struct {
 	ValidatorID uint64
 	NodeNum     uint64
 
-	// Loaded from on-chain state at start and on-demand via LoadStateFromChain
-	Info          ValidatorInfo
 	poolTmplAppID uint64
 
 	validatorContract *abi.Contract
 	poolContract      *abi.Contract
+
+	// Loaded from on-chain state at start and on-demand via LoadStateFromChain
+	// Mutex wrap is just lazy way of allowing single shared-state of instance data that's periodically updated
+	sync.RWMutex
+	info ValidatorInfo
+}
+
+func (r *Reti) Info() ValidatorInfo {
+	r.RLock()
+	defer r.RUnlock()
+	return r.info
+}
+
+func (r *Reti) SetInfo(Info ValidatorInfo) {
+	r.Lock()
+	defer r.Unlock()
+	r.info = Info
 }
 
 func New(
@@ -111,18 +127,18 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorNodePoolAssignments: %w", err)
 		}
-		r.Info.Config = *config
-		r.Info.Pools = pools
-		r.Info.NodePoolAssignments = *assignments
-
-		r.Info.LocalPools = map[uint64]uint64{}
-		if r.NodeNum == 0 || int(r.NodeNum) > len(r.Info.NodePoolAssignments.Nodes) {
-			return fmt.Errorf("configured Node number:%d is invalid for number of on-chain nodes configured: %d", len(r.Info.NodePoolAssignments.Nodes))
+		newInfo := ValidatorInfo{
+			Config:              *config,
+			Pools:               pools,
+			NodePoolAssignments: *assignments,
+			LocalPools:          map[uint64]uint64{},
 		}
 
-		//r.Logger = r.Logger.With("validator", r.ValidatorID, "node", r.NodeNum)
-		//misc.Infof(r.Logger, "test")
-		//r.Logger.Info("state loaded", "validator", r.ValidatorID, "node", r.NodeNum)
+		if r.NodeNum == 0 || int(r.NodeNum) > len(newInfo.NodePoolAssignments.Nodes) {
+			return fmt.Errorf("configured Node number:%d is invalid for number of on-chain nodes configured: %d", len(newInfo.NodePoolAssignments.Nodes))
+		}
+
+		r.Logger.Debug("state re-loaded")
 
 		// Just report metrics for OUR node - validators will presumably scrape metrics from all their nodes
 		var (
@@ -130,7 +146,7 @@ func (r *Reti) LoadState(ctx context.Context) error {
 			localTotalStaked  uint64
 			localTotalRewards float64
 		)
-		for _, poolAppID := range r.Info.NodePoolAssignments.Nodes[r.NodeNum-1].PoolAppIDs {
+		for _, poolAppID := range newInfo.NodePoolAssignments.Nodes[r.NodeNum-1].PoolAppIDs {
 			var poolID uint64
 			for poolIdx, pool := range pools {
 				if pool.PoolAppID == poolAppID {
@@ -145,15 +161,17 @@ func (r *Reti) LoadState(ctx context.Context) error {
 			if poolID == 0 {
 				return fmt.Errorf("couldn't fetch pool id for staking pool app id:%d", poolAppID)
 			}
-			r.Info.LocalPools[poolID] = poolAppID
+			newInfo.LocalPools[poolID] = poolAppID
 
 		}
 
-		promNumPools.Set(float64(len(r.Info.LocalPools)))
+		promNumPools.Set(float64(len(newInfo.LocalPools)))
 		promNumStakers.Set(float64(localStakers))
 		promTotalStaked.Set(float64(localTotalStaked) / 1e6)
 
 		promRewardAvailable.Set(localTotalRewards)
+
+		r.SetInfo(newInfo)
 	}
 	return nil
 }

@@ -738,14 +738,17 @@ func (r *Reti) ChangeValidatorCommissionAddress(id uint64, sender types.Address,
 }
 
 func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
-	var err error
+	var (
+		info = r.Info()
+		err  error
+	)
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
 	// first determine how much we have to add in MBR to the validator for adding a staking pool
 	mbrs, err := r.getMbrAmounts(managerAddr)
@@ -775,12 +778,12 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 			// MBR payment
 			payTxWithSigner,
 			// --
-			r.Info.Config.ID,
+			info.Config.ID,
 			nodeNum,
 		},
 		ForeignApps: []uint64{r.poolTemplateAppID()},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: 0, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+			{AppID: 0, Name: GetValidatorListBoxName(info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
@@ -807,14 +810,17 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 }
 
 func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
-	var err error
+	var (
+		info = r.Info()
+		err  error
+	)
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
 		return err
 	}
 
-	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
 	atc := transaction.AtomicTransactionComposer{}
 	misc.Infof(r.Logger, "trying to move pool app id:%d to node number:%d", poolAppID, nodeNum)
@@ -828,7 +834,7 @@ func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
 		AppID:  r.RetiAppID,
 		Method: movePoolMethod,
 		MethodArgs: []any{
-			r.Info.Config.ID,
+			info.Config.ID,
 			poolAppID,
 			nodeNum,
 		},
@@ -837,7 +843,7 @@ func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
 			poolAppID,
 		},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: 0, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+			{AppID: 0, Name: GetValidatorListBoxName(info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
@@ -866,7 +872,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 		return err
 	}
 
-	managerAddr, _ := types.DecodeAddress(r.Info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(r.Info().Config.Manager)
 
 	mbrs, err := r.getMbrAmounts(managerAddr)
 	if err != nil {
@@ -986,6 +992,10 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64,
 			Method: gasMethod,
 			BoxReferences: []types.AppBoxReference{
 				{AppID: 0, Name: GetValidatorListBoxName(validatorID)},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: GetStakerPoolSetBoxName(staker)},
 			},

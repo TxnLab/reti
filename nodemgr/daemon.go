@@ -16,9 +16,9 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
+	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/ssgreg/repeat"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
@@ -141,7 +141,7 @@ type onlineInfo struct {
 func (d *Daemon) checkPools(ctx context.Context) {
 	// get online status and partkey info for all our accounts (ignoring any that don't have balances yet)
 	var poolAccounts = map[string]onlineInfo{}
-	for poolID, poolAppID := range App.retiClient.Info.LocalPools {
+	for poolID, poolAppID := range App.retiClient.Info().LocalPools {
 		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(poolAppID).String())
 		if err != nil {
 			d.logger.Warn("account fetch error", "account", crypto.GetApplicationAddress(poolAppID).String(), "error", err)
@@ -158,7 +158,7 @@ func (d *Daemon) checkPools(ctx context.Context) {
 		}
 		// ensure pools were initialized properly (since it's a two-step process - the second step may have been skipped?)
 		err = App.retiClient.CheckAndInitStakingPoolStorage(&reti.ValidatorPoolKey{
-			ID:        App.retiClient.Info.Config.ID,
+			ID:        App.retiClient.Info().Config.ID,
 			PoolID:    poolID,
 			PoolAppID: poolAppID,
 		})
@@ -202,14 +202,14 @@ func (d *Daemon) checkPools(ctx context.Context) {
 }
 
 func (d *Daemon) updatePoolVersions(ctx context.Context) {
-	managerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 
 	versString, err := algo.GetVersionString(ctx, d.algoClient)
 	if err != nil {
 		misc.Errorf(d.logger, "unable to fetch version string from algod instance, err:%v", err)
 		return
 	}
-	for _, poolAppID := range App.retiClient.Info.LocalPools {
+	for _, poolAppID := range App.retiClient.Info().LocalPools {
 		algodVer, err := App.retiClient.GetAlgodVer(poolAppID)
 		if err != nil && !errors.Is(err, algo.ErrStateKeyNotFound) {
 			misc.Errorf(d.logger, "unable to fetch algod version from staking pool app id:%d, err:%v", poolAppID, err)
@@ -380,7 +380,7 @@ func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts 
 func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	var (
 		err            error
-		managerAddr, _ = types.DecodeAddress(App.retiClient.Info.Config.Manager)
+		managerAddr, _ = types.DecodeAddress(App.retiClient.Info().Config.Manager)
 	)
 
 	for account, info := range poolAccounts {
@@ -456,7 +456,7 @@ Handle: Account is online and has multiple local part keys
 	Go online against this new key - done.  prior key will be removed a week later when it's out of valid range
 */
 func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
-	managerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
+	managerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 
 	status, err := d.algoClient.Status().Do(ctx)
 	if err != nil {
@@ -514,9 +514,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 	defer d.logger.Info("EpochUpdater started")
 	d.logger.Info("EpochUpdater stopped")
 
-	signerAddr, _ := types.DecodeAddress(App.retiClient.Info.Config.Manager)
-
-	epochMinutes := App.retiClient.Info.Config.PayoutEveryXMins
+	epochMinutes := App.retiClient.Info().Config.PayoutEveryXMins
 
 	epochTimer := time.NewTimer(durationToNextEpoch(epochMinutes))
 	defer epochTimer.Stop()
@@ -526,22 +524,23 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-epochTimer.C:
+			signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 			epochTimer.Reset(durationToNextEpoch(epochMinutes))
-			var eg errgroup.Group
-			for i, pool := range App.retiClient.Info.Pools {
-				if _, found := App.retiClient.Info.LocalPools[uint64(i+1)]; !found {
+			var eg syncutil.WaitGroup
+			for i, pool := range App.retiClient.Info().Pools {
+				if _, found := App.retiClient.Info().LocalPools[uint64(i+1)]; !found {
 					continue
 				}
-				eg.Go(func() error {
+				eg.Run(func(val any) error {
 					err := App.retiClient.EpochBalanceUpdate(i+1, pool.PoolAppID, signerAddr)
 					if err != nil {
 						return fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err)
 					}
 					return nil
-				})
+				}, nil)
 			}
-			err := eg.Wait()
-			if err != nil {
+			errs := eg.Wait()
+			for _, err := range errs {
 				d.logger.Error("error returned from EpochUpdater", "error", err)
 			}
 		}
