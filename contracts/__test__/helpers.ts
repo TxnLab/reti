@@ -592,57 +592,24 @@ export async function addStake(
 }
 
 export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
-    const simResults = await stakeClient
-        .compose()
-        .gas({})
-        .removeStake(
-            { amountToUnstake: unstakeAmount.microAlgos },
-            {
-                sendParams: {
-                    // pays us back and tells validator about balance changed
-                    fee: AlgoAmount.MicroAlgos(5000),
-                },
-                sender: staker,
-            }
-        )
-        .simulate({ allowUnnamedResources: true, allowMoreLogging: true });
-    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.apps!.toString());
-    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.assets!.toString());
-    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.assetHoldings!.toString());
-    // // output the app and name values from each BoxReference in boxes param of unnamedResourcesAccessed
-    // consoleLogger.info(
-    //     simResults.simulateResponse.txnGroups[0]
-    //         .unnamedResourcesAccessed!.boxes!.map((box) => `${box.app} ${new TextDecoder().decode(box.name)}`)
-    //         .join(', ')
-    // );
-    // consoleLogger.info(simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.boxes!.());
     try {
         return (
-            (
-                await stakeClient
-                    .compose()
-                    // .gas({}, { apps: simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.apps! as number[] })
-                    .gas(
-                        {},
-                        {
-                            apps: simResults.simulateResponse.txnGroups[0].unnamedResourcesAccessed!.apps! as number[],
-                            note: '1',
-                        }
-                    )
-                    .gas({}, { note: '2' })
-                    .removeStake(
-                        { amountToUnstake: unstakeAmount.microAlgos },
-                        {
-                            sendParams: {
-                                // pays us back and tells validator about balance changed
-                                fee: AlgoAmount.MicroAlgos(5000),
-                            },
-                            sender: staker,
-                        }
-                    )
-                    .execute({ populateAppCallResources: true })
-            ).returns![2]!
-        );
+            await stakeClient
+                .compose()
+                .gas({}, { note: '1' })
+                .gas({}, { note: '2' })
+                .removeStake(
+                    { amountToUnstake: unstakeAmount.microAlgos },
+                    {
+                        sendParams: {
+                            // pays us back and tells validator about balance changed
+                            fee: AlgoAmount.MicroAlgos(5000),
+                        },
+                        sender: staker,
+                    }
+                )
+                .execute({ populateAppCallResources: true })
+        ).returns![2]!;
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message);
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
