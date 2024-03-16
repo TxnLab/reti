@@ -20,7 +20,17 @@ async function main() {
     console.log(`Primary DISPENSER account is: ${dispAcct.addr}`);
 
     // Generate staking pool template instance that the validatory registry will reference
-    const poolClient = new StakingPoolClient({ sender: dispAcct, resolveBy: 'id', id: 0 }, algod);
+    const poolClient = new StakingPoolClient(
+        {
+            sender: dispAcct,
+            resolveBy: 'id',
+            id: 0,
+            deployTimeParams: {
+                NFDRegistryAppID: 0,
+            },
+        },
+        algod
+    );
     const tmplPool = await poolClient.create.createApplication({
         creatingContractID: 0,
         validatorID: 0,
