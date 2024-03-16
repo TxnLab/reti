@@ -422,7 +422,19 @@ export class StakingPool extends Contract {
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
-        const payoutMins = validatorConfig.PayoutEveryXMins as uint64;
+        // Since we're being told to payout, we're at epoch 'end' presumably - or close enough
+        // but what if we're told to pay really early?  we need to verify that as well.
+        const curTime = globals.latestTimestamp;
+        // Get configured epoch as seconds since we're block time comparisons will be in seconds
+        const epochInSecs = (validatorConfig.PayoutEveryXMins as uint64) * 60;
+        if (this.LastPayout.exists) {
+            const secsSinceLastPayout = curTime - this.LastPayout.value;
+            log(concat('secs since last payout: %i', itob(secsSinceLastPayout)));
+
+            // We've had one payout - so we need to be at least one epoch past the last payout.
+            assert(secsSinceLastPayout >= epochInSecs, "Can't payout earlier than last payout + epoch time");
+        }
+
         const isTokenEligible = validatorConfig.RewardTokenID !== 0;
 
         // Get the validator state as well - so we know 'totals' for all pools
@@ -442,7 +454,6 @@ export class StakingPool extends Contract {
         let tokenRewardAvail = 0;
         let tokenRewardPaidOut = 0;
         if (isTokenEligible) {
-            // if (this.txn.sender !== AppID.fromUint64(this.CreatingValidatorContractAppID.value).address) {
             let poolOneAddress = this.app.address;
             if (this.PoolID.value !== 1) {
                 // If we're not pool 1 - figure out its address..
@@ -515,19 +526,6 @@ export class StakingPool extends Contract {
         // Now we "pay" (but really just update their tracked balance) the stakers the remainder based on their % of
         // pool and time in this epoch.
 
-        // Since we're being told to payout, we're at epoch 'end' presumably - or close enough
-        // but what if we're told to pay really early?  we need to verify that as well.
-        const curTime = globals.latestTimestamp;
-
-        // Get configured epoch as seconds since we're block time comparisons will be in seconds
-        const epochInSecs = payoutMins * 60;
-        if (this.LastPayout.exists) {
-            const secsSinceLastPayout = curTime - this.LastPayout.value;
-            log(concat('secs since last payout: %i', itob(secsSinceLastPayout)));
-
-            // We've had one payout - so we need to be at least one epoch past the last payout.
-            assert(secsSinceLastPayout >= epochInSecs, "Can't payout earlier than last payout + epoch time");
-        }
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.
         let increasedStake = 0;
@@ -632,6 +630,7 @@ export class StakingPool extends Contract {
                     if (timeInPool >= epochInSecs) {
                         // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                         // payment
+
                         // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
                         if (tokenRewardAvail > 0) {
                             increaseOpcodeBudget();

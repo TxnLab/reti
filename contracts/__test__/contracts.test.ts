@@ -58,7 +58,17 @@ beforeAll(async () => {
 
     // First we have to create dummy instance of a pool that we can use as template contract for validator
     // which it can use to create new instances of that contract for staking pool.
-    poolClient = new StakingPoolClient({ sender: testAccount, resolveBy: 'id', id: 0 }, algod);
+    poolClient = new StakingPoolClient(
+        {
+            sender: testAccount,
+            resolveBy: 'id',
+            id: 0,
+            deployTimeParams: {
+                NFDRegistryAppID: 0,
+            },
+        },
+        algod
+    );
     const tmplPool = await poolClient.create.createApplication({
         creatingContractID: 0,
         validatorID: 0,
@@ -848,6 +858,7 @@ describe('StakeWRewards', () => {
         await verifyRewardAmounts(
             fixture.context,
             (BigInt(reward.microAlgos) - BigInt(expectedValidatorReward)) as bigint,
+            BigInt(0),
             stakersPriorToReward as StakedInfo[],
             stakersAfterReward as StakedInfo[],
             1 as number
@@ -1043,6 +1054,7 @@ describe('StakeWRewards', () => {
         await verifyRewardAmounts(
             fixture.context,
             knownReward - BigInt(expectedValidatorReward),
+            BigInt(0),
             stakersPriorToReward,
             stakersAfterReward,
             1
@@ -1065,6 +1077,8 @@ describe('StakeWTokenWRewards', () => {
 
     let rewardTokenID: bigint;
     const PctToValidator = 5;
+    const decimals = 0;
+    const tokenRewardPerPayout = BigInt(1000 * 10 ** decimals);
 
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
@@ -1074,7 +1088,6 @@ describe('StakeWTokenWRewards', () => {
             fixture.context.algod,
             fixture.context.kmd
         );
-        const decimals = 0;
         rewardTokenID = await addAsset(
             fixture.context.algod,
             tokenCreatorAccount,
@@ -1100,7 +1113,7 @@ describe('StakeWTokenWRewards', () => {
             PercentToValidator: PctToValidator * 10000,
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
             RewardTokenID: rewardTokenID,
-            RewardPerPayout: BigInt(1000 * 10 ** decimals), // 1000 tokens per epoch
+            RewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
         });
         validatorID = await addValidator(
             fixture.context,
@@ -1241,6 +1254,7 @@ describe('StakeWTokenWRewards', () => {
         await verifyRewardAmounts(
             fixture.context,
             (BigInt(reward.microAlgos) - BigInt(expectedValidatorReward)) as bigint,
+            BigInt(tokenRewardPerPayout),
             stakersPriorToReward as StakedInfo[],
             stakersAfterReward as StakedInfo[],
             1 as number
@@ -1270,10 +1284,11 @@ describe('StakeWTokenWRewards', () => {
         expect(newStakerBalance.amount).toBe(
             origStakerBalance.amount + AlgoAmount.Algos(1190).microAlgos - AlgoAmount.MicroAlgos(5000).microAlgos
         );
+        // verify that reward token payout came to us
         const assetInfo = await fixture.context.algod
             .accountAssetInformation(stakerAccounts[0].addr, Number(rewardTokenID))
             .do();
-        expect(assetInfo['asset-holding'].amount).toBe(1000); // reward token payout should've come to us
+        expect(BigInt(assetInfo['asset-holding'].amount)).toBe(tokenRewardPerPayout);
 
         // no one should be left and be 0 balance
         const postRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
@@ -1398,6 +1413,7 @@ describe('StakeWTokenWRewards', () => {
         await verifyRewardAmounts(
             fixture.context,
             knownReward - BigInt(expectedValidatorReward),
+            BigInt(tokenRewardPerPayout),
             stakersPriorToReward,
             stakersAfterReward,
             1
@@ -1580,6 +1596,7 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
         await verifyRewardAmounts(
             fixture.context,
             BigInt(reward.microAlgos) - BigInt(expectedValidatorReward),
+            BigInt(0),
             stakersPriorToReward,
             stakersAfterReward,
             1

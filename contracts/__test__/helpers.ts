@@ -706,7 +706,8 @@ export async function logStakingPoolInfo(
 
 export async function verifyRewardAmounts(
     context: AlgorandTestAutomationContext,
-    rewardedAmount: bigint,
+    algoRewardedAmount: bigint,
+    tokenRewardedAmount: bigint,
     stakersPriorToReward: StakedInfo[],
     stakersAfterReward: StakedInfo[],
     payoutEveryXMins: number
@@ -724,14 +725,15 @@ export async function verifyRewardAmounts(
     const payoutTimeToUse = new Date(lastBlock.block.ts * 1000);
 
     consoleLogger.info(
-        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers.  reward:${rewardedAmount}, totalAmount:${totalAmount}, payout time to use:${payoutTimeToUse.toString()}`
+        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers.  reward:${algoRewardedAmount}, totalAmount:${totalAmount}, payout time to use:${payoutTimeToUse.toString()}`
     );
     // Iterate all stakers - determine which haven't been for entire epoch - pay them proportionally less for having
     // less time in pool.  We keep track of their stake and then will later reduce the effective 'total staked' amount
     // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
     // remaining participants.
     let partialStakeAmount: bigint = BigInt(0);
-    let rewardsAvailable: bigint = rewardedAmount;
+    let algoRewardsAvail: bigint = algoRewardedAmount;
+    let tokenRewardsAvail: bigint = tokenRewardedAmount;
 
     for (let i = 0; i < stakersPriorToReward.length; i += 1) {
         if (encodeAddress(stakersPriorToReward[i].Staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
@@ -742,13 +744,14 @@ export async function verifyRewardAmounts(
             continue;
         }
         const origBalance = stakersPriorToReward[i].Balance;
+        const origRwdTokenBal = stakersPriorToReward[i].RewardTokenBalance;
         const timeInPoolSecs: bigint =
             (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000);
         const timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs); // 34.7% becomes 347
         if (timePercentage < BigInt(1000)) {
             // partial staker
             const expectedReward =
-                (BigInt(origBalance) * rewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
+                (BigInt(origBalance) * algoRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
             consoleLogger.info(
                 `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].Balance - origBalance} ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`
             );
@@ -759,8 +762,23 @@ export async function verifyRewardAmounts(
                 );
                 expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
             }
-            rewardsAvailable -= expectedReward;
+            const expectedTokenReward =
+                (BigInt(origBalance) * tokenRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
+            consoleLogger.info(
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].RewardTokenBalance - origRwdTokenBal}`
+            );
+
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].RewardTokenBalance) {
+                consoleLogger.warn(
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].RewardTokenBalance}`
+                );
+                expect(stakersAfterReward[i].RewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
+            }
+
             partialStakeAmount += origBalance;
+
+            algoRewardsAvail -= expectedReward;
+            tokenRewardsAvail -= expectedTokenReward;
         }
     }
     const newPoolTotalStake = totalAmount - partialStakeAmount;
@@ -777,6 +795,7 @@ export async function verifyRewardAmounts(
             );
         } else {
             const origBalance = stakersPriorToReward[i].Balance;
+            const origRwdTokenBal = stakersPriorToReward[i].RewardTokenBalance;
             const timeInPoolSecs: bigint =
                 (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000);
             let timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs); // 34.7% becomes 347
@@ -786,16 +805,20 @@ export async function verifyRewardAmounts(
             if (timePercentage > BigInt(1000)) {
                 timePercentage = BigInt(1000);
             }
-            const expectedReward = (BigInt(origBalance) * rewardsAvailable) / newPoolTotalStake;
+            const expectedReward = (BigInt(origBalance) * algoRewardsAvail) / newPoolTotalStake;
             consoleLogger.info(
                 `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / newPoolTotalStake) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].Balance - origBalance} ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`
             );
+            const expectedTokenReward = (BigInt(origBalance) * tokenRewardsAvail) / newPoolTotalStake;
+            consoleLogger.info(
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].RewardTokenBalance - origRwdTokenBal}`
+            );
 
-            if (origBalance + expectedReward !== stakersAfterReward[i].Balance) {
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].RewardTokenBalance) {
                 consoleLogger.warn(
-                    `staker:${i} expected: ${origBalance + expectedReward} reward but got: ${stakersAfterReward[i].Balance}`
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].RewardTokenBalance}`
                 );
-                expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
+                expect(stakersAfterReward[i].RewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
             }
         }
     }
