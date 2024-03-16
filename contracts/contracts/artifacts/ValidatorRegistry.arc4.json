@@ -55,7 +55,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+        "type": "(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
       }
     },
     {
@@ -186,7 +186,7 @@
         },
         {
           "name": "config",
-          "type": "(uint64,address,address,uint64,address,uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)",
+          "type": "(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -288,11 +288,15 @@
           "type": "uint64"
         },
         {
-          "name": "MustHoldCreatorASA",
-          "type": "address"
+          "name": "EntryGatingType",
+          "type": "uint8"
         },
         {
-          "name": "CreatorNFTMinBalance",
+          "name": "EntryGatingValue",
+          "type": "byte[32]"
+        },
+        {
+          "name": "GatingAssetMinBalance",
           "type": "uint64"
         },
         {
@@ -344,9 +348,9 @@
           "desc": "The ID of the validator."
         },
         {
-          "name": "tokenToVerify",
+          "name": "valueToVerify",
           "type": "uint64",
-          "desc": "only if validator requires a token to enter, this is ID of token to offer up asmatching the validators requirement. If set, ensures staker posseses token (and optionally correct amount) andthat the token was created by the correct creator."
+          "desc": "only if validator has gating to enter - this is asset id or nfd id that corresponds to gating.Txn sender is factored in as well if that is part of gating."
         }
       ],
       "returns": {

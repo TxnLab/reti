@@ -23,7 +23,7 @@ export interface ValidatorConfig {
   Manager: string // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
   NFDForInfo: bigint
   MustHoldCreatorNFT: string
-  CreatorNFTMinBalance: bigint
+  GatingAssetMinBalance: bigint
   RewardTokenID: bigint
   RewardPerPayout: bigint
   PayoutEveryXMins: number // Payout frequency in minutes (can be no shorter than this)

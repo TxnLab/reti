@@ -31,9 +31,9 @@ export class ValidatorConfig {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: bigint;
 
-    MustHoldCreatorASA: string;
+    EntryGatingValue: string;
 
-    CreatorNFTMinBalance: bigint;
+    GatingAssetMinBalance: bigint;
 
     RewardTokenID: bigint;
 
@@ -62,8 +62,8 @@ export class ValidatorConfig {
         Owner,
         Manager,
         NFDForInfo,
-        MustHoldCreatorASA,
-        CreatorNFTMinBalance,
+        EntryGatingValue,
+        GatingAssetMinBalance,
         RewardTokenID,
         RewardPerPayout,
         PayoutEveryXMins,
@@ -96,8 +96,8 @@ export class ValidatorConfig {
         this.Owner = Owner;
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
-        this.MustHoldCreatorASA = MustHoldCreatorASA;
-        this.CreatorNFTMinBalance = CreatorNFTMinBalance;
+        this.EntryGatingValue = EntryGatingValue;
+        this.GatingAssetMinBalance = GatingAssetMinBalance;
         this.RewardTokenID = RewardTokenID;
         this.RewardPerPayout = RewardPerPayout;
         this.PayoutEveryXMins = PayoutEveryXMins;
@@ -116,8 +116,8 @@ const DefaultValidatorConfig: ValidatorConfig = {
     Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     NFDForInfo: BigInt(0),
-    MustHoldCreatorASA: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    CreatorNFTMinBalance: BigInt(0),
+    EntryGatingValue: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    GatingAssetMinBalance: BigInt(0),
     RewardTokenID: BigInt(0),
     RewardPerPayout: BigInt(0),
     PayoutEveryXMins: 60 * 24, // daily payout
@@ -141,8 +141,8 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.Owner,
         configObj.Manager,
         configObj.NFDForInfo,
-        configObj.MustHoldCreatorASA,
-        configObj.CreatorNFTMinBalance,
+        configObj.EntryGatingValue,
+        configObj.GatingAssetMinBalance,
         configObj.RewardTokenID,
         configObj.RewardPerPayout,
         configObj.PayoutEveryXMins,
@@ -181,8 +181,8 @@ function validatorConfigAsArray(
         config.Owner,
         config.Manager,
         config.NFDForInfo,
-        config.MustHoldCreatorASA,
-        config.CreatorNFTMinBalance,
+        config.EntryGatingValue,
+        config.GatingAssetMinBalance,
         config.RewardTokenID,
         config.RewardPerPayout,
         config.PayoutEveryXMins,

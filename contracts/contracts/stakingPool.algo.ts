@@ -68,6 +68,8 @@ export class StakingPool extends Contract {
     // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
 
+    NFDRegistryAppID = TemplateVar<uint64>();
+
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
      * @param creatingContractID - id of contract that constructed us - the validator application (single global instance)
@@ -722,13 +724,8 @@ export class StakingPool extends Contract {
     linkToNFD(nfdAppID: uint64, nfdName: string): void {
         assert(this.isOwnerOrManagerCaller());
 
-        const registryID = sendMethodCall<typeof ValidatorRegistry.prototype.getNFDRegistryID>({
-            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
-            methodArgs: [],
-        });
-
         sendAppCall({
-            applicationID: AppID.fromUint64(registryID),
+            applicationID: AppID.fromUint64(this.NFDRegistryAppID),
             applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)],
         });
     }

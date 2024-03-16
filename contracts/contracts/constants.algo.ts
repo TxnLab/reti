@@ -10,3 +10,9 @@ export const APPLICATION_BASE_FEE = 100000; // base fee for creating or opt-in t
 export const ASSET_HOLDING_FEE = 100000; // creation/holding fee for asset
 export const SSC_VALUE_UINT = 28500; // cost for value as uint64
 export const SSC_VALUE_BYTES = 50000; // cost for value as bytes
+
+export const GATING_TYPE_NONE = 0;
+export const GATING_TYPE_ASSETS_CREATED_BY = 1;
+export const GATING_TYPE_ASSET_ID = 2;
+export const GATING_TYPE_CREATED_BY_NFD_ADDRESSES = 3;
+export const GATING_TYPE_SEGMENT_OF_NFD = 4;

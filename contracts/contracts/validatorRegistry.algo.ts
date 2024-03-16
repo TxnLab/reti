@@ -5,6 +5,9 @@ import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
+    GATING_TYPE_ASSETS_CREATED_BY,
+    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+    GATING_TYPE_NONE,
     MAX_ALGO_PER_POOL,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
@@ -43,15 +46,22 @@ export type ValidatorConfig = {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: uint64;
 
-    // [CHANGEABLE] MustHoldCreatorASA specifies an optional creator address for assets which stakers must hold.  It will be the
-    // responsibility of the staker (txn composer really) to pick an asset to check that meets the criteria if this
-    // is set
-    MustHoldCreatorASA: Address;
+    // [CHANGEABLE] EntryGatingType / EntryGatingValue specifies an optional gating mechanism - whose criteria
+    // the staker must meet.
+    // It will be the responsibility of the staker (txn composer really) to pick the right thing to check (as argument
+    // to adding stake) that meets the criteria if this is set.
+    // Allowed types:
+    // 1: assets created by address X (val is address of creator)
+    // 2: specific asset id (val is asset id)
+    // 3: asset in nfd linked addresses (value is nfd appid)
+    // 4: segment of a particular NFD (value is root appid)
+    EntryGatingType: uint8;
+    EntryGatingValue: bytes32;
 
-    // [CHANGEABLE] CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
+    // [CHANGEABLE] GatingAssetMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
     // creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
     // 10000[.000000] of token
-    CreatorNFTMinBalance: uint64;
+    GatingAssetMinBalance: uint64;
 
     // Optional reward token info
     // Reward token ASA ID: A validator can define a token that users are awarded in addition to
@@ -316,10 +326,7 @@ export class ValidatorRegistry extends Contract {
      * @param staker
      */
     doesStakerNeedToPayMBR(staker: Address): boolean {
-        if (this.StakerPoolSet(staker).exists) {
-            return false;
-        }
-        return true;
+        return !this.StakerPoolSet(staker).exists;
     }
 
     /**
@@ -463,14 +470,16 @@ export class ValidatorRegistry extends Contract {
      */
     changeValidatorRewardInfo(
         validatorID: ValidatorID,
-        MustHoldCreatorASA: Address,
-        CreatorNFTMinBalance: uint64,
+        EntryGatingType: uint8,
+        EntryGatingValue: bytes32,
+        GatingAssetMinBalance: uint64,
         RewardPerPayout: uint64
     ): void {
         assert(this.txn.sender === this.ValidatorList(validatorID).value.Config.Owner);
 
-        this.ValidatorList(validatorID).value.Config.MustHoldCreatorASA = MustHoldCreatorASA;
-        this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance = CreatorNFTMinBalance;
+        this.ValidatorList(validatorID).value.Config.EntryGatingType = EntryGatingType;
+        this.ValidatorList(validatorID).value.Config.EntryGatingValue = EntryGatingValue;
+        this.ValidatorList(validatorID).value.Config.GatingAssetMinBalance = GatingAssetMinBalance;
         this.ValidatorList(validatorID).value.Config.RewardPerPayout = RewardPerPayout;
     }
 
@@ -537,12 +546,11 @@ export class ValidatorRegistry extends Contract {
      *
      * @param {PayTxn} stakedAmountPayment - payment coming from staker to place into a pool
      * @param {ValidatorID} validatorID - The ID of the validator.
-     * @param {uint64} tokenToVerify - only if validator requires a token to enter, this is ID of token to offer up as
-     * matching the validators requirement. If set, ensures staker posseses token (and optionally correct amount) and
-     * that the token was created by the correct creator.
+     * @param {uint64} valueToVerify - only if validator has gating to enter - this is asset id or nfd id that corresponds to gating.
+     * Txn sender is factored in as well if that is part of gating.
      * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
-    addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID, tokenToVerify: uint64): ValidatorPoolKey {
+    addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID, valueToVerify: uint64): ValidatorPoolKey {
         assert(this.ValidatorList(validatorID).exists);
 
         const staker = this.txn.sender;
@@ -557,22 +565,7 @@ export class ValidatorRegistry extends Contract {
         // If the validator specified that a specific token creator is required to stake, verify that the required
         // balance is held by the staker, and that the asset they offered up to validate was created by the account
         // the validator defined as its creator requirement.
-        if (this.ValidatorList(validatorID).value.Config.MustHoldCreatorASA !== globals.zeroAddress) {
-            assert(tokenToVerify !== 0);
-            let balRequired = this.ValidatorList(validatorID).value.Config.CreatorNFTMinBalance;
-            if (balRequired === 0) {
-                balRequired = 1;
-            }
-            assert(
-                staker.assetBalance(AssetID.fromUint64(tokenToVerify)) === balRequired,
-                'must have required minimum balance of validator defined token to add stake'
-            );
-            assert(
-                AssetID.fromUint64(tokenToVerify).creator ===
-                    this.ValidatorList(validatorID).value.Config.MustHoldCreatorASA,
-                'specified asset must be created by creator that the validator defined as a requirement to stake'
-            );
-        }
+        this.doesStakerMeetGating(validatorID, valueToVerify);
 
         let realAmount = stakedAmountPayment.amount;
         let mbrAmtLeftBehind: uint64 = 0;
@@ -995,5 +988,54 @@ export class ValidatorRegistry extends Contract {
             }
         }
         throw Error('no available space in specified node for this pool');
+    }
+
+    private doesStakerMeetGating(validatorID: ValidatorID, valueToVerify: uint64): void {
+        const type = this.ValidatorList(validatorID).value.Config.EntryGatingType;
+        if (type === GATING_TYPE_NONE) {
+            return;
+        }
+        const staker = this.txn.sender;
+        const gateReq = this.ValidatorList(validatorID).value.Config.EntryGatingValue;
+
+        // If an asset gating - check the balance requirement - can handle whether right asset afterwards
+        if (type === GATING_TYPE_ASSETS_CREATED_BY || type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+            assert(valueToVerify !== 0);
+            let balRequired = this.ValidatorList(validatorID).value.Config.GatingAssetMinBalance;
+            if (balRequired === 0) {
+                balRequired = 1;
+            }
+            assert(
+                staker.assetBalance(AssetID.fromUint64(valueToVerify)) >= balRequired,
+                'must have required minimum balance of validator defined token to add stake'
+            );
+        }
+        if (type === GATING_TYPE_ASSETS_CREATED_BY) {
+            // TODO
+            // assert(
+            //     AssetID.fromUint64(valueToVerify).creator === Address.fromBytes(gateReq),
+            //     'specified asset must be created by creator that the validator defined as a requirement to stake'
+            // );
+        }
+        if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+            // Walk all the linked addresses defined by this NFD (stored in v.caAlgo.0.as)
+            // if any are the creator of the specified asset
+            // then we pass.
+            // sendAppCall({
+            //     applicationID: AppID.fromUint64(valueToVerify),
+            //     applicationArgs: ['read_property', 'v.caAlgo.0.as'],
+            // });
+            // const addrData = this.itxn.lastLog;
+            // for (let i = 0; i < addrData.length; i += 32) {
+            //     const addr = extract3(addrData, i, 32);
+            //     if (addr === rawBytes(gateReq) && addr !== rawBytes(globals.zeroAddress)) {
+            //         if (rawBytes(AssetID.fromUint64(valueToVerify).creator) === addr) {
+            //             // fou
+            //             return;
+            //         }
+            //     }
+            // }
+            // throw Error('specified asset must be created by creator that is one of the linked addresses in an nfd');
+        }
     }
 }

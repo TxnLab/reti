@@ -20,7 +20,17 @@ async function main() {
     console.log(`Primary DISPENSER account is: ${dispAcct.addr}`);
 
     // Generate staking pool template instance that the validatory registry will reference
-    const poolClient = new StakingPoolClient({ sender: dispAcct, resolveBy: 'id', id: 0 }, algod);
+    const poolClient = new StakingPoolClient(
+        {
+            sender: dispAcct,
+            resolveBy: 'id',
+            id: 0,
+            deployTimeParams: {
+                NFDRegistryAppID: 0,
+            },
+        },
+        algod
+    );
     const tmplPool = await poolClient.create.createApplication({
         creatingContractID: 0,
         validatorID: 0,
@@ -50,8 +60,16 @@ async function main() {
     console.log(`Validatory registry app id is:${validatorApp.appId}`);
 
     // generate two dummy stakers - each w/ 100 million
-    const staker1 = await getTestAccount({ initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true }, algod, kmd);
-    const staker2 = await getTestAccount({ initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true }, algod, kmd);
+    const staker1 = await getTestAccount(
+        { initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true },
+        algod,
+        kmd
+    );
+    const staker2 = await getTestAccount(
+        { initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true },
+        algod,
+        kmd
+    );
     console.log(`Created test account 1:${staker1.addr}`);
     console.log(`Created test account 2:${staker2.addr}`);
 
