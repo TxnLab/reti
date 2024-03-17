@@ -142,7 +142,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
           const poolData: StakerPoolData = {
             poolKey,
             account: activeAddress,
-            balance: totalAmount,
+            balance: amountToStake,
             totalRewarded: 0,
             rewardTokenBalance: 0,
             entryTime: dayjs().unix(),
@@ -165,12 +165,12 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
                 if (data.validatorId === poolKey.validatorId) {
                   return {
                     ...data,
-                    balance: data.balance + totalAmount,
+                    balance: data.balance + amountToStake,
                     pools: data.pools.map((pool) => {
                       if (pool.poolKey.poolId === poolKey.poolId) {
                         return {
                           ...pool,
-                          balance: pool.balance + totalAmount,
+                          balance: pool.balance + amountToStake,
                         }
                       }
 
@@ -188,7 +188,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
               if (data.validatorId === poolKey.validatorId) {
                 return {
                   ...data,
-                  balance: data.balance + totalAmount,
+                  balance: data.balance + amountToStake,
                   pools: [...data.pools, poolData],
                 }
               }
@@ -202,7 +202,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
             ...prevData,
             {
               validatorId: poolKey.validatorId,
-              balance: totalAmount,
+              balance: amountToStake,
               totalRewarded: 0,
               rewardTokenBalance: 0,
               entryTime: dayjs().unix(),
@@ -222,7 +222,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
           return {
             ...prevData,
             numStakers: isNewStaker ? prevData.numStakers + 1 : prevData.numStakers,
-            totalStaked: prevData.totalStaked + totalAmount,
+            totalStaked: prevData.totalStaked + amountToStake,
           }
         },
       )
@@ -237,7 +237,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
             return {
               ...v,
               numStakers: isNewStaker ? v.numStakers + 1 : v.numStakers,
-              totalStaked: v.totalStaked + totalAmount,
+              totalStaked: v.totalStaked + amountToStake,
             }
           }
 
