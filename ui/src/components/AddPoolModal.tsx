@@ -88,13 +88,6 @@ export function AddPoolModal({
         activeAddress,
       )
 
-      toast.success(`Staking pool ${stakingPool.poolId} created!`, {
-        id: toastId,
-        duration: 5000,
-      })
-
-      toast.loading('Sign transactions to fund staking pool MBR...', { id: toastId })
-
       await initStakingPoolStorage(stakingPool.poolAppId, poolInitMbr, signer, activeAddress)
 
       toast.success(`Staking pool ${stakingPool.poolId} created!`, {

@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
+import { ArrowUpRight } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -127,10 +128,19 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
 
       const poolKey = await addStake(validator.id, totalAmount, signer, activeAddress)
 
-      toast.success(`Stake added to pool ${poolKey.poolId}!`, {
-        id: toastId,
-        duration: 5000,
-      })
+      toast.success(
+        <div className="flex items-center gap-x-2">
+          <ArrowUpRight className="h-5 w-5 text-foreground" />
+          <span>
+            Added <AlgoDisplayAmount amount={amountToStake} microalgos className="font-bold" /> to
+            Pool {poolKey.poolId} on Validator {poolKey.validatorId}
+          </span>
+        </div>,
+        {
+          id: toastId,
+          duration: 5000,
+        },
+      )
 
       queryClient.setQueryData<StakerValidatorData[]>(
         ['stakes', { staker: activeAddress }],

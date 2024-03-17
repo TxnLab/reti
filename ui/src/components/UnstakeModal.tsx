@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
+import { ArrowDownLeft } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -140,10 +141,13 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
       await removeStake(pool.poolKey.poolAppId, amountToUnstake, signer, activeAddress)
 
       toast.success(
-        <>
-          Removed <AlgoDisplayAmount amount={pool.balance} microalgos /> from pool{' '}
-          {pool.poolKey.poolId} on validator {pool.poolKey.validatorId}!
-        </>,
+        <div className="flex items-center gap-x-2">
+          <ArrowDownLeft className="h-5 w-5 text-foreground" />
+          <span>
+            Removed <AlgoDisplayAmount amount={amountToUnstake} microalgos className="font-bold" />{' '}
+            from Pool {pool.poolKey.poolId} on Validator {pool.poolKey.validatorId}
+          </span>
+        </div>,
         {
           id: toastId,
           duration: 5000,
