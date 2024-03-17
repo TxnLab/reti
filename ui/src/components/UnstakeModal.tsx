@@ -202,7 +202,7 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
                 if (data.validatorId === pool.poolKey.validatorId) {
                   return {
                     ...data,
-                    balance: data.balance - pool.balance,
+                    balance: data.balance - amountToUnstake,
                     pools: newPools,
                   }
                 }
@@ -222,7 +222,7 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
               return {
                 ...prevData,
                 numStakers: allStakeRemoved ? prevData.numStakers - 1 : prevData.numStakers,
-                totalStaked: prevData.totalStaked - pool.balance,
+                totalStaked: prevData.totalStaked - amountToUnstake,
               }
             },
           )
@@ -237,7 +237,7 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
                 return {
                   ...v,
                   numStakers: allStakeRemoved ? v.numStakers - 1 : v.numStakers,
-                  totalStaked: v.totalStaked - pool.balance,
+                  totalStaked: v.totalStaked - amountToUnstake,
                 }
               }
 
