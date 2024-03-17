@@ -17,7 +17,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -40,16 +39,25 @@ import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
 
 interface UnstakeModalProps {
-  validatorId: number
-  poolData: StakerPoolData[]
+  validator: Validator | null
+  setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
+  stakesByValidator: StakerValidatorData[]
 }
 
-export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
-  const [isOpen, setIsOpen] = React.useState<boolean>(false)
+export function UnstakeModal({ validator, setValidator, stakesByValidator }: UnstakeModalProps) {
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
-  const [selectedPool, setSelectedPool] = React.useState<string>(
-    poolData[0].poolKey.poolAppId.toString(),
+  const [selectedPool, setSelectedPool] = React.useState<string>('')
+
+  const poolData = React.useMemo<StakerPoolData[]>(
+    () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
+    [stakesByValidator, validator],
   )
+
+  React.useEffect(() => {
+    if (poolData.length > 0 && selectedPool === '') {
+      setSelectedPool(poolData[0].poolKey.poolAppId.toString())
+    }
+  }, [poolData])
 
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -91,14 +99,12 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
 
   const { errors, isValid } = form.formState
 
-  const resetSelectedPool = () => {
-    setSelectedPool(poolData[0].poolKey.poolAppId.toString())
-  }
-
   const handleOpenChange = (open: boolean) => {
-    resetSelectedPool()
-    form.reset()
-    setIsOpen(open)
+    if (!open) {
+      setValidator(null)
+      setSelectedPool('')
+      form.reset()
+    }
   }
 
   const handleSetMaxAmount = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -253,19 +259,15 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
       console.error(error)
     } finally {
       setIsSigning(false)
+      setValidator(null)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" disabled={isSigning}>
-          Unstake
-        </Button>
-      </DialogTrigger>
+    <Dialog open={!!validator} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Remove Stake from Validator {validatorId}</DialogTitle>
+          <DialogTitle>Remove Stake from Validator {validator?.id}</DialogTitle>
           <DialogDescription>
             This will remove your ALGO stake from the pool specified.
           </DialogDescription>
@@ -276,9 +278,15 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
               <div className="flex gap-x-4 w-full">
                 <div className="w-2/5 space-y-2">
                   <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Staking Pool
+                    Current Stake
                   </label>
-                  {poolData.length > 1 ? (
+                  {poolData.length === 1 ? (
+                    <p className="py-2 text-sm">
+                      <span className="inline-flex items-center">
+                        <AlgoDisplayAmount amount={poolData[0].balance} microalgos />
+                      </span>
+                    </p>
+                  ) : (
                     <>
                       <Select onValueChange={setSelectedPool} value={selectedPool}>
                         <SelectTrigger>
@@ -303,11 +311,6 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
                       </Select>
                       <p className="text-[0.8rem] text-muted-foreground">Select pool</p>
                     </>
-                  ) : (
-                    <p className="py-1.5 px-3 text-sm">
-                      {poolData[0].poolKey.poolId} (
-                      <AlgoDisplayAmount amount={poolData[0].balance} microalgos />)
-                    </p>
                   )}
                 </div>
                 <div className="flex-1">
@@ -316,7 +319,7 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
                     name="amountToUnstake"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount</FormLabel>
+                        <FormLabel>Amount to Unstake</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input className="pr-16" {...field} />
@@ -338,7 +341,7 @@ export function UnstakeModal({ validatorId, poolData }: UnstakeModalProps) {
                 </div>
               </div>
 
-              <Button type="submit" disabled={!isValid}>
+              <Button type="submit" disabled={isSigning || !isValid}>
                 Unstake
               </Button>
             </form>

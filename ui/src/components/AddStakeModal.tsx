@@ -23,7 +23,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -40,12 +39,12 @@ import { Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 
 interface AddStakeModalProps {
-  validator: Validator
-  disabled?: boolean
+  validator: Validator | null
+  setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
 }
 
-export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
-  const [isOpen, setIsOpen] = React.useState<boolean>(false)
+export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
+  const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -62,7 +61,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
   const formSchema = z.object({
     amountToStake: z.string().superRefine((val, ctx) => {
       const amount = AlgoAmount.Algos(Number(val)).microAlgos
-      const minimumAmount = validator.minStake
+      const minimumAmount = validator?.minStake || 0
       const maximumAmount = availableBalance || 0
 
       if (amount < minimumAmount) {
@@ -94,7 +93,14 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
     },
   })
 
-  const { errors } = form.formState
+  const { errors, isValid } = form.formState
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setValidator(null)
+      form.reset()
+    }
+  }
 
   const mbrQuery = useQuery(mbrQueryOptions)
   const stakerMbr = mbrQuery.data?.stakerMbr
@@ -106,7 +112,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
     const toastId = `${TOAST_ID}-add-stake`
 
     try {
-      setIsOpen(false)
+      setIsSigning(true)
 
       if (!activeAddress) {
         throw new Error('No wallet connected')
@@ -119,14 +125,14 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
       const totalAmount = isMbrRequired ? amountToStake + stakerMbr : amountToStake
 
       const isNewStaker = await isNewStakerToValidator(
-        validator.id,
+        validator!.id,
         activeAddress,
-        validator.minStake,
+        validator!.minStake,
       )
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
-      const poolKey = await addStake(validator.id, totalAmount, signer, activeAddress)
+      const poolKey = await addStake(validator!.id, totalAmount, signer, activeAddress)
 
       toast.success(
         <div className="flex items-center gap-x-2">
@@ -223,7 +229,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
       )
 
       queryClient.setQueryData<Validator>(
-        ['validator', { validatorId: validator.id.toString() }],
+        ['validator', { validatorId: validator!.id.toString() }],
         (prevData) => {
           if (!prevData) {
             return prevData
@@ -243,7 +249,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
         }
 
         return prevData.map((v: Validator) => {
-          if (v.id === validator.id) {
+          if (v.id === validator!.id) {
             return {
               ...v,
               numStakers: isNewStaker ? v.numStakers + 1 : v.numStakers,
@@ -259,19 +265,17 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
     } catch (error) {
       toast.error('Failed to add stake to pool', { id: toastId })
       console.error(error)
+    } finally {
+      setIsSigning(false)
+      setValidator(null)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" disabled={disabled}>
-          Stake
-        </Button>
-      </DialogTrigger>
+    <Dialog open={!!validator} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Stake to Validator {validator.id}</DialogTitle>
+          <DialogTitle>Add Stake to Validator {validator?.id}</DialogTitle>
           <DialogDescription>
             This will send your ALGO to the validator and stake it in one of their pools.
           </DialogDescription>
@@ -301,7 +305,9 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Submit</Button>
+              <Button type="submit" disabled={isSigning || !isValid}>
+                Submit
+              </Button>
             </form>
           </Form>
         </div>

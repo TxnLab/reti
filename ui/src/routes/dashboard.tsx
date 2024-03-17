@@ -55,10 +55,11 @@ function Dashboard() {
       <PageMain>
         <div className="mt-4 space-y-8">
           <StakingTable
+            validators={validators || []}
             stakesByValidator={stakesByValidator}
             isLoading={!isReady || stakesQuery.isLoading}
           />
-          <ValidatorTable validators={validators || []} />
+          <ValidatorTable validators={validators || []} stakesByValidator={stakesByValidator} />
         </div>
       </PageMain>
     </>

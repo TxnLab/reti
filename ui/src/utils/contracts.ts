@@ -1,6 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
+import { StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
   NodeInfo,
@@ -338,6 +339,16 @@ export function isStakingDisabled(validator: Validator): boolean {
   const maxStakeReached = totalStaked >= maxStake
 
   return noPools || maxStakersReached || maxStakeReached
+}
+
+export function isUnstakingDisabled(
+  validator: Validator,
+  stakesByValidator: StakerValidatorData[],
+): boolean {
+  const noPools = validator.numPools === 0
+  const validatorHasStake = stakesByValidator.some((stake) => stake.validatorId === validator.id)
+
+  return noPools || !validatorHasStake
 }
 
 export function canManageValidator(validator: Validator, activeAddress: string): boolean {

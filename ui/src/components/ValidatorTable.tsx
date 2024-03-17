@@ -35,12 +35,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { UnstakeModal } from '@/components/UnstakeModal'
+import { StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
 import {
   calculateMaxStake,
   calculateMaxStakers,
   canManageValidator,
   isStakingDisabled,
+  isUnstakingDisabled,
 } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
@@ -48,13 +51,17 @@ import { cn } from '@/utils/ui'
 
 interface ValidatorTableProps {
   validators: Validator[]
+  stakesByValidator: StakerValidatorData[]
 }
 
-export function ValidatorTable({ validators }: ValidatorTableProps) {
+export function ValidatorTable({ validators, stakesByValidator }: ValidatorTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+
+  const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
+  const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
 
   const { activeAddress } = useWallet()
 
@@ -160,11 +167,18 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
       cell: ({ row }) => {
         const validator = row.original
         const stakingDisabled = isStakingDisabled(validator)
+        const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
         const canManage = canManageValidator(validator, activeAddress!)
 
         return (
           <div className="flex items-center justify-end gap-x-2">
-            <AddStakeModal validator={validator} disabled={stakingDisabled} />
+            <Button
+              size="sm"
+              onClick={() => setAddStakeValidator(validator)}
+              disabled={stakingDisabled}
+            >
+              Stake
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -174,10 +188,19 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem disabled={stakingDisabled}>Stake</DropdownMenuItem>
-                  <DropdownMenuItem disabled={stakingDisabled}>Restake</DropdownMenuItem>
-                  <DropdownMenuItem disabled={stakingDisabled}>Unstake</DropdownMenuItem>
-                  <DropdownMenuItem disabled={stakingDisabled}>Claim rewards</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setAddStakeValidator(validator)}
+                    disabled={stakingDisabled}
+                  >
+                    Stake
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setUnstakeValidator(validator)}
+                    disabled={unstakingDisabled}
+                  >
+                    Unstake
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>Claim rewards</DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
@@ -218,59 +241,70 @@ export function ValidatorTable({ validators }: ValidatorTableProps) {
   })
 
   return (
-    <div>
-      <div className="lg:flex items-center lg:gap-x-2 py-4">
-        <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
-        {table.getFilteredRowModel().rows.length > 0 && (
-          <div className="flex items-center gap-x-3">
-            <Input
-              placeholder="Filter validators..."
-              value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
-              onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
-              className="sm:max-w-sm lg:w-64"
-            />
-            <DataTableViewOptions table={table} className="h-9" />
-          </div>
-        )}
-      </div>
-      <div className="rounded-md border">
-        <Table className="border-collapse border-spacing-0">
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} className={cn('first:px-4')}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cn('first:px-4')}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+    <>
+      <div>
+        <div className="lg:flex items-center lg:gap-x-2 py-4">
+          <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
+          {table.getFilteredRowModel().rows.length > 0 && (
+            <div className="flex items-center gap-x-3">
+              <Input
+                placeholder="Filter validators..."
+                value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
+                onChange={(event) =>
+                  table.getColumn('validator')?.setFilterValue(event.target.value)
+                }
+                className="sm:max-w-sm lg:w-64"
+              />
+              <DataTableViewOptions table={table} className="h-9" />
+            </div>
+          )}
+        </div>
+        <div className="rounded-md border">
+          <Table className="border-collapse border-spacing-0">
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id} className={cn('first:px-4')}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    )
+                  })}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className={cn('first:px-4')}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No results
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
+
+      <AddStakeModal validator={addStakeValidator} setValidator={setAddStakeValidator} />
+      <UnstakeModal
+        validator={unstakeValidator}
+        setValidator={setUnstakeValidator}
+        stakesByValidator={stakesByValidator}
+      />
+    </>
   )
 }
