@@ -24,21 +24,21 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
-import { ValidatorStake } from '@/interfaces/staking'
+import { StakerValidatorData } from '@/interfaces/staking'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
-  stakes: ValidatorStake[]
+  stakesByValidator: StakerValidatorData[]
   isLoading: boolean
 }
 
-export function StakingTable({ stakes, isLoading }: StakingTableProps) {
+export function StakingTable({ stakesByValidator, isLoading }: StakingTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  const columns: ColumnDef<ValidatorStake>[] = [
+  const columns: ColumnDef<StakerValidatorData>[] = [
     {
       id: 'select',
       header: ({ table }) => (
@@ -48,7 +48,7 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
             (table.getIsSomePageRowsSelected() && 'indeterminate')
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          className={cn(isLoading ? 'invisible' : '')}
+          className={cn(isLoading ? 'invisible' : 'mr-2')}
           aria-label="Select all"
         />
       ),
@@ -57,6 +57,7 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
+          className="mr-2"
         />
       ),
       enableSorting: false,
@@ -65,7 +66,7 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
     {
       accessorKey: 'validatorId',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator ID" />,
-      cell: ({ row }) => row.original.poolKey.validatorId,
+      cell: ({ row }) => row.original.validatorId,
       size: 100,
     },
     {
@@ -92,7 +93,11 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
     {
       accessorKey: 'entryTime',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Entry Time" />,
-      cell: ({ row }) => dayjs.unix(row.original.entryTime).format('lll'),
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">
+          {dayjs.unix(row.original.entryTime).format('lll')}
+        </span>
+      ),
     },
     {
       id: 'actions',
@@ -100,9 +105,12 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
         const validatorStake = row.original
 
         return (
-          <div className="flex items-center justify-end gap-x-2">
+          <div className="flex items-center justify-end gap-x-2 ml-2">
             <Button size="sm">Claim</Button>
-            <UnstakeModal validatorStake={validatorStake} />
+            <UnstakeModal
+              validatorId={validatorStake.validatorId}
+              poolData={validatorStake.pools}
+            />
           </div>
         )
       },
@@ -110,7 +118,7 @@ export function StakingTable({ stakes, isLoading }: StakingTableProps) {
   ]
 
   const table = useReactTable({
-    data: stakes,
+    data: stakesByValidator,
     columns,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,

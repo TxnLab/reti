@@ -1,12 +1,13 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
-import { fetchValidatorStakes, validatorsQueryOptions } from '@/api/contracts'
+import { fetchStakerValidatorData, validatorsQueryOptions } from '@/api/contracts'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { StakingTable } from '@/components/StakingTable'
 import { ValidatorTable } from '@/components/ValidatorTable'
+import { StakerValidatorData } from '@/interfaces/staking'
 import { isWalletConnected } from '@/utils/wallets'
 
 export const Route = createFileRoute('/dashboard')({
@@ -34,14 +35,14 @@ function Dashboard() {
 
   const { activeAddress, isReady } = useWallet()
 
-  const stakesQuery = useQuery({
+  const stakesQuery = useQuery<StakerValidatorData[]>({
     queryKey: ['stakes', { staker: activeAddress! }],
-    queryFn: () => fetchValidatorStakes(activeAddress!),
+    queryFn: () => fetchStakerValidatorData(activeAddress!),
     enabled: !!activeAddress,
     retry: false,
   })
 
-  const stakes = stakesQuery.data
+  const stakesByValidator = stakesQuery.data || []
 
   if (isReady && !activeAddress) {
     return <Navigate to="/" />
@@ -53,7 +54,10 @@ function Dashboard() {
       <PageHeader title="Staking Dashboard" />
       <PageMain>
         <div className="mt-4 space-y-8">
-          <StakingTable stakes={stakes || []} isLoading={!isReady || stakesQuery.isLoading} />
+          <StakingTable
+            stakesByValidator={stakesByValidator}
+            isLoading={!isReady || stakesQuery.isLoading}
+          />
           <ValidatorTable validators={validators || []} />
         </div>
       </PageMain>

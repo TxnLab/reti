@@ -34,7 +34,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { ValidatorStake } from '@/interfaces/staking'
+import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 
@@ -57,6 +57,7 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
     refetchInterval: 30000,
   })
 
+  // @todo: check whether existing pool(s) have enough room for stakeAmount (set maximumAmount)
   const formSchema = z.object({
     amountToStake: z.string().superRefine((val, ctx) => {
       const amount = AlgoAmount.Algos(Number(val)).microAlgos
@@ -124,29 +125,88 @@ export function AddStakeModal({ validator, disabled }: AddStakeModalProps) {
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
-      const validatorPoolKey = await addStake(validator.id, totalAmount, signer, activeAddress)
+      const poolKey = await addStake(validator.id, totalAmount, signer, activeAddress)
 
-      toast.success(`Stake added to pool ${validatorPoolKey.poolId}!`, {
+      toast.success(`Stake added to pool ${poolKey.poolId}!`, {
         id: toastId,
         duration: 5000,
       })
 
-      queryClient.setQueryData<ValidatorStake[]>(
+      queryClient.setQueryData<StakerValidatorData[]>(
         ['stakes', { staker: activeAddress }],
         (prevData) => {
           if (!prevData) {
             return prevData
           }
 
+          const poolData: StakerPoolData = {
+            poolKey,
+            account: activeAddress,
+            balance: totalAmount,
+            totalRewarded: 0,
+            rewardTokenBalance: 0,
+            entryTime: dayjs().unix(),
+          }
+
+          // Check if the staker already has a stake with the validator
+          const existingValidatorData = prevData.find(
+            (data) => data.validatorId === poolKey.validatorId,
+          )
+
+          if (existingValidatorData) {
+            // Check if the staker already has a stake in the pool
+            const existingPool = existingValidatorData.pools.find(
+              (pool) => pool.poolKey.poolId === poolKey.poolId,
+            )
+
+            if (existingPool) {
+              // Update the existing pool
+              return prevData.map((data) => {
+                if (data.validatorId === poolKey.validatorId) {
+                  return {
+                    ...data,
+                    balance: data.balance + totalAmount,
+                    pools: data.pools.map((pool) => {
+                      if (pool.poolKey.poolId === poolKey.poolId) {
+                        return {
+                          ...pool,
+                          balance: pool.balance + totalAmount,
+                        }
+                      }
+
+                      return pool
+                    }),
+                  }
+                }
+
+                return data
+              })
+            }
+
+            // Add the new pool to the existing validator stake data
+            return prevData.map((data) => {
+              if (data.validatorId === poolKey.validatorId) {
+                return {
+                  ...data,
+                  balance: data.balance + totalAmount,
+                  pools: [...data.pools, poolData],
+                }
+              }
+
+              return data
+            })
+          }
+
+          // Add a new validator stake entry
           return [
             ...prevData,
             {
-              poolKey: validatorPoolKey,
-              account: activeAddress,
+              validatorId: poolKey.validatorId,
               balance: totalAmount,
               totalRewarded: 0,
               rewardTokenBalance: 0,
               entryTime: dayjs().unix(),
+              pools: [poolData],
             },
           ]
         },
