@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
+import { formatAlgoAmount } from '@/utils/format'
 
 interface UnstakeModalProps {
   validator: Validator | null
@@ -46,18 +47,18 @@ interface UnstakeModalProps {
 
 export function UnstakeModal({ validator, setValidator, stakesByValidator }: UnstakeModalProps) {
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
-  const [selectedPool, setSelectedPool] = React.useState<string>('')
+  const [selectedPoolId, setSelectedPoolId] = React.useState<string>('')
 
-  const poolData = React.useMemo<StakerPoolData[]>(
+  const stakerPoolsData = React.useMemo<StakerPoolData[]>(
     () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
     [stakesByValidator, validator],
   )
 
   React.useEffect(() => {
-    if (poolData.length > 0 && selectedPool === '') {
-      setSelectedPool(poolData[0].poolKey.poolAppId.toString())
+    if (stakerPoolsData.length > 0 && selectedPoolId === '') {
+      setSelectedPoolId(stakerPoolsData[0].poolKey.poolId.toString())
     }
-  }, [poolData])
+  }, [stakerPoolsData])
 
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -69,29 +70,49 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       .refine((val) => val !== '', {
         message: 'Required field',
       })
-      .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      .refine((val) => !isNaN(Number(val)) && parseFloat(val) > 0, {
         message: 'Invalid amount',
       })
-      .superRefine((val, ctx) => {
+      .superRefine(async (val, ctx) => {
         const algoAmount = parseFloat(val)
-        const amount = AlgoAmount.Algos(algoAmount).microAlgos
-        const maximumAmount =
-          poolData.find((p) => p.poolKey.poolAppId.toString() === selectedPool)?.balance || 0
+        const amountToUnstake = AlgoAmount.Algos(algoAmount).microAlgos
+        const stakerPoolData = stakerPoolsData.find(
+          (p) => p.poolKey.poolId === Number(selectedPoolId),
+        )
 
-        if (amount > maximumAmount) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.too_big,
-            maximum: maximumAmount,
-            type: 'number',
-            inclusive: true,
-            message: 'Amount to unstake cannot exceed pool balance',
-          })
+        if (stakerPoolData && validator) {
+          const currentBalance = stakerPoolData.balance
+          const minimumStake = validator.minStake
+
+          if (amountToUnstake > currentBalance) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_big,
+              maximum: currentBalance,
+              type: 'number',
+              inclusive: true,
+              message: 'Cannot exceed current stake',
+            })
+          }
+
+          if (amountToUnstake !== currentBalance) {
+            // Not removing all stake in pool, must maintain minimum stake
+            if (currentBalance - amountToUnstake < minimumStake) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.too_big,
+                maximum: currentBalance - minimumStake,
+                type: 'number',
+                inclusive: true,
+                message: `Minimum stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+              })
+            }
+          }
         }
       }),
   })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: {
       amountToUnstake: '',
     },
@@ -102,15 +123,20 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setValidator(null)
-      setSelectedPool('')
+      setSelectedPoolId('')
       form.reset()
     }
+  }
+
+  const handleSetSelectedPool = (poolId: string) => {
+    setSelectedPoolId(poolId)
+    form.reset()
   }
 
   const handleSetMaxAmount = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
 
-    const pool = poolData.find((p) => p.poolKey.poolAppId.toString() === selectedPool)
+    const pool = stakerPoolsData.find((p) => p.poolKey.poolId === Number(selectedPoolId))
 
     if (!pool) {
       return
@@ -134,7 +160,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         throw new Error('No active address')
       }
 
-      const pool = poolData.find((p) => p.poolKey.poolAppId.toString() === selectedPool)
+      const pool = stakerPoolsData.find((p) => p.poolKey.poolId === Number(selectedPoolId))
 
       if (!pool) {
         throw new Error('Invalid pool')
@@ -269,7 +295,10 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         <DialogHeader>
           <DialogTitle>Remove Stake from Validator {validator?.id}</DialogTitle>
           <DialogDescription>
-            This will remove your ALGO stake from the pool specified.
+            This will remove your ALGO stake from{' '}
+            {stakerPoolsData.length === 1
+              ? `Pool ${stakerPoolsData[0].poolKey.poolId}`
+              : 'the selected pool'}
           </DialogDescription>
         </DialogHeader>
         <div>
@@ -280,25 +309,25 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                   <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Current Stake
                   </label>
-                  {poolData.length === 1 ? (
+                  {stakerPoolsData.length === 1 ? (
                     <p className="py-2 text-sm">
                       <span className="inline-flex items-center">
-                        <AlgoDisplayAmount amount={poolData[0].balance} microalgos />
+                        <AlgoDisplayAmount amount={stakerPoolsData[0].balance} microalgos />
                       </span>
                     </p>
                   ) : (
                     <>
-                      <Select onValueChange={setSelectedPool} value={selectedPool}>
+                      <Select onValueChange={handleSetSelectedPool} value={selectedPoolId}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a verified email to display" />
                         </SelectTrigger>
                         <SelectContent>
-                          {poolData
+                          {stakerPoolsData
                             .sort((a, b) => (a.poolKey.poolAppId > b.poolKey.poolAppId ? 1 : -1))
                             .map((pool) => (
                               <SelectItem
-                                key={pool.poolKey.poolAppId}
-                                value={pool.poolKey.poolAppId.toString()}
+                                key={pool.poolKey.poolId}
+                                value={pool.poolKey.poolId.toString()}
                               >
                                 <span className="inline-flex items-center gap-x-2">
                                   <span className="font-mono">{pool.poolKey.poolId}</span>
@@ -309,7 +338,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                             ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[0.8rem] text-muted-foreground">Select pool</p>
+                      <p className="text-[0.8rem] text-muted-foreground">Select a pool</p>
                     </>
                   )}
                 </div>
@@ -333,8 +362,10 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                             </Button>
                           </div>
                         </FormControl>
-                        <FormDescription>Enter the amount you wish to unstake.</FormDescription>
-                        <FormMessage>{errors.amountToUnstake?.message}</FormMessage>
+                        <FormDescription>Enter the amount to unstake</FormDescription>
+                        <div className="h-5">
+                          <FormMessage>{errors.amountToUnstake?.message}</FormMessage>
+                        </div>
                       </FormItem>
                     )}
                   />
