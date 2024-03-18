@@ -7,7 +7,7 @@ interface MetaProps {
 export function Meta({ title }: MetaProps) {
   return (
     <Helmet>
-      <title>{title ? `Reti Staking | ${title}` : 'Reti Staking'}</title>
+      <title>{title ? `Réti Pooling | ${title}` : 'Réti Pooling'}</title>
       <meta name="description" content="Algorand P2P Open Staking Protocol" />
     </Helmet>
   )

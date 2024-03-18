@@ -5,7 +5,7 @@ import { queryOptions } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
-import { ValidatorStake } from '@/interfaces/staking'
+import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
   MbrAmounts,
@@ -400,6 +400,8 @@ export async function addStake(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
+  // @todo: check whether existing pool(s) have enough room for stakeAmount
+
   const validatorClient = makeValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
@@ -534,10 +536,10 @@ export async function callGetStakerInfo(staker: string, stakingPoolClient: Staki
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
-export async function fetchValidatorStake(
+export async function fetchStakerPoolData(
   poolKey: ValidatorPoolKey,
   staker: string,
-): Promise<ValidatorStake> {
+): Promise<StakerPoolData> {
   try {
     const activeAddress = getActiveWalletAddress()
 
@@ -551,21 +553,27 @@ export async function fetchValidatorStake(
 
     const [account, balance, totalRewarded, rewardTokenBalance, entryTime] = result.returns![0]
 
-    return {
-      poolKey,
+    const stakedInfo: StakedInfo = {
       account,
       balance: Number(balance),
       totalRewarded: Number(totalRewarded),
       rewardTokenBalance: Number(rewardTokenBalance),
       entryTime: Number(entryTime),
     }
+
+    const stakerPoolData: StakerPoolData = {
+      ...stakedInfo,
+      poolKey,
+    }
+
+    return stakerPoolData
   } catch (error) {
     console.error(error)
     throw error
   }
 }
 
-export async function fetchValidatorStakes(staker: string): Promise<ValidatorStake[]> {
+export async function fetchStakerValidatorData(staker: string): Promise<StakerValidatorData[]> {
   try {
     const activeAddress = getActiveWalletAddress()
 
@@ -573,27 +581,56 @@ export async function fetchValidatorStakes(staker: string): Promise<ValidatorSta
       throw new Error('No active wallet found')
     }
 
-    const validatorPoolKeys = await fetchStakedPoolsForAccount(staker)
+    const poolKeys = await fetchStakedPoolsForAccount(staker)
 
-    const allStakes: Array<ValidatorStake> = []
+    const allPools: Array<StakerPoolData> = []
     const batchSize = 10
 
-    for (let i = 0; i < validatorPoolKeys.length; i += batchSize) {
+    for (let i = 0; i < poolKeys.length; i += batchSize) {
       const batchPromises = Array.from(
-        { length: Math.min(batchSize, validatorPoolKeys.length - i) },
+        { length: Math.min(batchSize, poolKeys.length - i) },
         (_, index) => {
-          const poolKey = validatorPoolKeys[i + index]
-          return fetchValidatorStake(poolKey, staker)
+          const poolKey = poolKeys[i + index]
+          return fetchStakerPoolData(poolKey, staker)
         },
       )
 
       // Run batch calls in parallel
       const batchResults = await Promise.all(batchPromises)
 
-      allStakes.push(...batchResults)
+      allPools.push(...batchResults)
     }
 
-    return allStakes
+    // Group pool stakes by validatorId and sum up balances
+    const stakerValidatorData = allPools.reduce((acc, pool) => {
+      const { validatorId } = pool.poolKey
+
+      // Check if we already have an entry for this validator
+      const existingData = acc.find((data) => data.validatorId === validatorId)
+
+      if (existingData) {
+        // Staker is in another pool for this validator, update validator totals
+        existingData.balance += pool.balance
+        existingData.totalRewarded += pool.totalRewarded
+        existingData.rewardTokenBalance += pool.rewardTokenBalance
+        existingData.entryTime = Math.min(existingData.entryTime, pool.entryTime)
+        existingData.pools.push(pool) // add pool to existing StakerPoolData[]
+      } else {
+        // First pool for this validator, add new entry
+        acc.push({
+          validatorId,
+          balance: pool.balance,
+          totalRewarded: pool.totalRewarded,
+          rewardTokenBalance: pool.rewardTokenBalance,
+          entryTime: pool.entryTime,
+          pools: [pool], // add pool to new StakerPoolData[]
+        })
+      }
+
+      return acc
+    }, [] as StakerValidatorData[])
+
+    return stakerValidatorData
   } catch (error) {
     console.error(error)
     throw error
