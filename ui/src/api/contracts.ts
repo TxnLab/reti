@@ -733,3 +733,33 @@ export async function removeStake(
     )
     .execute({ populateAppCallResources: true })
 }
+
+export async function epochBalanceUpdate(
+  poolAppId: number | bigint,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+): Promise<void> {
+  let fees = AlgoAmount.MicroAlgos(240_000)
+  const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
+
+  const simulateResult = await stakingPoolSimulateClient
+    .compose()
+    .gas({}, { note: '1' })
+    .gas({}, { note: '2' })
+    .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  // @todo: switch to Joe's new method(s)
+  fees = AlgoAmount.MicroAlgos(
+    3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+  )
+
+  const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+
+  await stakingPoolClient
+    .compose()
+    .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+    .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+    .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+    .execute({ populateAppCallResources: true })
+}
