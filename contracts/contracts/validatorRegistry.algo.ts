@@ -110,11 +110,20 @@ type NodePoolAssignmentConfig = {
     Nodes: StaticArray<NodeConfig, typeof MAX_NODES>;
 };
 
+export type PoolTokenPayoutRatio = {
+    // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
+    PoolPctOfWhole: StaticArray<uint64, 12>;
+    // epoch timestmap when set - only pool 1 caller can trigger/calculate this and only once per epoch
+    // set and compared against pool 1's LastPayout property.
+    UpdatedForPayout: uint64;
+};
+
 type ValidatorInfo = {
     Config: ValidatorConfig;
     State: ValidatorCurState;
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
     Pools: StaticArray<PoolInfo, 12>;
+    TokenPayoutRatio: PoolTokenPayoutRatio;
     NodePoolAssignments: NodePoolAssignmentConfig;
 };
 
@@ -347,6 +356,18 @@ export class ValidatorRegistry extends Contract {
             }
         }
         return retData;
+    }
+
+    // @abi.readonly
+    /**
+     * Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token
+     * payouts across pools can be based on a stable snaphost of stake.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator.
+     * @return {PoolTokenPayoutRatio} - The token payout ratio for the validator.
+     */
+    getTokenPayoutRatio(validatorID: ValidatorID): PoolTokenPayoutRatio {
+        return this.ValidatorList(validatorID).value.TokenPayoutRatio;
     }
 
     // @abi.readonly
@@ -622,6 +643,64 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
+     * setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratios
+     * of stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40
+     * in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered by
+     * pool 1 doing payout.  Pools other than 1 doing payout call pool 1 to ask it do it first.
+     * It would be 60/40% in the PoolPctOfWhole values.  The token reward payouts then use these values instead of
+     * their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
+     * during the epoch updates across pools)
+     *
+     * Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multiple
+     * times in same epoch.  Just return.
+     *
+     * @param validatorID - validator id (and thus pool) calling us.  Verified so that sender MUST be pool 1 of this validator.
+     * @returns PoolTokenPayoutRatio - the finished ratio data
+     */
+    setTokenPayoutRatio(validatorID: ValidatorID): PoolTokenPayoutRatio {
+        // Get pool 1 for this validator - caller MUST MATCH!
+        const pool1AppID = this.ValidatorList(validatorID).value.Pools[0].PoolAppID;
+        assert(pool1AppID !== 0);
+        // Sender has to match the pool app id passed in - so we ensure only pool 1 can call us.
+        if (this.txn.sender !== AppID.fromUint64(pool1AppID).address) {
+            return this.ValidatorList(validatorID).value.TokenPayoutRatio;
+        }
+
+        // They can only call us if the epoch update time doesn't match what pool 1 already has - and it has to be at least
+        // a full epoch since last update (unless not set).  Same check as pools themselves perform.
+        const curTime = globals.latestTimestamp;
+        const lastPayoutUpdate = this.ValidatorList(validatorID).value.TokenPayoutRatio.UpdatedForPayout;
+        if (lastPayoutUpdate !== 0) {
+            const secsSinceLastPayout = curTime - lastPayoutUpdate;
+            const epochInSecs = (this.ValidatorList(validatorID).value.Config.PayoutEveryXMins as uint64) * 60;
+            // We've had one payout - so we need to be at least one epoch past the last payout.
+            if (secsSinceLastPayout < epochInSecs) {
+                return this.ValidatorList(validatorID).value.TokenPayoutRatio;
+            }
+            // We've already done the calcs..
+            if ((AppID.fromUint64(pool1AppID).globalState('lastPayout') as uint64) === lastPayoutUpdate) {
+                return this.ValidatorList(validatorID).value.TokenPayoutRatio;
+            }
+        }
+        this.ValidatorList(validatorID).value.TokenPayoutRatio.UpdatedForPayout = curTime;
+
+        const curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
+        const totalStakeForValidator = this.ValidatorList(validatorID).value.State.TotalAlgoStaked;
+        for (let i = 0; i < curNumPools; i += 1) {
+            // ie: this pool 2 has 1000 algo staked and the validator has 10,000 staked total (9000 pool 1, 1000 pool 2)
+            // so this pool is 10% of the total and thus it gets 10% of the avail community token reward.
+            // Get our pools pct of all stake w/ 4 decimals
+            // ie, based on prior eg  - (1000 * 1e6) / 10000 = 100,000 (or 10%)
+            const ourPoolPctOfWhole = wideRatio(
+                [this.ValidatorList(validatorID).value.Pools[i].TotalAlgoStaked, 1_000_000],
+                [totalStakeForValidator]
+            );
+            this.ValidatorList(validatorID).value.TokenPayoutRatio.PoolPctOfWhole[i] = ourPoolPctOfWhole;
+        }
+        return this.ValidatorList(validatorID).value.TokenPayoutRatio;
+    }
+
+    /**
      * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total
      * stake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
@@ -690,12 +769,10 @@ export class ValidatorRegistry extends Contract {
 
             // If a different pool called us, then they CAN'T send the token - we've already updated the
             // RewardTokenHeldBack value and then call method in the pool that can only be called by us (the
-            // validator), and can only be called on pools 1 - to have it do the token payout.
+            // validator), and can only be called on pool 1 [Index 0] - to have it do the token payout.
             if (poolKey.PoolID !== 1) {
                 sendMethodCall<typeof StakingPool.prototype.payTokenReward>({
-                    applicationID: AppID.fromUint64(
-                        this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].PoolAppID
-                    ),
+                    applicationID: AppID.fromUint64(this.ValidatorList(poolKey.ID).value.Pools[0].PoolAppID),
                     methodArgs: [staker, rewardTokenID, rewardRemoved],
                 });
             }
@@ -799,6 +876,7 @@ export class ValidatorRegistry extends Contract {
      * The pool account is forced offline if moved so prior node will still run for 320 rounds but
      * new key goes online on new node soon after (320 rounds after it goes online)
      * No-op if success, asserts if not found or can't move  (no space in target)
+     * [ ONLY OWNER OR MANAGER CAN CHANGE ]
      * Only callable by owner or manager
      */
     movePoolToNode(validatorID: ValidatorID, poolAppID: uint64, nodeNum: uint64): void {

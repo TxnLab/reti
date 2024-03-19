@@ -6,13 +6,13 @@ require (
 	github.com/algorand/go-algorand-sdk/v2 v2.4.0
 	github.com/antihax/optional v1.0.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mailgun/holster/v4 v4.17.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/prometheus/client_golang v1.19.0
 	github.com/ssgreg/repeat v1.5.1
 	github.com/urfave/cli/v3 v3.0.0-alpha9
 	golang.org/x/crypto v0.21.0
 	golang.org/x/oauth2 v0.18.0
-	golang.org/x/sync v0.6.0
 	golang.org/x/term v0.18.0
 )
 

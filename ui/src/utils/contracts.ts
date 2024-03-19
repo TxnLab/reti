@@ -1,6 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
+import { StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
   NodeInfo,
@@ -301,4 +302,55 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .optional(),
     })
     .required()
+}
+
+export function calculateMaxStake(validator: Validator, algos = false): number {
+  // @todo: rename maxStake to maxStakePerPool
+  const { numPools, maxStake: maxStakePerPool } = validator
+  const maxStake = maxStakePerPool * numPools
+
+  if (algos) {
+    return AlgoAmount.MicroAlgos(maxStake).algos
+  }
+
+  return maxStake
+}
+
+export function calculateMaxStakers(validator: Validator): number {
+  // @todo: fetch max stakers from contract
+  const maxStakersPerPool = 200
+  const maxStakers = maxStakersPerPool * validator.numPools
+
+  return maxStakers
+}
+
+export function isStakingDisabled(validator: Validator): boolean {
+  // @todo: rename maxStake to maxStakePerPool
+  const { numPools, numStakers, totalStaked, maxStake: maxStakePerPool } = validator
+
+  // @todo: fetch max stakers from contract
+  const maxStakersPerPool = 200
+
+  const maxStakers = maxStakersPerPool * numPools
+  const maxStake = maxStakePerPool * numPools
+
+  const noPools = numPools === 0
+  const maxStakersReached = numStakers >= maxStakers
+  const maxStakeReached = totalStaked >= maxStake
+
+  return noPools || maxStakersReached || maxStakeReached
+}
+
+export function isUnstakingDisabled(
+  validator: Validator,
+  stakesByValidator: StakerValidatorData[],
+): boolean {
+  const noPools = validator.numPools === 0
+  const validatorHasStake = stakesByValidator.some((stake) => stake.validatorId === validator.id)
+
+  return noPools || !validatorHasStake
+}
+
+export function canManageValidator(validator: Validator, activeAddress: string): boolean {
+  return validator.owner === activeAddress || validator.manager === activeAddress
 }

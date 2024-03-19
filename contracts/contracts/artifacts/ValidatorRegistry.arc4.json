@@ -152,6 +152,20 @@
       }
     },
     {
+      "name": "getTokenPayoutRatio",
+      "desc": "Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that tokenpayouts across pools can be based on a stable snaphost of stake.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "The ID of the validator.@return{PoolTokenPayoutRatio}- The token payout ratio for the validator."
+        }
+      ],
+      "returns": {
+        "type": "(uint64[12],uint64)"
+      }
+    },
+    {
       "name": "getNodePoolAssignments",
       "args": [
         {
@@ -359,6 +373,21 @@
       }
     },
     {
+      "name": "setTokenPayoutRatio",
+      "desc": "setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratiosof stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered bypool 1 doing payout.  Pools other than 1 doing payout call pool 1 to ask it do it first.It would be 60/40% in the PoolPctOfWhole values.  The token reward payouts then use these values instead oftheir 'current' stake which changes as part of the payouts themselves (and people could be changing stakeduring the epoch updates across pools)Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multipletimes in same epoch.  Just return.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "validator id (and thus pool) calling us.  Verified so that sender MUST be pool 1 of this validator."
+        }
+      ],
+      "returns": {
+        "type": "(uint64[12],uint64)",
+        "desc": "PoolTokenPayoutRatio - the finished ratio data"
+      }
+    },
+    {
       "name": "stakeUpdatedViaRewards",
       "desc": "stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of totalstake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
       "args": [
@@ -440,7 +469,7 @@
     },
     {
       "name": "movePoolToNode",
-      "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)Only callable by owner or manager",
+      "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]Only callable by owner or manager",
       "args": [
         {
           "name": "validatorID",

@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
-import { Pencil } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -16,7 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Form,
@@ -35,19 +33,14 @@ const formSchema = z.object({
 })
 
 interface AddPoolModalProps {
-  validatorId: string
-  nodePoolAssignment: NodePoolAssignmentConfig
-  poolsPerNode: number
+  validator: Validator | null
+  setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
+  poolAssignment: NodePoolAssignmentConfig
   disabled?: boolean
 }
 
-export function AddPoolModal({
-  validatorId,
-  nodePoolAssignment,
-  poolsPerNode,
-  disabled = false,
-}: AddPoolModalProps) {
-  const [isOpen, setIsOpen] = React.useState<boolean>(false)
+export function AddPoolModal({ validator, setValidator, poolAssignment }: AddPoolModalProps) {
+  const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -55,10 +48,34 @@ export function AddPoolModal({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: {
-      nodeNum: findFirstAvailableNode(nodePoolAssignment, poolsPerNode)?.toString() || '1',
+      nodeNum: '1',
     },
   })
+
+  const { isValid } = form.formState
+
+  const defaultNodeNum = React.useMemo(() => {
+    if (!validator?.poolsPerNode) return '1'
+
+    const nodeNum = findFirstAvailableNode(poolAssignment, validator.poolsPerNode)
+    return nodeNum?.toString() || '1'
+  }, [poolAssignment, validator?.poolsPerNode])
+
+  React.useEffect(() => {
+    if (!validator) {
+      return
+    }
+    form.setValue('nodeNum', defaultNodeNum)
+  }, [defaultNodeNum, form, validator])
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setValidator(null)
+      form.reset({ nodeNum: '1' })
+    }
+  }
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
@@ -67,10 +84,10 @@ export function AddPoolModal({
     const toastId = `${TOAST_ID}-add-pool`
 
     try {
-      setIsOpen(false)
+      setIsSigning(true)
 
       if (!activeAddress) {
-        throw new Error('No wallet connected')
+        throw new Error('No active address')
       }
 
       const { poolMbr, poolInitMbr } = await queryClient.ensureQueryData({
@@ -81,19 +98,12 @@ export function AddPoolModal({
       toast.loading('Sign transactions to add staking pool...', { id: toastId })
 
       const stakingPool = await addStakingPool(
-        Number(validatorId),
+        validator!.id,
         Number(data.nodeNum),
         poolMbr,
         signer,
         activeAddress,
       )
-
-      toast.success(`Staking pool ${stakingPool.poolId} created!`, {
-        id: toastId,
-        duration: 5000,
-      })
-
-      toast.loading('Sign transactions to fund staking pool MBR...', { id: toastId })
 
       await initStakingPoolStorage(stakingPool.poolAppId, poolInitMbr, signer, activeAddress)
 
@@ -102,7 +112,7 @@ export function AddPoolModal({
         duration: 5000,
       })
 
-      queryClient.setQueryData<Validator>(['validator', { validatorId }], (prevData) => {
+      queryClient.setQueryData<Validator>(['validator', String(validator!.id)], (prevData) => {
         if (!prevData) {
           return prevData
         }
@@ -119,7 +129,7 @@ export function AddPoolModal({
         }
 
         return prevData.map((validator: Validator) => {
-          if (validator.id === Number(validatorId)) {
+          if (validator.id === validator!.id) {
             return {
               ...validator,
               numPools: validator.numPools + 1,
@@ -131,25 +141,23 @@ export function AddPoolModal({
       })
 
       router.invalidate()
-      queryClient.invalidateQueries({ queryKey: ['nodePoolAssignment', Number(validatorId)] })
+      queryClient.invalidateQueries({ queryKey: ['pool-assignments', validator!.id] })
     } catch (error) {
       toast.error('Failed to create staking pool', { id: toastId })
       console.error(error)
+    } finally {
+      setIsSigning(false)
+      setValidator(null)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="-my-2" disabled={disabled}>
-          <Pencil className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={!!validator} onOpenChange={handleOpenChange}>
       <DialogContent onCloseAutoFocus={(event: Event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add a Pool</DialogTitle>
           <DialogDescription>
-            Create and fund a new staking pool for Validator {validatorId}
+            Create and fund a new staking pool for Validator {validator?.id}
           </DialogDescription>
         </DialogHeader>
         <div>
@@ -159,24 +167,26 @@ export function AddPoolModal({
                 control={form.control}
                 name="nodeNum"
                 render={({ field }) => (
-                  <FormItem className={cn(nodePoolAssignment === null ? 'hidden' : '')}>
+                  <FormItem className={cn(poolAssignment === null ? 'hidden' : '')}>
                     <FormLabel>Select Node</FormLabel>
-                    {nodePoolAssignment && (
+                    {poolAssignment && !!validator && (
                       <NodeSelect
-                        nodes={nodePoolAssignment}
-                        poolsPerNode={poolsPerNode}
+                        nodes={poolAssignment}
+                        poolsPerNode={validator.poolsPerNode}
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       />
                     )}
                     <FormDescription>
-                      Select a node with an available slot (max: {poolsPerNode})
+                      Select a node with an available slot (max: {validator?.poolsPerNode})
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit">Add Pool</Button>
+              <Button type="submit" disabled={isSigning || !isValid}>
+                Add Pool
+              </Button>
             </form>
           </Form>
         </div>

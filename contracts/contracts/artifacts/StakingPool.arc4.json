@@ -133,7 +133,7 @@
     },
     {
       "name": "updateAlgodVer",
-      "desc": "Update the (honor system) algod version for the node associated to this pool.  The node management daemonshould compare its current nodes version to the version stored in global state, updating when different.The reti node daemon composes its own version string using format:{major}.{minor}.{build}{branch}[{commit hash}],ie: 3.22.0 rel/stable [6b508975]",
+      "desc": "Update the (honor system) algod version for the node associated to this pool.  The node management daemonshould compare its current nodes version to the version stored in global state, updating when different.The reti node daemon composes its own version string using format:{major}.{minor}.{build}{branch}[{commit hash}],ie: 3.22.0 rel/stable [6b508975][ ONLY OWNER OR MANAGER CAN CALL ]",
       "args": [
         {
           "name": "algodVer",
@@ -155,30 +155,37 @@
     },
     {
       "name": "goOnline",
+      "desc": "Registers a staking pool key online against a participation key.[ ONLY OWNER OR MANAGER CAN CALL ]",
       "args": [
         {
           "name": "votePK",
-          "type": "byte[]"
+          "type": "byte[]",
+          "desc": "The vote public key."
         },
         {
           "name": "selectionPK",
-          "type": "byte[]"
+          "type": "byte[]",
+          "desc": "The selection public key."
         },
         {
           "name": "stateProofPK",
-          "type": "byte[]"
+          "type": "byte[]",
+          "desc": "The state proof public key."
         },
         {
           "name": "voteFirst",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The first vote index."
         },
         {
           "name": "voteLast",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The last vote index."
         },
         {
           "name": "voteKeyDilution",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "The vote key dilution value."
         }
       ],
       "returns": {
@@ -187,6 +194,7 @@
     },
     {
       "name": "goOffline",
+      "desc": "Marks a staking pool key OFFLINE.[ ONLY OWNER OR MANAGER CAN CALL ]",
       "args": [],
       "returns": {
         "type": "void"
@@ -206,6 +214,20 @@
       ],
       "returns": {
         "type": "void"
+      }
+    },
+    {
+      "name": "proxiedSetTokenPayoutRatio",
+      "desc": "proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts",
+      "args": [
+        {
+          "name": "poolKey",
+          "type": "(uint64,uint64,uint64)",
+          "desc": "ValidatorPoolKey tuple"
+        }
+      ],
+      "returns": {
+        "type": "(uint64[12],uint64)"
       }
     }
   ]

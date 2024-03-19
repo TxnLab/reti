@@ -8,6 +8,15 @@ export interface StakedInfo {
   entryTime: number
 }
 
-export interface ValidatorStake extends StakedInfo {
+export interface StakerPoolData extends StakedInfo {
   poolKey: ValidatorPoolKey
+}
+
+export interface StakerValidatorData {
+  validatorId: number
+  balance: number
+  totalRewarded: number
+  rewardTokenBalance: number
+  entryTime: number
+  pools: Array<StakerPoolData>
 }

@@ -6,9 +6,9 @@
     "generate-client": "algokit generate client contracts/artifacts/ --language typescript  --output contracts/clients/{contract_name}Client.ts && ./update_contract_artifacts.sh``",
     "compile-contract": "tealscript contracts/*.algo.ts contracts/artifacts",
     "generate-components": "algokit-generate-component contracts/artifacts/validatorRegistry.arc32.json contracts/artifacts/components",
-    "quickbuild": "npm run compile-contract -- --skip-algod && npm run generate-client",
-    "build": "npm run compile-contract && npm run generate-client",
-    "test": "npm run build && jest",
+    "quickbuild": "pnpm run compile-contract -- --skip-algod && npm run generate-client",
+    "build": "pnpm run compile-contract && npm run generate-client",
+    "test": "pnpm run build && jest",
     "retest": "jest",
     "lint": "eslint . --ext .ts",
     "fix": "eslint . --ext .ts --fix"

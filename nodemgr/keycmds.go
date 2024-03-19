@@ -41,7 +41,7 @@ func KeysList(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	for _, poolAppID := range App.retiClient.Info.LocalPools {
+	for _, poolAppID := range App.retiClient.Info().LocalPools {
 		addr := crypto.GetApplicationAddress(poolAppID)
 		for account, keys := range partKeys {
 			if !command.Value("all").(bool) && addr.String() != account {

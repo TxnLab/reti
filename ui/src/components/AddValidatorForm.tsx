@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import algosdk from 'algosdk'
+import { MonitorCheck } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -85,6 +86,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const toastId = `${TOAST_ID}-validator`
+
     try {
       if (!activeAddress) {
         throw new Error('No active address')
@@ -102,7 +105,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         algodClient,
       )
 
-      toast.loading('Sign transactions to add validator...', { id: `${TOAST_ID}-validator` })
+      toast.loading('Sign transactions to add validator...', { id: toastId })
 
       const validatorAppRef = await validatorClient.appClient.getAppReference()
 
@@ -180,14 +183,20 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const validatorId = Number(results.returns![0])
 
-      toast.success(`Validator ID ${validatorId} created!`, {
-        id: `${TOAST_ID}-validator`,
-        duration: 5000,
-      })
+      toast.success(
+        <div className="flex items-center gap-x-2">
+          <MonitorCheck className="h-5 w-5 text-foreground" />
+          <span>Validator {validatorId} created!</span>
+        </div>,
+        {
+          id: toastId,
+          duration: 5000,
+        },
+      )
 
       navigate({ to: '/dashboard' })
     } catch (error) {
-      toast.error('Failed to create validator', { id: `${TOAST_ID}-validator` })
+      toast.error('Failed to create validator', { id: toastId })
       console.error(error)
     }
   }
@@ -468,14 +477,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             {/* <Button
               variant="outline"
               size="default"
-              onClick={() => {
+              onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                event.preventDefault()
                 form.reset({
                   Owner: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
                   Manager: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
-                  PayoutEveryXMins: (60 * 24).toString(),
-                  PercentToValidator: '3.4464',
+                  PayoutEveryXMins: '1',
+                  PercentToValidator: '5',
                   ValidatorCommissionAddress:
-                    'PUKGRD4XHCTSBCRK6LAUALDMAKPCNG4PFQY2HQH5XFCJ5U6YU4ZSH4SDBY',
+                    'Q5MNRF52SRS4MBXWAQKCTQG6U53JJEUAKYGQXZIXNUIGZKJE7FO72GRZBU',
                   MinEntryStake: '1000',
                   MaxAlgoPerPool: '20000000',
                   PoolsPerNode: '3',

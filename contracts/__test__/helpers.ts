@@ -196,20 +196,21 @@ function validatorConfigAsArray(
     ];
 }
 
-type ValidatorCurState = {
+class ValidatorCurState {
     NumPools: number; // current number of pools this validator has - capped at MaxPools
-    TotalStakers: bigint; // total number of stakers across all pools
-    TotalAlgoStaked: bigint; // total amount staked to this validator across ALL of its pools
-    RewardTokenHeldBack: bigint; // amount of token held back for future payout to stakers
-};
 
-function createValidatorCurStateFromValues([NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack]: [
-    number,
-    bigint,
-    bigint,
-    bigint,
-]): ValidatorCurState {
-    return { NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack };
+    TotalStakers: bigint; // total number of stakers across all pools
+
+    TotalAlgoStaked: bigint; // total amount staked to this validator across ALL of its pools
+
+    RewardTokenHeldBack: bigint; // amount of token held back for future payout to stakers
+
+    constructor([NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack]: [number, bigint, bigint, bigint]) {
+        this.NumPools = NumPools;
+        this.TotalStakers = TotalStakers;
+        this.TotalAlgoStaked = TotalAlgoStaked;
+        this.RewardTokenHeldBack = RewardTokenHeldBack;
+    }
 }
 
 export class PoolInfo {
@@ -287,6 +288,17 @@ export class StakedInfo {
     }
 }
 
+class PoolTokenPayoutRatio {
+    PoolPctOfWhole: bigint[];
+
+    UpdatedForPayout: bigint;
+
+    constructor([PoolPctOfWhole, UpdatedForPayout]: [bigint[], bigint]) {
+        this.PoolPctOfWhole = PoolPctOfWhole;
+        this.UpdatedForPayout = UpdatedForPayout;
+    }
+}
+
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
     const result = new Uint8Array(a.length + b.length);
     result.set(a);
@@ -315,6 +327,34 @@ function getStakersBoxName() {
 
 export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
     return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
+}
+
+function dumpLogs(logs: Uint8Array[]) {
+    consoleLogger.info(logs.map((uint8array) => new TextDecoder().decode(uint8array)).join('\n'));
+    // logs.forEach((uint8array) => {
+    //     let strVal = new TextDecoder().decode(uint8array);
+    //
+    //     // Get the indices where '%i' exists
+    //     const foundIndices = [...strVal.matchAll(/%i/g)].map((e) => e.index);
+    //
+    //     // Start index so we know where to start reading for the 64-bit big endian number
+    //     const endIndex = strVal.lastIndexOf('%i') + 2; // includes the two characters in '%i'
+    //
+    //     // Change Uint8Array to ArrayBuffer
+    //     const arrayBuffer = ArrayBuffer.from(uint8array.buffer);
+    //     const dataView = new DataView(arrayBuffer, endIndex);
+    //
+    //     // Replace each '%i' with their corresponding integers
+    //     foundIndices.reverse().forEach((index, iteration) => {
+    //         // 64-bit big endian integer
+    //         const integer64Bit = dataView.getBigInt64(iteration * 8);
+    //
+    //         // Replace the '%i' with the integer
+    //         strVal = strVal.substring(0, index) + integer64Bit + strVal.substring(index! + 2);
+    //     });
+    //
+    //     consoleLogger.info(strVal);
+    // });
 }
 
 export async function addValidator(
@@ -360,7 +400,7 @@ export async function addValidator(
 }
 
 export async function getValidatorState(validatorClient: ValidatorRegistryClient, validatorID: number) {
-    return createValidatorCurStateFromValues(
+    return new ValidatorCurState(
         (
             await validatorClient
                 .compose()
@@ -498,6 +538,17 @@ export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Acco
     }
 }
 
+export async function getTokenPayoutRatio(validatorClient: ValidatorRegistryClient, validatorID: number) {
+    return new PoolTokenPayoutRatio(
+        (
+            await validatorClient
+                .compose()
+                .getTokenPayoutRatio({ validatorID }, {})
+                .simulate({ allowUnnamedResources: true })
+        ).returns![0]
+    );
+}
+
 export async function addStake(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
@@ -558,9 +609,7 @@ export async function addStake(
         const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult;
         // verify logs isn't undefined
         if (logs !== undefined) {
-            logs.forEach((uint8array) => {
-                consoleLogger.info(new TextDecoder().decode(uint8array));
-            });
+            dumpLogs(logs);
         }
         stakeTransfer.group = undefined;
         // our two outers + however many inners were needed via itxns.
@@ -592,59 +641,48 @@ export async function addStake(
 }
 
 export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
+    const simulateResults = await stakeClient
+        .compose()
+        .gas({}, { note: '1' })
+        .gas({}, { note: '2' })
+        .removeStake(
+            { amountToUnstake: unstakeAmount.microAlgos },
+            {
+                sendParams: {
+                    fee: AlgoAmount.MicroAlgos(6000),
+                },
+                sender: staker,
+            }
+        )
+        .simulate({ allowUnnamedResources: true });
+
+    const itxnfees = AlgoAmount.MicroAlgos(
+        1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
+    );
+    consoleLogger.info(`removeStake fees:${itxnfees.microAlgos}`);
+
     try {
-        return (
-            await stakeClient
-                .compose()
-                .gas({}, { note: '1' })
-                .gas({}, { note: '2' })
-                .removeStake(
-                    { amountToUnstake: unstakeAmount.microAlgos },
-                    {
-                        sendParams: {
-                            // pays us back and tells validator about balance changed
-                            fee: AlgoAmount.MicroAlgos(5000),
-                        },
-                        sender: staker,
-                    }
-                )
-                .execute({ populateAppCallResources: true })
-        ).returns![2]!;
+        await stakeClient
+            .compose()
+            .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .removeStake(
+                { amountToUnstake: unstakeAmount.microAlgos },
+                {
+                    sendParams: {
+                        // pays us back and tells validator about balance changed
+                        fee: AlgoAmount.MicroAlgos(itxnfees.microAlgos),
+                    },
+                    sender: staker,
+                }
+            )
+            .execute({ populateAppCallResources: true });
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message);
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
         throw exception;
     }
-}
-
-function dumpLogs(logs: Uint8Array[]) {
-    logs.forEach((uint8array) => {
-        consoleLogger.info(new TextDecoder().decode(uint8array));
-    });
-    // logs.forEach((uint8array) => {
-    //     let strVal = new TextDecoder().decode(uint8array);
-    //
-    //     // Get the indices where '%i' exists
-    //     const foundIndices = [...strVal.matchAll(/%i/g)].map((e) => e.index);
-    //
-    //     // Start index so we know where to start reading for the 64-bit big endian number
-    //     const endIndex = strVal.lastIndexOf('%i') + 2; // includes the two characters in '%i'
-    //
-    //     // Change Uint8Array to ArrayBuffer
-    //     const arrayBuffer = ArrayBuffer.from(uint8array.buffer);
-    //     const dataView = new DataView(arrayBuffer, endIndex);
-    //
-    //     // Replace each '%i' with their corresponding integers
-    //     foundIndices.reverse().forEach((index, iteration) => {
-    //         // 64-bit big endian integer
-    //         const integer64Bit = dataView.getBigInt64(iteration * 8);
-    //
-    //         // Replace the '%i' with the integer
-    //         strVal = strVal.substring(0, index) + integer64Bit + strVal.substring(index! + 2);
-    //     });
-    //
-    //     consoleLogger.info(strVal);
-    // });
+    return itxnfees.microAlgos;
 }
 
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
@@ -661,9 +699,8 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
     if (logs !== undefined) {
         dumpLogs(logs);
     }
-    // our 3 outers + however many inners were used.
     fees = AlgoAmount.MicroAlgos(
-        3000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700)
+        1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
     );
     consoleLogger.info(`epoch update fees of:${fees.toString()}`);
 
@@ -706,7 +743,8 @@ export async function logStakingPoolInfo(
 
 export async function verifyRewardAmounts(
     context: AlgorandTestAutomationContext,
-    rewardedAmount: bigint,
+    algoRewardedAmount: bigint,
+    tokenRewardedAmount: bigint,
     stakersPriorToReward: StakedInfo[],
     stakersAfterReward: StakedInfo[],
     payoutEveryXMins: number
@@ -724,14 +762,15 @@ export async function verifyRewardAmounts(
     const payoutTimeToUse = new Date(lastBlock.block.ts * 1000);
 
     consoleLogger.info(
-        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers.  reward:${rewardedAmount}, totalAmount:${totalAmount}, payout time to use:${payoutTimeToUse.toString()}`
+        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers.  reward:${algoRewardedAmount}, totalAmount:${totalAmount}, payout time to use:${payoutTimeToUse.toString()}`
     );
     // Iterate all stakers - determine which haven't been for entire epoch - pay them proportionally less for having
     // less time in pool.  We keep track of their stake and then will later reduce the effective 'total staked' amount
     // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
     // remaining participants.
     let partialStakeAmount: bigint = BigInt(0);
-    let rewardsAvailable: bigint = rewardedAmount;
+    let algoRewardsAvail: bigint = algoRewardedAmount;
+    let tokenRewardsAvail: bigint = tokenRewardedAmount;
 
     for (let i = 0; i < stakersPriorToReward.length; i += 1) {
         if (encodeAddress(stakersPriorToReward[i].Staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
@@ -742,13 +781,14 @@ export async function verifyRewardAmounts(
             continue;
         }
         const origBalance = stakersPriorToReward[i].Balance;
+        const origRwdTokenBal = stakersPriorToReward[i].RewardTokenBalance;
         const timeInPoolSecs: bigint =
             (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000);
         const timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs); // 34.7% becomes 347
         if (timePercentage < BigInt(1000)) {
             // partial staker
             const expectedReward =
-                (BigInt(origBalance) * rewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
+                (BigInt(origBalance) * algoRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
             consoleLogger.info(
                 `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].Balance - origBalance} ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`
             );
@@ -759,8 +799,23 @@ export async function verifyRewardAmounts(
                 );
                 expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
             }
-            rewardsAvailable -= expectedReward;
+            const expectedTokenReward =
+                (BigInt(origBalance) * tokenRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
+            consoleLogger.info(
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].RewardTokenBalance - origRwdTokenBal}`
+            );
+
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].RewardTokenBalance) {
+                consoleLogger.warn(
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].RewardTokenBalance}`
+                );
+                expect(stakersAfterReward[i].RewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
+            }
+
             partialStakeAmount += origBalance;
+
+            algoRewardsAvail -= expectedReward;
+            tokenRewardsAvail -= expectedTokenReward;
         }
     }
     const newPoolTotalStake = totalAmount - partialStakeAmount;
@@ -777,6 +832,7 @@ export async function verifyRewardAmounts(
             );
         } else {
             const origBalance = stakersPriorToReward[i].Balance;
+            const origRwdTokenBal = stakersPriorToReward[i].RewardTokenBalance;
             const timeInPoolSecs: bigint =
                 (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000);
             let timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs); // 34.7% becomes 347
@@ -786,16 +842,20 @@ export async function verifyRewardAmounts(
             if (timePercentage > BigInt(1000)) {
                 timePercentage = BigInt(1000);
             }
-            const expectedReward = (BigInt(origBalance) * rewardsAvailable) / newPoolTotalStake;
+            const expectedReward = (BigInt(origBalance) * algoRewardsAvail) / newPoolTotalStake;
             consoleLogger.info(
                 `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / newPoolTotalStake) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].Balance - origBalance} ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`
             );
+            const expectedTokenReward = (BigInt(origBalance) * tokenRewardsAvail) / newPoolTotalStake;
+            consoleLogger.info(
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].RewardTokenBalance - origRwdTokenBal}`
+            );
 
-            if (origBalance + expectedReward !== stakersAfterReward[i].Balance) {
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].RewardTokenBalance) {
                 consoleLogger.warn(
-                    `staker:${i} expected: ${origBalance + expectedReward} reward but got: ${stakersAfterReward[i].Balance}`
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].RewardTokenBalance}`
                 );
-                expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
+                expect(stakersAfterReward[i].RewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
             }
         }
     }

@@ -77,7 +77,8 @@ func DisplayValidatorInfo(ctx context.Context, command *cli.Command) error {
 	if !App.retiClient.IsConfigured() {
 		return fmt.Errorf("validator not configured")
 	}
-	fmt.Println(App.retiClient.Info.Config.String())
+	var config = App.retiClient.Info().Config
+	fmt.Println(config.String())
 	return nil
 }
 
@@ -86,7 +87,7 @@ func DisplayValidatorState(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("validator not configured")
 	}
 	// Get information from the chain about the current state
-	state, err := App.retiClient.GetValidatorState(App.retiClient.Info.Config.ID)
+	state, err := App.retiClient.GetValidatorState(App.retiClient.Info().Config.ID)
 	if err != nil {
 		return err
 	}
@@ -98,8 +99,9 @@ func ChangeCommission(ctx context.Context, command *cli.Command) error {
 	if !App.retiClient.IsConfigured() {
 		return fmt.Errorf("validator not configured")
 	}
+	var info = App.retiClient.Info()
 
-	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info.Config.Owner, App.retiClient.Info.Config.Manager})
+	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
 	if err != nil {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
 	}
@@ -110,7 +112,7 @@ func ChangeCommission(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 
-	err = App.retiClient.ChangeValidatorCommissionAddress(App.retiClient.Info.Config.ID, signerAddr, commissionAddress)
+	err = App.retiClient.ChangeValidatorCommissionAddress(info.Config.ID, signerAddr, commissionAddress)
 	if err != nil {
 		return err
 	}

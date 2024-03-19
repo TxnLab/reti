@@ -90,7 +90,7 @@ func (r *Reti) UpdateAlgodVer(poolAppID uint64, algodVer string, caller types.Ad
 		MethodArgs:  []any{algodVer},
 		ForeignApps: []uint64{r.RetiAppID},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.ValidatorID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
@@ -110,10 +110,13 @@ func (r *Reti) UpdateAlgodVer(poolAppID uint64, algodVer string, caller types.Ad
 }
 
 func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Address) error {
-	var err error
+	var (
+		err  error
+		info = r.Info()
+	)
 
 	// make sure we even have enough rewards to do the payout
-	pools, err := r.GetValidatorPools(r.Info.Config.ID)
+	pools, err := r.GetValidatorPools(r.ValidatorID)
 	if err != nil {
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
@@ -140,7 +143,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			Method:      gasMethod,
 			ForeignApps: []uint64{r.RetiAppID},
 			BoxReferences: []types.AppBoxReference{
-				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.ValidatorID)},
 				{AppID: 0, Name: GetStakerLedgerBoxName()},
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
@@ -165,7 +168,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:           poolAppID,
 			Method:          epochUpdateMethod,
-			ForeignAccounts: []string{r.Info.Config.ValidatorCommissionAddress},
+			ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
 			BoxReferences: []types.AppBoxReference{
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
@@ -239,9 +242,8 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, s
 			voteKeyDilution,
 		},
 		ForeignApps: []uint64{r.RetiAppID},
-		//ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.Info.Config.ID)},
+			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.ValidatorID)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,

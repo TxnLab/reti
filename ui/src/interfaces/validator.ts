@@ -109,3 +109,9 @@ export interface Constraints {
   maxPoolsPerNode: number
   maxStakersPerPool: number
 }
+
+export interface PoolInfo {
+  poolAppId: number
+  totalStakers: number
+  totalAlgoStaked: number
+}
