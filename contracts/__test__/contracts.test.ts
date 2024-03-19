@@ -627,10 +627,14 @@ describe('StakeAdds', () => {
         const preRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
 
         // then remove the stake !
-        await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(Number(stakerInfo.Balance)));
+        const removeFees = await removeStake(
+            ourPoolClient,
+            stakerAccount,
+            AlgoAmount.MicroAlgos(Number(stakerInfo.Balance))
+        );
         const newBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do();
         expect(newBalance.amount).toBe(
-            stakerAcctBalance.amount + Number(stakerInfo.Balance) - 9000 // microAlgo for removeStake fees
+            stakerAcctBalance.amount + Number(stakerInfo.Balance) - removeFees // microAlgo for `removeStake fees
         );
 
         // stakers should have been reduced and stake amount should have been reduced by stake removed
@@ -687,10 +691,10 @@ describe('StakeAdds', () => {
         const preRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
 
         // then remove ALL the stake  (specifying 0 to remove all)
-        await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(0));
+        const fees = await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(0));
         const newBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do();
         expect(newBalance.amount).toBe(
-            stakerAcctBalance.amount + Number(stakerInfo.Balance) - 9000 // microAlgo for removeStake fees
+            stakerAcctBalance.amount + Number(stakerInfo.Balance) - fees // microAlgo for removeStake fees
         );
 
         // stakers should have been reduced and stake amount should have been reduced by stake removed
@@ -875,12 +879,11 @@ describe('StakeWRewards', () => {
         const origStakerBalance = await fixture.context.algod.accountInformation(stakerAccounts[0].addr).do();
 
         // Remove it all
-        await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(1190));
-        const removeFees = AlgoAmount.MicroAlgos(7000).microAlgos;
+        const fees = await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(1190));
 
         const newStakerBalance = await fixture.context.algod.accountInformation(stakerAccounts[0].addr).do();
-        // 1000 algos staked + 190 reward (- .004 in fees for removing stake)
-        expect(newStakerBalance.amount).toBe(origStakerBalance.amount + AlgoAmount.Algos(1190).microAlgos - removeFees);
+        // 1000 algos staked + 190 reward (- fees for removing stake)
+        expect(newStakerBalance.amount).toBe(origStakerBalance.amount + AlgoAmount.Algos(1190).microAlgos - fees);
 
         // no one should be left and be 0 balance
         const postRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);

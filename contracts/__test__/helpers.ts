@@ -641,29 +641,48 @@ export async function addStake(
 }
 
 export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
+    const simulateResults = await stakeClient
+        .compose()
+        .gas({}, { note: '1' })
+        .gas({}, { note: '2' })
+        .removeStake(
+            { amountToUnstake: unstakeAmount.microAlgos },
+            {
+                sendParams: {
+                    fee: AlgoAmount.MicroAlgos(6000),
+                },
+                sender: staker,
+            }
+        )
+        .simulate({ allowUnnamedResources: true });
+
+    const itxnfees = AlgoAmount.MicroAlgos(
+        1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
+    );
+    consoleLogger.info(`removeStake fees:${itxnfees.microAlgos}`);
+
     try {
-        return (
-            await stakeClient
-                .compose()
-                .gas({}, { note: '1' })
-                .gas({}, { note: '2' })
-                .removeStake(
-                    { amountToUnstake: unstakeAmount.microAlgos },
-                    {
-                        sendParams: {
-                            // pays us back and tells validator about balance changed
-                            fee: AlgoAmount.MicroAlgos(7000),
-                        },
-                        sender: staker,
-                    }
-                )
-                .execute({ populateAppCallResources: true })
-        ).returns![2]!;
+        await stakeClient
+            .compose()
+            .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .removeStake(
+                { amountToUnstake: unstakeAmount.microAlgos },
+                {
+                    sendParams: {
+                        // pays us back and tells validator about balance changed
+                        fee: AlgoAmount.MicroAlgos(itxnfees.microAlgos),
+                    },
+                    sender: staker,
+                }
+            )
+            .execute({ populateAppCallResources: true });
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message);
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
         throw exception;
     }
+    return itxnfees.microAlgos;
 }
 
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
@@ -680,9 +699,8 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
     if (logs !== undefined) {
         dumpLogs(logs);
     }
-    // our 3 outers + however many inners were used.
     fees = AlgoAmount.MicroAlgos(
-        3000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700)
+        1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
     );
     consoleLogger.info(`epoch update fees of:${fees.toString()}`);
 
@@ -729,7 +747,7 @@ export async function verifyRewardAmounts(
     tokenRewardedAmount: bigint,
     stakersPriorToReward: StakedInfo[],
     stakersAfterReward: StakedInfo[],
-    payoutEveryXMins: number,
+    payoutEveryXMins: number
 ): Promise<void> {
     const payoutDaysInSecs = payoutEveryXMins * 24 * 60 * 60;
     // iterate stakersPriorToReward and total the 'Balance' value to get a 'total amount'
