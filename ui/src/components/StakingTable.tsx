@@ -102,7 +102,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
     },
     {
       accessorKey: 'totalRewarded',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Total Rewards" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Total Rewarded" />,
       cell: ({ row }) => (
         <AlgoDisplayAmount amount={row.original.totalRewarded} microalgos mutedRemainder />
       ),
@@ -266,14 +266,14 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
           </Table>
         </div>
 
-        {table.getFilteredRowModel().rows.length > 0 && (
+        {/* {table.getFilteredRowModel().rows.length > 0 && (
           <div className="flex items-center justify-end space-x-2 py-4">
             <div className="flex-1 text-sm text-muted-foreground">
               {table.getFilteredSelectedRowModel().rows.length} of{' '}
               {table.getFilteredRowModel().rows.length} row(s) selected.
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       <AddStakeModal validator={addStakeValidator} setValidator={setAddStakeValidator} />
