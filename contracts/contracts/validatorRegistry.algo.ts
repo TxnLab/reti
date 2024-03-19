@@ -5,6 +5,7 @@ import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
+    GATING_TYPE_ASSET_ID,
     GATING_TYPE_ASSETS_CREATED_BY,
     GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
     GATING_TYPE_NONE,
@@ -1068,6 +1069,13 @@ export class ValidatorRegistry extends Contract {
         throw Error('no available space in specified node for this pool');
     }
 
+    /**
+     * Checks if a staker meets the gating requirements specified by the validator.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator.
+     * @param {number} valueToVerify - The value to verify against the gating requirements.
+     * @returns {void} or asserts if requirements not met.
+     */
     private doesStakerMeetGating(validatorID: ValidatorID, valueToVerify: uint64): void {
         const type = this.ValidatorList(validatorID).value.Config.EntryGatingType;
         if (type === GATING_TYPE_NONE) {
@@ -1076,7 +1084,7 @@ export class ValidatorRegistry extends Contract {
         const staker = this.txn.sender;
         const gateReq = this.ValidatorList(validatorID).value.Config.EntryGatingValue;
 
-        // If an asset gating - check the balance requirement - can handle whether right asset afterwards
+        // If an asset gating - check the balance requirement - can handle whether right asset afterward
         if (type === GATING_TYPE_ASSETS_CREATED_BY || type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
             assert(valueToVerify !== 0);
             let balRequired = this.ValidatorList(validatorID).value.Config.GatingAssetMinBalance;
@@ -1089,31 +1097,38 @@ export class ValidatorRegistry extends Contract {
             );
         }
         if (type === GATING_TYPE_ASSETS_CREATED_BY) {
-            // TODO
-            // assert(
-            //     AssetID.fromUint64(valueToVerify).creator === Address.fromBytes(gateReq),
-            //     'specified asset must be created by creator that the validator defined as a requirement to stake'
-            // );
+            assert(
+                AssetID.fromUint64(valueToVerify).creator === Address.fromBytes(gateReq),
+                'specified asset must be created by creator that the validator defined as a requirement to stake'
+            );
+        }
+        if (type === GATING_TYPE_ASSET_ID) {
+            const requiredAsset = extractUint64(gateReq, 0);
+            assert(requiredAsset !== 0);
+            assert(
+                valueToVerify === requiredAsset,
+                'specified asset must be identical to the asset id defined as a requirement to stake'
+            );
         }
         if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
             // Walk all the linked addresses defined by this NFD (stored in v.caAlgo.0.as)
             // if any are the creator of the specified asset
             // then we pass.
-            // sendAppCall({
-            //     applicationID: AppID.fromUint64(valueToVerify),
-            //     applicationArgs: ['read_property', 'v.caAlgo.0.as'],
-            // });
-            // const addrData = this.itxn.lastLog;
-            // for (let i = 0; i < addrData.length; i += 32) {
-            //     const addr = extract3(addrData, i, 32);
-            //     if (addr === rawBytes(gateReq) && addr !== rawBytes(globals.zeroAddress)) {
-            //         if (rawBytes(AssetID.fromUint64(valueToVerify).creator) === addr) {
-            //             // fou
-            //             return;
-            //         }
-            //     }
-            // }
-            // throw Error('specified asset must be created by creator that is one of the linked addresses in an nfd');
+            sendAppCall({
+                applicationID: AppID.fromUint64(valueToVerify),
+                applicationArgs: ['read_property', 'v.caAlgo.0.as'],
+            });
+            const assetCreator = rawBytes(AssetID.fromUint64(valueToVerify).creator);
+            const addrData = this.itxn.lastLog;
+            for (let i = 0; i < addrData.length; i += 32) {
+                const addr = extract3(addrData, i, 32);
+                if (addr === rawBytes(gateReq) && addr !== rawBytes(globals.zeroAddress)) {
+                    if (assetCreator === addr) {
+                        return;
+                    }
+                }
+            }
+            throw Error('specified asset must be created by creator that is one of the linked addresses in an nfd');
         }
     }
 }
