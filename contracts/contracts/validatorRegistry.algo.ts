@@ -1073,7 +1073,7 @@ export class ValidatorRegistry extends Contract {
      * Checks if a staker meets the gating requirements specified by the validator.
      *
      * @param {ValidatorID} validatorID - The ID of the validator.
-     * @param {number} valueToVerify - The value to verify against the gating requirements.
+     * @param {uint64} valueToVerify - The value to verify against the gating requirements.
      * @returns {void} or asserts if requirements not met.
      */
     private doesStakerMeetGating(validatorID: ValidatorID, valueToVerify: uint64): void {
@@ -1082,7 +1082,7 @@ export class ValidatorRegistry extends Contract {
             return;
         }
         const staker = this.txn.sender;
-        const gateReq = this.ValidatorList(validatorID).value.Config.EntryGatingValue;
+        const gateReq = clone(this.ValidatorList(validatorID).value.Config.EntryGatingValue);
 
         // If an asset gating - check the balance requirement - can handle whether right asset afterward
         if (type === GATING_TYPE_ASSETS_CREATED_BY || type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
@@ -1111,17 +1111,16 @@ export class ValidatorRegistry extends Contract {
             );
         }
         if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
-            // Walk all the linked addresses defined by this NFD (stored in v.caAlgo.0.as)
-            // if any are the creator of the specified asset
-            // then we pass.
+            // Walk all the linked addresses defined by this NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
+            // if any are the creator of the specified asset then we pass.
             sendAppCall({
                 applicationID: AppID.fromUint64(valueToVerify),
                 applicationArgs: ['read_property', 'v.caAlgo.0.as'],
             });
+            const caAlgoData = this.itxn.lastLog;
             const assetCreator = rawBytes(AssetID.fromUint64(valueToVerify).creator);
-            const addrData = this.itxn.lastLog;
-            for (let i = 0; i < addrData.length; i += 32) {
-                const addr = extract3(addrData, i, 32);
+            for (let i = 0; i < caAlgoData.length; i += 32) {
+                const addr = extract3(caAlgoData, i, 32);
                 if (addr === rawBytes(gateReq) && addr !== rawBytes(globals.zeroAddress)) {
                     if (assetCreator === addr) {
                         return;

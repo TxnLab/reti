@@ -20,6 +20,12 @@ import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 
 export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
 
+export const GATING_TYPE_NONE = 0;
+export const GATING_TYPE_ASSETS_CREATED_BY = 1;
+export const GATING_TYPE_ASSET_ID = 2;
+export const GATING_TYPE_CREATED_BY_NFD_ADDRESSES = 3;
+export const GATING_TYPE_SEGMENT_OF_NFD = 4;
+
 export class ValidatorConfig {
     ID: bigint; // ID of this validator (sequentially assigned)
 
@@ -31,7 +37,9 @@ export class ValidatorConfig {
     // NFD must be currently OWNED by address that adds the validator
     NFDForInfo: bigint;
 
-    EntryGatingValue: string;
+    EntryGatingType: number;
+
+    EntryGatingValue: Uint8Array;
 
     GatingAssetMinBalance: bigint;
 
@@ -62,6 +70,7 @@ export class ValidatorConfig {
         Owner,
         Manager,
         NFDForInfo,
+        EntryGatingType,
         EntryGatingValue,
         GatingAssetMinBalance,
         RewardTokenID,
@@ -79,7 +88,8 @@ export class ValidatorConfig {
         string,
         string,
         bigint,
-        string,
+        number,
+        Uint8Array,
         bigint,
         bigint,
         bigint,
@@ -96,6 +106,7 @@ export class ValidatorConfig {
         this.Owner = Owner;
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
+        this.EntryGatingType = EntryGatingType;
         this.EntryGatingValue = EntryGatingValue;
         this.GatingAssetMinBalance = GatingAssetMinBalance;
         this.RewardTokenID = RewardTokenID;
@@ -116,7 +127,8 @@ const DefaultValidatorConfig: ValidatorConfig = {
     Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     NFDForInfo: BigInt(0),
-    EntryGatingValue: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    EntryGatingType: GATING_TYPE_NONE,
+    EntryGatingValue: new Uint8Array(32),
     GatingAssetMinBalance: BigInt(0),
     RewardTokenID: BigInt(0),
     RewardPerPayout: BigInt(0),
@@ -141,6 +153,7 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.Owner,
         configObj.Manager,
         configObj.NFDForInfo,
+        configObj.EntryGatingType,
         configObj.EntryGatingValue,
         configObj.GatingAssetMinBalance,
         configObj.RewardTokenID,
@@ -163,7 +176,8 @@ function validatorConfigAsArray(
     string,
     string,
     bigint,
-    string,
+    number,
+    Uint8Array,
     bigint,
     bigint,
     bigint,
@@ -181,6 +195,7 @@ function validatorConfigAsArray(
         config.Owner,
         config.Manager,
         config.NFDForInfo,
+        config.EntryGatingType,
         config.EntryGatingValue,
         config.GatingAssetMinBalance,
         config.RewardTokenID,
@@ -600,7 +615,7 @@ export async function addStake(
                 {
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     validatorID: vldtrId,
-                    tokenToVerify: 0,
+                    valueToVerify: 0,
                 },
                 { sendParams: { fee: fees }, sender: staker }
             )
@@ -626,7 +641,7 @@ export async function addStake(
                 {
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     validatorID: vldtrId,
-                    tokenToVerify: 0,
+                    valueToVerify: 0,
                 },
                 { sendParams: { fee: fees }, sender: staker }
             )
