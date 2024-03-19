@@ -351,6 +351,16 @@ export function isUnstakingDisabled(
   return noPools || !validatorHasStake
 }
 
+export function isAddingPoolDisabled(validator: Validator): boolean {
+  // @todo: define totalNodes as global constant or fetch from protocol constraints
+  const totalNodes = 4
+  const { numPools, poolsPerNode } = validator
+
+  const hasAvailableSlots = numPools < poolsPerNode * totalNodes
+
+  return !hasAvailableSlots
+}
+
 export function canManageValidator(validator: Validator, activeAddress: string): boolean {
   return validator.owner === activeAddress || validator.manager === activeAddress
 }

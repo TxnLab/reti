@@ -14,7 +14,9 @@ import {
 import { useWallet } from '@txnlab/use-wallet'
 import { MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
+import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
+import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { Button } from '@/components/ui/button'
@@ -42,13 +44,13 @@ import {
   calculateMaxStake,
   calculateMaxStakers,
   canManageValidator,
+  isAddingPoolDisabled,
   isStakingDisabled,
   isUnstakingDisabled,
 } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
-import { AlgoDisplayAmount } from './AlgoDisplayAmount'
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -63,6 +65,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
 
   const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
+  const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
   const { activeAddress } = useWallet()
 
@@ -164,6 +167,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
         const validator = row.original
         const stakingDisabled = isStakingDisabled(validator)
         const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
+        const addingPoolDisabled = isAddingPoolDisabled(validator)
         const canManage = canManageValidator(validator, activeAddress!)
 
         return (
@@ -207,6 +211,14 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
                       {canManage ? 'Manage' : 'View'}
                     </Link>
                   </DropdownMenuItem>
+                  {canManage && (
+                    <DropdownMenuItem
+                      onClick={() => setAddPoolValidator(validator)}
+                      disabled={addingPoolDisabled}
+                    >
+                      Add Staking Pool
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -296,6 +308,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
         setValidator={setUnstakeValidator}
         stakesByValidator={stakesByValidator}
       />
+      <AddPoolModal validator={addPoolValidator} setValidator={setAddPoolValidator} />
     </>
   )
 }

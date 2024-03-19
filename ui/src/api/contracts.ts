@@ -253,11 +253,10 @@ export async function fetchNodePoolAssignments(
   }
 }
 
-export const poolAssignmentQueryOptions = (validatorId: number, enabled = true) =>
+export const poolAssignmentQueryOptions = (validatorId: number | string, enabled = true) =>
   queryOptions({
-    queryKey: ['pool-assignments', validatorId.toString()],
+    queryKey: ['pool-assignments', String(validatorId)],
     queryFn: () => fetchNodePoolAssignments(validatorId),
-    staleTime: Infinity,
     enabled,
   })
 

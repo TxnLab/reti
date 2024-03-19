@@ -1,14 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { Button } from '@/components/ui/button'
-import { addStakingPool, fetchMbrAmounts, initStakingPoolStorage } from '@/api/contracts'
+import {
+  addStakingPool,
+  fetchMbrAmounts,
+  initStakingPoolStorage,
+  poolAssignmentQueryOptions,
+} from '@/api/contracts'
 import { NodeSelect } from '@/components/NodeSelect'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -35,11 +40,14 @@ const formSchema = z.object({
 interface AddPoolModalProps {
   validator: Validator | null
   setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
-  poolAssignment: NodePoolAssignmentConfig
-  disabled?: boolean
+  poolAssignment?: NodePoolAssignmentConfig
 }
 
-export function AddPoolModal({ validator, setValidator, poolAssignment }: AddPoolModalProps) {
+export function AddPoolModal({
+  validator,
+  setValidator,
+  poolAssignment: poolAssignmentProp,
+}: AddPoolModalProps) {
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()
@@ -56,19 +64,20 @@ export function AddPoolModal({ validator, setValidator, poolAssignment }: AddPoo
 
   const { isValid } = form.formState
 
-  const defaultNodeNum = React.useMemo(() => {
-    if (!validator?.poolsPerNode) return '1'
+  const assignmentQuery = useQuery(poolAssignmentQueryOptions(validator?.id || '', !!validator))
+  const poolAssignment = assignmentQuery.data || poolAssignmentProp
 
+  const defaultNodeNum = React.useMemo(() => {
+    if (!validator?.poolsPerNode || !poolAssignment) {
+      return '1'
+    }
     const nodeNum = findFirstAvailableNode(poolAssignment, validator.poolsPerNode)
     return nodeNum?.toString() || '1'
   }, [poolAssignment, validator?.poolsPerNode])
 
   React.useEffect(() => {
-    if (!validator) {
-      return
-    }
     form.setValue('nodeNum', defaultNodeNum)
-  }, [defaultNodeNum, form, validator])
+  }, [defaultNodeNum, form.setValue])
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -167,7 +176,7 @@ export function AddPoolModal({ validator, setValidator, poolAssignment }: AddPoo
                 control={form.control}
                 name="nodeNum"
                 render={({ field }) => (
-                  <FormItem className={cn(poolAssignment === null ? 'hidden' : '')}>
+                  <FormItem className={cn(!poolAssignment || !validator ? 'hidden' : '')}>
                     <FormLabel>Select Node</FormLabel>
                     {poolAssignment && !!validator && (
                       <NodeSelect
