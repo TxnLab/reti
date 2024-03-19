@@ -118,7 +118,7 @@ export function callGetValidatorState(
 }
 
 export async function fetchValidator(
-  id: string | number | bigint,
+  validatorId: string | number | bigint,
   client?: ValidatorRegistryClient,
 ) {
   try {
@@ -130,18 +130,16 @@ export async function fetchValidator(
 
     const validatorClient = client || makeSimulateValidatorClient(activeAddress)
 
-    const validatorId = Number(id)
-
     const [config, state] = await Promise.all([
-      callGetValidatorConfig(validatorId, validatorClient),
-      callGetValidatorState(validatorId, validatorClient),
+      callGetValidatorConfig(Number(validatorId), validatorClient),
+      callGetValidatorState(Number(validatorId), validatorClient),
     ])
 
     const rawConfig = config.returns![0] as ValidatorConfigRaw
     const rawState = state.returns![0] as ValidatorStateRaw
 
     if (!rawConfig || !rawState) {
-      throw new ValidatorNotFoundError(`Validator with id "${id}" not found!`)
+      throw new ValidatorNotFoundError(`Validator with id "${Number(validatorId)}" not found!`)
     }
 
     // Transform raw data to Validator object
@@ -204,9 +202,9 @@ export const validatorsQueryOptions = queryOptions({
   queryFn: () => fetchValidators(),
 })
 
-export const validatorQueryOptions = (validatorId: string) =>
+export const validatorQueryOptions = (validatorId: number | string) =>
   queryOptions({
-    queryKey: ['validator', { validatorId }],
+    queryKey: ['validator', String(validatorId)],
     queryFn: () => fetchValidator(validatorId),
     retry: false,
   })
@@ -224,7 +222,7 @@ export function callGetNodePoolAssignments(
 }
 
 export async function fetchNodePoolAssignments(
-  id: string | number | bigint,
+  validatorId: string | number | bigint,
 ): Promise<NodePoolAssignmentConfig> {
   try {
     const activeAddress = getActiveWalletAddress()
@@ -235,10 +233,8 @@ export async function fetchNodePoolAssignments(
 
     const validatorClient = makeSimulateValidatorClient(activeAddress)
 
-    const validatorId = Number(id)
-
     const nodePoolAssignmentResponse = await callGetNodePoolAssignments(
-      validatorId,
+      Number(validatorId),
       validatorClient,
     )
 
@@ -256,6 +252,14 @@ export async function fetchNodePoolAssignments(
     throw error
   }
 }
+
+export const poolAssignmentQueryOptions = (validatorId: number, enabled = true) =>
+  queryOptions({
+    queryKey: ['pool-assignments', validatorId.toString()],
+    queryFn: () => fetchNodePoolAssignments(validatorId),
+    staleTime: Infinity,
+    enabled,
+  })
 
 export function callGetMbrAmounts(validatorClient: ValidatorRegistryClient) {
   return validatorClient

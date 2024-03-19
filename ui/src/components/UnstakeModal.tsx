@@ -245,7 +245,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
           )
 
           queryClient.setQueryData<Validator>(
-            ['validator', { validatorId: pool.poolKey.validatorId.toString() }],
+            ['validator', String(pool.poolKey.validatorId)],
             (prevData) => {
               if (!prevData) {
                 return prevData

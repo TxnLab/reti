@@ -286,20 +286,17 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
         },
       )
 
-      queryClient.setQueryData<Validator>(
-        ['validator', { validatorId: validator!.id.toString() }],
-        (prevData) => {
-          if (!prevData) {
-            return prevData
-          }
+      queryClient.setQueryData<Validator>(['validator', String(validator!.id)], (prevData) => {
+        if (!prevData) {
+          return prevData
+        }
 
-          return {
-            ...prevData,
-            numStakers: isNewStaker ? prevData.numStakers + 1 : prevData.numStakers,
-            totalStaked: prevData.totalStaked + amountToStake,
-          }
-        },
-      )
+        return {
+          ...prevData,
+          numStakers: isNewStaker ? prevData.numStakers + 1 : prevData.numStakers,
+          totalStaked: prevData.totalStaked + amountToStake,
+        }
+      })
 
       queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
         if (!prevData) {
