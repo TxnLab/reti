@@ -312,7 +312,11 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                   {stakerPoolsData.length === 1 ? (
                     <p className="py-2 text-sm">
                       <span className="inline-flex items-center">
-                        <AlgoDisplayAmount amount={stakerPoolsData[0].balance} microalgos />
+                        <AlgoDisplayAmount
+                          amount={stakerPoolsData[0].balance}
+                          microalgos
+                          mutedRemainder
+                        />
                       </span>
                     </p>
                   ) : (
@@ -332,7 +336,11 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                                 <span className="inline-flex items-center gap-x-2">
                                   <span className="font-mono">{pool.poolKey.poolId}</span>
                                   <span className="text-muted-foreground">-</span>
-                                  <AlgoDisplayAmount amount={pool.balance} microalgos />
+                                  <AlgoDisplayAmount
+                                    amount={pool.balance}
+                                    microalgos
+                                    mutedRemainder
+                                  />
                                 </span>
                               </SelectItem>
                             ))}
