@@ -25,18 +25,19 @@ export function transformValidatorData(
     Owner: rawConfig[1],
     Manager: rawConfig[2],
     NFDForInfo: rawConfig[3],
-    MustHoldCreatorNFT: rawConfig[4],
-    GatingAssetMinBalance: rawConfig[5],
-    RewardTokenID: rawConfig[6],
-    RewardPerPayout: rawConfig[7],
-    PayoutEveryXMins: rawConfig[8],
-    PercentToValidator: rawConfig[9],
-    ValidatorCommissionAddress: rawConfig[10],
-    MinEntryStake: rawConfig[11],
-    MaxAlgoPerPool: rawConfig[12],
-    PoolsPerNode: rawConfig[13],
-    SunsettingOn: rawConfig[14],
-    SunsettingTo: rawConfig[15],
+    EntryGatingType: rawConfig[4],
+    EntryGatingValue: rawConfig[5],
+    GatingAssetMinBalance: rawConfig[6],
+    RewardTokenID: rawConfig[7],
+    RewardPerPayout: rawConfig[8],
+    PayoutEveryXMins: rawConfig[9],
+    PercentToValidator: rawConfig[10],
+    ValidatorCommissionAddress: rawConfig[11],
+    MinEntryStake: rawConfig[12],
+    MaxAlgoPerPool: rawConfig[13],
+    PoolsPerNode: rawConfig[14],
+    SunsettingOn: rawConfig[15],
+    SunsettingTo: rawConfig[16],
   }
 
   const state: ValidatorState = {
@@ -51,6 +52,11 @@ export function transformValidatorData(
     owner: config.Owner,
     manager: config.Manager,
     nfd: Number(config.NFDForInfo),
+    gatingType: Number(config.EntryGatingType),
+    gatingValue: config.EntryGatingValue,
+    gatingAssetMinBalance: Number(config.GatingAssetMinBalance),
+    rewardTokenId: Number(config.RewardTokenID),
+    rewardPerPayout: Number(config.RewardPerPayout),
     payoutFrequency: Number(config.PayoutEveryXMins),
     commission: Number(config.PercentToValidator),
     commissionAccount: config.ValidatorCommissionAddress,
@@ -136,12 +142,8 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           message: 'NFD name is invalid',
         })
         .optional(),
-      MustHoldCreatorNFT: z
-        .string()
-        .refine((val) => val === '' || algosdk.isValidAddress(val), {
-          message: 'Invalid Algorand address',
-        })
-        .optional(),
+      EntryGatingType: z.string().optional(),
+      EntryGatingValue: z.string().optional(),
       GatingAssetMinBalance: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
@@ -301,7 +303,52 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         )
         .optional(),
     })
-    .required()
+    .superRefine((data, ctx) => {
+      const { EntryGatingType, EntryGatingValue } = data
+
+      switch (EntryGatingType) {
+        case '0':
+          if (EntryGatingValue !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['EntryGatingValue'],
+              message: 'EntryGatingValue must be empty when EntryGatingType is 0',
+            })
+          }
+          break
+        case '1':
+          if (typeof EntryGatingValue !== 'string' || !algosdk.isValidAddress(EntryGatingValue)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['EntryGatingValue'],
+              message:
+                'EntryGatingValue must be a valid Algorand address when EntryGatingType is 1',
+            })
+          }
+          break
+        case '2':
+        case '3':
+        case '4':
+          if (
+            !(
+              !isNaN(Number(EntryGatingValue)) &&
+              Number.isInteger(Number(EntryGatingValue)) &&
+              Number(EntryGatingValue) > 0
+            )
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['EntryGatingValue'],
+              message:
+                'EntryGatingValue must be a positive integer when EntryGatingType is 2, 3, or 4',
+            })
+          }
+          break
+        default:
+          // Optionally handle cases where EntryGatingType is not one of the expected values, if needed
+          break
+      }
+    })
 }
 
 export function calculateMaxStake(validator: Validator, algos = false): number {

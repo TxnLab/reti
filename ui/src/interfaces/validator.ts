@@ -3,7 +3,8 @@ export type ValidatorConfigRaw = [
   string,
   string,
   bigint,
-  string,
+  number,
+  Uint8Array,
   bigint,
   bigint,
   bigint,
@@ -22,7 +23,8 @@ export interface ValidatorConfig {
   Owner: string // Account that controls config - presumably cold-wallet
   Manager: string // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
   NFDForInfo: bigint
-  MustHoldCreatorNFT: string
+  EntryGatingType: number
+  EntryGatingValue: Uint8Array
   GatingAssetMinBalance: bigint
   RewardTokenID: bigint
   RewardPerPayout: bigint
@@ -50,6 +52,11 @@ export type Validator = {
   owner: string
   manager: string
   nfd: number
+  gatingType: number
+  gatingValue: Uint8Array
+  gatingAssetMinBalance: number
+  rewardTokenId: number
+  rewardPerPayout: number
   payoutFrequency: number
   commission: number
   commissionAccount: string

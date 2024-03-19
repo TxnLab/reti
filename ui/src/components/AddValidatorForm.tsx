@@ -61,11 +61,13 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onBlur',
     defaultValues: {
       Owner: '',
       Manager: '',
       NFDForInfo: '',
-      MustHoldCreatorNFT: '',
+      EntryGatingType: '',
+      EntryGatingValue: '',
       GatingAssetMinBalance: '',
       RewardTokenID: '',
       RewardPerPayout: '',
@@ -113,8 +115,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         Owner: values.Owner,
         Manager: values.Manager,
         NFDForInfo: BigInt(values.NFDForInfo || 0),
-        MustHoldCreatorNFT:
-          values.MustHoldCreatorNFT || 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+        EntryGatingType: 0,
+        EntryGatingValue: new Uint8Array(32),
         GatingAssetMinBalance: BigInt(values.GatingAssetMinBalance || 0),
         RewardTokenID: BigInt(values.RewardTokenID || 0),
         RewardPerPayout: BigInt(values.RewardPerPayout || 0),
@@ -165,7 +167,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             validatorConfig.Owner,
             validatorConfig.Manager,
             validatorConfig.NFDForInfo,
-            validatorConfig.MustHoldCreatorNFT,
+            validatorConfig.EntryGatingType,
+            validatorConfig.EntryGatingValue,
             validatorConfig.GatingAssetMinBalance,
             validatorConfig.RewardTokenID,
             validatorConfig.RewardPerPayout,
@@ -264,23 +267,6 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       NFD which the validator uses to describe their validator pool (optional)
                     </FormDescription>
                     <FormMessage>{errors.NFDForInfo?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="MustHoldCreatorNFT"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Must Hold Creator NFT</FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Stakers will be required to hold an asset created by this account (optional)
-                    </FormDescription>
-                    <FormMessage>{errors.MustHoldCreatorNFT?.message}</FormMessage>
                   </FormItem>
                 )}
               />

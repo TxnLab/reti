@@ -430,7 +430,7 @@ export async function addStake(
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
         validatorID,
-        tokenToVerify: 0,
+        valueToVerify: 0,
       },
       { sendParams: { fee: fees } },
     )
@@ -453,7 +453,7 @@ export async function addStake(
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
         validatorID,
-        tokenToVerify: 0,
+        valueToVerify: 0,
       },
       { sendParams: { fee: fees } },
     )
