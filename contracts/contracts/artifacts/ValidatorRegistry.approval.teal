@@ -5007,40 +5007,37 @@ doesStakerMeetGating:
 	// provided NFD must be valid
 	assert
 
-	// *if45_condition
-	// contracts/validatorRegistry.algo.ts:1137
-	// rawBytes(AppID.fromUint64(userOfferedNFDAppID).globalState('i.owner.a') as Address) !==
-	//                     rawBytes(staker) &&
-	//                 !this.isAddressInNFDCAAlgoList(userOfferedNFDAppID, staker)
+	// contracts/validatorRegistry.algo.ts:1136
+	// assert(
+	//                 rawBytes(AppID.fromUint64(userOfferedNFDAppID).globalState('i.owner.a') as Address) ===
+	//                     rawBytes(staker) || this.isAddressInNFDCAAlgoList(userOfferedNFDAppID, staker),
+	//                 "provided nfd for entry isn't owned or linked to the staker"
+	//             )
 	frame_dig 5 // userOfferedNFDAppID: uint64
 	byte 0x692e6f776e65722e61 // "i.owner.a"
 	app_global_get_ex
 	assert
 	frame_dig 1 // staker: address
-	!=
+	==
 	dup
-	bz *skip_and9
+	bnz *skip_or4
 	frame_dig 1 // staker: address
 	frame_dig 5 // userOfferedNFDAppID: uint64
 	callsub isAddressInNFDCAAlgoList
-	!
-	&&
+	||
 
-*skip_and9:
-	bz *if45_end
+*skip_or4:
+	// provided nfd for entry isn't owned or linked to the staker
+	assert
 
-	// *if45_consequent
-	err // "provided nfd for entry isn't owned or linked to the staker"
-
-*if45_end:
-	// contracts/validatorRegistry.algo.ts:1145
+	// contracts/validatorRegistry.algo.ts:1143
 	// requiredParentAppID = extractUint64(gateReq, 0)
 	frame_dig 2 // gateReq: byte[32]
 	int 0
 	extract_uint64
 	frame_bury 6 // requiredParentAppID: uint64
 
-	// contracts/validatorRegistry.algo.ts:1147
+	// contracts/validatorRegistry.algo.ts:1145
 	// assert(
 	//                 (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) === requiredParentAppID,
 	//                 'specified nfd must be a segment of the nfd the validator specified as a requirement'
@@ -5073,7 +5070,7 @@ isNFDAppIDValid:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/validatorRegistry.algo.ts:1165
+	// contracts/validatorRegistry.algo.ts:1163
 	// userOfferedNFDName = AppID.fromUint64(nfdAppID).globalState('i.name') as string
 	frame_dig -1 // nfdAppID: uint64
 	byte 0x692e6e616d65 // "i.name"
@@ -5081,7 +5078,7 @@ isNFDAppIDValid:
 	assert
 	frame_bury 0 // userOfferedNFDName: string
 
-	// contracts/validatorRegistry.algo.ts:1167
+	// contracts/validatorRegistry.algo.ts:1165
 	// sendAppCall({
 	//             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
 	//             applicationArgs: ['is_valid_nfd_appid', userOfferedNFDName, itob(nfdAppID)],
@@ -5090,12 +5087,12 @@ isNFDAppIDValid:
 	int appl
 	itxn_field TypeEnum
 
-	// contracts/validatorRegistry.algo.ts:1168
+	// contracts/validatorRegistry.algo.ts:1166
 	// applicationID: AppID.fromUint64(this.NFDRegistryAppID)
 	pushint TMPL_NFDRegistryAppID
 	itxn_field ApplicationID
 
-	// contracts/validatorRegistry.algo.ts:1169
+	// contracts/validatorRegistry.algo.ts:1167
 	// applicationArgs: ['is_valid_nfd_appid', userOfferedNFDName, itob(nfdAppID)]
 	byte 0x69735f76616c69645f6e66645f6170706964 // "is_valid_nfd_appid"
 	itxn_field ApplicationArgs
@@ -5112,7 +5109,7 @@ isNFDAppIDValid:
 	// Submit inner transaction
 	itxn_submit
 
-	// contracts/validatorRegistry.algo.ts:1171
+	// contracts/validatorRegistry.algo.ts:1169
 	// return btoi(this.itxn.lastLog) === 1;
 	itxn LastLog
 	btoi
@@ -5138,7 +5135,7 @@ isAddressInNFDCAAlgoList:
 	byte 0x
 	dupn 2
 
-	// contracts/validatorRegistry.algo.ts:1183
+	// contracts/validatorRegistry.algo.ts:1181
 	// sendAppCall({
 	//             applicationID: AppID.fromUint64(nfdAppID),
 	//             applicationArgs: ['read_property', 'v.caAlgo.0.as'],
@@ -5147,12 +5144,12 @@ isAddressInNFDCAAlgoList:
 	int appl
 	itxn_field TypeEnum
 
-	// contracts/validatorRegistry.algo.ts:1184
+	// contracts/validatorRegistry.algo.ts:1182
 	// applicationID: AppID.fromUint64(nfdAppID)
 	frame_dig -1 // nfdAppID: uint64
 	itxn_field ApplicationID
 
-	// contracts/validatorRegistry.algo.ts:1185
+	// contracts/validatorRegistry.algo.ts:1183
 	// applicationArgs: ['read_property', 'v.caAlgo.0.as']
 	byte 0x726561645f70726f7065727479 // "read_property"
 	itxn_field ApplicationArgs
@@ -5166,18 +5163,18 @@ isAddressInNFDCAAlgoList:
 	// Submit inner transaction
 	itxn_submit
 
-	// contracts/validatorRegistry.algo.ts:1187
+	// contracts/validatorRegistry.algo.ts:1185
 	// caAlgoData = this.itxn.lastLog
 	itxn LastLog
 	frame_bury 0 // caAlgoData: byte[]
 
-	// contracts/validatorRegistry.algo.ts:1188
+	// contracts/validatorRegistry.algo.ts:1186
 	// for (let i = 0; i < caAlgoData.length; i += 32)
 	int 0
 	frame_bury 1 // i: uint64
 
 *for_10:
-	// contracts/validatorRegistry.algo.ts:1188
+	// contracts/validatorRegistry.algo.ts:1186
 	// i < caAlgoData.length
 	frame_dig 1 // i: uint64
 	frame_dig 0 // caAlgoData: byte[]
@@ -5185,7 +5182,7 @@ isAddressInNFDCAAlgoList:
 	<
 	bz *for_10_end
 
-	// contracts/validatorRegistry.algo.ts:1189
+	// contracts/validatorRegistry.algo.ts:1187
 	// addr = extract3(caAlgoData, i, 32)
 	frame_dig 0 // caAlgoData: byte[]
 	frame_dig 1 // i: uint64
@@ -5193,24 +5190,24 @@ isAddressInNFDCAAlgoList:
 	extract3
 	frame_bury 2 // addr: byte[]
 
-	// *if46_condition
-	// contracts/validatorRegistry.algo.ts:1190
+	// *if45_condition
+	// contracts/validatorRegistry.algo.ts:1188
 	// addr !== rawBytes(globals.zeroAddress) && addr === rawBytes(addrToFind)
 	frame_dig 2 // addr: byte[]
 	global ZeroAddress
 	!=
 	dup
-	bz *skip_and10
+	bz *skip_and9
 	frame_dig 2 // addr: byte[]
 	frame_dig -2 // addrToFind: Address
 	==
 	&&
 
-*skip_and10:
-	bz *if46_end
+*skip_and9:
+	bz *if45_end
 
-	// *if46_consequent
-	// contracts/validatorRegistry.algo.ts:1191
+	// *if45_consequent
+	// contracts/validatorRegistry.algo.ts:1189
 	// return true;
 	int 1
 
@@ -5221,10 +5218,10 @@ isAddressInNFDCAAlgoList:
 	popn 2
 	retsub
 
-*if46_end:
+*if45_end:
 
 *for_10_continue:
-	// contracts/validatorRegistry.algo.ts:1188
+	// contracts/validatorRegistry.algo.ts:1186
 	// i += 32
 	frame_dig 1 // i: uint64
 	int 32
@@ -5233,7 +5230,7 @@ isAddressInNFDCAAlgoList:
 	b *for_10
 
 *for_10_end:
-	// contracts/validatorRegistry.algo.ts:1194
+	// contracts/validatorRegistry.algo.ts:1192
 	// return false;
 	int 0
 
