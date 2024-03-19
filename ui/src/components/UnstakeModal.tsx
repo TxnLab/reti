@@ -73,7 +73,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       .refine((val) => !isNaN(Number(val)) && parseFloat(val) > 0, {
         message: 'Invalid amount',
       })
-      .superRefine(async (val, ctx) => {
+      .superRefine((val, ctx) => {
         const algoAmount = parseFloat(val)
         const amountToUnstake = AlgoAmount.Algos(algoAmount).microAlgos
         const stakerPoolData = stakerPoolsData.find(

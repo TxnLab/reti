@@ -200,7 +200,6 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
                   >
                     Unstake
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled>Claim rewards</DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>

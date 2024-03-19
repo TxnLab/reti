@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -9,12 +11,23 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { useWallet } from '@txnlab/use-wallet'
 import dayjs from 'dayjs'
+import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
+import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -26,6 +39,8 @@ import {
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
+import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
+import { simulateEpoch } from '@/utils/development'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -40,8 +55,13 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  // const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
+  const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
+
+  const { signer, activeAddress } = useWallet()
+
+  const router = useRouter()
+  const queryClient = useQueryClient()
 
   const columns: ColumnDef<StakerValidatorData>[] = [
     {
@@ -110,16 +130,75 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
         const validatorId = row.original.validatorId
         const validator = validators.find((v) => v.id === validatorId)
 
+        if (!validator || !activeAddress) return null
+
+        const stakingDisabled = isStakingDisabled(validator)
+        const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
+        const canManage = canManageValidator(validator, activeAddress!)
+
         return (
           <div className="flex items-center justify-end gap-x-2 ml-2">
-            <Button size="sm" disabled>
-              Claim
+            <Button
+              size="sm"
+              onClick={() => setAddStakeValidator(validator)}
+              disabled={stakingDisabled}
+            >
+              Stake
             </Button>
-            {validator && (
-              <Button size="sm" variant="outline" onClick={() => setUnstakeValidator(validator)}>
-                Unstake
-              </Button>
-            )}
+            <Button size="sm" variant="outline" onClick={() => setUnstakeValidator(validator)}>
+              Unstake
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => setAddStakeValidator(validator)}
+                    disabled={stakingDisabled}
+                  >
+                    Stake
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setUnstakeValidator(validator)}
+                    disabled={unstakingDisabled}
+                  >
+                    Unstake
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>Claim rewards</DropdownMenuItem>
+                </DropdownMenuGroup>
+
+                {process.env.NODE_ENV === 'development' && canManage && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={async () =>
+                          simulateEpoch(
+                            validator,
+                            row.original.pools[0].poolKey,
+                            100,
+                            signer,
+                            activeAddress,
+                            queryClient,
+                            router,
+                          )
+                        }
+                        disabled={unstakingDisabled}
+                      >
+                        <FlaskConical className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Simulate Epoch
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )
       },
@@ -199,6 +278,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
         )}
       </div>
 
+      <AddStakeModal validator={addStakeValidator} setValidator={setAddStakeValidator} />
       <UnstakeModal
         validator={unstakeValidator}
         setValidator={setUnstakeValidator}

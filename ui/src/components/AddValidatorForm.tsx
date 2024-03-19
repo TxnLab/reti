@@ -477,14 +477,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             {/* <Button
               variant="outline"
               size="default"
-              onClick={() => {
+              onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                event.preventDefault()
                 form.reset({
                   Owner: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
                   Manager: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
-                  PayoutEveryXMins: (60 * 24).toString(),
-                  PercentToValidator: '3.4464',
+                  PayoutEveryXMins: '1',
+                  PercentToValidator: '5',
                   ValidatorCommissionAddress:
-                    'PUKGRD4XHCTSBCRK6LAUALDMAKPCNG4PFQY2HQH5XFCJ5U6YU4ZSH4SDBY',
+                    'Q5MNRF52SRS4MBXWAQKCTQG6U53JJEUAKYGQXZIXNUIGZKJE7FO72GRZBU',
                   MinEntryStake: '1000',
                   MaxAlgoPerPool: '20000000',
                   PoolsPerNode: '3',

@@ -12,6 +12,7 @@ import { getAccountBalance } from '@/api/algod'
 import {
   addStake,
   doesStakerNeedToPayMbr,
+  fetchMaxAvailableToStake,
   isNewStakerToValidator,
   mbrQueryOptions,
 } from '@/api/contracts'
@@ -37,6 +38,7 @@ import { Input } from '@/components/ui/input'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
+import { formatAlgoAmount } from '@/utils/format'
 
 interface AddStakeModalProps {
   validator: Validator | null
@@ -50,44 +52,97 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
   const router = useRouter()
   const { signer, activeAddress } = useWallet()
 
-  const { data: availableBalance } = useQuery({
+  // @todo: this will be available globally from wallet menu
+  const availableBalanceQuery = useQuery({
     queryKey: ['available-balance', activeAddress],
-    queryFn: () => getAccountBalance(activeAddress!),
+    queryFn: () => getAccountBalance(activeAddress!, true),
     enabled: !!activeAddress,
     refetchInterval: 30000,
   })
+  const availableBalance = availableBalanceQuery.data || 0
 
-  // @todo: check whether existing pool(s) have enough room for stakeAmount (set maximumAmount)
+  // @todo: make this a custom hook, call from higher up and pass down as prop
+  const mbrQuery = useQuery(mbrQueryOptions)
+  const stakerMbr = mbrQuery.data?.stakerMbr || 0
+
+  // @todo: make this a custom hook, call from higher up and pass down as prop
+  const mbrRequiredQuery = useQuery({
+    queryKey: ['mbr-required', activeAddress],
+    queryFn: () => doesStakerNeedToPayMbr(activeAddress!),
+    enabled: !!activeAddress,
+    staleTime: Infinity,
+  })
+  const mbrRequired = mbrRequiredQuery.data || false
+  const mbrAmount = mbrRequired ? stakerMbr : 0
+
+  const poolMaximumQuery = useQuery({
+    queryKey: ['pool-max', validator?.id],
+    queryFn: () => fetchMaxAvailableToStake(validator!.id),
+    enabled: !!validator,
+  })
+  const poolMaximumStake = poolMaximumQuery.data
+
+  const stakerMaximumStake = React.useMemo(() => {
+    const estimatedFee = AlgoAmount.MicroAlgos(240_000).microAlgos
+    return Math.max(0, availableBalance - mbrAmount - estimatedFee)
+  }, [availableBalance, mbrAmount])
+
+  const maximumStake = Math.min(stakerMaximumStake, poolMaximumStake || stakerMaximumStake)
+
   const formSchema = z.object({
-    amountToStake: z.string().superRefine((val, ctx) => {
-      const amount = AlgoAmount.Algos(Number(val)).microAlgos
-      const minimumAmount = validator?.minStake || 0
-      const maximumAmount = availableBalance || 0
+    amountToStake: z
+      .string()
+      .refine((val) => val !== '', {
+        message: 'Required field',
+      })
+      .refine((val) => !isNaN(Number(val)) && parseFloat(val) > 0, {
+        message: 'Invalid amount',
+      })
+      .superRefine((val, ctx) => {
+        const algoAmount = parseFloat(val)
+        const amountToStake = AlgoAmount.Algos(algoAmount).microAlgos
 
-      if (amount < minimumAmount) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.too_small,
-          minimum: minimumAmount,
-          type: 'number',
-          inclusive: true,
-          message: 'Amount to stake must meet the minimum required',
-        })
-      }
+        if (validator) {
+          const minimumStake = validator.minStake
 
-      if (amount > maximumAmount) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.too_big,
-          maximum: maximumAmount,
-          type: 'number',
-          inclusive: true,
-          message: 'Amount to stake must not exceed available balance',
-        })
-      }
-    }),
+          if (amountToStake < minimumStake) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_small,
+              minimum: minimumStake,
+              type: 'number',
+              inclusive: true,
+              message: `Minimum stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+            })
+          }
+
+          if (amountToStake > stakerMaximumStake) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.too_big,
+              maximum: stakerMaximumStake,
+              type: 'number',
+              inclusive: true,
+              message: 'Exceeds available balance',
+            })
+          }
+
+          if (poolMaximumStake !== undefined) {
+            if (amountToStake > poolMaximumStake) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.too_big,
+                maximum: poolMaximumStake,
+                type: 'number',
+                inclusive: true,
+                message: `Exceeds limit for validator's pools`,
+              })
+            }
+          }
+        }
+      }),
   })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: {
       amountToStake: '',
     },
@@ -102,8 +157,13 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
     }
   }
 
-  const mbrQuery = useQuery(mbrQueryOptions)
-  const stakerMbr = mbrQuery.data?.stakerMbr
+  const handleSetMaxAmount = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+
+    form.setValue('amountToStake', AlgoAmount.MicroAlgos(maximumStake).algos.toString(), {
+      shouldValidate: true,
+    })
+  }
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
@@ -120,9 +180,7 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
 
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
 
-      const { stakerMbr } = await queryClient.ensureQueryData(mbrQueryOptions)
-      const isMbrRequired = await doesStakerNeedToPayMbr(activeAddress)
-      const totalAmount = isMbrRequired ? amountToStake + stakerMbr : amountToStake
+      const totalAmount = mbrRequired ? amountToStake + stakerMbr : amountToStake
 
       const isNewStaker = await isNewStakerToValidator(
         validator!.id,
@@ -290,18 +348,30 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
                   <FormItem>
                     <FormLabel>Amount to Stake</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <div className="relative">
+                        <Input className="pr-16" {...field} />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="absolute inset-y-1 right-1.5 h-7 px-2 flex items-center text-muted-foreground text-xs uppercase"
+                          onClick={handleSetMaxAmount}
+                        >
+                          Max
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormDescription>
                       Enter the amount you wish to stake.{' '}
-                      {stakerMbr && (
+                      {mbrRequired && stakerMbr && (
                         <span>
                           NOTE: First time stakers will need to pay{' '}
                           <AlgoDisplayAmount amount={stakerMbr} microalgos /> in fees.
                         </span>
                       )}
                     </FormDescription>
-                    <FormMessage>{errors.amountToStake?.message}</FormMessage>
+                    <div className="h-5">
+                      <FormMessage>{errors.amountToStake?.message}</FormMessage>
+                    </div>
                   </FormItem>
                 )}
               />

@@ -10,6 +10,7 @@ import {
   Constraints,
   MbrAmounts,
   NodePoolAssignmentConfig,
+  PoolInfo,
   RawConstraints,
   RawNodePoolAssignmentConfig,
   Validator,
@@ -739,27 +740,140 @@ export async function epochBalanceUpdate(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<void> {
-  let fees = AlgoAmount.MicroAlgos(240_000)
-  const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
+  try {
+    let fees = AlgoAmount.MicroAlgos(240_000)
+    const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
 
-  const simulateResult = await stakingPoolSimulateClient
+    const simulateResult = await stakingPoolSimulateClient
+      .compose()
+      .gas({}, { note: '1' })
+      .gas({}, { note: '2' })
+      .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+      .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+    // @todo: switch to Joe's new method(s)
+    fees = AlgoAmount.MicroAlgos(
+      3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+    )
+
+    const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+
+    await stakingPoolClient
+      .compose()
+      .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+      .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+      .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+      .execute({ populateAppCallResources: true })
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export async function callGetPoolInfo(
+  poolKey: ValidatorPoolKey,
+  validatorClient: ValidatorRegistryClient,
+) {
+  return validatorClient
     .compose()
-    .gas({}, { note: '1' })
-    .gas({}, { note: '2' })
-    .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+    .getPoolInfo({ poolKey: [poolKey.validatorId, poolKey.poolId, poolKey.poolAppId] })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
 
-  // @todo: switch to Joe's new method(s)
-  fees = AlgoAmount.MicroAlgos(
-    3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
-  )
+export async function fetchPoolInfo(
+  poolKey: ValidatorPoolKey,
+  client?: ValidatorRegistryClient,
+): Promise<PoolInfo> {
+  try {
+    const activeAddress = getActiveWalletAddress()
 
-  const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
 
-  await stakingPoolClient
+    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+
+    const result = await callGetPoolInfo(poolKey, validatorClient)
+
+    const [poolAppId, totalStakers, totalAlgoStaked] = result.returns![0]
+
+    return {
+      poolAppId: Number(poolAppId),
+      totalStakers: Number(totalStakers),
+      totalAlgoStaked: Number(totalAlgoStaked),
+    }
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export async function callGetPools(
+  validatorID: number | bigint,
+  validatorClient: ValidatorRegistryClient,
+) {
+  return validatorClient
     .compose()
-    .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-    .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-    .epochBalanceUpdate({}, { sendParams: { fee: fees } })
-    .execute({ populateAppCallResources: true })
+    .getPools({ validatorID })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
+
+export async function fetchValidatorPools(
+  validatorId: string | number | bigint,
+  client?: ValidatorRegistryClient,
+): Promise<PoolInfo[]> {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+
+    const result = await callGetPools(Number(validatorId), validatorClient)
+
+    const poolsInfo = result.returns![0]
+
+    return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked]) => ({
+      poolAppId: Number(poolAppId),
+      totalStakers,
+      totalAlgoStaked: Number(totalAlgoStaked),
+    }))
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export async function fetchMaxAvailableToStake(
+  validatorId: string | number | bigint,
+): Promise<number> {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const validatorClient = makeSimulateValidatorClient(activeAddress)
+
+    const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
+    const rawConfig = validatorConfigResult.returns![0]
+
+    const maxAlgoPerPool = Number(rawConfig[12])
+
+    const poolsInfo: PoolInfo[] = await fetchValidatorPools(validatorId)
+
+    // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
+    const maxAvailableToStake = poolsInfo.reduce((acc, pool) => {
+      const availableToStake = maxAlgoPerPool - pool.totalAlgoStaked
+      return availableToStake > acc ? availableToStake : acc
+    }, 0)
+
+    return maxAvailableToStake
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
 }

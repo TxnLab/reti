@@ -16,12 +16,7 @@ interface NodeSelectProps {
   defaultValue: string
 }
 
-export function NodeSelect({
-  nodes,
-  poolsPerNode,
-  onValueChange,
-  defaultValue,
-}: NodeSelectProps) {
+export function NodeSelect({ nodes, poolsPerNode, onValueChange, defaultValue }: NodeSelectProps) {
   const nodeInfo = processNodePoolAssignment(nodes, poolsPerNode)
 
   return (
