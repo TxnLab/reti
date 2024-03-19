@@ -26,7 +26,7 @@ export function transformValidatorData(
     Manager: rawConfig[2],
     NFDForInfo: rawConfig[3],
     MustHoldCreatorNFT: rawConfig[4],
-    CreatorNFTMinBalance: rawConfig[5],
+    GatingAssetMinBalance: rawConfig[5],
     RewardTokenID: rawConfig[6],
     RewardPerPayout: rawConfig[7],
     PayoutEveryXMins: rawConfig[8],
@@ -142,7 +142,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           message: 'Invalid Algorand address',
         })
         .optional(),
-      CreatorNFTMinBalance: z
+      GatingAssetMinBalance: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid minimum balance',

@@ -78,10 +78,10 @@ type ValidatorConfig struct {
 	// is set
 	MustHoldCreatorNFT string
 
-	// CreatorNFTMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
+	// GatingAssetMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
 	// creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
 	// 10000[.000000] of token
-	CreatorNFTMinBalance uint64
+	GatingAssetMinBalance uint64
 
 	// Reward token ASA ID and reward rate (Optional): A validator can define a token that users are awarded in addition to
 	// the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own
@@ -123,7 +123,7 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.Manager = pkAsString(arrReturn[2].([]uint8))
 		config.NFDForInfo = arrReturn[3].(uint64)
 		config.MustHoldCreatorNFT = pkAsString(arrReturn[4].([]uint8))
-		config.CreatorNFTMinBalance = arrReturn[5].(uint64)
+		config.GatingAssetMinBalance = arrReturn[5].(uint64)
 		config.RewardTokenID = arrReturn[6].(uint64)
 		config.RewardPerPayout = arrReturn[7].(uint64)
 		config.PayoutEveryXMins = int(arrReturn[8].(uint16))
@@ -171,7 +171,7 @@ func (v *ValidatorConfig) String() string {
 	}
 	if v.MustHoldCreatorNFT != types.ZeroAddress.String() {
 		out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: %s\n", v.MustHoldCreatorNFT))
-		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.CreatorNFTMinBalance))
+		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
 		out.WriteString(fmt.Sprintf("Reward Token ID: %d\n", v.RewardTokenID))
 		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
 	}
@@ -338,7 +338,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				managerAddr,
 				info.Config.NFDForInfo,
 				mustHoldCreatorAddr,
-				info.Config.CreatorNFTMinBalance,
+				info.Config.GatingAssetMinBalance,
 				info.Config.RewardTokenID,
 				info.Config.RewardPerPayout,
 				uint16(info.Config.PayoutEveryXMins),

@@ -66,7 +66,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       Manager: '',
       NFDForInfo: '',
       MustHoldCreatorNFT: '',
-      CreatorNFTMinBalance: '',
+      GatingAssetMinBalance: '',
       RewardTokenID: '',
       RewardPerPayout: '',
       PayoutEveryXMins: '',
@@ -115,7 +115,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         NFDForInfo: BigInt(values.NFDForInfo || 0),
         MustHoldCreatorNFT:
           values.MustHoldCreatorNFT || 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-        CreatorNFTMinBalance: BigInt(values.CreatorNFTMinBalance || 0),
+        GatingAssetMinBalance: BigInt(values.GatingAssetMinBalance || 0),
         RewardTokenID: BigInt(values.RewardTokenID || 0),
         RewardPerPayout: BigInt(values.RewardPerPayout || 0),
         PayoutEveryXMins: Number(values.PayoutEveryXMins),
@@ -166,7 +166,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             validatorConfig.Manager,
             validatorConfig.NFDForInfo,
             validatorConfig.MustHoldCreatorNFT,
-            validatorConfig.CreatorNFTMinBalance,
+            validatorConfig.GatingAssetMinBalance,
             validatorConfig.RewardTokenID,
             validatorConfig.RewardPerPayout,
             validatorConfig.PayoutEveryXMins,
@@ -287,7 +287,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="CreatorNFTMinBalance"
+                name="GatingAssetMinBalance"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Creator NFT Minimum Balance</FormLabel>
@@ -297,7 +297,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormDescription>
                       Minimum required balance of the asset described above
                     </FormDescription>
-                    <FormMessage>{errors.CreatorNFTMinBalance?.message}</FormMessage>
+                    <FormMessage>{errors.GatingAssetMinBalance?.message}</FormMessage>
                   </FormItem>
                 )}
               />
