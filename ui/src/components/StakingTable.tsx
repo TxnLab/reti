@@ -177,9 +177,9 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
                     <DropdownMenuGroup>
                       <DropdownMenuItem
                         onClick={async () =>
-                          simulateEpoch(
+                          await simulateEpoch(
                             validator,
-                            row.original.pools[0].poolKey,
+                            row.original.pools,
                             100,
                             signer,
                             activeAddress,
