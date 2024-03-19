@@ -502,9 +502,9 @@ export class StakingPool extends Contract {
 
                 // now adjust the total reward to hand out for this pool based on this pools % of the whole
                 tokenRewardAvail = wideRatio([validatorConfig.RewardPerPayout, ourPoolPctOfWhole], [1_000_000]);
-                increaseOpcodeBudget();
-                log(concat('token ourPctOfWhole: ', (ourPoolPctOfWhole / 10000).toString()));
-                log(concat('token reward held back: ', rewardTokenHeldBack.toString()));
+                // increaseOpcodeBudget();
+                // log(concat('token ourPctOfWhole: ', (ourPoolPctOfWhole / 10000).toString()));
+                // log(concat('token reward held back: ', rewardTokenHeldBack.toString()));
                 log(concat('token reward avail: ', tokenRewardAvail.toString()));
                 // log(concat('token reward avail: %i', itob(tokenRewardAvail)));
             }
@@ -598,7 +598,7 @@ export class StakingPool extends Contract {
                         partialStakersTotalStake += cmpStaker.Balance;
                         timePercentage = (timeInPool * 1000) / epochInSecs;
 
-                        log(concat('% in pool: ', (timePercentage / 10).toString()));
+                        // log(concat('% in pool: ', (timePercentage / 10).toString()));
                         if (tokenRewardAvail > 0) {
                             // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                             const stakerTokenReward = wideRatio(
@@ -658,18 +658,18 @@ export class StakingPool extends Contract {
 
                         // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
                         if (tokenRewardAvail > 0) {
-                            increaseOpcodeBudget();
-                            log(concat('staker balance: ', cmpStaker.Balance.toString()));
-                            log(concat('tkn rwd avail: ', tokenRewardAvail.toString()));
-                            increaseOpcodeBudget();
-                            log(concat('new pool stake: ', newPoolTotalStake.toString()));
+                            // increaseOpcodeBudget();
+                            // log(concat('staker balance: ', cmpStaker.Balance.toString()));
+                            // log(concat('tkn rwd avail: ', tokenRewardAvail.toString()));
+                            // increaseOpcodeBudget();
+                            // log(concat('new pool stake: ', newPoolTotalStake.toString()));
 
                             const stakerTokenReward = wideRatio(
                                 [cmpStaker.Balance, tokenRewardAvail],
                                 [newPoolTotalStake]
                             );
-                            increaseOpcodeBudget();
-                            log(concat('paying staker token reward: ', stakerTokenReward.toString()));
+                            // increaseOpcodeBudget();
+                            // log(concat('paying staker token reward: ', stakerTokenReward.toString()));
 
                             // instead of sending them algo now - just increase their ledger balance, so they can claim
                             // it at any time.

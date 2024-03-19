@@ -34,9 +34,19 @@ end
 
 group Execute Epoch payouts
 autonumber 0
+validator -> pool: [dummy gas() txn for ref filling]
+validator -> pool: [dummy gas() txn for ref filling]
 validator -> pool: [technically, anyone can call] - epochBalanceUpdate() - can only be called every X minutes as defined by validator)
-pool -> validator: [itxn] (to validator's commission address) payment of validator's per-epoch commission - x% of available reward in pool.
+autonumber 0
+pool -> validator: [itxn] getValidatorConfig()
+pool -> validator: [itxn] [TokenEligible && POOL 1] setTokenPayoutRatio
+autonumber 2
+pool -> validator: [itxn] [TokenEligible && POOL != 1] getPoolAppID of pool 1
+pool -> pool: [itxn] [TokenEligible && POOL != 1]\ncalls Pool 1: setTokenPayoutRatio (if pool 1)
+pool -> validator: [itxn] getValidatorState()
+pool -> validator: [itxn] (to validator's commission address) PAYMENT of validator's per-epoch commission - x% of available reward in pool.
 autonumber stop
+pool -> validator: [itxn] stakeUpdatedViaRewards()
 pool -> pool: updates 'ledger' for all stakers based on\ntime in epoch & stake %
 end
 

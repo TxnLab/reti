@@ -820,8 +820,8 @@ describe('StakeWRewards', () => {
     });
 
     test('testFirstRewards', async () => {
-        // increment time a day at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 24).do();
+        // increment time a day(+) at a time per transaction
+        await fixture.context.algod.setBlockOffsetTimestamp(60 * 61 * 24).do();
 
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorID);
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do();
