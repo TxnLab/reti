@@ -171,7 +171,9 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                     Payout Frequency
                   </dt>
                   <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                    {formatDuration(Number(validator.payoutFrequency))}
+                    <span className="capitalize">
+                      {formatDuration(Number(validator.payoutFrequency))}
+                    </span>
                     {canEdit && (
                       <TooltipProvider>
                         <Tooltip>
@@ -198,7 +200,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                 </div>
                 <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                   <dt className="text-sm font-medium leading-6 text-muted-foreground">
-                    Maximum Total Stake
+                    Maximum Stake Per Pool
                   </dt>
                   <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
                     <AlgoDisplayAmount amount={validator.maxStake} microalgos />

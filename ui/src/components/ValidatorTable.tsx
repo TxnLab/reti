@@ -48,6 +48,7 @@ import {
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
+import { AlgoDisplayAmount } from './AlgoDisplayAmount'
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -91,12 +92,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
       header: ({ column }) => <DataTableColumnHeader column={column} title="Min Entry" />,
       cell: ({ row }) => {
         const validator = row.original
-        const minEntryStake = AlgoAmount.MicroAlgos(validator.minStake).algos
-        const minEntryStakeCompact = new Intl.NumberFormat(undefined, {
-          notation: 'compact',
-        }).format(minEntryStake)
-
-        return minEntryStakeCompact
+        return <AlgoDisplayAmount amount={validator.minStake} microalgos />
       },
     },
     {

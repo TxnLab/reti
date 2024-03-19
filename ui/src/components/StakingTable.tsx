@@ -19,7 +19,6 @@ import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,33 +63,33 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
   const queryClient = useQueryClient()
 
   const columns: ColumnDef<StakerValidatorData>[] = [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          className={cn(isLoading ? 'invisible' : 'mr-2')}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-          className="mr-2"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    // {
+    //   id: 'select',
+    //   header: ({ table }) => (
+    //     <Checkbox
+    //       checked={
+    //         table.getIsAllPageRowsSelected() ||
+    //         (table.getIsSomePageRowsSelected() && 'indeterminate')
+    //       }
+    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+    //       className={cn(isLoading ? 'invisible' : 'mr-2')}
+    //       aria-label="Select all"
+    //     />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <Checkbox
+    //       checked={row.getIsSelected()}
+    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
+    //       aria-label="Select row"
+    //       className="mr-2"
+    //     />
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    // },
     {
       accessorKey: 'validatorId',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Validator ID" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => row.original.validatorId,
       size: 100,
     },
@@ -170,7 +169,6 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
                   >
                     Unstake
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled>Claim rewards</DropdownMenuItem>
                 </DropdownMenuGroup>
 
                 {process.env.NODE_ENV === 'development' && canManage && (
