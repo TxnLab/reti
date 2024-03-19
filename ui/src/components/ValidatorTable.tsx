@@ -244,19 +244,15 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
       <div>
         <div className="lg:flex items-center lg:gap-x-2 py-4">
           <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
-          {table.getFilteredRowModel().rows.length > 0 && (
-            <div className="flex items-center gap-x-3">
-              <Input
-                placeholder="Filter validators..."
-                value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
-                onChange={(event) =>
-                  table.getColumn('validator')?.setFilterValue(event.target.value)
-                }
-                className="sm:max-w-sm lg:w-64"
-              />
-              <DataTableViewOptions table={table} className="h-9" />
-            </div>
-          )}
+          <div className="flex items-center gap-x-3">
+            <Input
+              placeholder="Filter validators..."
+              value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
+              onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
+              className="sm:max-w-sm lg:w-64"
+            />
+            <DataTableViewOptions table={table} className="h-9" />
+          </div>
         </div>
         <div className="rounded-md border">
           <Table className="border-collapse border-spacing-0">
