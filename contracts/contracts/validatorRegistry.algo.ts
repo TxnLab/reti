@@ -5,10 +5,12 @@ import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
-    GATING_TYPE_ASSET_ID,
-    GATING_TYPE_ASSETS_CREATED_BY,
-    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
     GATING_TYPE_NONE,
+    GATING_TYPE_ASSETS_CREATED_BY,
+    GATING_TYPE_ASSET_ID,
+    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+    GATING_TYPE_SEGMENT_OF_NFD,
+    GATING_TYPE_CONST_MAX,
     MAX_ALGO_PER_POOL,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
@@ -406,16 +408,22 @@ export class ValidatorRegistry extends Contract {
         // all other values being 0 is correct (for 'State' for eg)
 
         if (config.NFDForInfo !== 0) {
-            // verify nfd is real, and owned by sender
+            // verify nfd is real, matches provided name, and owned by sender
             sendAppCall({
                 applicationID: AppID.fromUint64(this.NFDRegistryAppID),
                 applicationArgs: ['is_valid_nfd_appid', nfdName, itob(config.NFDForInfo)],
             });
+            assert(btoi(this.itxn.lastLog) === 1, "provided NFD isn't valid");
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
             assert(
                 this.txn.sender === (AppID.fromUint64(config.NFDForInfo).globalState('i.owner.a') as Address),
                 'If specifying NFD, account adding validator must be owner'
             );
+        }
+        if (config.EntryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
+            // verify gating NFD is at least 'real' - since we just have app id - fetch its name then do is valid call
+            const nfdRootAppID = extractUint64(config.EntryGatingValue, 0);
+            assert(this.isNFDAppIDValid(nfdRootAppID), 'provided NFD App ID for gating must be valid NFD');
         }
         return validatorID;
     }
@@ -932,7 +940,8 @@ export class ValidatorRegistry extends Contract {
     }
 
     private validateConfig(config: ValidatorConfig): void {
-        // Verify all the value in the ValidatorConfig are correct
+        // Verify all the values in the ValidatorConfig are correct
+        assert(config.EntryGatingType >= GATING_TYPE_NONE && config.EntryGatingType <= GATING_TYPE_CONST_MAX);
         assert(config.PayoutEveryXMins >= MIN_PAYOUT_MINS && config.PayoutEveryXMins <= MAX_PAYOUT_MINS);
         assert(config.PercentToValidator >= MIN_PCT_TO_VALIDATOR && config.PercentToValidator <= MAX_PCT_TO_VALIDATOR);
         if (config.PercentToValidator !== 0) {
@@ -1113,21 +1122,73 @@ export class ValidatorRegistry extends Contract {
         if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
             // Walk all the linked addresses defined by this NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
             // if any are the creator of the specified asset then we pass.
-            sendAppCall({
-                applicationID: AppID.fromUint64(valueToVerify),
-                applicationArgs: ['read_property', 'v.caAlgo.0.as'],
-            });
-            const caAlgoData = this.itxn.lastLog;
-            const assetCreator = rawBytes(AssetID.fromUint64(valueToVerify).creator);
-            for (let i = 0; i < caAlgoData.length; i += 32) {
-                const addr = extract3(caAlgoData, i, 32);
-                if (addr === rawBytes(gateReq) && addr !== rawBytes(globals.zeroAddress)) {
-                    if (assetCreator === addr) {
-                        return;
-                    }
-                }
-            }
-            throw Error('specified asset must be created by creator that is one of the linked addresses in an nfd');
+            assert(
+                this.isAddressInNFDCAAlgoList(valueToVerify, AssetID.fromUint64(valueToVerify).creator),
+                'specified asset must be created by creator that is one of the linked addresses in an nfd'
+            );
         }
+        if (type === GATING_TYPE_SEGMENT_OF_NFD) {
+            // verify NFD user wants to offer up for testing is at least 'real' - since we just have app id - fetch its name then do is valid call
+            const userOfferedNFDAppID = valueToVerify;
+            assert(this.isNFDAppIDValid(userOfferedNFDAppID), 'provided NFD must be valid');
+
+            // now see if specified NFD's owner, or any of its caAlgo fields matches the staker's address
+            assert(
+                rawBytes(AppID.fromUint64(userOfferedNFDAppID).globalState('i.owner.a') as Address) ===
+                    rawBytes(staker) || this.isAddressInNFDCAAlgoList(userOfferedNFDAppID, staker),
+                "provided nfd for entry isn't owned or linked to the staker"
+            );
+
+            // We at least know it's a real NFD - now.. is it a segment of the root NFD the validator defined ?
+            const requiredParentAppID = extractUint64(gateReq, 0);
+
+            assert(
+                (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) === requiredParentAppID,
+                'specified nfd must be a segment of the nfd the validator specified as a requirement'
+            );
+        }
+    }
+
+    /**
+     * Checks if the given NFD App ID is valid.  Using only the App ID there's no validation against the name (ie: that nfd X is name Y)
+     * So it's assumed for the caller, the app id alone is fine.  The name is fetched from the specified app id and the two
+     * together are used for validity check call to the nfd registry.
+     *
+     * @param {uint64} nfdAppID - The NFD App ID to verify.
+     *
+     * @returns {boolean} - Returns true if the NFD App ID is valid, otherwise false.
+     */
+    private isNFDAppIDValid(nfdAppID: uint64): boolean {
+        // verify NFD user wants to offer up for testing is at least 'real' - since we just have app id - fetch its name then do is valid call
+        const userOfferedNFDName = AppID.fromUint64(nfdAppID).globalState('i.name') as string;
+
+        sendAppCall({
+            applicationID: AppID.fromUint64(this.NFDRegistryAppID),
+            applicationArgs: ['is_valid_nfd_appid', userOfferedNFDName, itob(nfdAppID)],
+        });
+        return btoi(this.itxn.lastLog) === 1;
+    }
+
+    /**
+     * Checks if the specified address is present in an NFDs list of verified addresses.
+     * The NFD is assumed to have already been validated as official.
+     *
+     * @param {uint64} nfdAppID - The NFD application ID.
+     * @param {Address} addrToFind - The address to find in the v.caAlgo.0.as property
+     * @return {boolean} - `true` if the address is present, `false` otherwise.
+     */
+    private isAddressInNFDCAAlgoList(nfdAppID: uint64, addrToFind: Address): boolean {
+        sendAppCall({
+            applicationID: AppID.fromUint64(nfdAppID),
+            applicationArgs: ['read_property', 'v.caAlgo.0.as'],
+        });
+        const caAlgoData = this.itxn.lastLog;
+        for (let i = 0; i < caAlgoData.length; i += 32) {
+            const addr = extract3(caAlgoData, i, 32);
+            if (addr !== rawBytes(globals.zeroAddress) && addr === rawBytes(addrToFind)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

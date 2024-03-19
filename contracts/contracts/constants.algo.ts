@@ -16,3 +16,5 @@ export const GATING_TYPE_ASSETS_CREATED_BY = 1;
 export const GATING_TYPE_ASSET_ID = 2;
 export const GATING_TYPE_CREATED_BY_NFD_ADDRESSES = 3;
 export const GATING_TYPE_SEGMENT_OF_NFD = 4;
+// This constant needs to always be set to the highest value of the constants
+export const GATING_TYPE_CONST_MAX = 4;
