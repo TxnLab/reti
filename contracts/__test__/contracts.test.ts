@@ -222,7 +222,7 @@ describe('StakeAdds', () => {
         expect(firstPoolKey.PoolAppID).toBe(poolAppId);
 
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.NumPools).toEqual(1);
         expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
         expect(stateData.TotalStakers).toEqual(BigInt(0));
 
@@ -356,7 +356,7 @@ describe('StakeAdds', () => {
 
         // Verify 'total' staked from validator contract
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.NumPools).toEqual(1);
         expect(stateData.TotalAlgoStaked).toEqual(
             BigInt(stakeAmount1.microAlgos + stakeAmount2.microAlgos - Number(stakerMbr))
         );
@@ -414,7 +414,7 @@ describe('StakeAdds', () => {
 
         // Verify 'total' staked from validator contract
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.NumPools).toEqual(1);
         expect(stateData.TotalAlgoStaked).toEqual(
             origValidatorState.TotalAlgoStaked + BigInt(stakeAmount1.microAlgos - Number(stakerMbr))
         );
@@ -554,7 +554,7 @@ describe('StakeAdds', () => {
         consoleLogger.info(
             `num pools: ${stateData.NumPools}, total staked:${stateData.TotalAlgoStaked}, stakers:${stateData.TotalStakers}`
         );
-        expect(stateData.NumPools).toEqual(BigInt(MaxPoolsPerNode + 1));
+        expect(stateData.NumPools).toEqual(MaxPoolsPerNode + 1);
         expect(stateData.TotalAlgoStaked).toEqual(
             origValidatorState.TotalAlgoStaked +
                 BigInt(stakeAmount.microAlgos * MaxPoolsPerNode) -
@@ -777,7 +777,7 @@ describe('StakeWRewards', () => {
         expect(firstPoolKey.PoolAppID).toBe(poolAppId);
 
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.NumPools).toEqual(1);
         expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
         expect(stateData.TotalStakers).toEqual(BigInt(0));
 
@@ -1162,7 +1162,7 @@ describe('StakeWTokenWRewards', () => {
         expect(firstPoolKey.PoolAppID).toBe(poolAppId);
 
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.NumPools).toEqual(1);
         expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
         expect(stateData.TotalStakers).toEqual(BigInt(0));
         expect(stateData.RewardTokenHeldBack).toEqual(BigInt(0));
@@ -1519,7 +1519,7 @@ describe('DoublePoolWTokens', () => {
         expect(poolKeys[0].PoolAppID).toBe(poolAppId);
 
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(BigInt(1));
+        expect(stateData.NumPools).toEqual(1);
         expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
         expect(stateData.TotalStakers).toEqual(BigInt(0));
         expect(stateData.RewardTokenHeldBack).toEqual(BigInt(0));
@@ -1760,7 +1760,7 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
 
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
         expect(stateData.NumPools).toEqual(BigInt(1));
-        expect(stateData.TotalAlgoStaked).toEqual(BigInt(0));
+        expect(stateData.TotalAlgoStaked).toEqual(0);
         expect(stateData.TotalStakers).toEqual(BigInt(0));
 
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);

@@ -106,17 +106,17 @@ export class ValidatorConfig {
         this.Owner = Owner;
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
-        this.EntryGatingType = EntryGatingType;
+        this.EntryGatingType = Number(EntryGatingType);
         this.EntryGatingValue = EntryGatingValue;
         this.GatingAssetMinBalance = GatingAssetMinBalance;
         this.RewardTokenID = RewardTokenID;
         this.RewardPerPayout = RewardPerPayout;
-        this.PayoutEveryXMins = PayoutEveryXMins;
-        this.PercentToValidator = PercentToValidator;
+        this.PayoutEveryXMins = Number(PayoutEveryXMins);
+        this.PercentToValidator = Number(PercentToValidator);
         this.ValidatorCommissionAddress = ValidatorCommissionAddress;
         this.MinEntryStake = MinEntryStake;
         this.MaxAlgoPerPool = MaxAlgoPerPool;
-        this.PoolsPerNode = PoolsPerNode;
+        this.PoolsPerNode = Number(PoolsPerNode);
         this.SunsettingOn = SunsettingOn;
         this.SunsettingTo = SunsettingTo;
     }
@@ -221,7 +221,7 @@ class ValidatorCurState {
     RewardTokenHeldBack: bigint; // amount of token held back for future payout to stakers
 
     constructor([NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack]: [number, bigint, bigint, bigint]) {
-        this.NumPools = NumPools;
+        this.NumPools = Number(NumPools);
         this.TotalStakers = TotalStakers;
         this.TotalAlgoStaked = TotalAlgoStaked;
         this.RewardTokenHeldBack = RewardTokenHeldBack;
