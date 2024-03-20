@@ -408,8 +408,6 @@ export async function addStake(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
-  // @todo: check whether existing pool(s) have enough room for stakeAmount
-
   const validatorClient = makeValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
