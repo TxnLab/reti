@@ -68,12 +68,12 @@ export function AddPoolModal({
   const poolAssignment = assignmentQuery.data || poolAssignmentProp
 
   const defaultNodeNum = React.useMemo(() => {
-    if (!validator?.poolsPerNode || !poolAssignment) {
+    if (!validator?.config.poolsPerNode || !poolAssignment) {
       return '1'
     }
-    const nodeNum = findFirstAvailableNode(poolAssignment, validator.poolsPerNode)
+    const nodeNum = findFirstAvailableNode(poolAssignment, validator.config.poolsPerNode)
     return nodeNum?.toString() || '1'
-  }, [poolAssignment, validator?.poolsPerNode])
+  }, [poolAssignment, validator?.config.poolsPerNode])
 
   React.useEffect(() => {
     form.setValue('nodeNum', defaultNodeNum)
@@ -128,7 +128,10 @@ export function AddPoolModal({
 
         return {
           ...prevData,
-          numPools: prevData.numPools + 1,
+          state: {
+            ...prevData.state,
+            numPools: prevData.state.numPools + 1,
+          },
         }
       })
 
@@ -141,7 +144,10 @@ export function AddPoolModal({
           if (validator.id === validator!.id) {
             return {
               ...validator,
-              numPools: validator.numPools + 1,
+              state: {
+                ...validator.state,
+                numPools: validator.state.numPools + 1,
+              },
             }
           }
 
@@ -181,13 +187,13 @@ export function AddPoolModal({
                     {poolAssignment && !!validator && (
                       <NodeSelect
                         nodes={poolAssignment}
-                        poolsPerNode={validator.poolsPerNode}
+                        poolsPerNode={validator.config.poolsPerNode}
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       />
                     )}
                     <FormDescription>
-                      Select a node with an available slot (max: {validator?.poolsPerNode})
+                      Select a node with an available slot (max: {validator?.config.poolsPerNode})
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

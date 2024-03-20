@@ -16,59 +16,48 @@ import {
 import { dayjs } from '@/utils/dayjs'
 import { isValidName } from '@/utils/nfd'
 
+export function transformValidatorConfig(rawConfig: ValidatorConfigRaw): ValidatorConfig {
+  return {
+    id: Number(rawConfig[0]),
+    owner: rawConfig[1],
+    manager: rawConfig[2],
+    nfdForInfo: Number(rawConfig[3]),
+    entryGatingType: Number(rawConfig[4]),
+    entryGatingValue: rawConfig[5],
+    gatingAssetMinBalance: rawConfig[6],
+    rewardTokenId: Number(rawConfig[7]),
+    rewardPerPayout: rawConfig[8],
+    payoutEveryXMins: Number(rawConfig[9]),
+    percentToValidator: Number(rawConfig[10]),
+    validatorCommissionAddress: rawConfig[11],
+    minEntryStake: rawConfig[12],
+    maxAlgoPerPool: rawConfig[13],
+    poolsPerNode: Number(rawConfig[14]),
+    sunsettingOn: Number(rawConfig[15]),
+    sunsettingTo: Number(rawConfig[16]),
+  }
+}
+
+export function transformValidatorState(rawState: ValidatorStateRaw): ValidatorState {
+  return {
+    numPools: Number(rawState[0]),
+    totalStakers: Number(rawState[1]),
+    totalAlgoStaked: rawState[2],
+    rewardTokenHeldBack: rawState[3],
+  }
+}
+
 export function transformValidatorData(
   rawConfig: ValidatorConfigRaw,
   rawState: ValidatorStateRaw,
 ): Validator {
-  const config: ValidatorConfig = {
-    ID: rawConfig[0],
-    Owner: rawConfig[1],
-    Manager: rawConfig[2],
-    NFDForInfo: rawConfig[3],
-    EntryGatingType: rawConfig[4],
-    EntryGatingValue: rawConfig[5],
-    GatingAssetMinBalance: rawConfig[6],
-    RewardTokenID: rawConfig[7],
-    RewardPerPayout: rawConfig[8],
-    PayoutEveryXMins: rawConfig[9],
-    PercentToValidator: rawConfig[10],
-    ValidatorCommissionAddress: rawConfig[11],
-    MinEntryStake: rawConfig[12],
-    MaxAlgoPerPool: rawConfig[13],
-    PoolsPerNode: rawConfig[14],
-    SunsettingOn: rawConfig[15],
-    SunsettingTo: rawConfig[16],
-  }
-
-  const state: ValidatorState = {
-    NumPools: rawState[0],
-    TotalStakers: rawState[1],
-    TotalAlgoStaked: rawState[2],
-    RewardTokenHeldBack: rawState[3],
-  }
+  const { id, ...config } = transformValidatorConfig(rawConfig)
+  const state = transformValidatorState(rawState)
 
   return {
-    id: Number(config.ID),
-    owner: config.Owner,
-    manager: config.Manager,
-    nfd: Number(config.NFDForInfo),
-    gatingType: Number(config.EntryGatingType),
-    gatingValue: config.EntryGatingValue,
-    gatingAssetMinBalance: Number(config.GatingAssetMinBalance),
-    rewardTokenId: Number(config.RewardTokenID),
-    rewardPerPayout: Number(config.RewardPerPayout),
-    payoutFrequency: Number(config.PayoutEveryXMins),
-    commission: Number(config.PercentToValidator),
-    commissionAccount: config.ValidatorCommissionAddress,
-    minStake: Number(config.MinEntryStake),
-    maxStake: Number(config.MaxAlgoPerPool),
-    poolsPerNode: Number(config.PoolsPerNode),
-    sunsetOn: Number(config.SunsettingOn),
-    sunsetTo: Number(config.SunsettingTo),
-    numPools: Number(state.NumPools),
-    numStakers: Number(state.TotalStakers),
-    totalStaked: Number(state.TotalAlgoStaked),
-    rewardTokenHeldBack: Number(state.RewardTokenHeldBack),
+    id,
+    config,
+    state,
   }
 }
 
@@ -120,7 +109,7 @@ export function findFirstAvailableNode(
 export function getAddValidatorFormSchema(constraints: Constraints) {
   return z
     .object({
-      Owner: z
+      owner: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -128,7 +117,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => algosdk.isValidAddress(val), {
           message: 'Invalid Algorand address',
         }),
-      Manager: z
+      manager: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -136,21 +125,21 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => algosdk.isValidAddress(val), {
           message: 'Invalid Algorand address',
         }),
-      NFDForInfo: z
+      nfdForInfo: z
         .string()
         .refine((val) => val === '' || isValidName(val), {
           message: 'NFD name is invalid',
         })
         .optional(),
-      EntryGatingType: z.string().optional(),
-      EntryGatingValue: z.string().optional(),
-      GatingAssetMinBalance: z
+      entryGatingType: z.string().optional(),
+      entryGatingValue: z.string().optional(),
+      gatingAssetMinBalance: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid minimum balance',
         })
         .optional(),
-      RewardTokenID: z
+      rewardTokenId: z
         .string()
         .refine(
           (val) =>
@@ -160,13 +149,13 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           },
         )
         .optional(),
-      RewardPerPayout: z
+      rewardPerPayout: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid reward amount per payout',
         })
         .optional(),
-      PayoutEveryXMins: z
+      payoutEveryXMins: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -198,7 +187,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             })
           }
         }),
-      PercentToValidator: z
+      percentToValidator: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -240,7 +229,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             })
           }
         }),
-      ValidatorCommissionAddress: z
+      validatorCommissionAddress: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -248,7 +237,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => algosdk.isValidAddress(val), {
           message: 'Invalid Algorand address',
         }),
-      MinEntryStake: z
+      minEntryStake: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -257,9 +246,9 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           message: 'Must be a positive integer',
         })
         .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos >= constraints.minEntryStake, {
-          message: `Must be at least ${AlgoAmount.MicroAlgos(constraints.minEntryStake).algos} ALGO`,
+          message: `Must be at least ${AlgoAmount.MicroAlgos(Number(constraints.minEntryStake)).algos} ALGO`,
         }),
-      MaxAlgoPerPool: z
+      maxAlgoPerPool: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -268,9 +257,9 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           message: 'Must be a positive integer',
         })
         .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos <= constraints.maxAlgoPerPool, {
-          message: `Cannot exceed ${AlgoAmount.MicroAlgos(constraints.maxAlgoPerPool).algos} ALGO`,
+          message: `Cannot exceed ${AlgoAmount.MicroAlgos(Number(constraints.maxAlgoPerPool)).algos} ALGO`,
         }),
-      PoolsPerNode: z
+      poolsPerNode: z
         .string()
         .refine((val) => val !== '', {
           message: 'Required field',
@@ -281,7 +270,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => Number(val) <= constraints.maxPoolsPerNode, {
           message: `Cannot exceed ${constraints.maxPoolsPerNode} pools per node`,
         }),
-      SunsettingOn: z
+      sunsettingOn: z
         .string()
         .refine(
           (val) =>
@@ -292,7 +281,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           },
         )
         .optional(),
-      SunsettingTo: z
+      sunsettingTo: z
         .string()
         .refine(
           (val) =>
@@ -304,25 +293,25 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .optional(),
     })
     .superRefine((data, ctx) => {
-      const { EntryGatingType, EntryGatingValue } = data
+      const { entryGatingType, entryGatingValue } = data
 
-      switch (EntryGatingType) {
+      switch (entryGatingType) {
         case '0':
-          if (EntryGatingValue !== '') {
+          if (entryGatingValue !== '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['EntryGatingValue'],
-              message: 'EntryGatingValue must be empty when EntryGatingType is 0',
+              path: ['entryGatingValue'],
+              message: 'EntryGatingValue must be empty when entryGatingType is 0',
             })
           }
           break
         case '1':
-          if (typeof EntryGatingValue !== 'string' || !algosdk.isValidAddress(EntryGatingValue)) {
+          if (typeof entryGatingValue !== 'string' || !algosdk.isValidAddress(entryGatingValue)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['EntryGatingValue'],
+              path: ['entryGatingValue'],
               message:
-                'EntryGatingValue must be a valid Algorand address when EntryGatingType is 1',
+                'EntryGatingValue must be a valid Algorand address when entryGatingType is 1',
             })
           }
           break
@@ -331,30 +320,30 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         case '4':
           if (
             !(
-              !isNaN(Number(EntryGatingValue)) &&
-              Number.isInteger(Number(EntryGatingValue)) &&
-              Number(EntryGatingValue) > 0
+              !isNaN(Number(entryGatingValue)) &&
+              Number.isInteger(Number(entryGatingValue)) &&
+              Number(entryGatingValue) > 0
             )
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['EntryGatingValue'],
+              path: ['entryGatingValue'],
               message:
-                'EntryGatingValue must be a positive integer when EntryGatingType is 2, 3, or 4',
+                'entryGatingValue must be a positive integer when entryGatingType is 2, 3, or 4',
             })
           }
           break
         default:
-          // Optionally handle cases where EntryGatingType is not one of the expected values, if needed
           break
       }
     })
 }
 
 export function calculateMaxStake(validator: Validator, algos = false): number {
-  // @todo: rename maxStake to maxStakePerPool
-  const { numPools, maxStake: maxStakePerPool } = validator
-  const maxStake = maxStakePerPool * numPools
+  const { numPools } = validator.state
+  const { maxAlgoPerPool } = validator.config
+
+  const maxStake = Number(maxAlgoPerPool) * numPools
 
   if (algos) {
     return AlgoAmount.MicroAlgos(maxStake).algos
@@ -366,24 +355,24 @@ export function calculateMaxStake(validator: Validator, algos = false): number {
 export function calculateMaxStakers(validator: Validator): number {
   // @todo: fetch max stakers from contract
   const maxStakersPerPool = 200
-  const maxStakers = maxStakersPerPool * validator.numPools
+  const maxStakers = maxStakersPerPool * validator.state.numPools
 
   return maxStakers
 }
 
 export function isStakingDisabled(validator: Validator): boolean {
-  // @todo: rename maxStake to maxStakePerPool
-  const { numPools, numStakers, totalStaked, maxStake: maxStakePerPool } = validator
+  const { numPools, totalStakers, totalAlgoStaked } = validator.state
+  const { maxAlgoPerPool } = validator.config
 
   // @todo: fetch max stakers from contract
   const maxStakersPerPool = 200
 
   const maxStakers = maxStakersPerPool * numPools
-  const maxStake = maxStakePerPool * numPools
+  const maxStake = Number(maxAlgoPerPool) * numPools
 
   const noPools = numPools === 0
-  const maxStakersReached = numStakers >= maxStakers
-  const maxStakeReached = totalStaked >= maxStake
+  const maxStakersReached = totalStakers >= maxStakers
+  const maxStakeReached = Number(totalAlgoStaked) >= maxStake
 
   return noPools || maxStakersReached || maxStakeReached
 }
@@ -392,7 +381,7 @@ export function isUnstakingDisabled(
   validator: Validator,
   stakesByValidator: StakerValidatorData[],
 ): boolean {
-  const noPools = validator.numPools === 0
+  const noPools = validator.state.numPools === 0
   const validatorHasStake = stakesByValidator.some((stake) => stake.validatorId === validator.id)
 
   return noPools || !validatorHasStake
@@ -401,7 +390,8 @@ export function isUnstakingDisabled(
 export function isAddingPoolDisabled(validator: Validator): boolean {
   // @todo: define totalNodes as global constant or fetch from protocol constraints
   const totalNodes = 4
-  const { numPools, poolsPerNode } = validator
+  const { numPools } = validator.state
+  const { poolsPerNode } = validator.config
 
   const hasAvailableSlots = numPools < poolsPerNode * totalNodes
 
@@ -409,5 +399,6 @@ export function isAddingPoolDisabled(validator: Validator): boolean {
 }
 
 export function canManageValidator(validator: Validator, activeAddress: string): boolean {
-  return validator.owner === activeAddress || validator.manager === activeAddress
+  const { owner, manager } = validator.config
+  return owner === activeAddress || manager === activeAddress
 }

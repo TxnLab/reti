@@ -18,7 +18,11 @@ import {
   ValidatorPoolKey,
   ValidatorStateRaw,
 } from '@/interfaces/validator'
-import { transformNodePoolAssignment, transformValidatorData } from '@/utils/contracts'
+import {
+  transformNodePoolAssignment,
+  transformValidatorConfig,
+  transformValidatorData,
+} from '@/utils/contracts'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import {
   getNfdRegistryAppIdFromViteEnvironment,
@@ -404,8 +408,6 @@ export async function addStake(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
-  // @todo: check whether existing pool(s) have enough room for stakeAmount
-
   const validatorClient = makeValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
@@ -483,7 +485,7 @@ export async function callFindPoolForStaker(
 export async function isNewStakerToValidator(
   validatorID: number | bigint,
   staker: string,
-  minStake: number,
+  minEntryStake: number | bigint,
 ) {
   const activeAddress = getActiveWalletAddress()
 
@@ -492,7 +494,7 @@ export async function isNewStakerToValidator(
   }
 
   const validatorClient = makeSimulateValidatorClient(activeAddress)
-  const result = await callFindPoolForStaker(validatorID, staker, minStake, validatorClient)
+  const result = await callFindPoolForStaker(validatorID, staker, minEntryStake, validatorClient)
 
   const [_, isNewStaker] = result.returns![0]
 
@@ -679,8 +681,8 @@ export async function fetchProtocolConstraints(
       payoutMinsMax: Number(payoutMinsMax),
       commissionPctMin: Number(commissionPctMin),
       commissionPctMax: Number(commissionPctMax),
-      minEntryStake: Number(minEntryStake),
-      maxAlgoPerPool: Number(maxAlgoPerPool),
+      minEntryStake,
+      maxAlgoPerPool,
       maxNodes: Number(maxNodes),
       maxPoolsPerNode: Number(maxPoolsPerNode),
       maxStakersPerPool: Number(maxStakersPerPool),
@@ -803,7 +805,7 @@ export async function fetchPoolInfo(
     return {
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
-      totalAlgoStaked: Number(totalAlgoStaked),
+      totalAlgoStaked,
     }
   } catch (error) {
     console.error(error)
@@ -822,7 +824,7 @@ export async function callGetPools(
 }
 
 export async function fetchValidatorPools(
-  validatorId: string | number | bigint,
+  validatorId: string | number,
   client?: ValidatorRegistryClient,
 ): Promise<PoolInfo[]> {
   try {
@@ -840,8 +842,8 @@ export async function fetchValidatorPools(
 
     return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked]) => ({
       poolAppId: Number(poolAppId),
-      totalStakers,
-      totalAlgoStaked: Number(totalAlgoStaked),
+      totalStakers: Number(totalStakers),
+      totalAlgoStaked,
     }))
   } catch (error) {
     console.error(error)
@@ -849,9 +851,7 @@ export async function fetchValidatorPools(
   }
 }
 
-export async function fetchMaxAvailableToStake(
-  validatorId: string | number | bigint,
-): Promise<number> {
+export async function fetchMaxAvailableToStake(validatorId: string | number): Promise<number> {
   try {
     const activeAddress = getActiveWalletAddress()
 
@@ -864,13 +864,13 @@ export async function fetchMaxAvailableToStake(
     const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
     const rawConfig = validatorConfigResult.returns![0]
 
-    const maxAlgoPerPool = Number(rawConfig[13])
+    const validatorConfig = transformValidatorConfig(rawConfig)
 
     const poolsInfo: PoolInfo[] = await fetchValidatorPools(validatorId)
 
     // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
     const maxAvailableToStake = poolsInfo.reduce((acc, pool) => {
-      const availableToStake = maxAlgoPerPool - pool.totalAlgoStaked
+      const availableToStake = Number(validatorConfig.maxAlgoPerPool) - Number(pool.totalAlgoStaked)
       return availableToStake > acc ? availableToStake : acc
     }, 0)
 

@@ -103,7 +103,7 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
         const amountToStake = AlgoAmount.Algos(algoAmount).microAlgos
 
         if (validator) {
-          const minimumStake = validator.minStake
+          const minimumStake = Number(validator.config.minEntryStake)
 
           if (amountToStake < minimumStake) {
             ctx.addIssue({
@@ -179,13 +179,12 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
       }
 
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
-
       const totalAmount = mbrRequired ? amountToStake + stakerMbr : amountToStake
 
       const isNewStaker = await isNewStakerToValidator(
         validator!.id,
         activeAddress,
-        validator!.minStake,
+        Number(validator!.config.minEntryStake),
       )
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
@@ -293,8 +292,13 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
 
         return {
           ...prevData,
-          numStakers: isNewStaker ? prevData.numStakers + 1 : prevData.numStakers,
-          totalStaked: prevData.totalStaked + amountToStake,
+          state: {
+            ...prevData.state,
+            totalStakers: isNewStaker
+              ? prevData.state.totalStakers + 1
+              : prevData.state.totalStakers,
+            totalAlgoStaked: prevData.state.totalAlgoStaked + BigInt(amountToStake),
+          },
         }
       })
 
@@ -307,8 +311,11 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
           if (v.id === validator!.id) {
             return {
               ...v,
-              numStakers: isNewStaker ? v.numStakers + 1 : v.numStakers,
-              totalStaked: v.totalStaked + amountToStake,
+              state: {
+                ...v.state,
+                totalStakers: isNewStaker ? v.state.totalStakers + 1 : v.state.totalStakers,
+                totalAlgoStaked: v.state.totalAlgoStaked + BigInt(amountToStake),
+              },
             }
           }
 

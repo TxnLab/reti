@@ -23,17 +23,17 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
 
   const { activeAddress } = useWallet()
 
-  const isManager = validator.manager === activeAddress
-  const isOwner = validator.owner === activeAddress
+  const isManager = validator.config.manager === activeAddress
+  const isOwner = validator.config.owner === activeAddress
   const canEdit = isManager || isOwner
 
   const { data: poolAssignment } = useQuery(poolAssignmentQueryOptions(validator.id, canEdit))
 
   const hasSlots = React.useMemo(() => {
     return poolAssignment
-      ? validatorHasAvailableSlots(poolAssignment, validator.poolsPerNode)
+      ? validatorHasAvailableSlots(poolAssignment, validator.config.poolsPerNode)
       : false
-  }, [poolAssignment, validator.poolsPerNode])
+  }, [poolAssignment, validator.config.poolsPerNode])
 
   const canAddPool = canEdit && hasSlots
 
@@ -49,7 +49,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
             <CardContent>
               <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
                 <AlgoDisplayAmount
-                  amount={validator.totalStaked}
+                  amount={validator.state.totalAlgoStaked}
                   microalgos
                   maxLength={13}
                   compactPrecision={2}
@@ -66,7 +66,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
-                {validator.numStakers}
+                {validator.state.totalStakers}
               </div>
               {/* <p className="text-xs text-muted-foreground">+180.1% from last month</p> */}
             </CardContent>
@@ -78,7 +78,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-x-2 text-2xl font-bold lg:text-xl xl:text-2xl">
-                {Number(validator.numPools)}
+                {Number(validator.state.numPools)}
                 {canAddPool && (
                   <Button
                     variant="ghost"
@@ -99,7 +99,9 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
               <Percent className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold lg:text-xl xl:text-2xl">{`${Number(validator.commission) / 10000}%`}</div>
+              <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
+                {`${validator.config.percentToValidator / 10000}%`}
+              </div>
               {/* <p className="text-xs text-muted-foreground">+19% from last month</p> */}
             </CardContent>
           </Card>
@@ -124,13 +126,13 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                   <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                     <dt className="text-sm font-medium leading-6 text-muted-foreground">Owner</dt>
                     <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                      {ellipseAddress(validator.owner)}
+                      {ellipseAddress(validator.config.owner)}
                     </dd>
                   </div>
                   <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                     <dt className="text-sm font-medium leading-6 text-muted-foreground">Manager</dt>
                     <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                      {ellipseAddress(validator.manager)}
+                      {ellipseAddress(validator.config.manager)}
                       {canEdit && (
                         <TooltipProvider>
                           <Tooltip>
@@ -152,7 +154,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                       Commission Account
                     </dt>
                     <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                      {ellipseAddress(validator.commissionAccount)}
+                      {ellipseAddress(validator.config.validatorCommissionAddress)}
                       {canEdit && (
                         <TooltipProvider>
                           <Tooltip>
@@ -175,7 +177,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                     </dt>
                     <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
                       <span className="capitalize">
-                        {formatDuration(Number(validator.payoutFrequency))}
+                        {formatDuration(validator.config.payoutEveryXMins)}
                       </span>
                       {canEdit && (
                         <TooltipProvider>
@@ -198,7 +200,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                       Minimum Entry Stake
                     </dt>
                     <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                      <AlgoDisplayAmount amount={validator.minStake} microalgos />
+                      <AlgoDisplayAmount amount={validator.config.minEntryStake} microalgos />
                     </dd>
                   </div>
                   <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
@@ -206,7 +208,7 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                       Maximum Stake Per Pool
                     </dt>
                     <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                      <AlgoDisplayAmount amount={validator.maxStake} microalgos />
+                      <AlgoDisplayAmount amount={validator.config.maxAlgoPerPool} microalgos />
                     </dd>
                   </div>
                 </dl>
