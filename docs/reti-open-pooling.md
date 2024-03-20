@@ -1,5 +1,5 @@
 TxnLab, Inc.
-![](./diagrams/horizline.png)
+![](.gitbook/assets/horizline.png)
 
 # Reti Open Pooling
 ## Proposal for Réti Open Validator Staking pools
@@ -82,16 +82,16 @@ Monitoring
 
 ### V. High-Level Diagrams
 
-![](./diagrams/Reti_Validator_Pools_Page_1.png)
-![](./diagrams/Reti_Validator_Pools_Page_2.png)
+![](.gitbook/assets/Reti_Validator_Pools_Page_1.png)
+![](.gitbook/assets/Reti_Validator_Pools_Page_2.png)
 
 ----
 #### Basic Validator Operations
-![](./diagrams/validator.png)
+![](.gitbook/assets/validator.png)
 
 ----
 #### Basic Staker Operations
-![](./diagrams/staker.png)
+![](.gitbook/assets/staker.png)
 
 ### VI. Conclusion
 
