@@ -1,8 +1,9 @@
-# TEALScript Project
+# Reti Open Pooling
 
 ## Documentation
 
-For TEALScript documentation, go to https://tealscript.algo.xyz
+These contracts, node daemon, and UI are for the proposal
+The contracts, backend, and UI forFor TEALScript documentation, go to https://tealscript.algo.xyz
 
 ## Usage
 

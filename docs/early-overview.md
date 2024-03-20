@@ -1,3 +1,5 @@
+#### This was early summary of operations - much of this should probably be recaptured/updated in a technical faq perhaps? 
+
 * Arbitrary Validators
   * Anyone can add themselves as a validator.  Most configuration settings are fixed (so fees, payout schedule can't change arbitrarily)
   * Reasonable guidelines are enforced in node running code.
