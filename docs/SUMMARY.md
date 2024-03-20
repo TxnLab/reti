@@ -1,4 +1,36 @@
 # Table of contents
 
-* [Réti Open Pooling](README.md)
-* [Early Overview](early-overview.md)
+## Introduction
+
+* [Réti Open Pooling Overview](README.md)
+* [Key Features](introduction/key-features.md)
+
+## Getting Started
+
+* [Quick Start For Stakers](getting-started/quick-start-for-stakers.md)
+* [Quick Start For Validators](getting-started/quick-start-for-validators.md)
+
+## Core Concepts
+
+* [Rewards](core-concepts/rewards.md)
+* [Staking Pools](core-concepts/staking-pools.md)
+* [Validators](core-concepts/validators.md)
+
+## Technical Implementation
+
+* [Smart Contracts](technical-implementation/smart-contracts.md)
+* [Reti Node Daemon](technical-implementation/reti-node-daemon.md)
+* [Back End](technical-implementation/back-end.md)
+* [Front End](technical-implementation/front-end.md)
+
+## Resources
+
+* [Contribute](resources/contribute.md)
+* [FAQ](resources/faq.md)
+* [Monitoring](resources/monitoring.md)
+* [Report Bugs](resources/report-bugs.md)
+* [Running A Node](resources/running-a-node.md)
+
+***
+
+* [Discord](https://discord.gg/algorand)
