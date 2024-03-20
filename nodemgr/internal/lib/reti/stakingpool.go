@@ -137,6 +137,9 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 
 		newParams := params
 
+		newParams.FlatFee = true
+		newParams.Fee = 0
+
 		// we need to stack up references in this gas method for resource pooling
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:       poolAppID,
@@ -163,7 +166,6 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			// we're simulating so go with super high budget
 			feesToUse = 240 * transaction.MinTxnFee
 		}
-		newParams.FlatFee = true
 		newParams.Fee = types.MicroAlgos(feesToUse)
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:           poolAppID,
@@ -204,7 +206,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		return errors.New(simResult.SimulateResponse.TxnGroups[0].FailureMessage)
 	}
 	// Figure out how much app budget was added so we can know the real fees to use when we execute
-	atc, err = getAtc(2*transaction.MinTxnFee + transaction.MinTxnFee*(simResult.SimulateResponse.TxnGroups[0].AppBudgetAdded/700))
+	atc, err = getAtc(transaction.MinTxnFee * (simResult.SimulateResponse.TxnGroups[0].AppBudgetAdded / 700))
 	if err != nil {
 		return err
 	}
