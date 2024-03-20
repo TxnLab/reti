@@ -570,10 +570,13 @@ export async function addStake(
     vldtrId: number,
     staker: Account,
     algoAmount: AlgoAmount
-) {
+): Promise<[ValidatorPoolKey, AlgoAmount]> {
     try {
         const suggestedParams = await context.algod.getTransactionParams().do();
         const validatorsAppRef = await validatorClient.appClient.getAppReference();
+
+        suggestedParams.flatFee = true;
+        suggestedParams.fee = 0;
 
         const dummy = (
             await validatorClient
@@ -627,19 +630,22 @@ export async function addStake(
             dumpLogs(logs);
         }
         stakeTransfer.group = undefined;
-        // our two outers + however many inners were needed via itxns.
         fees = AlgoAmount.MicroAlgos(
-            2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700)
+            2000 +
+                1000 *
+                    Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
         );
-        consoleLogger.info(`addStake fees of:${fees.toString()}`);
+        consoleLogger.info(`addStake fees:${fees.toString()}`);
 
         const results = await validatorClient
             .compose()
             .gas({}, { sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
             .addStake(
-                // This the actual send of stake to the ac
                 {
+                    // --
+                    // This the actual send of stake to the validator contract (which then sends to the staking pool)
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
+                    // --
                     validatorID: vldtrId,
                     valueToVerify: 0,
                 },
@@ -647,7 +653,7 @@ export async function addStake(
             )
             .execute({ populateAppCallResources: true });
 
-        return new ValidatorPoolKey(results.returns[1]);
+        return [new ValidatorPoolKey(results.returns[1]), fees];
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message);
         // throw validatorClient.appClient.exposeLogicError(exception as Error);
@@ -658,13 +664,13 @@ export async function addStake(
 export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
     const simulateResults = await stakeClient
         .compose()
-        .gas({}, { note: '1' })
-        .gas({}, { note: '2' })
+        .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+        .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .removeStake(
             { amountToUnstake: unstakeAmount.microAlgos },
             {
                 sendParams: {
-                    fee: AlgoAmount.MicroAlgos(6000),
+                    fee: AlgoAmount.MicroAlgos(240000),
                 },
                 sender: staker,
             }
@@ -674,7 +680,7 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
     const itxnfees = AlgoAmount.MicroAlgos(
         1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
     );
-    consoleLogger.info(`removeStake fees:${itxnfees.microAlgos}`);
+    consoleLogger.info(`removeStake fees:${itxnfees.toString()}`);
 
     try {
         await stakeClient

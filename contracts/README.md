@@ -2,25 +2,32 @@
 
 ## Documentation
 
-These contracts, node daemon, and UI are for the proposal
-The contracts, backend, and UI forFor TEALScript documentation, go to https://tealscript.algo.xyz
+These contracts, node daemon, and UI are for the proposal described in [Reti Open Pooling](../docs/reti-open-pooling.md).
+
+The contracts themselves are written in Tealscript.  See [Tealscript](https://tealscript.algo.xyz) for details.
 
 ## Usage
 
 ### Algokit
 
-This template assumes you have a local network running on your machine. The easiet way to setup a local network is with [algokit](https://github.com/algorandfoundation/algokit-cli). If you don't have Algokit or its dependencies installed locally you can open this repository in a GitHub codespace via https://codespaces.new and choosing this repo.
+This repository assumes you have [AlgoKit](https://github.com/algorandfoundation/algokit-cli) installed and have a local network running on your machine.  The default 'devmode' sandbox (`algokit localnet start`) is required for the system tests as they manipulate the block time offsets.template assumes you have a local network running on your machine. 
 
-### Build Contract
+### PNPM
 
-`npm run build` will compile the contract to TEAL and generate an ABI and appspec JSON in [./contracts/artifacts](./contracts/artifacts/) and a algokit TypeScript client in [./contracts/clients](./contracts/clients/).
+The PNPM package manager was used for this project.  See [pnpm](https://pnpm.io/) for installation details.  Be sure to `pnpm install` first.
 
-`npm run compile-contract` or `npm run generate-client` can be used to compile the contract or generate the contract seperately.
+### Build Contracts
+
+`pnpm run build` will compile the contracts to TEAL and generate ABI and appspec JSON files in [./contracts/artifacts](./contracts/artifacts/) and AlgoKit TypeScript clients in [./contracts/clients](./contracts/clients/).
+
+`pnpm run compile-contract` or `pnpm run generate-client` can be used to compile the contract or generate the contract seperately.
 
 ### Run Tests
 
-`npm run test` will execute the tests defined in [./\_\_test\_\_](./__test__) 
+`pnpm run test` will execute the tests defined in [./\_\_test\_\_](./__test__) 
 
-### Lint
+## Deploying
 
-`npm run lint` will lint the contracts and tests with ESLint.
+### Bootstrap script
+
+A bootstrap script is in the ./bootstrap directory.  Running `pnpm run bootstrap` will bootstrap a validator instance on the  local sandbox, and update an .env.sandbox file inside the nodemgr directory for local CLI use/testing.  It is recommended to use a named sandbox configuration that has devmode disabled so blocks proceed normally. 
