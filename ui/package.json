@@ -59,6 +59,7 @@
     "big.js": "^6.2.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.10",
     "lucide-react": "^0.343.0",
     "next-themes": "^0.2.1",

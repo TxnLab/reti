@@ -11,6 +11,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { copyToClipboard } from '@/utils/copyToClipboard'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 
 interface ConnectedMenuProps {
@@ -42,7 +43,13 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
             ) : (
               <span>{ellipseAddress(activeAddress)}</span>
             )}
-            <Button variant="ghost" size="icon" className="group h-8 w-8 -my-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="group h-8 w-8 -my-1"
+              data-clipboard-text={activeAddress}
+              onClick={copyToClipboard}
+            >
               <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
             </Button>
           </div>
