@@ -77,35 +77,35 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
     },
     {
       id: 'validator',
-      accessorFn: (row) => row.owner,
+      accessorFn: (row) => row.config.owner,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
         const validator = row.original
 
-        const nfdAppId = validator.nfd
+        const nfdAppId = validator.config.nfdForInfo
         if (nfdAppId > 0) {
-          return ellipseAddress(validator.owner) // @todo: fetch NFD by appId
+          return ellipseAddress(validator.config.owner) // @todo: fetch NFD by appId
         }
-        return ellipseAddress(validator.owner)
+        return ellipseAddress(validator.config.owner)
       },
     },
     {
       id: 'minEntry',
-      accessorFn: (row) => row.minStake,
+      accessorFn: (row) => Number(row.config.minEntryStake),
       header: ({ column }) => <DataTableColumnHeader column={column} title="Min Entry" />,
       cell: ({ row }) => {
         const validator = row.original
-        return <AlgoDisplayAmount amount={validator.minStake} microalgos />
+        return <AlgoDisplayAmount amount={validator.config.minEntryStake} microalgos />
       },
     },
     {
       id: 'stake',
-      accessorFn: (row) => row.totalStaked,
+      accessorFn: (row) => Number(row.state.totalAlgoStaked),
       header: ({ column }) => <DataTableColumnHeader column={column} title="Stake" />,
       cell: ({ row }) => {
         const validator = row.original
 
-        const currentStake = AlgoAmount.MicroAlgos(validator.totalStaked).algos
+        const currentStake = AlgoAmount.MicroAlgos(Number(validator.state.totalAlgoStaked)).algos
         const currentStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
         }).format(currentStake)
@@ -124,40 +124,40 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
     },
     {
       id: 'stakers',
-      accessorFn: (row) => row.numStakers,
+      accessorFn: (row) => row.state.totalStakers,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Stakers" />,
       cell: ({ row }) => {
         const validator = row.original
 
-        if (validator.numPools == 0) return '--'
+        if (validator.state.numPools == 0) return '--'
 
-        const numStakers = validator.numStakers
+        const totalStakers = validator.state.totalStakers
         const maxStakers = calculateMaxStakers(validator)
 
         return (
           <span className="whitespace-nowrap">
-            {numStakers} / {maxStakers}
+            {totalStakers} / {maxStakers}
           </span>
         )
       },
     },
     {
       id: 'commission',
-      accessorFn: (row) => row.commission,
+      accessorFn: (row) => row.config.percentToValidator,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Commission" />,
       cell: ({ row }) => {
         const validator = row.original
-        const percent = validator.commission / 10000
+        const percent = validator.config.percentToValidator / 10000
         return `${percent}%`
       },
     },
     {
       id: 'payoutFrequency',
-      accessorFn: (row) => row.payoutFrequency,
+      accessorFn: (row) => row.config.payoutEveryXMins,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Payout Frequency" />,
       cell: ({ row }) => {
         const validator = row.original
-        const frequencyFormatted = formatDuration(validator.payoutFrequency)
+        const frequencyFormatted = formatDuration(validator.config.payoutEveryXMins)
         return <span className="capitalize">{frequencyFormatted}</span>
       },
     },

@@ -33,7 +33,7 @@ export async function simulateEpoch(
     }
 
     // Set block time to payout frequency (in seconds)
-    await algodClient.setBlockOffsetTimestamp(validator.payoutFrequency * 60).do()
+    await algodClient.setBlockOffsetTimestamp(validator.config.payoutEveryXMins * 60).do()
 
     toast.loading(
       `Sign to send ${AlgoAmount.Algos(rewardAmount).algos} ALGO reward to ` +

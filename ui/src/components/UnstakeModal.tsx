@@ -82,7 +82,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
         if (stakerPoolData && validator) {
           const currentBalance = stakerPoolData.balance
-          const minimumStake = validator.minStake
+          const minimumStake = Number(validator.config.minEntryStake)
 
           if (amountToUnstake > currentBalance) {
             ctx.addIssue({
@@ -253,8 +253,13 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
               return {
                 ...prevData,
-                numStakers: allStakeRemoved ? prevData.numStakers - 1 : prevData.numStakers,
-                totalStaked: prevData.totalStaked - amountToUnstake,
+                state: {
+                  ...prevData.state,
+                  totalStakers: allStakeRemoved
+                    ? prevData.state.totalStakers - 1
+                    : prevData.state.totalStakers,
+                  totalAlgoStaked: prevData.state.totalAlgoStaked - BigInt(amountToUnstake),
+                },
               }
             },
           )
@@ -268,8 +273,11 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
               if (v.id === pool.poolKey.validatorId) {
                 return {
                   ...v,
-                  numStakers: allStakeRemoved ? v.numStakers - 1 : v.numStakers,
-                  totalStaked: v.totalStaked - amountToUnstake,
+                  state: {
+                    ...v.state,
+                    totalStakers: allStakeRemoved ? v.state.totalStakers - 1 : v.state.totalStakers,
+                    totalAlgoStaked: v.state.totalAlgoStaked - BigInt(amountToUnstake),
+                  },
                 }
               }
 
