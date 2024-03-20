@@ -18,7 +18,11 @@ import {
   ValidatorPoolKey,
   ValidatorStateRaw,
 } from '@/interfaces/validator'
-import { transformNodePoolAssignment, transformValidatorData } from '@/utils/contracts'
+import {
+  transformNodePoolAssignment,
+  transformValidatorConfig,
+  transformValidatorData,
+} from '@/utils/contracts'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import {
   getNfdRegistryAppIdFromViteEnvironment,
@@ -864,13 +868,13 @@ export async function fetchMaxAvailableToStake(
     const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
     const rawConfig = validatorConfigResult.returns![0]
 
-    const maxAlgoPerPool = Number(rawConfig[13])
+    const validatorConfig = transformValidatorConfig(rawConfig)
 
     const poolsInfo: PoolInfo[] = await fetchValidatorPools(validatorId)
 
     // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
     const maxAvailableToStake = poolsInfo.reduce((acc, pool) => {
-      const availableToStake = maxAlgoPerPool - pool.totalAlgoStaked
+      const availableToStake = Number(validatorConfig.MaxAlgoPerPool) - pool.totalAlgoStaked
       return availableToStake > acc ? availableToStake : acc
     }, 0)
 

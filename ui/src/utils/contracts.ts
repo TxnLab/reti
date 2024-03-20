@@ -16,11 +16,8 @@ import {
 import { dayjs } from '@/utils/dayjs'
 import { isValidName } from '@/utils/nfd'
 
-export function transformValidatorData(
-  rawConfig: ValidatorConfigRaw,
-  rawState: ValidatorStateRaw,
-): Validator {
-  const config: ValidatorConfig = {
+export function transformValidatorConfig(rawConfig: ValidatorConfigRaw): ValidatorConfig {
+  return {
     ID: rawConfig[0],
     Owner: rawConfig[1],
     Manager: rawConfig[2],
@@ -39,13 +36,23 @@ export function transformValidatorData(
     SunsettingOn: rawConfig[15],
     SunsettingTo: rawConfig[16],
   }
+}
 
-  const state: ValidatorState = {
+export function transformValidatorState(rawState: ValidatorStateRaw): ValidatorState {
+  return {
     NumPools: rawState[0],
     TotalStakers: rawState[1],
     TotalAlgoStaked: rawState[2],
     RewardTokenHeldBack: rawState[3],
   }
+}
+
+export function transformValidatorData(
+  rawConfig: ValidatorConfigRaw,
+  rawState: ValidatorStateRaw,
+): Validator {
+  const config = transformValidatorConfig(rawConfig)
+  const state = transformValidatorState(rawState)
 
   return {
     id: Number(config.ID),
