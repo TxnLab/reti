@@ -22,6 +22,13 @@ const (
 	StakePoolMaxStake      = "maxStake"
 	StakePoolLastPayout    = "lastPayout"
 	StakePoolAlgodVer      = "algodVer"
+
+	// Gating types
+	GatingTypeNone                  = 0
+	GatingTypeAssetsCreatedBy       = 1
+	GatingTypeAssetID               = 2
+	GatingTypeCreatedByNFDAddresses = 3
+	GatingTypeSegmentOfNFD          = 4
 )
 
 // Algorand address to use as sender for read-only simulate calls (not signed but still has to be valid address)

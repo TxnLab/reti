@@ -2,6 +2,7 @@ package reti
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -73,10 +74,10 @@ type ValidatorConfig struct {
 	// Optional NFD AppID which the validator uses to describe their validator pool
 	NFDForInfo uint64
 
-	// MustHoldCreatorNFT specifies an optional creator address for assets which stakers must hold.  It will be the
-	// responsibility of the staker (txn composer really) to pick an asset to check that meets the criteria if this
-	// is set
-	MustHoldCreatorNFT string
+	// EntryGatingType / EntryGatingValue specifies an optional gating mechanism - whose criteria
+	// the staker must meet.
+	EntryGatingType  uint8
+	EntryGatingValue []byte
 
 	// GatingAssetMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
 	// creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
@@ -110,30 +111,38 @@ type ValidatorConfig struct {
 
 func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
-		if len(arrReturn) != 16 {
+		if len(arrReturn) != 17 {
 			return nil, fmt.Errorf("should be 10 elements returned in ValidatorConfig response")
 		}
 		pkAsString := func(pk []uint8) string {
 			addr, _ := types.EncodeAddress(pk)
 			return addr
 		}
+		byte32AsSlice := func(byte32 []any) []byte {
+			ret := make([]byte, len(byte32))
+			for i, b := range byte32 {
+				ret[i] = b.(byte)
+			}
+			return ret
+		}
 		config := &ValidatorConfig{}
 		config.ID = arrReturn[0].(uint64)
 		config.Owner = pkAsString(arrReturn[1].([]uint8))
 		config.Manager = pkAsString(arrReturn[2].([]uint8))
 		config.NFDForInfo = arrReturn[3].(uint64)
-		config.MustHoldCreatorNFT = pkAsString(arrReturn[4].([]uint8))
-		config.GatingAssetMinBalance = arrReturn[5].(uint64)
-		config.RewardTokenID = arrReturn[6].(uint64)
-		config.RewardPerPayout = arrReturn[7].(uint64)
-		config.PayoutEveryXMins = int(arrReturn[8].(uint16))
-		config.PercentToValidator = int(arrReturn[9].(uint32))
-		config.ValidatorCommissionAddress = pkAsString(arrReturn[10].([]uint8))
-		config.MinEntryStake = arrReturn[11].(uint64)
-		config.MaxAlgoPerPool = arrReturn[12].(uint64)
-		config.PoolsPerNode = int(arrReturn[13].(uint8))
-		config.SunsettingOn = arrReturn[14].(uint64)
-		config.SunsettingTo = arrReturn[15].(uint64)
+		config.EntryGatingType = arrReturn[4].(uint8)
+		config.EntryGatingValue = byte32AsSlice(arrReturn[5].([]any))
+		config.GatingAssetMinBalance = arrReturn[6].(uint64)
+		config.RewardTokenID = arrReturn[7].(uint64)
+		config.RewardPerPayout = arrReturn[8].(uint64)
+		config.PayoutEveryXMins = int(arrReturn[9].(uint16))
+		config.PercentToValidator = int(arrReturn[10].(uint32))
+		config.ValidatorCommissionAddress = pkAsString(arrReturn[11].([]uint8))
+		config.MinEntryStake = arrReturn[12].(uint64)
+		config.MaxAlgoPerPool = arrReturn[13].(uint64)
+		config.PoolsPerNode = int(arrReturn[14].(uint8))
+		config.SunsettingOn = arrReturn[15].(uint64)
+		config.SunsettingTo = arrReturn[16].(uint64)
 		return config, nil
 	}
 	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)
@@ -169,9 +178,26 @@ func (v *ValidatorConfig) String() string {
 	if v.NFDForInfo != 0 {
 		out.WriteString(fmt.Sprintf("NFD ID: %d\n", v.NFDForInfo))
 	}
-	if v.MustHoldCreatorNFT != types.ZeroAddress.String() {
-		out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: %s\n", v.MustHoldCreatorNFT))
+	switch v.EntryGatingType {
+	case GatingTypeNone:
+	case GatingTypeAssetsCreatedBy:
+		addr, err := types.EncodeAddress(v.EntryGatingValue)
+		if err != nil {
+			out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: {err:%v}\n", err))
+		} else {
+			out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: %s\n", addr))
+		}
 		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
+	case GatingTypeAssetID:
+		out.WriteString(fmt.Sprintf("Reward Token Requires ASA:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
+	case GatingTypeCreatedByNFDAddresses:
+		out.WriteString(fmt.Sprintf("Reward Token NFD Creator Addresses, NFD ID:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
+	case GatingTypeSegmentOfNFD:
+		out.WriteString(fmt.Sprintf("Reward Token NFD Segments of Root NFD ID:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+	}
+	if v.EntryGatingType != GatingTypeNone {
 		out.WriteString(fmt.Sprintf("Reward Token ID: %d\n", v.RewardTokenID))
 		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
 	}
@@ -294,7 +320,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	ownerAddr, _ := types.DecodeAddress(info.Config.Owner)
 	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
 	commissionAddr, _ := types.DecodeAddress(info.Config.ValidatorCommissionAddress)
-	mustHoldCreatorAddr, _ := types.DecodeAddress(info.Config.MustHoldCreatorNFT)
+	//mustHoldCreatorAddr, _ := types.DecodeAddress(info.Config.MustHoldCreatorNFT)
 
 	// first determine how much we have to add in MBR to the validator
 	mbrs, err := r.getMbrAmounts(ownerAddr)
@@ -337,7 +363,8 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				ownerAddr,
 				managerAddr,
 				info.Config.NFDForInfo,
-				mustHoldCreatorAddr,
+				0, // gating type none
+				[32]byte{},
 				info.Config.GatingAssetMinBalance,
 				info.Config.RewardTokenID,
 				info.Config.RewardPerPayout,
