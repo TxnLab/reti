@@ -321,6 +321,12 @@ function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
     return result;
 }
 
+export function gatingValueFromBigint(val: bigint): Uint8Array {
+    // construct and return 32-byte long Uint8Array instance but set first 8 bytes to the 64-bit big-endian value
+    // contained in 'val'... so we just concat 24 empty bytes to result of encodeUint64
+    return concatUint8Arrays(encodeUint64(val), new Uint8Array(24));
+}
+
 export async function getStakeInfoFromBoxValue(stakeClient: StakingPoolClient) {
     const stakerData = await stakeClient.appClient.getBoxValue('stakers');
     return StakedInfo.FromBoxData(stakerData);
@@ -569,7 +575,8 @@ export async function addStake(
     validatorClient: ValidatorRegistryClient,
     vldtrId: number,
     staker: Account,
-    algoAmount: AlgoAmount
+    algoAmount: AlgoAmount,
+    valueToVerify: bigint, // depends on gating but could be nfd id, or asset id
 ): Promise<[ValidatorPoolKey, AlgoAmount]> {
     try {
         const suggestedParams = await context.algod.getTransactionParams().do();
@@ -618,7 +625,7 @@ export async function addStake(
                 {
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     validatorID: vldtrId,
-                    valueToVerify: 0,
+                    valueToVerify,
                 },
                 { sendParams: { fee: fees }, sender: staker }
             )
@@ -647,7 +654,7 @@ export async function addStake(
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     // --
                     validatorID: vldtrId,
-                    valueToVerify: 0,
+                    valueToVerify,
                 },
                 { sendParams: { fee: fees }, sender: staker }
             )
@@ -887,7 +894,7 @@ export async function getPoolAvailBalance(context: AlgorandTestAutomationContext
     return BigInt(poolAcctInfo.amount - poolAcctInfo['min-balance']);
 }
 
-export async function addAsset(
+export async function createAsset(
     client: Algodv2,
     sender: Account,
     assetName: string,

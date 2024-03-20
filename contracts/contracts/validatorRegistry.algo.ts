@@ -1094,7 +1094,11 @@ export class ValidatorRegistry extends Contract {
         const gateReq = clone(this.ValidatorList(validatorID).value.Config.EntryGatingValue);
 
         // If an asset gating - check the balance requirement - can handle whether right asset afterward
-        if (type === GATING_TYPE_ASSETS_CREATED_BY || type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+        if (
+            type === GATING_TYPE_ASSETS_CREATED_BY ||
+            type === GATING_TYPE_ASSET_ID ||
+            type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES
+        ) {
             assert(valueToVerify !== 0);
             let balRequired = this.ValidatorList(validatorID).value.Config.GatingAssetMinBalance;
             if (balRequired === 0) {
