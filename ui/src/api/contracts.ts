@@ -864,7 +864,7 @@ export async function fetchMaxAvailableToStake(
     const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
     const rawConfig = validatorConfigResult.returns![0]
 
-    const maxAlgoPerPool = Number(rawConfig[12])
+    const maxAlgoPerPool = Number(rawConfig[13])
 
     const poolsInfo: PoolInfo[] = await fetchValidatorPools(validatorId)
 
