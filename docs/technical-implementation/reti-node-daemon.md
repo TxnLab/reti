@@ -1,0 +1,10 @@
+# Reti Node Daemon
+
+* The Reti Node Daemon Is a combination CLI / Service daemon that will run on Linux / OSX and which node runners will run as a background service.
+* This service can act as the configuration agent, letting users configure the validator, add pools, etc. but the UI for it will be easiest choice due to wallet integrations.
+* Each node daemon will have access to a 'manager' account hot-wallet which it can sign transactions with. This manager account can be switched out by the owner of that validator to a new account at will if there is a compromise.&#x20;
+* The only accounts that can ever remove user funds are stakers removing only their (compounded) balance. Other accounts can trigger sending of 'reward tokens' to stakers though as this can only pay out to the staker and no one else.
+* On each node, it will monitor the staking pools defined and automatically create short-lived (no more than 30d) participation keys with that nodes algod instance.
+* The participation keys will be monitored for expiration and new keys will be created in advance so that its always online.
+* As participation keys are created, the paired staking pool will be instructed via the 'manager' to issue a transaction to go online against that participation key.
+* The node daemon will likely provide a number of prometheus compatible metrics for scraping into compatible agents (staking amounts, etc.) but broader monitoring will be best handled independently.
