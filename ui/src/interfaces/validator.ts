@@ -3,17 +3,17 @@ export type ValidatorConfigRaw = [
   string,
   string,
   bigint,
-  number,
+  number | bigint,
   Uint8Array,
   bigint,
   bigint,
   bigint,
-  number, // @todo: actually bigint?
-  number, // @todo: actually bigint?
+  number | bigint,
+  number | bigint,
   string,
   bigint,
   bigint,
-  number, // @todo: actually bigint?
+  number | bigint,
   bigint,
   bigint,
 ]
@@ -38,12 +38,7 @@ export interface ValidatorConfig {
   sunsettingTo: number // validator ID that validator is 'moving' to (if known)
 }
 
-export type ValidatorStateRaw = [
-  number, // @todo: actually bigint?
-  bigint,
-  bigint,
-  bigint,
-]
+export type ValidatorStateRaw = [number | bigint, bigint, bigint, bigint]
 
 export interface ValidatorState {
   numPools: number // current number of pools this validator has - capped at MaxPools
@@ -90,6 +85,7 @@ export type RawConstraints = [
   bigint,
   bigint,
   bigint,
+  bigint,
 ]
 
 export interface Constraints {
@@ -99,6 +95,7 @@ export interface Constraints {
   commissionPctMax: number
   minEntryStake: bigint
   maxAlgoPerPool: bigint
+  maxAlgoPerValidator: bigint
   maxNodes: number
   maxPoolsPerNode: number
   maxStakersPerPool: number
