@@ -46,7 +46,7 @@ operation guidelines.]{.c0}
 *   **Pools Per Node:** Recommends a maximum of 3 pools per node, with a possibility of extending up to 6.
 *   **Maximum Nodes:** Soft limit on node count to manage the overall number of pools effectively.
 *   **NFD ID (Optional):** For associating validators with detailed information for transparency.
-    *   **Token / NFD Gating:** Validators can require stakers hold certain types of assets in order to join their pools. This can be used to restrict validator pools to members of a particular community - NFT holders, special 'membership' tokens, etc. Supported options are:
+*   **Token / NFD Gating:** Validators can require stakers hold certain types of assets in order to join their pools. This can be used to restrict validator pools to members of a particular community - NFT holders, special 'membership' tokens, etc. Supported options are:
     *   **Tokens/NFTs** by Creator and min amount (Optional): Can set a creator account such that all stakers must hold an ASA created by this account (w/ optional minimum amount for tokens).
     *   **Specific ASA ID**.
     *   **Tokens/NFTs created by any address linked within a particular NFD**. This is so NFT projects with multiple creation wallets can just reference their NFD and then anyone holding an asset created by any account linked w/in the NFD is eligible.
