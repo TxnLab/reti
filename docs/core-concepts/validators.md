@@ -1,23 +1,23 @@
 # Validators
 
-Anyone can add themselves as a validator.
+As a decentralized protocol, anyone can add themselves as a validator.
 
-There are guidelines enforced in the node running code to ensure no one validator amasses a dangerous stake on a single node.
+There are guidelines enforced in the node running code to ensure no one validator amasses a dangerous stake on a single node. Validators are limited to 3 pools per node, and 4 nodes per validator, for a maximum of 12 pools.&#x20;
 
-Validators are limited to 3 pools per node, and 4 nodes per validator, for a maximum of 12 pools.
+***
 
 **Validators can define:**
 
 {% hint style="warning" %}
-Many of these parameters can be set ONLY when defining the validator.
+Many parameters can ONLY be set up front, when defining the validator.
 
-Allowing the to be changed at will would be unfair to stakers, as many of these options shouldn't be able to be changed from what a staker first saw when adding stake to a validatotr.
+Allowing them to be changed at will would be dangerous for stakers.
 {% endhint %}
 
-* The 'owner' address of the validator (preferably a cold-wallet)
-* A 'management' address (a hot-wallet that will need to accessible on each node by the 'reti node daemon'). This account only has authority to tell staking pool contract instances to 'go online' against a participation-key, add pools, and to update staked balances as part of regular 'epoch' payouts.
-* How often payout balance adjustments are made (every minute, hour, day, etc) - the 'minimum epoch' time.
-  * This determines how often the validator pays themselves and how often staker balances are adjusted to reflect the newly received rewards.
+* The 'owner' address of the validator (it's recommended to use a cold-wallet).
+* A 'management' address (a hot-wallet that will need to be accessible on each node by the 'reti node daemon'). This account only has authority to tell staking pool contract instances to 'go online' against a participation-key, add pools, and to update staked balances as part of regular 'epoch' payouts.
+* Payout frequency - How often payout balance adjustments are made (every minute, hour, day, etc) - the 'minimum epoch' time.
+  * This determines how often the validator pays themselves as well as how often staker balances are adjusted to reflect the newly received rewards.
 * The commission rate - the percentage of earned rewards (at payout time) that goes to the validator to pay their operating costs
 * An Algorand address to send validator fees to - changeable only by the owner.
 * The 'minimum' stake allowed to enter their pools - this prevents dusting (competing validators filling up the pools of other validators with tiny amounts). With 200 slots available per pool, minimum stake of 1,000 ALGO would mean minimum 200,000 ALGO stake if the pool was filled with stakers. Users can remove stake at will but can't go below the minimum, unless they exit the pool entirely, removing all of their ALGO.

@@ -1,6 +1,12 @@
 # Running A Node
 
-Learn how to run a node: [https://developer.algorand.org/docs/run-a-node/participate/](https://developer.algorand.org/docs/run-a-node/participate/)
+Algorand developer docs:\
+[https://developer.algorand.org/docs/run-a-node/participate/](https://developer.algorand.org/docs/run-a-node/participate/)
+
+Community tutorials:\
+[https://medium.com/@alexbagdadi/how-i-set-up-my-algorand-node-6ccd5209d77d](https://medium.com/@alexbagdadi/how-i-set-up-my-algorand-node-6ccd5209d77d)
+
+
 
 One click node options:&#x20;
 
