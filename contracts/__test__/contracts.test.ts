@@ -30,6 +30,7 @@ import {
     GATING_TYPE_ASSETS_CREATED_BY,
     gatingValueFromBigint,
     GATING_TYPE_ASSET_ID,
+    ALGORAND_ZERO_ADDRESS_STRING,
 } from './helpers';
 
 const MaxPoolsPerNode = 3;
@@ -68,6 +69,7 @@ beforeAll(async () => {
             id: 0,
             deployTimeParams: {
                 NFDRegistryAppID: 0,
+                FeeSinkAddr: 'Y76M3MSY6DKBRHBL7C3NNDXGS5IIMQVQVUAB6MP4XEMMGVF2QWNPL226CA',
             },
         },
         algod

@@ -364,7 +364,7 @@
         {
           "name": "valueToVerify",
           "type": "uint64",
-          "desc": "only if validator has gating to enter - this is asset id or nfd id that corresponds to gating.Txn sender is factored in as well if that is part of gating."
+          "desc": "only if validator has gating to enter - this is asset id or nfd id that corresponds to gating.Txn sender is factored in as well if that is part of gating.*"
         }
       ],
       "returns": {

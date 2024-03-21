@@ -12,13 +12,13 @@ import {
     GATING_TYPE_SEGMENT_OF_NFD,
     GATING_TYPE_CONST_MAX,
     MAX_ALGO_PER_POOL,
-    MAX_ALGO_PER_VALIDATOR,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
     MIN_ALGO_STAKE_PER_POOL,
     MIN_PCT_TO_VALIDATOR,
     SSC_VALUE_BYTES,
     SSC_VALUE_UINT,
+    MAX_VALIDATOR_PCT_OF_ONLINE,
 } from './constants.algo';
 
 const MAX_NODES = 4; // more just as a reasonable limit and cap on contract storage
@@ -268,7 +268,7 @@ export class ValidatorRegistry extends Contract {
             MaxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             MinEntryStake: MIN_ALGO_STAKE_PER_POOL,
             MaxAlgoPerPool: MAX_ALGO_PER_POOL,
-            MaxAlgoPerValidator: MAX_ALGO_PER_VALIDATOR,
+            MaxAlgoPerValidator: this.maxAllowedStake(),
             MaxNodes: MAX_NODES,
             MaxPoolsPerNode: MAX_POOLS_PER_NODE,
             MaxStakersPerPool: MAX_STAKERS_PER_POOL,
@@ -597,7 +597,7 @@ export class ValidatorRegistry extends Contract {
 
         // Ensure we're not over our protocol maximum for combined stake in all pools
         assert(
-            this.ValidatorList(validatorID).value.State.TotalAlgoStaked < MAX_ALGO_PER_VALIDATOR,
+            this.ValidatorList(validatorID).value.State.TotalAlgoStaked < this.maxAllowedStake(),
             'total staked for all of a validators pools may not exceed protocol maximum'
         );
         // If the validator specified that a specific token creator is required to stake, verify that the required
@@ -838,7 +838,16 @@ export class ValidatorRegistry extends Contract {
         // We have max per pool per validator - this value is stored in the pools as well, and they enforce it on their
         // addStake calls but the values should be the same, and we shouldn't even try to add stake if it won't even
         // be accepted.
-        const maxPerPool = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool;
+        // However, one thing extra we also handle is have a 'soft' maximum per pool so that the amounts balance out based on
+        // maxAllowedStake() (x % of all online stake) - taking that max / numPools.  This way as pools are added
+        // to go beyond the individual pool maximum, the maximum for each pool starts to reflect the max allowed but
+        // balanced across the pools.
+        const numPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
+        const maxDividedBetweenPools = this.maxAllowedStake() / numPools;
+        let maxPerPool: uint64 = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool;
+        if (maxDividedBetweenPools < maxPerPool) {
+            maxPerPool = maxDividedBetweenPools;
+        }
         // If there's already a stake list for this account, walk that first, so if the staker is already in THIS
         // validator, then go to the stakers existing pool(s) w/ this validator first.
         if (this.StakerPoolSet(staker).exists) {
@@ -1202,5 +1211,19 @@ export class ValidatorRegistry extends Contract {
             }
         }
         return false;
+    }
+
+    /**
+     * Returns the maximum allowed stake per validator based on a percentage of all current online stake
+     */
+    private maxAllowedStake(): uint64 {
+        const online = this.getCurrentOnlineStake();
+
+        return wideRatio([online, MAX_VALIDATOR_PCT_OF_ONLINE], [1000]);
+    }
+
+    private getCurrentOnlineStake(): uint64 {
+        // TODO - replace w/ appropriate AVM call once available but return fixed 2 billion for now.
+        return 2_000_000_000_000_000;
     }
 }

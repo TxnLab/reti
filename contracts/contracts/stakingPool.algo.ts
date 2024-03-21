@@ -7,6 +7,7 @@ import {
     ASSET_HOLDING_FEE,
     MAX_ALGO_PER_POOL,
     MAX_STAKERS_PER_POOL,
+    MAX_VALIDATOR_PCT_OF_ONLINE,
     MIN_ALGO_STAKE_PER_POOL,
     SSC_VALUE_BYTES,
     SSC_VALUE_UINT,
@@ -69,6 +70,8 @@ export class StakingPool extends Contract {
     Stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' });
 
     NFDRegistryAppID = TemplateVar<uint64>();
+
+    FeeSinkAddr = TemplateVar<Address>();
 
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
@@ -423,6 +426,10 @@ export class StakingPool extends Contract {
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
+
+        // =====
+        // Ensure full Epoch has passed before allowing a new Epoch update to occur
+        // =====
         // Since we're being told to payout, we're at epoch 'end' presumably - or close enough
         // but what if we're told to pay really early?  we need to verify that as well.
         const curTime = globals.latestTimestamp;
@@ -438,6 +445,8 @@ export class StakingPool extends Contract {
         // Update our payout time - required to match
         this.LastPayout.value = curTime;
 
+        // Determine Token rewards if applicable
+        // =====
         // Do we handle token rewards... ?  if so, we need the app address of pool # 1
         const isTokenEligible = validatorConfig.RewardTokenID !== 0;
         let poolOneAppID = this.app.id;
@@ -472,16 +481,27 @@ export class StakingPool extends Contract {
             }
         }
 
-        // Get the validator state as well - so we know how much tokenn has been held back
+        // Get the validator state as well - so we know how much token has been held back
         const validatorState = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorState>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
         });
         const rewardTokenHeldBack = validatorState.RewardTokenHeldBack;
 
+        // Determine ALGO rewards if available
+        // =====
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which should never be counted - it's not payable]
         let algoRewardAvail = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
+        let sendRewardToFeeSink = false;
+
+        // Now verify if our validator has exceeded the maxAllowedStake for the 'protocol' - if so, then we want to
+        // send ALL rewards back to the fee sink, and NOT to the validator, or the stakers.  We want people to unstake
+        // from the pools to get the total stake for this validator back under the limit.
+        if (validatorState.TotalAlgoStaked > this.maxAllowedStake()) {
+            log('validator stake exceeded protocol max, all reward sent back to fee sink');
+            sendRewardToFeeSink = true;
+        }
 
         // if tokens are rewarded by this validator and determine how much we have to hand out
         // we'll track amount we actually assign out and let our validator know so it can mark that amount
@@ -517,7 +537,14 @@ export class StakingPool extends Contract {
         log(concat('algo reward avail: ', algoRewardAvail.toString()));
         // log(concat('algo reward avail: %i', itob(algoRewardAvail)));
 
-        if (validatorConfig.PercentToValidator !== 0) {
+        if (sendRewardToFeeSink) {
+            sendPayment({
+                amount: algoRewardAvail,
+                receiver: this.getFeeSink(),
+                note: 'validator exceeded protocol max, rewards sent back to fee sink',
+            });
+            algoRewardAvail = 0;
+        } else if (validatorConfig.PercentToValidator !== 0) {
             // determine the % that goes to validator...
             // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
             const validatorPay = wideRatio(
@@ -770,6 +797,30 @@ export class StakingPool extends Contract {
         });
     }
 
+    /**
+     * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1
+     * We need to verify that we are in fact being called by another of OUR pools (not us)
+     * and then we'll call the validator on their behalf to update the token payouts
+     * @param poolKey - ValidatorPoolKey tuple
+     */
+    proxiedSetTokenPayoutRatio(poolKey: ValidatorPoolKey): PoolTokenPayoutRatio {
+        assert(this.ValidatorID.value === poolKey.ID, 'caller must be part of same validator set!');
+        assert(this.PoolID.value === 1, 'callee must be pool 1');
+        assert(poolKey.PoolID !== 1, 'caller must NOT be pool 1');
+
+        const callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+            methodArgs: [poolKey.ID, poolKey.PoolID],
+        });
+        assert(callerPoolAppID === poolKey.PoolAppID);
+        assert(this.txn.sender === AppID.fromUint64(poolKey.PoolAppID).address);
+
+        return sendMethodCall<typeof ValidatorRegistry.prototype.setTokenPayoutRatio>({
+            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+            methodArgs: [this.ValidatorID.value],
+        });
+    }
+
     private isOwnerOrManagerCaller(): boolean {
         const OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
@@ -796,27 +847,23 @@ export class StakingPool extends Contract {
         return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10;
     }
 
+    private getFeeSink(): Address {
+        return this.FeeSinkAddr;
+        // will be like: txn FirstValid; int 1; -; block BlkFeeSink
+        // once available in AVM
+    }
+
     /**
-     * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1
-     * We need to verify that we are in fact being called by another of OUR pools (not us)
-     * and then we'll call the validator on their behalf to update the token payouts
-     * @param poolKey - ValidatorPoolKey tuple
+     * Returns the maximum allowed stake per validator based on a percentage of all current online stake
      */
-    proxiedSetTokenPayoutRatio(poolKey: ValidatorPoolKey): PoolTokenPayoutRatio {
-        assert(this.ValidatorID.value === poolKey.ID, 'caller must be part of same validator set!');
-        assert(this.PoolID.value === 1, 'callee must be pool 1');
-        assert(poolKey.PoolID !== 1, 'caller must NOT be pool 1');
+    private maxAllowedStake(): uint64 {
+        const online = this.getCurrentOnlineStake();
 
-        const callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
-            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
-            methodArgs: [poolKey.ID, poolKey.PoolID],
-        });
-        assert(callerPoolAppID === poolKey.PoolAppID);
-        assert(this.txn.sender === AppID.fromUint64(poolKey.PoolAppID).address);
+        return wideRatio([online, MAX_VALIDATOR_PCT_OF_ONLINE], [1000]);
+    }
 
-        return sendMethodCall<typeof ValidatorRegistry.prototype.setTokenPayoutRatio>({
-            applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
-            methodArgs: [this.ValidatorID.value],
-        });
+    private getCurrentOnlineStake(): uint64 {
+        // TODO - replace w/ appropriate AVM call once available but return fixed 2 billion for now.
+        return 2_000_000_000_000_000;
     }
 }

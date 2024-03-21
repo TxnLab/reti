@@ -576,7 +576,7 @@ export async function addStake(
     vldtrId: number,
     staker: Account,
     algoAmount: AlgoAmount,
-    valueToVerify: bigint, // depends on gating but could be nfd id, or asset id
+    valueToVerify: bigint // depends on gating but could be nfd id, or asset id
 ): Promise<[ValidatorPoolKey, AlgoAmount]> {
     try {
         const suggestedParams = await context.algod.getTransactionParams().do();

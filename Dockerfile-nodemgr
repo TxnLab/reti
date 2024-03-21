@@ -9,12 +9,8 @@ WORKDIR /go/src/app
 COPY nodemgr/go.* ./nodemgr/
 RUN cd nodemgr && go mod download && cd ..
 
-#RUN go install github.com/ahmetb/govvv@latest
-
 # Copy all project files (.env's are skipped due to .dockerignore)
 COPY . ./
-#RUN git log -1
-#RUN govvv -flags
 RUN --mount=type=cache,target=/root/.cache/go-build env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -C nodemgr -v -o /out/ .
 
 FROM scratch
