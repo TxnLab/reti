@@ -20,7 +20,6 @@
 
 * [Smart Contracts](technical-implementation/smart-contracts.md)
 * [Reti Node Daemon](technical-implementation/reti-node-daemon.md)
-* [Back End](technical-implementation/back-end.md)
 * [Front End](technical-implementation/front-end.md)
 
 ## Resources

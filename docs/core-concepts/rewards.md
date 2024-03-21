@@ -8,7 +8,5 @@
 * The % share the user gets is based on their stake and is adjusted based on the % of time they were 'in the epoch'. A staker adding/entering stake 95% of the way through an epoch would only receive 5% of the reward they would have received had they been in the pool for the entire epoch.
 * After paying 'partial' epoch holders, the remaining reward (which now has extra) is divided across the 'in pool 100% of the epoch' stakers with their relative % of the pool being based on their % of the total (minus the stake of the partial epoch stakers).
 * The partial epoch holders will be full holders in the next epoch, assuming they don't add stake again. Each time adding stake resets their clock in the epoch.
-* Some validators epochs might be as short as 1 day, so the differences will be small but preventing gaming is still critical.
-* The node daemon via the epoch update will update the staking poools 'algod' version for public visibility
-* Users can remove stake at will as well as any awarded reward tokens (optionalº, being able to remove their tracked 'ledger balance' (which continues to compound and grow as reward epochs occur).\* **could u clarify** \*
-  * The contract will allow anyone to call to 'pay out staker X' rewarded community tokens - this will allow projects to pay to do automated drops of their community token via their staking pools. It may be expensive to do this for each staker, but the option will remain.
+* Some validators epochs might be extremely short (can be as low as minute), so the differences will be small but preventing gaming is still critical, particularly for larger epoch settings.
+* Users can remove stake at will.  If a validator offers a token as additional rewards, the entire balance of any rewarded tokens are paid out when removing any amount of stake.
