@@ -1,4 +1,4 @@
-export type ValidatorConfigRaw = [
+export type RawValidatorConfig = [
   bigint,
   string,
   string,
@@ -38,7 +38,7 @@ export interface ValidatorConfig {
   sunsettingTo: number // validator ID that validator is 'moving' to (if known)
 }
 
-export type ValidatorStateRaw = [number | bigint, bigint, bigint, bigint]
+export type RawValidatorState = [number | bigint, bigint, bigint, bigint]
 
 export interface ValidatorState {
   numPools: number // current number of pools this validator has - capped at MaxPools
@@ -47,17 +47,19 @@ export interface ValidatorState {
   rewardTokenHeldBack: bigint // amount of token held back for future payout to stakers
 }
 
-export type Validator = {
-  id: number
-  config: Omit<ValidatorConfig, 'id'>
-  state: ValidatorState
+export type RawPoolsInfo = [bigint, number, bigint][]
+
+export interface PoolInfo {
+  poolAppId: number
+  totalStakers: number
+  totalAlgoStaked: bigint
 }
 
-export interface MbrAmounts {
-  validatorMbr: number
-  poolMbr: number
-  poolInitMbr: number
-  stakerMbr: number
+export type RawPoolTokenPayoutRatios = [[bigint, ...bigint[]], bigint]
+
+export interface PoolTokenPayoutRatio {
+  poolPctOfWhole: number[]
+  updatedForPayout: number
 }
 
 export type NodeConfig = [bigint, ...bigint[]]
@@ -69,10 +71,26 @@ export type NodeInfo = {
   availableSlots: number
 }
 
+export type Validator = {
+  id: number
+  config: Omit<ValidatorConfig, 'id'>
+  state: ValidatorState
+  pools: PoolInfo[]
+  tokenPayoutRatio: number[]
+  nodePoolAssignment: NodePoolAssignmentConfig
+}
+
 export interface ValidatorPoolKey {
   poolId: number
   poolAppId: number
   validatorId: number
+}
+
+export interface MbrAmounts {
+  validatorMbr: number
+  poolMbr: number
+  poolInitMbr: number
+  stakerMbr: number
 }
 
 export type RawConstraints = [
@@ -99,10 +117,4 @@ export interface Constraints {
   maxNodes: number
   maxPoolsPerNode: number
   maxStakersPerPool: number
-}
-
-export interface PoolInfo {
-  poolAppId: number
-  totalStakers: number
-  totalAlgoStaked: bigint
 }

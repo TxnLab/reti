@@ -6,17 +6,21 @@ import {
   Constraints,
   NodeInfo,
   NodePoolAssignmentConfig,
+  PoolTokenPayoutRatio,
+  RawPoolTokenPayoutRatios,
   RawNodePoolAssignmentConfig,
   Validator,
   ValidatorConfig,
-  ValidatorConfigRaw,
+  RawValidatorConfig,
   ValidatorState,
-  ValidatorStateRaw,
+  RawValidatorState,
+  PoolInfo,
+  RawPoolsInfo,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { isValidName } from '@/utils/nfd'
 
-export function transformValidatorConfig(rawConfig: ValidatorConfigRaw): ValidatorConfig {
+export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
     id: Number(rawConfig[0]),
     owner: rawConfig[1],
@@ -38,7 +42,7 @@ export function transformValidatorConfig(rawConfig: ValidatorConfigRaw): Validat
   }
 }
 
-export function transformValidatorState(rawState: ValidatorStateRaw): ValidatorState {
+export function transformValidatorState(rawState: RawValidatorState): ValidatorState {
   return {
     numPools: Number(rawState[0]),
     totalStakers: Number(rawState[1]),
@@ -47,24 +51,52 @@ export function transformValidatorState(rawState: ValidatorStateRaw): ValidatorS
   }
 }
 
-export function transformValidatorData(
-  rawConfig: ValidatorConfigRaw,
-  rawState: ValidatorStateRaw,
-): Validator {
-  const { id, ...config } = transformValidatorConfig(rawConfig)
-  const state = transformValidatorState(rawState)
-
-  return {
-    id,
-    config,
-    state,
-  }
+export function transformPoolsInfo(rawPoolsInfo: RawPoolsInfo): PoolInfo[] {
+  return rawPoolsInfo.map((poolInfo) => ({
+    poolAppId: Number(poolInfo[0]),
+    totalStakers: Number(poolInfo[1]),
+    totalAlgoStaked: poolInfo[2],
+  }))
 }
 
 export function transformNodePoolAssignment(
   rawConfig: RawNodePoolAssignmentConfig,
 ): NodePoolAssignmentConfig {
   return rawConfig[0].flat()
+}
+
+export function transformPoolTokenPayoutRatio(rawData: RawPoolTokenPayoutRatios): number[] {
+  const [poolPctOfWhole, updatedForPayout] = rawData
+
+  const poolTokenPayoutRatio: PoolTokenPayoutRatio = {
+    poolPctOfWhole: poolPctOfWhole.map((poolPct) => Number(poolPct)),
+    updatedForPayout: Number(updatedForPayout),
+  }
+
+  return poolTokenPayoutRatio.poolPctOfWhole
+}
+
+export function transformValidatorData(
+  rawConfig: RawValidatorConfig,
+  rawState: RawValidatorState,
+  rawPoolsInfo: RawPoolsInfo,
+  rawPoolTokenPayoutRatios: RawPoolTokenPayoutRatios,
+  rawNodePoolAssignment: RawNodePoolAssignmentConfig,
+): Validator {
+  const { id, ...config } = transformValidatorConfig(rawConfig)
+  const state = transformValidatorState(rawState)
+  const pools = transformPoolsInfo(rawPoolsInfo)
+  const tokenPayoutRatio = transformPoolTokenPayoutRatio(rawPoolTokenPayoutRatios)
+  const nodePoolAssignment = transformNodePoolAssignment(rawNodePoolAssignment)
+
+  return {
+    id,
+    config,
+    state,
+    pools,
+    tokenPayoutRatio,
+    nodePoolAssignment,
+  }
 }
 
 export function processNodePoolAssignment(

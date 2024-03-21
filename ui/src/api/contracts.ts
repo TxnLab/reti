@@ -13,10 +13,12 @@ import {
   PoolInfo,
   RawConstraints,
   RawNodePoolAssignmentConfig,
+  RawPoolTokenPayoutRatios,
+  RawPoolsInfo,
+  RawValidatorConfig,
+  RawValidatorState,
   Validator,
-  ValidatorConfigRaw,
   ValidatorPoolKey,
-  ValidatorStateRaw,
 } from '@/interfaces/validator'
 import {
   transformNodePoolAssignment,
@@ -134,20 +136,39 @@ export async function fetchValidator(
 
     const validatorClient = client || makeSimulateValidatorClient(activeAddress)
 
-    const [config, state] = await Promise.all([
-      callGetValidatorConfig(Number(validatorId), validatorClient),
-      callGetValidatorState(Number(validatorId), validatorClient),
-    ])
+    const [config, state, validatorPoolData, poolTokenPayoutRatios, nodePoolAssignments] =
+      await Promise.all([
+        callGetValidatorConfig(Number(validatorId), validatorClient),
+        callGetValidatorState(Number(validatorId), validatorClient),
+        callGetPools(Number(validatorId), validatorClient),
+        callGetTokenPayoutRatio(Number(validatorId), validatorClient),
+        callGetNodePoolAssignments(Number(validatorId), validatorClient),
+      ])
 
-    const rawConfig = config.returns![0] as ValidatorConfigRaw
-    const rawState = state.returns![0] as ValidatorStateRaw
+    const rawConfig = config.returns?.[0] as RawValidatorConfig
+    const rawState = state.returns?.[0] as RawValidatorState
+    const rawPoolsInfo = validatorPoolData.returns?.[0] as RawPoolsInfo
+    const rawPoolTokenPayoutRatios = poolTokenPayoutRatios.returns?.[0] as RawPoolTokenPayoutRatios
+    const rawNodePoolAssignment = nodePoolAssignments.returns?.[0] as RawNodePoolAssignmentConfig
 
-    if (!rawConfig || !rawState) {
+    if (
+      !rawConfig ||
+      !rawState ||
+      !rawPoolsInfo ||
+      !rawPoolTokenPayoutRatios ||
+      !rawNodePoolAssignment
+    ) {
       throw new ValidatorNotFoundError(`Validator with id "${Number(validatorId)}" not found!`)
     }
 
     // Transform raw data to Validator object
-    const validator: Validator = transformValidatorData(rawConfig, rawState)
+    const validator: Validator = transformValidatorData(
+      rawConfig,
+      rawState,
+      rawPoolsInfo,
+      rawPoolTokenPayoutRatios,
+      rawNodePoolAssignment,
+    )
     return validator
   } catch (error) {
     console.error(error)
@@ -263,6 +284,35 @@ export const poolAssignmentQueryOptions = (validatorId: number | string, enabled
     queryFn: () => fetchNodePoolAssignments(validatorId),
     enabled,
   })
+
+export function callGetTokenPayoutRatio(
+  validatorID: number | bigint,
+  validatorClient: ValidatorRegistryClient,
+) {
+  return validatorClient
+    .compose()
+    .getTokenPayoutRatio({ validatorID })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+}
+
+export async function fetchTokenPayoutRatio(validatorId: string | number | bigint) {
+  try {
+    const activeAddress = getActiveWalletAddress()
+
+    if (!activeAddress) {
+      throw new Error('No active wallet found')
+    }
+
+    const validatorClient = makeSimulateValidatorClient(activeAddress)
+
+    const result = await callGetTokenPayoutRatio(Number(validatorId), validatorClient)
+
+    return result.returns![0]
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
 
 export function callGetMbrAmounts(validatorClient: ValidatorRegistryClient) {
   return validatorClient
