@@ -511,8 +511,8 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 }
 
 func (d *Daemon) EpochUpdater(ctx context.Context) {
-	defer d.logger.Info("EpochUpdater started")
-	d.logger.Info("EpochUpdater stopped")
+	d.logger.Info("EpochUpdater started")
+	defer d.logger.Info("EpochUpdater stopped")
 
 	epochMinutes := App.retiClient.Info().Config.PayoutEveryXMins
 
@@ -526,15 +526,23 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 		case <-epochTimer.C:
 			signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 			epochTimer.Reset(durationToNextEpoch(epochMinutes))
-			var eg syncutil.WaitGroup
-			for i, pool := range App.retiClient.Info().Pools {
-				if _, found := App.retiClient.Info().LocalPools[uint64(i+1)]; !found {
+			var (
+				eg   syncutil.WaitGroup
+				info = App.retiClient.Info()
+			)
+			for i, pool := range info.Pools {
+				// usual go hack so we don't reference pointers of the iterators
+				i := i
+				appid := pool.PoolAppID
+				if _, found := info.LocalPools[uint64(i+1)]; !found {
 					continue
 				}
 				eg.Run(func(val any) error {
-					err := App.retiClient.EpochBalanceUpdate(i+1, pool.PoolAppID, signerAddr)
+					err := App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
 					if err != nil {
-						return fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err)
+						if !errors.Is(err, reti.ErrNotEnoughRewardAvailable) {
+							return fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err)
+						}
 					}
 					return nil
 				}, nil)
@@ -549,10 +557,11 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 
 func durationToNextEpoch(epochMinutes int) time.Duration {
 	now := time.Now().UTC()
-	dur := now.Round(time.Duration(epochMinutes) * time.Minute).Sub(now)
+	// add some slight fudge at end to be safe
+	dur := now.Round(time.Duration(epochMinutes)*time.Minute).Sub(now) + (1 * time.Second)
 	if dur < 0 {
-		return time.Duration(epochMinutes) * time.Minute
+		dur = time.Duration(epochMinutes) * time.Minute
 	}
-	slog.Info(fmt.Sprintf("epoch duration in mins:%d, dur to next epoch:%v", epochMinutes, dur))
+	slog.Debug(fmt.Sprintf("%v epoch duration in mins:%d, dur to next epoch:%v", now, epochMinutes, dur))
 	return dur
 }

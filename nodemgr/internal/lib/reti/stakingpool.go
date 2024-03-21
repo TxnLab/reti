@@ -12,6 +12,7 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
+	"github.com/TxnLab/reti/internal/lib/misc"
 )
 
 type StakedInfo struct {
@@ -122,8 +123,10 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	}
 	rewardAvail := r.PoolAvailableRewards(poolAppID, pools[poolID-1].TotalAlgoStaked)
 	if rewardAvail < 1e6 {
-		return fmt.Errorf("reward available is only %s ALGOS but must be at least 1 ALGO", algo.FormattedAlgoAmount(rewardAvail))
+		misc.Infof(r.Logger, "Pool:%d epoch update - reward too small:%s", poolID, algo.FormattedAlgoAmount(rewardAvail))
+		return ErrNotEnoughRewardAvailable
 	}
+	misc.Infof(r.Logger, "Pool:%d epoch update for app id:%d", poolID, poolAppID)
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {

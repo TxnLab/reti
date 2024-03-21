@@ -265,7 +265,7 @@ func ValidatorPoolKeyFromABIReturn(returnVal any) (*ValidatorPoolKey, error) {
 
 		return key, nil
 	}
-	return nil, errCantFetchPoolKey
+	return nil, ErrCantFetchPoolKey
 }
 
 type PoolInfo struct {
@@ -291,7 +291,7 @@ func ValidatorPoolsFromABIReturn(returnVal any) ([]PoolInfo, error) {
 		}
 		return retPools, nil
 	}
-	return retPools, errCantFetchPoolKey
+	return retPools, ErrCantFetchPoolKey
 }
 
 func ValidatorPoolInfoFromABIReturn(returnVal any) (*PoolInfo, error) {
@@ -306,7 +306,7 @@ func ValidatorPoolInfoFromABIReturn(returnVal any) (*PoolInfo, error) {
 
 		return key, nil
 	}
-	return nil, errCantFetchPoolKey
+	return nil, ErrCantFetchPoolKey
 }
 
 func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error) {
@@ -692,7 +692,7 @@ func NodePoolAssignmentFromABIReturn(returnVal any) (*NodePoolAssignmentConfig, 
 		}
 		return retPAC, nil
 	}
-	return nil, errCantFetchPoolKey
+	return nil, ErrCantFetchPoolKey
 }
 
 func (r *Reti) FindPoolForStaker(id uint64, staker types.Address, amount uint64) (*ValidatorPoolKey, error) {

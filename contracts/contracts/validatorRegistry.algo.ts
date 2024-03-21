@@ -12,6 +12,7 @@ import {
     GATING_TYPE_SEGMENT_OF_NFD,
     GATING_TYPE_CONST_MAX,
     MAX_ALGO_PER_POOL,
+    MAX_ALGO_PER_VALIDATOR,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
     MIN_ALGO_STAKE_PER_POOL,
@@ -144,6 +145,7 @@ type Constraints = {
     MaxPctToValidatorWFourDecimals: uint64;
     MinEntryStake: uint64; // in microAlgo
     MaxAlgoPerPool: uint64; // in microAlgo
+    MaxAlgoPerValidator: uint64; // in microAlgo
     MaxNodes: uint64;
     MaxPoolsPerNode: uint64;
     MaxStakersPerPool: uint64;
@@ -266,6 +268,7 @@ export class ValidatorRegistry extends Contract {
             MaxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             MinEntryStake: MIN_ALGO_STAKE_PER_POOL,
             MaxAlgoPerPool: MAX_ALGO_PER_POOL,
+            MaxAlgoPerValidator: MAX_ALGO_PER_VALIDATOR,
             MaxNodes: MAX_NODES,
             MaxPoolsPerNode: MAX_POOLS_PER_NODE,
             MaxStakersPerPool: MAX_STAKERS_PER_POOL,
@@ -578,7 +581,7 @@ export class ValidatorRegistry extends Contract {
      * @param {ValidatorID} validatorID - The ID of the validator.
      * @param {uint64} valueToVerify - only if validator has gating to enter - this is asset id or nfd id that corresponds to gating.
      * Txn sender is factored in as well if that is part of gating.
-     * @returns {ValidatorPoolKey} - The key of the validator pool.
+     * * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
     addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID, valueToVerify: uint64): ValidatorPoolKey {
         assert(this.ValidatorList(validatorID).exists);
@@ -592,6 +595,11 @@ export class ValidatorRegistry extends Contract {
             receiver: this.app.address,
         });
 
+        // Ensure we're not over our protocol maximum for combined stake in all pools
+        assert(
+            this.ValidatorList(validatorID).value.State.TotalAlgoStaked < MAX_ALGO_PER_VALIDATOR,
+            'total staked for all of a validators pools may not exceed protocol maximum'
+        );
         // If the validator specified that a specific token creator is required to stake, verify that the required
         // balance is held by the staker, and that the asset they offered up to validate was created by the account
         // the validator defined as its creator requirement.

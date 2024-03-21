@@ -188,7 +188,7 @@ export class StakingPool extends Contract {
     addStake(stakedAmountPayment: PayTxn, staker: Address): uint64 {
         assert(this.Stakers.exists);
 
-        // account calling us has to be our creating validator contract
+        // The contract account calling us has to be our creating validator contract
         assert(this.txn.sender === AppID.fromUint64(this.CreatingValidatorContractAppID.value).address);
         assert(staker !== globals.zeroAddress);
 
