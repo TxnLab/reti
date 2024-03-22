@@ -36,4 +36,14 @@ note left: updates totals for validator for removed stake/staker
 master -> pool: [itxn] [only if called by pool other than 1!]\ncall Pool 1\npayTokenReward(staker; Address, rewardToken: uint64, amountToSend: uint64)
 pool -> staker: [itxn] [IF Pool 1!] Sends reward token to staker
 end
+group Claim reward tokens only
+autonumber 0
+staker -> pool: claimTokens()
+autonumber 0
+pool -> staker: [itxn] [Only if unstaking from Pool 1!] Sends all of accumulated rewarded token to staker
+pool -> master: [itxn] stakeRemoved(poolKey: ValidatorPoolKey, staker: Address,\namountRemoved: uint64, rewardRemoved: uint64, stakerRemoved: boolean)
+note left: updates totals for validator for removed stake/staker
+master -> pool: [itxn] [only if called by pool other than 1!]\ncall Pool 1\npayTokenReward(staker; Address, rewardToken: uint64, amountToSend: uint64)
+pool -> staker: [itxn] [IF Pool 1!] Sends reward token to staker
+end
 @enduml
