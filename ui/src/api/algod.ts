@@ -1,6 +1,6 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import { AccountInformation, Exclude } from '@/interfaces/algod'
+import { AccountInformation, Asset, Exclude } from '@/interfaces/algod'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -24,4 +24,9 @@ export async function getAccountBalance(
   const accountInfo = await getAccountInformation(address, 'all')
 
   return availableBalance ? accountInfo.amount - accountInfo['min-balance'] : accountInfo.amount
+}
+
+export async function getAsset(assetId: number): Promise<Asset> {
+  const asset = await algodClient.getAssetByID(assetId).do()
+  return asset as Asset
 }

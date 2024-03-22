@@ -35,9 +35,10 @@ export function formatWithPrecision(num: number, precision: number) {
   return scaledNum.toFixed(precision) + suffix
 }
 
-export function formatAlgoAmount(
+export function formatAssetAmount(
   amount: number | string,
-  microalgos = false,
+  baseUnits = false,
+  decimals = 6,
   trim = true,
   maxLength?: number,
 ): string {
@@ -45,11 +46,9 @@ export function formatAlgoAmount(
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
   if (isNaN(numAmount)) return 'NaN'
 
-  const decimals = 6
-
   // Convert to string
-  // If amount is in microalgos, convert to algos
-  const formatted = microalgos
+  // If amount is in base units, convert from base units
+  const formatted = baseUnits
     ? convertFromBaseUnits(numAmount, decimals).toFixed(decimals)
     : new Big(numAmount).toFixed(decimals)
 
@@ -71,4 +70,13 @@ export function formatAlgoAmount(
   }
 
   return parts.join('.')
+}
+
+export function formatAlgoAmount(
+  amount: number | string,
+  microalgos = false,
+  trim = true,
+  maxLength?: number,
+): string {
+  return formatAssetAmount(amount, microalgos, 6, trim, maxLength)
 }

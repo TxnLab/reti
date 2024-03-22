@@ -133,7 +133,10 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
 
         const stakingDisabled = isStakingDisabled(validator)
         const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
-        const canManage = canManageValidator(validator, activeAddress!)
+        const canManage = canManageValidator(validator, activeAddress)
+
+        const isDevelopment = process.env.NODE_ENV === 'development'
+        const canSimulateEpoch = isDevelopment && canManage
 
         return (
           <div className="flex items-center justify-end gap-x-2 ml-2">
@@ -171,7 +174,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
 
-                {process.env.NODE_ENV === 'development' && canManage && (
+                {canSimulateEpoch && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>

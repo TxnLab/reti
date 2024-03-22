@@ -12,7 +12,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet'
-import { MoreHorizontal } from 'lucide-react'
+import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
@@ -49,6 +49,7 @@ import {
   isUnstakingDisabled,
 } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
+import { sendRewardTokensToPool } from '@/utils/development'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
 
@@ -67,7 +68,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
-  const { activeAddress } = useWallet()
+  const { signer, activeAddress } = useWallet()
 
   const columns: ColumnDef<Validator>[] = [
     {
@@ -170,6 +171,11 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
         const addingPoolDisabled = isAddingPoolDisabled(validator)
         const canManage = canManageValidator(validator, activeAddress!)
 
+        const isDevelopment = process.env.NODE_ENV === 'development'
+        const hasRewardToken = validator.config.rewardTokenId > 0
+        const canSendRewardTokens = isDevelopment && canManage && hasRewardToken
+        const sendRewardTokensDisabled = validator.state.numPools === 0
+
         return (
           <div className="flex items-center justify-end gap-x-2">
             <Button
@@ -218,6 +224,23 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
                     >
                       Add Staking Pool
                     </DropdownMenuItem>
+                  )}
+
+                  {canSendRewardTokens && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          onClick={async () =>
+                            await sendRewardTokensToPool(validator, 5000, signer, activeAddress!)
+                          }
+                          disabled={sendRewardTokensDisabled}
+                        >
+                          <FlaskConical className="h-4 w-4 mr-2 text-muted-foreground" />
+                          Send Tokens
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </>
                   )}
                 </DropdownMenuGroup>
               </DropdownMenuContent>

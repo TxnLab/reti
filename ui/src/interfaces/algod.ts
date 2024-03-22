@@ -1,8 +1,4 @@
-export interface AssetHolding {
-  'asset-id': number
-  amount: number
-  'is-frozen': boolean
-}
+import { AssetHolding, AssetParams } from '@algorandfoundation/algokit-utils/types/indexer'
 
 export interface AccountInformation {
   address: string
@@ -20,3 +16,8 @@ export type Exclude =
   | 'apps-local-state'
   | 'created-apps'
   | 'none'
+
+export interface Asset {
+  index: number
+  params: AssetParams
+}

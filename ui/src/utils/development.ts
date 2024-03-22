@@ -4,9 +4,11 @@ import { QueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import algosdk from 'algosdk'
 import { toast } from 'sonner'
+import { getAccountInformation, getAsset } from '@/api/algod'
 import { epochBalanceUpdate } from '@/api/contracts'
 import { StakerPoolData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
+import { convertToBaseUnits, formatAssetAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -49,9 +51,9 @@ export async function simulateEpoch(
 
       const paymentTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         from: activeAddress,
-        suggestedParams,
         to: algosdk.getApplicationAddress(poolKey.poolAppId),
         amount: AlgoAmount.Algos(rewardAmount).microAlgos,
+        suggestedParams,
       })
 
       atc.addTransaction({ txn: paymentTxn, signer })
@@ -80,5 +82,61 @@ export async function simulateEpoch(
     throw error
   } finally {
     await algodClient.setBlockOffsetTimestamp(0).do()
+  }
+}
+
+export async function sendRewardTokensToPool(
+  validator: Validator,
+  rewardTokenAmount: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const toastId = 'send-reward-tokens-to-pool'
+
+  try {
+    const tokenId = validator.config.rewardTokenId
+    const asset = await getAsset(tokenId)
+    const unitName = asset.params['unit-name']
+
+    toast.loading(`Sign to send ${rewardTokenAmount} ${unitName} tokens to pool`, {
+      id: toastId,
+    })
+
+    // Pool 1 holds the reward tokens
+    const poolAppId = validator.pools[0].poolAppId
+    const poolAddress = algosdk.getApplicationAddress(poolAppId)
+
+    const atc = new algosdk.AtomicTransactionComposer()
+    const suggestedParams = await algodClient.getTransactionParams().do()
+
+    const assetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: poolAddress,
+      assetIndex: tokenId,
+      amount: convertToBaseUnits(rewardTokenAmount, 6),
+      suggestedParams,
+    })
+
+    atc.addTransaction({ txn: assetTxn, signer })
+    await atc.execute(algodClient, 4)
+
+    const poolAccountInfo = await getAccountInformation(poolAddress)
+    const assetHolding = poolAccountInfo.assets?.find((a) => a['asset-id'] === tokenId)
+
+    const balanceStr = formatAssetAmount(
+      assetHolding?.amount || 0,
+      true,
+      Number(asset.params.decimals),
+    )
+    const balanceMsg = assetHolding?.amount ? `${balanceStr} ${unitName}` : 'unknown'
+
+    toast.success(`Success! New Balance: ${balanceMsg}`, {
+      id: toastId,
+    })
+  } catch (error) {
+    toast.error('Error sending reward tokens to pool', { id: toastId })
+
+    console.error(error)
+    throw error
   }
 }
