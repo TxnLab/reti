@@ -1,6 +1,7 @@
 import { ErrorComponent, Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
-import { ValidatorNotFoundError, validatorQueryOptions } from '@/api/contracts'
+import { ValidatorNotFoundError } from '@/api/contracts'
+import { validatorQueryOptions } from '@/api/queries'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'

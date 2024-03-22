@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
-import { constraintsQueryOptions } from '@/api/contracts'
+import { constraintsQueryOptions } from '@/api/queries'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'

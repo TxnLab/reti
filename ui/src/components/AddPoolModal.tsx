@@ -6,12 +6,8 @@ import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import {
-  addStakingPool,
-  fetchMbrAmounts,
-  initStakingPoolStorage,
-  poolAssignmentQueryOptions,
-} from '@/api/contracts'
+import { addStakingPool, fetchMbrAmounts, initStakingPoolStorage } from '@/api/contracts'
+import { poolAssignmentQueryOptions } from '@/api/queries'
 import { NodeSelect } from '@/components/NodeSelect'
 import { Button } from '@/components/ui/button'
 import {

@@ -1,7 +1,6 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { queryOptions } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
@@ -222,18 +221,6 @@ export async function fetchValidators(client?: ValidatorRegistryClient) {
   }
 }
 
-export const validatorsQueryOptions = queryOptions({
-  queryKey: ['validators'],
-  queryFn: () => fetchValidators(),
-})
-
-export const validatorQueryOptions = (validatorId: number | string) =>
-  queryOptions({
-    queryKey: ['validator', String(validatorId)],
-    queryFn: () => fetchValidator(validatorId),
-    retry: false,
-  })
-
 export class ValidatorNotFoundError extends Error {}
 
 export function callGetNodePoolAssignments(
@@ -277,13 +264,6 @@ export async function fetchNodePoolAssignments(
     throw error
   }
 }
-
-export const poolAssignmentQueryOptions = (validatorId: number | string, enabled = true) =>
-  queryOptions({
-    queryKey: ['pool-assignments', String(validatorId)],
-    queryFn: () => fetchNodePoolAssignments(validatorId),
-    enabled,
-  })
 
 export function callGetTokenPayoutRatio(
   validatorID: number | bigint,
@@ -345,12 +325,6 @@ export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise
     throw error
   }
 }
-
-export const mbrQueryOptions = queryOptions({
-  queryKey: ['mbr'],
-  queryFn: () => fetchMbrAmounts(),
-  staleTime: Infinity,
-})
 
 export async function addStakingPool(
   validatorID: number,
@@ -744,12 +718,6 @@ export async function fetchProtocolConstraints(
     throw error
   }
 }
-
-export const constraintsQueryOptions = queryOptions({
-  queryKey: ['constraints'],
-  queryFn: () => fetchProtocolConstraints(),
-  staleTime: Infinity,
-})
 
 export async function removeStake(
   poolAppId: number | bigint,

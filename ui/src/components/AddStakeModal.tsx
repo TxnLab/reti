@@ -14,8 +14,8 @@ import {
   doesStakerNeedToPayMbr,
   fetchMaxAvailableToStake,
   isNewStakerToValidator,
-  mbrQueryOptions,
 } from '@/api/contracts'
+import { mbrQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import {
