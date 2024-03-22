@@ -27,6 +27,7 @@ async function main() {
             id: 0,
             deployTimeParams: {
                 NFDRegistryAppID: 0,
+                FeeSinkAddr: 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE',
             },
         },
         algod
