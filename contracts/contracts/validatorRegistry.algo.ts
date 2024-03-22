@@ -335,6 +335,23 @@ export class ValidatorRegistry extends Contract {
         return this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1];
     }
 
+    /**
+     * Calculate the maximum stake per pool for a given validator.
+     * Normally this would be MaxAlgoPerPool, but it should also never go above MaxAllowedStake / NumPools so
+     * as pools are added the max allowed per pool can reduce.
+     *
+     * @param {ValidatorID} validatorID - The ID of the validator.
+     */
+    getCurMaxStakePerPool(validatorID: ValidatorID): uint64 {
+        const numPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
+        const maxDividedBetweenPools = this.maxAllowedStake() / numPools;
+        let maxPerPool: uint64 = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool;
+        if (maxDividedBetweenPools < maxPerPool) {
+            maxPerPool = maxDividedBetweenPools;
+        }
+        return maxPerPool;
+    }
+
     // @abi.readonly
     /**
      * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
@@ -721,9 +738,9 @@ export class ValidatorRegistry extends Contract {
      * stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of total
      * stake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.
      * The calling App ID is validated against our pool list as well.
-     * @param poolKey - ValidatorPoolKey type
-     * @param algoToAdd - amount this validator's total stake increased via rewards
-     * @param rewardTokenAmountReserved - amount this validator's total stake increased via rewards (that should be
+     * @param {ValidatorPoolKey} poolKey - ValidatorPoolKey type
+     * @param {uint64} algoToAdd - amount this validator's total stake increased via rewards
+     * @param {uint64} rewardTokenAmountReserved - amount this validator's total stake increased via rewards (that should be
      * seen as 'accounted for/pending spent')
      */
     stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, algoToAdd: uint64, rewardTokenAmountReserved: uint64): void {
@@ -746,11 +763,11 @@ export class ValidatorRegistry extends Contract {
      * If any amount of rewardRemoved is specified, then that amount of reward is sent to the use
      * The calling App ID is validated against our pool list as well.
 
-     * @param poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
-     * @param staker
-     * @param amountRemoved
-     * @param rewardRemoved - if applicable, amount of token reward removed (by pool 1 caller) or TO remove and pay out (via pool 1 from different pool caller)
-     * @param stakerRemoved
+     * @param {ValidatorPoolKey} poolKey - ValidatorPoolKey type - [validatorID, PoolID] compound type
+     * @param {Address} staker
+     * @param {uint64} amountRemoved - algo amount removed
+     * @param {uint64} rewardRemoved - if applicable, amount of token reward removed (by pool 1 caller) or TO remove and pay out (via pool 1 from different pool caller)
+     * @param {boolean} stakerRemoved
      */
     stakeRemoved(
         poolKey: ValidatorPoolKey,
@@ -780,8 +797,8 @@ export class ValidatorRegistry extends Contract {
                 this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack >= rewardRemoved,
                 'reward being removed must be covered by hold back amount'
             );
-            // If pool 1 is calling us, then they already sent the reward token to the staker and we just need to have
-            // updated the RewardTokenHeldBack value and that's it.
+            // If pool 1 is calling us, then they already sent the reward token to the staker and we just need to
+            // update the RewardTokenHeldBack value and that's it.
             this.ValidatorList(poolKey.ID).value.State.RewardTokenHeldBack -= rewardRemoved;
 
             // If a different pool called us, then they CAN'T send the token - we've already updated the
@@ -842,12 +859,7 @@ export class ValidatorRegistry extends Contract {
         // maxAllowedStake() (x % of all online stake) - taking that max / numPools.  This way as pools are added
         // to go beyond the individual pool maximum, the maximum for each pool starts to reflect the max allowed but
         // balanced across the pools.
-        const numPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
-        const maxDividedBetweenPools = this.maxAllowedStake() / numPools;
-        let maxPerPool: uint64 = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool;
-        if (maxDividedBetweenPools < maxPerPool) {
-            maxPerPool = maxDividedBetweenPools;
-        }
+        const maxPerPool = this.getCurMaxStakePerPool(validatorID);
         // If there's already a stake list for this account, walk that first, so if the staker is already in THIS
         // validator, then go to the stakers existing pool(s) w/ this validator first.
         if (this.StakerPoolSet(staker).exists) {

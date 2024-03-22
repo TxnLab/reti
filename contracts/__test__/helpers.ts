@@ -136,7 +136,7 @@ const DefaultValidatorConfig: ValidatorConfig = {
     PercentToValidator: 10000, // 1.0000%
     ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-    MaxAlgoPerPool: BigInt(AlgoAmount.Algos(200_000).microAlgos),
+    MaxAlgoPerPool: BigInt(AlgoAmount.Algos(70e6).microAlgos),
     PoolsPerNode: 3,
     SunsettingOn: BigInt(0),
     SunsettingTo: BigInt(0),
@@ -303,6 +303,79 @@ export class StakedInfo {
     }
 }
 
+// ProtocolConstraints returns data from the contracts on minimums, maximums, etc.
+export class ProtocolConstraints {
+    EpochPayoutMinsMin: bigint;
+
+    EpochPayoutMinsMax: bigint;
+
+    MinPctToValidatorWFourDecimals: bigint;
+
+    MaxPctToValidatorWFourDecimals: bigint;
+
+    MinEntryStake: bigint; // in microAlgo
+
+    MaxAlgoPerPool: bigint; // in microAlgo
+
+    MaxAlgoPerValidator: bigint; // in microAlgo
+
+    MaxNodes: bigint;
+
+    MaxPoolsPerNode: bigint;
+
+    MaxStakersPerPool: bigint;
+
+    constructor([
+        EpochPayoutMinsMin,
+        EpochPayoutMinsMax,
+        MinPctToValidatorWFourDecimals,
+        MaxPctToValidatorWFourDecimals,
+        MinEntryStake,
+        MaxAlgoPerPool,
+        MaxAlgoPerValidator,
+        MaxNodes,
+        MaxPoolsPerNode,
+        MaxStakersPerPool,
+    ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]) {
+        this.EpochPayoutMinsMin = EpochPayoutMinsMin;
+        this.EpochPayoutMinsMax = EpochPayoutMinsMax;
+        this.MinPctToValidatorWFourDecimals = MinPctToValidatorWFourDecimals;
+        this.MaxPctToValidatorWFourDecimals = MaxPctToValidatorWFourDecimals;
+        this.MinEntryStake = MinEntryStake;
+        this.MaxAlgoPerPool = MaxAlgoPerPool;
+        this.MaxAlgoPerValidator = MaxAlgoPerValidator;
+        this.MaxNodes = MaxNodes;
+        this.MaxPoolsPerNode = MaxPoolsPerNode;
+        this.MaxStakersPerPool = MaxStakersPerPool;
+    }
+
+    public static fromValues([
+        EpochPayoutMinsMin,
+        EpochPayoutMinsMax,
+        MinPctToValidatorWFourDecimals,
+        MaxPctToValidatorWFourDecimals,
+        MinEntryStake,
+        MaxAlgoPerPool,
+        MaxAlgoPerValidator,
+        MaxNodes,
+        MaxPoolsPerNode,
+        MaxStakersPerPool,
+    ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]): ProtocolConstraints {
+        return {
+            EpochPayoutMinsMin,
+            EpochPayoutMinsMax,
+            MinPctToValidatorWFourDecimals,
+            MaxPctToValidatorWFourDecimals,
+            MinEntryStake,
+            MaxAlgoPerPool,
+            MaxAlgoPerValidator,
+            MaxNodes,
+            MaxPoolsPerNode,
+            MaxStakersPerPool,
+        };
+    }
+}
+
 class PoolTokenPayoutRatio {
     PoolPctOfWhole: bigint[];
 
@@ -348,6 +421,12 @@ function getStakersBoxName() {
 
 export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
     return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
+}
+
+export async function getProtocolConstraints(validatorClient: ValidatorRegistryClient) {
+    return new ProtocolConstraints(
+        (await validatorClient.compose().getProtocolConstraints({}, {}).simulate()).returns![0]
+    );
 }
 
 function dumpLogs(logs: Uint8Array[]) {
@@ -527,6 +606,20 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
     }
 }
 
+export async function getCurMaxStatePerPool(validatorClient: ValidatorRegistryClient, validatorID: number) {
+    try {
+        return (
+            await validatorClient
+                .compose()
+                .getCurMaxStakePerPool({ validatorID })
+                .simulate({ allowUnnamedResources: true })
+        ).returns![0];
+    } catch (exception) {
+        console.log((exception as LogicError).message);
+        throw validatorClient.appClient.exposeLogicError(exception as Error);
+    }
+}
+
 export async function getStakedPoolsForAccount(
     validatorClient: ValidatorRegistryClient,
     stakerAccount: Account
@@ -585,26 +678,30 @@ export async function addStake(
         suggestedParams.flatFee = true;
         suggestedParams.fee = 0;
 
-        const dummy = (
-            await validatorClient
-                .compose()
-                .gas({})
-                .findPoolForStaker(
-                    { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
-                    {
-                        sendParams: {
-                            fee: AlgoAmount.MicroAlgos(2000),
-                        },
-                    }
-                )
-                .simulate({ allowUnnamedResources: true })
-        ).returns![1];
+        const findPoolSim = await validatorClient
+            .compose()
+            .gas({})
+            .findPoolForStaker(
+                { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
+                {
+                    sendParams: {
+                        fee: AlgoAmount.MicroAlgos(2000),
+                    },
+                }
+            )
+            .simulate({ allowUnnamedResources: true });
+        if (findPoolSim.simulateResponse.txnGroups[0].failureMessage !== undefined) {
+            consoleLogger.error(
+                `simulate failed in findPoolForStaker: ${findPoolSim.simulateResponse.txnGroups[0].failureMessage}`
+            );
+        }
+        const expectedPool = findPoolSim.returns![1];
 
-        const poolKey = new ValidatorPoolKey(dummy[0]);
-        const willBeNewStaker = dummy[1];
+        const poolKey = new ValidatorPoolKey(expectedPool[0]);
+        const willBeNewStaker = expectedPool[1];
 
         consoleLogger.info(
-            `addStake findPool will add to:${poolKey.ID}, pool:${poolKey.PoolID} and willBeNew:${willBeNewStaker}`
+            `addStake findPool will add to validator:${poolKey.ID}, pool:${poolKey.PoolID} and willBeNew:${willBeNewStaker}`
         );
 
         // Pay the stake to the validator contract

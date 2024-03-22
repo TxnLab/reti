@@ -125,6 +125,20 @@
       }
     },
     {
+      "name": "getCurMaxStakePerPool",
+      "desc": "Calculate the maximum stake per pool for a given validator.Normally this would be MaxAlgoPerPool, but it should also never go above MaxAllowedStake / NumPools soas pools are added the max allowed per pool can reduce.",
+      "args": [
+        {
+          "name": "validatorID",
+          "type": "uint64",
+          "desc": "The ID of the validator."
+        }
+      ],
+      "returns": {
+        "type": "uint64"
+      }
+    },
+    {
       "name": "doesStakerNeedToPayMBR",
       "desc": "Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount",
       "args": [
@@ -426,7 +440,8 @@
         },
         {
           "name": "amountRemoved",
-          "type": "uint64"
+          "type": "uint64",
+          "desc": "algo amount removed"
         },
         {
           "name": "rewardRemoved",

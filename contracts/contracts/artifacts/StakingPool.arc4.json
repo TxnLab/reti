@@ -93,6 +93,14 @@
       }
     },
     {
+      "name": "claimTokens",
+      "desc": "Claims all the available reward tokens a staker has available, sending their entire balance to the staker frompool 1 (either directly, or via validator->pool1 to pay it out)Also notifies the validator contract for this pools validator of the staker / balance changes.",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
       "name": "getStakerInfo",
       "desc": "Retrieves the staked information for a given staker.",
       "args": [
@@ -109,7 +117,7 @@
     },
     {
       "name": "payTokenReward",
-      "desc": "Remove a specified amount of 'community token' rewards for a staker.This can ONLY be called by our validator and only if we're pool 1 - with the token.",
+      "desc": "[Internal protocol method] Remove a specified amount of 'community token' rewards for a staker.This can ONLY be called by our validator and only if we're pool 1 - with the token.",
       "args": [
         {
           "name": "staker",

@@ -4,33 +4,36 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { Account, decodeAddress, encodeAddress, getApplicationAddress } from 'algosdk';
 import { assetOptIn, transferAlgos, transferAsset } from '@algorandfoundation/algokit-utils';
+import * as constants from 'node:constants';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 import {
-    createAsset,
     addStake,
     addStakingPool,
     addValidator,
+    createAsset,
     createValidatorConfig,
     epochBalanceUpdate,
+    GATING_TYPE_ASSET_ID,
+    GATING_TYPE_ASSETS_CREATED_BY,
+    gatingValueFromBigint,
+    getCurMaxStatePerPool,
     getMbrAmountsFromValidatorClient,
     getPoolAvailBalance,
     getPoolInfo,
+    getProtocolConstraints,
     getStakedPoolsForAccount,
     getStakeInfoFromBoxValue,
     getStakerInfo,
     getTokenPayoutRatio,
     getValidatorState,
     logStakingPoolInfo,
+    ProtocolConstraints,
     removeStake,
     StakedInfo,
     ValidatorConfig,
     ValidatorPoolKey,
     verifyRewardAmounts,
-    GATING_TYPE_ASSETS_CREATED_BY,
-    gatingValueFromBigint,
-    GATING_TYPE_ASSET_ID,
-    ALGORAND_ZERO_ADDRESS_STRING,
 } from './helpers';
 
 const MaxPoolsPerNode = 3;
@@ -2145,6 +2148,148 @@ describe('TokenGatingByAsset', () => {
                 )
             ).rejects.toThrowError();
         });
+    });
+});
+
+describe('MaxAmtSanctioning', () => {
+    beforeEach(fixture.beforeEach);
+    beforeEach(logs.beforeEach);
+    afterEach(logs.afterEach);
+
+    let validatorID: number;
+
+    let validatorOwnerAccount: Account;
+    let stakerAccount: Account;
+    let validatorConfig: ValidatorConfig;
+    const pools: ValidatorPoolKey[] = [];
+
+    let constraints: ProtocolConstraints;
+
+    // add validator and 1 pool for subsequent stake tests
+    beforeAll(async () => {
+        constraints = await getProtocolConstraints(validatorMasterClient);
+
+        // Fund a 'validator account' that will be the validator owner.
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
+        );
+        consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`);
+
+        validatorConfig = createValidatorConfig({
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
+            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            MaxAlgoPerPool: constraints.MaxAlgoPerPool,
+            PercentToValidator: 5 * 10000,
+            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+        });
+        validatorID = await addValidator(
+            fixture.context,
+            validatorMasterClient,
+            validatorOwnerAccount,
+            validatorConfig,
+            validatorMbr
+        );
+
+        pools.push(
+            await addStakingPool(
+                fixture.context,
+                validatorMasterClient,
+                validatorID,
+                1,
+                validatorOwnerAccount,
+                poolMbr,
+                poolInitMbr
+            )
+        );
+
+        stakerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(300e6), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
+        );
+    });
+
+    // Fill up the first pool completely
+    test('stakeFillingPool', async () => {
+        const stakeAmount = AlgoAmount.MicroAlgos(Number(constraints.MaxAlgoPerPool + stakerMbr));
+        await addStake(fixture.context, validatorMasterClient, validatorID, stakerAccount, stakeAmount, 0n);
+        expect((await getValidatorState(validatorMasterClient, validatorID)).TotalStakers).toEqual(1n);
+        const poolInfo = await getPoolInfo(validatorMasterClient, pools[0]);
+        expect(poolInfo.TotalStakers).toEqual(1);
+        expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(stakeAmount.microAlgos - Number(stakerMbr)));
+
+        // try to add again - should fail
+        await expect(
+            addStake(
+                fixture.context,
+                validatorMasterClient,
+                validatorID,
+                stakerAccount,
+                AlgoAmount.MicroAlgos(1000),
+                0n
+            )
+        ).rejects.toThrowError();
+    });
+
+    // Now we add 2 more pools, total of 3 - which means we can have up to 70m * 3 = 210m total stake yet in current config
+    // (might be an issue once online stake is 'dynamic' in avm) 10% of 2b online is 200m - so >200m the pools should be sanctioned
+    // in terms of preventing new stake, and also blocking rewards.
+    test('addPools', async () => {
+        const curSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorID);
+        expect(curSoftMax).toEqual(constraints.MaxAlgoPerPool);
+
+        for (let i = 0; i < 2; i += 1) {
+            pools.push(
+                await addStakingPool(
+                    fixture.context,
+                    validatorMasterClient,
+                    validatorID,
+                    1,
+                    validatorOwnerAccount,
+                    poolMbr,
+                    poolInitMbr
+                )
+            );
+        }
+        expect((await getValidatorState(validatorMasterClient, validatorID)).NumPools).toEqual(3);
+        // Our maximum per pool should've changed now - to be max algo per validator / numNodes (3)
+        const newSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorID);
+        expect(newSoftMax).toEqual(constraints.MaxAlgoPerValidator / BigInt(3));
+    });
+
+    test('fillNewPools', async () => {
+        const newSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorID);
+
+        let [poolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorID,
+            stakerAccount,
+            AlgoAmount.MicroAlgos(Number(newSoftMax)),
+            0n
+        );
+        expect(poolKey.PoolID).toBe(2n);
+
+        const state = await getValidatorState(validatorMasterClient, validatorID);
+        expect(state.TotalAlgoStaked).toEqual(constraints.MaxAlgoPerPool + newSoftMax);
+
+        // const poolInfo = await getPoolInfo(validatorMasterClient, pools[0]);
+        // expect(poolInfo.TotalStakers).toEqual(1);
+        // expect(poolInfo.TotalAlgoStaked).toEqual(BigInt(stakeAmount.microAlgos - Number(stakerMbr)));
+
+        // next add should go to pool 3 - even 1 algo - but we need at least min stake :)
+        [poolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorID,
+            stakerAccount,
+            AlgoAmount.Algos(1000),
+            0n
+        );
+        expect(poolKey.PoolID).toBe(3n);
     });
 });
 

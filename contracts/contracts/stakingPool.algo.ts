@@ -358,6 +358,73 @@ export class StakingPool extends Contract {
     }
 
     /**
+     * Claims all the available reward tokens a staker has available, sending their entire balance to the staker from
+     * pool 1 (either directly, or via validator->pool1 to pay it out)
+     * Also notifies the validator contract for this pools validator of the staker / balance changes.
+     */
+    claimTokens(): void {
+        // We want to preserve the sanctity that the ONLY account that can call us is the staking account
+        // It makes it a bit awkward this way to update the state in the validator, but it's safer
+        // account calling us has to be account removing stake
+        const staker = this.txn.sender;
+
+        for (let i = 0; i < this.Stakers.value.length; i += 1) {
+            if (globals.opcodeBudget < 300) {
+                increaseOpcodeBudget();
+            }
+            const cmpStaker = clone(this.Stakers.value[i]);
+            if (cmpStaker.Account === staker) {
+                if (cmpStaker.RewardTokenBalance === 0) {
+                    return;
+                }
+                let amountRewardTokenRemoved = 0;
+                // If and only if this is pool 1 (where the reward token is held - then we can pay it out)
+                if (this.PoolID.value === 1) {
+                    const validatorConfig = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorConfig>({
+                        applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+                        methodArgs: [this.ValidatorID.value],
+                    });
+                    // ---------
+                    // SEND THE REWARD TOKEN NOW - it's in our pool
+                    // ---------
+                    sendAssetTransfer({
+                        xferAsset: AssetID.fromUint64(validatorConfig.RewardTokenID),
+                        assetReceiver: staker,
+                        assetAmount: cmpStaker.RewardTokenBalance,
+                    });
+                    amountRewardTokenRemoved = cmpStaker.RewardTokenBalance;
+                    cmpStaker.RewardTokenBalance = 0;
+                } else {
+                    // If we're in different pool, then we set amountRewardTokenRemoved to amount of reward token to remove
+                    // but the stakeRemoved call to the validator will see that a pool other than 1 called it, and
+                    // then issues call to pool 1 to do the token payout via 'payTokenReward' method in our contract
+                    amountRewardTokenRemoved = cmpStaker.RewardTokenBalance;
+                    cmpStaker.RewardTokenBalance = 0;
+                }
+
+                // Update the box w/ the new staker balance data (RewardTokenBalance being zeroed)
+                this.Stakers.value[i] = cmpStaker;
+
+                // Call the validator contract and tell it we're removing stake
+                // It'll verify we're a valid staking pool id and update it
+                // stakeRemoved(poolKey: ValidatorPoolKey, staker: Address, amountRemoved: uint64, rewardRemoved: uint64, stakerRemoved: boolean): void
+                sendMethodCall<typeof ValidatorRegistry.prototype.stakeRemoved>({
+                    applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
+                    methodArgs: [
+                        { ID: this.ValidatorID.value, PoolID: this.PoolID.value, PoolAppID: this.app.id },
+                        staker,
+                        0, // no algo removed
+                        amountRewardTokenRemoved,
+                        false, // staker isn't being removed.
+                    ],
+                });
+                return;
+            }
+        }
+        throw Error('Account not found');
+    }
+
+    /**
      * Retrieves the staked information for a given staker.
      *
      * @param {Address} staker - The address of the staker.
@@ -378,7 +445,7 @@ export class StakingPool extends Contract {
     }
 
     /**
-     * Remove a specified amount of 'community token' rewards for a staker.
+     * [Internal protocol method] Remove a specified amount of 'community token' rewards for a staker.
      * This can ONLY be called by our validator and only if we're pool 1 - with the token.
      * @param staker - the staker account to send rewards to
      * @param rewardToken - ID of reward token (to avoid re-entrancy in calling validator back to get id)
