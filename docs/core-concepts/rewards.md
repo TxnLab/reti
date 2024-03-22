@@ -1,6 +1,8 @@
 # Rewards
 
-Staking pools will receive rewards when they propose blocks, as long as they're above the 30K ALGO threshold and have good performance. Rewards for stakers and validators are distributed periodically at the end of each epoch, which is a fixed period of time determined by the validator. The reward distribution process is designed to prevent gaming of the system.
+Staking pools will receive rewards when they propose blocks, as long as they're above the 30K ALGO threshold and below the maximum amount defined by the protocl (around 70M currently) and have good performance. Rewards for stakers and validators are distributed periodically at the end of each epoch, which is a fixed period of time determined by the validator. The reward distribution process is designed to prevent gaming of the system.
+
+There is a special limit per-validator of 10% of all online stake.  A type of slashing occurs if this is reached
 
 #### Reward Calculation
 
@@ -12,13 +14,23 @@ The total reward for the pool is calculated based on the current pool balance an
    * Stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
 3. **Compounding**: Staker rewards are directly added to their staked balance, compounding their future rewards.
 
+#### Soft caps and Slashing
+
+*   There is a special _soft_ limit designed to prevent too much stake assigned to one validator.
+
+    **10% of the currently online stake** will be considered a 'Maximum Stake per Validator' value.  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
+* The soft limit per pool (as part of ‘finding space’) becomes the 10% threshold / num pools, so that the pools themselves will try to prevent large imbalances.
+* **Any validator exceeding this total threshold will be considered over-saturated and be negatively impacted.**  In this state, the following changes:
+  * Adding of any new stake when over this limit will be blocked.
+  * **Rewards accrued in each epoch are returned to the fee sink**, effectively making the APR 0% for the pools.  This will encourage stakers to exit the pool or at least lower their stake within thresholds.
+
 #### Partial Epoch Staking
 
 To prevent gaming of the system, stakers who add or remove stake during an epoch receive only a partial reward for that epoch. The partial reward is calculated based on the percentage of time the staker was active in the epoch.
 
 For example, if a staker adds stake 95% of the way through an epoch, they would only receive 5% of the reward they would have received if they had been staked for the entire epoch.
 
-After receiving their partial reward, these stakers become full stakers for the subsequent epoch, assuming they do not add or remove stake again. Each time a staker adds or removes stake, their "clock" in the epoch resets.
+After receiving their partial reward, these stakers become full stakers for the subsequent epoch, assuming they do not add stake again. Each time a staker adds stake, their "clock" in the epoch resets.  Accrued stake can always be removed without penalty however removing before an epoch forfeits any rewards accrued so far for that epoch.
 
 #### Epoch Duration
 
@@ -31,10 +43,6 @@ Some validators may offer additional token rewards to incentivize staking. If a 
 #### Stake Removal
 
 Stakers can remove their stake from the pool at any time. When stake is removed, the staker can decide how much they want to withdraw. It must either be the entire stake, or a balance above the minimum entry for the pool.&#x20;
-
-##
-
-##
 
 ## Payout Process
 

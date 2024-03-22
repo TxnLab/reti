@@ -20,7 +20,6 @@ Validators can define a number of parameters - some of which are immutable. More
 * Minimum entry amount
 * Maximum stake per pool
 * Number of pools per node (participation keys) - Maximum of 3
-* Max number of nodes - Maximum of 4
 
 **Optional Parameters**
 
