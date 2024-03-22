@@ -2222,8 +2222,8 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
         expect(firstPoolKey.PoolAppID).toBe(poolAppId);
 
         const stateData = await getValidatorState(validatorMasterClient, validatorID);
-        expect(stateData.NumPools).toEqual(1n);
-        expect(stateData.TotalAlgoStaked).toEqual(0);
+        expect(stateData.NumPools).toEqual(1);
+        expect(stateData.TotalAlgoStaked).toEqual(0n);
         expect(stateData.TotalStakers).toEqual(0n);
 
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
