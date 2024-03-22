@@ -4,6 +4,7 @@
 
 * [Réti Open Pooling Overview](README.md)
 * [Key Features](introduction/key-features.md)
+* [Old Version](reti-open-pooling.md)
 
 ## Getting Started
 
@@ -20,7 +21,6 @@
 
 * [Smart Contracts](technical-implementation/smart-contracts.md)
 * [Reti Node Daemon](technical-implementation/reti-node-daemon.md)
-* [Back End](technical-implementation/back-end.md)
 * [Front End](technical-implementation/front-end.md)
 
 ## Resources
