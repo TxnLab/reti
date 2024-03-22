@@ -107,13 +107,18 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
         <AlgoDisplayAmount amount={row.original.totalRewarded} microalgos mutedRemainder />
       ),
     },
-    // {
-    //   accessorKey: 'rewardTokenBalance',
-    //   header: ({ column }) => (
-    //     <DataTableColumnHeader column={column} title="Reward Token Balance" />
-    //   ),
-    //   cell: ({ row }) => row.original.rewardTokenBalance,
-    // },
+    {
+      accessorKey: 'rewardTokenBalance',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Reward Token Balance" />
+      ),
+      cell: ({ row }) => {
+        const validator = validators.find((v) => v.id === row.original.validatorId)
+        const { rewardTokenId } = validator?.config || {}
+        if (!rewardTokenId || Number(rewardTokenId) === 0) return '--'
+        return <span>{row.original.rewardTokenBalance || 0}</span>
+      },
+    },
     {
       accessorKey: 'entryTime',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Entry Time" />,
