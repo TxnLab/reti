@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2022. TxnLab Inc.
- * All Rights reserved.
- */
 package misc
 
 import (

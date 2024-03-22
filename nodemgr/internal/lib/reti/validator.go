@@ -21,8 +21,8 @@ import (
 
 const (
 	// These MUST match the contracts !
-	MaxNodes        = 12
-	MaxPoolsPerNode = 4
+	MaxNodes        = 4
+	MaxPoolsPerNode = 3
 )
 
 // ValidatorInfo is loaded at startup but also on-demand via Reti.LoadState
