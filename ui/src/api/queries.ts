@@ -10,7 +10,7 @@ import {
 export const validatorsQueryOptions = queryOptions({
   queryKey: ['validators'],
   queryFn: () => fetchValidators(),
-  staleTime: Infinity,
+  // staleTime: Infinity,
   retry: false,
 })
 
@@ -18,7 +18,7 @@ export const validatorQueryOptions = (validatorId: number | string) =>
   queryOptions({
     queryKey: ['validator', String(validatorId)],
     queryFn: () => fetchValidator(validatorId),
-    staleTime: Infinity,
+    // staleTime: Infinity,
     retry: false,
   })
 

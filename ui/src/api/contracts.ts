@@ -380,15 +380,18 @@ export async function addStakingPool(
 export async function initStakingPoolStorage(
   poolAppId: number,
   poolInitMbr: number,
+  optInRewardToken: boolean,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<void> {
   const suggestedParams = await algodClient.getTransactionParams().do()
 
+  const mbrAmount = optInRewardToken ? poolInitMbr + AlgoAmount.Algos(0.1).microAlgos : poolInitMbr
+
   const payPoolInitStorageMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
     to: algosdk.getApplicationAddress(poolAppId),
-    amount: poolInitMbr,
+    amount: mbrAmount,
     suggestedParams,
   })
 

@@ -110,7 +110,16 @@ export function AddPoolModal({
         activeAddress,
       )
 
-      await initStakingPoolStorage(stakingPool.poolAppId, poolInitMbr, signer, activeAddress)
+      const optInRewardToken =
+        validator?.config.rewardTokenId !== 0 && validator?.state.numPools === 0
+
+      await initStakingPoolStorage(
+        stakingPool.poolAppId,
+        poolInitMbr,
+        optInRewardToken,
+        signer,
+        activeAddress,
+      )
 
       toast.success(`Staking pool ${stakingPool.poolId} created!`, {
         id: toastId,
