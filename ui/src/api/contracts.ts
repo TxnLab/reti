@@ -2,6 +2,7 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
+import { SimulateRequest } from 'algosdk/dist/types/client/v2/algod/models/types'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
@@ -901,4 +902,46 @@ export async function fetchMaxAvailableToStake(validatorId: string | number): Pr
     console.error(error)
     throw error
   }
+}
+
+export async function claimTokens(
+  pools: PoolInfo[],
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const atc1 = new algosdk.AtomicTransactionComposer()
+
+  for (const pool of pools) {
+    const client = makeSimulateStakingPoolClient(pool.poolAppId, activeAddress)
+    await client.gas({}, { note: '1', sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(0) } })
+    await client.gas({}, { note: '2', sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(0) } })
+    await client.claimTokens({}, { sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(240_000) } })
+  }
+
+  const simulateResult = await atc1.simulate(
+    algodClient,
+    new SimulateRequest({ txnGroups: [], allowEmptySignatures: true, allowUnnamedResources: true }),
+  )
+
+  // @todo: switch to Joe's new method(s)
+  const feesAmount = AlgoAmount.MicroAlgos(
+    1000 *
+      Math.floor(
+        ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
+      ),
+  )
+
+  const atc2 = new algosdk.AtomicTransactionComposer()
+
+  for (const pool of pools) {
+    const client = makeStakingPoolClient(pool.poolAppId, signer, activeAddress)
+    await client.gas({}, { note: '1', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
+    await client.gas({}, { note: '2', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
+    await client.claimTokens({}, { sendParams: { atc: atc2, fee: feesAmount } })
+  }
+
+  await algokit.sendAtomicTransactionComposer(
+    { atc: atc2, sendParams: { populateAppCallResources: true } },
+    algodClient,
+  )
 }
