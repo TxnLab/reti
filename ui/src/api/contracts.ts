@@ -2,7 +2,6 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
-import { SimulateRequest } from 'algosdk/dist/types/client/v2/algod/models/types'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
@@ -920,7 +919,11 @@ export async function claimTokens(
 
   const simulateResult = await atc1.simulate(
     algodClient,
-    new SimulateRequest({ txnGroups: [], allowEmptySignatures: true, allowUnnamedResources: true }),
+    new algosdk.modelsv2.SimulateRequest({
+      txnGroups: [],
+      allowEmptySignatures: true,
+      allowUnnamedResources: true,
+    }),
   )
 
   // @todo: switch to Joe's new method(s)
