@@ -447,8 +447,6 @@ export async function addStake(
     suggestedParams,
   })
 
-  let fees = AlgoAmount.MicroAlgos(240_000)
-
   const simulateResults = await validatorClient
     .compose()
     .gas({})
@@ -461,14 +459,14 @@ export async function addStake(
         validatorID,
         valueToVerify: 0,
       },
-      { sendParams: { fee: fees } },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
     .simulate({ allowUnnamedResources: true })
 
   stakeTransferPayment.group = undefined
 
   // @todo: switch to Joe's new method(s)
-  fees = AlgoAmount.MicroAlgos(
+  const feesAmount = AlgoAmount.MicroAlgos(
     2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
 
@@ -484,7 +482,7 @@ export async function addStake(
         validatorID,
         valueToVerify: 0,
       },
-      { sendParams: { fee: fees } },
+      { sendParams: { fee: feesAmount } },
     )
     .execute({ populateAppCallResources: true })
 
@@ -732,33 +730,35 @@ export async function removeStake(
 
   const simulateResult = await stakingPoolSimulateClient
     .compose()
-    .gas({})
+    .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+    .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .removeStake(
       {
         amountToUnstake,
       },
-      { sendParams: { fee: AlgoAmount.MicroAlgos(5000) } },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  // @todo: switch to Joe's new method(s)
+  const feesAmount = AlgoAmount.MicroAlgos(
+    1000 *
+      Math.floor(
+        ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
+      ),
+  )
 
   const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
 
   await stakingPoolClient
     .compose()
-    .gas(
-      {},
-      {
-        apps: simulateResult.simulateResponse.txnGroups[0].unnamedResourcesAccessed!
-          .apps! as number[],
-        note: '1',
-      },
-    )
-    .gas({}, { note: '2' })
+    .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+    .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .removeStake(
       {
         amountToUnstake,
       },
-      { sendParams: { fee: AlgoAmount.MicroAlgos(5000) } },
+      { sendParams: { fee: feesAmount } },
     )
     .execute({ populateAppCallResources: true })
 }
@@ -769,18 +769,17 @@ export async function epochBalanceUpdate(
   activeAddress: string,
 ): Promise<void> {
   try {
-    let fees = AlgoAmount.MicroAlgos(240_000)
     const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
 
     const simulateResult = await stakingPoolSimulateClient
       .compose()
       .gas({}, { note: '1' })
       .gas({}, { note: '2' })
-      .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+      .epochBalanceUpdate({}, { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } })
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
     // @todo: switch to Joe's new method(s)
-    fees = AlgoAmount.MicroAlgos(
+    const feesAmount = AlgoAmount.MicroAlgos(
       3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
     )
 
@@ -790,7 +789,7 @@ export async function epochBalanceUpdate(
       .compose()
       .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
       .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-      .epochBalanceUpdate({}, { sendParams: { fee: fees } })
+      .epochBalanceUpdate({}, { sendParams: { fee: feesAmount } })
       .execute({ populateAppCallResources: true })
   } catch (error) {
     console.error(error)
