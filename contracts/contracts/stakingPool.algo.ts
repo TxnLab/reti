@@ -548,7 +548,8 @@ export class StakingPool extends Contract {
             }
         }
 
-        // Get the validator state as well - so we know how much token has been held back
+        // Get the validator state as well - so we know the total staked for the entire validaotr, and how much token
+        // has been held back
         const validatorState = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorState>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
             methodArgs: [this.ValidatorID.value],
@@ -790,8 +791,8 @@ export class StakingPool extends Contract {
         // determined stake increases
         this.TotalAlgoStaked.value += increasedStake;
 
-        log(concat('increased stake: %i', itob(increasedStake)));
-        log(concat('token reward paid out: %i', itob(tokenRewardPaidOut)));
+        log(concat('incr stake: %i', itob(increasedStake)));
+        log(concat('tok. rwd paid: %i', itob(tokenRewardPaidOut)));
 
         // Call the validator contract and tell it we've got new stake added
         // It'll verify we're a valid staking pool id and update it

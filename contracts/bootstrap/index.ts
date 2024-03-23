@@ -1,6 +1,6 @@
 /* eslint-disable import/no-relative-packages */
 import * as algokit from '@algorandfoundation/algokit-utils';
-import { secretKeyToMnemonic } from 'algosdk';
+import { decodeAddress, secretKeyToMnemonic } from 'algosdk';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import * as fs from 'fs';
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing';
@@ -27,7 +27,7 @@ async function main() {
             id: 0,
             deployTimeParams: {
                 NFDRegistryAppID: 0,
-                FeeSinkAddr: 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE',
+                FeeSinkAddr: decodeAddress('A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE').publicKey,
             },
         },
         algod
