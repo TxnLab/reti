@@ -8,6 +8,7 @@ The Réti Open Pooling protocol facilitates the creation of decentralized stakin
 * The protocol allows anyone to create or join staking pools to collectively meet this threshold.
 * It provides an open-source foundation with smart contracts, backend infrastructure, and customizable front-end interfaces.
 * Validators can configure pools to suit varied needs while maintaining core immutable parameters.
+* The protocol is completely decentralized and non-custodial.
 
 ***
 
