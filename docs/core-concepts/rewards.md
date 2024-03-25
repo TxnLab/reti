@@ -14,7 +14,7 @@ The total reward for the pool is calculated based on the current pool balance an
    * Stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
 3. **Compounding**: Staker rewards are directly added to their staked balance, compounding their future rewards.
 
-#### Soft caps and Slashing
+#### Soft caps and Validator Saturation
 
 *   There is a special _soft_ limit designed to prevent too much stake assigned to one validator.
 
