@@ -114,10 +114,14 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("neither owner or manager address for validator id:%d has local keys present", r.ValidatorID)
 		}
-		//state, err := r.GetValidatorState(r.ValidatorID)
-		//if err != nil {
-		//	return fmt.Errorf("unable to GetValidatorState: %w", err)
-		//}
+		constraints, err := r.GetProtocolConstraints()
+		if err != nil {
+			return fmt.Errorf("unable to GetProtocolConstraints: %w", err)
+		}
+
+		// We could get total stake etc for all pools at once via the validator state but since there will be multiple instances
+		// of this daemon we should just report per-validator data and the validator can max / sum, etc. as appropriate
+		// in their metrics dashboard - taking data from all daemons.
 		pools, err := r.GetValidatorPools(r.ValidatorID)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorPools: %w", err)
@@ -170,6 +174,8 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		promTotalStaked.Set(float64(localTotalStaked) / 1e6)
 
 		promRewardAvailable.Set(localTotalRewards)
+
+		promMaxStakeAllowed.Set(float64(constraints.MaxAlgoPerValidator) / 1e6)
 
 		r.SetInfo(newInfo)
 	}

@@ -22,4 +22,8 @@ var (
 		Subsystem: "reti",
 		Name:      "reward_available",
 	})
+	promMaxStakeAllowed = promauto.NewGauge(prometheus.GaugeOpts{
+		Subsystem: "reti",
+		Name:      "max_stake_allowed_total",
+	})
 )

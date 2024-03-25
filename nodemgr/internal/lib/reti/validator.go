@@ -112,7 +112,7 @@ type ValidatorConfig struct {
 func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
 		if len(arrReturn) != 17 {
-			return nil, fmt.Errorf("should be 10 elements returned in ValidatorConfig response")
+			return nil, fmt.Errorf("should be 17 elements returned in ValidatorConfig response")
 		}
 		pkAsString := func(pk []uint8) string {
 			addr, _ := types.EncodeAddress(pk)
@@ -144,6 +144,40 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.SunsettingOn = arrReturn[15].(uint64)
 		config.SunsettingTo = arrReturn[16].(uint64)
 		return config, nil
+	}
+	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)
+}
+
+type ProtocolConstraints struct {
+	EpochPayoutMinsMin             uint64
+	EpochPayoutMinsMax             uint64
+	MinPctToValidatorWFourDecimals uint64
+	MaxPctToValidatorWFourDecimals uint64
+	MinEntryStake                  uint64 // in microAlgo
+	MaxAlgoPerPool                 uint64 // in microAlgo
+	MaxAlgoPerValidator            uint64 // in microAlgo
+	MaxNodes                       uint64
+	MaxPoolsPerNode                uint64
+	MaxStakersPerPool              uint64
+}
+
+func ProtocolConstraintsFromABIReturn(returnVal any) (*ProtocolConstraints, error) {
+	if arrReturn, ok := returnVal.([]any); ok {
+		if len(arrReturn) != 10 {
+			return nil, fmt.Errorf("should be 10 elements returned in ProtocolConstraints response")
+		}
+		constraints := &ProtocolConstraints{}
+		constraints.EpochPayoutMinsMin = arrReturn[0].(uint64)
+		constraints.EpochPayoutMinsMax = arrReturn[1].(uint64)
+		constraints.MinPctToValidatorWFourDecimals = arrReturn[2].(uint64)
+		constraints.MaxPctToValidatorWFourDecimals = arrReturn[3].(uint64)
+		constraints.MinEntryStake = arrReturn[4].(uint64)
+		constraints.MaxAlgoPerPool = arrReturn[5].(uint64)
+		constraints.MaxAlgoPerValidator = arrReturn[6].(uint64)
+		constraints.MaxNodes = arrReturn[7].(uint64)
+		constraints.MaxPoolsPerNode = arrReturn[8].(uint64)
+		constraints.MaxStakersPerPool = arrReturn[9].(uint64)
+		return constraints, nil
 	}
 	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)
 }
@@ -400,6 +434,45 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 		return validatorID, nil
 	}
 	return 0, nil
+}
+
+func (r *Reti) GetProtocolConstraints() (*ProtocolConstraints, error) {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	dummyAddr, err := r.getLocalSignerForSimulateCalls()
+	if err != nil {
+		return nil, err
+	}
+	// Now try to actually create the validator !!
+	atc := transaction.AtomicTransactionComposer{}
+
+	method, _ := r.validatorContract.GetMethodByName("getProtocolConstraints")
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:           r.RetiAppID,
+		Method:          method,
+		MethodArgs:      []any{},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          dummyAddr,
+		Signer:          transaction.EmptyTransactionSigner{},
+	})
+
+	result, err := atc.Simulate(context.Background(), r.algoClient, models.SimulateRequest{
+		AllowEmptySignatures:  true,
+		AllowUnnamedResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if result.SimulateResponse.TxnGroups[0].FailureMessage != "" {
+		return nil, fmt.Errorf("error retrieving protocol constraints: %s", result.SimulateResponse.TxnGroups[0].FailureMessage)
+	}
+	return ProtocolConstraintsFromABIReturn(result.MethodResults[0].ReturnValue)
 }
 
 func (r *Reti) GetValidatorConfig(id uint64) (*ValidatorConfig, error) {
