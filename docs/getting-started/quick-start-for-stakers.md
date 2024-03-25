@@ -45,6 +45,6 @@ You will now be able to see your staked amount with that Validator in the 'Stake
 
 ## Unstaking
 
-To unstake, find the Validator you want to unstake with and select 'Unstake'.
+To unstake, find the Validator you want to unstake with in the 'Staked' section, and select 'Unstake'.
 
 When specifying the amount to unstake, it must be above the minimum entry amount, or the entire amount.&#x20;

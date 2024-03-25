@@ -1,4 +1,3 @@
 # Report Bugs
 
-[https://discord.gg/algorand](https://discord.gg/algorand) #node-runners channel.\
-\
+Please report any bugs or issues found to: \

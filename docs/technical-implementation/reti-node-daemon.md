@@ -1,5 +1,15 @@
 # Reti Node Daemon
 
+## Overview
+
+* **Functionality:** Acts as both a command-line interface and a service daemon, compatible across Linux and OSX platforms. Windows could be supported in the future but is still problematic.
+* **Management:** Facilitates validator and pool configuration, leveraging a 'manager' account for transaction signatures.
+* **Participation Key Management:** Automates the creation and renewal of participation keys to maintain pool activity and online status.
+
+***
+
+## Details
+
 * The Reti Node Daemon Is a combination CLI / Service daemon that will run on Linux / OSX and which node runners will run as a background service.
 * This service can act as the configuration agent, letting users configure the validator, add pools, etc. but the UI for it will be easiest choice due to wallet integrations.
 * Each node daemon will have access to a 'manager' account hot-wallet which it can sign transactions with. This manager account can be switched out by the owner of that validator to a new account at will if there is a compromise.&#x20;
