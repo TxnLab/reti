@@ -29,7 +29,7 @@ $$
 
 #### Hard caps
 
-* **There is an 18% of online stake 'hard' cap** - where new stakers or additional stake can no longer be added to a validator.
+* **There is a 15% of online stake 'hard' cap** - where new stakers or additional stake can no longer be added to a validator.  This is to help safeguard the protocol.
 
 #### Partial Epoch Staking
 
