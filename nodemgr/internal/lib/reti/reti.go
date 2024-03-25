@@ -177,11 +177,7 @@ func (r *Reti) LoadState(ctx context.Context) error {
 }
 
 func (r *Reti) getLocalSignerForSimulateCalls() (types.Address, error) {
-	signer, err := r.signer.FindFirstSigner(nil)
-	if err != nil {
-		return types.ZeroAddress, err
-	}
-	return types.DecodeAddress(signer)
+	return DummyAlgoSender, nil
 }
 
 //go:embed artifacts/contracts/ValidatorRegistry.arc32.json

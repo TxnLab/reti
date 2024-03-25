@@ -440,6 +440,10 @@ export class ValidatorRegistry extends Contract {
                 'If specifying NFD, account adding validator must be owner'
             );
         }
+        if (config.EntryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+            // we require the NFD we compare against to be the one set in NFDForInfo
+            assert(config.NFDForInfo !== 0, 'an NFD must be specified for the validator when gating by NFD addresses');
+        }
         if (config.EntryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
             // verify gating NFD is at least 'real' - since we just have app id - fetch its name then do is valid call
             const nfdRootAppID = extractUint64(config.EntryGatingValue, 0);
@@ -1153,10 +1157,11 @@ export class ValidatorRegistry extends Contract {
             );
         }
         if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+            const nfdForInfo = this.ValidatorList(validatorID).value.Config.NFDForInfo;
             // Walk all the linked addresses defined by this NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
             // if any are the creator of the specified asset then we pass.
             assert(
-                this.isAddressInNFDCAAlgoList(valueToVerify, AssetID.fromUint64(valueToVerify).creator),
+                this.isAddressInNFDCAAlgoList(nfdForInfo, AssetID.fromUint64(valueToVerify).creator),
                 'specified asset must be created by creator that is one of the linked addresses in an nfd'
             );
         }

@@ -548,7 +548,7 @@ export class StakingPool extends Contract {
             }
         }
 
-        // Get the validator state as well - so we know the total staked for the entire validaotr, and how much token
+        // Get the validator state as well - so we know the total staked for the entire validator, and how much token
         // has been held back
         const validatorState = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorState>({
             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
