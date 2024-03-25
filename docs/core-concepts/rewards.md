@@ -16,16 +16,16 @@ The total reward for the pool is calculated based on the current pool balance an
 
 #### Soft caps and Validator Saturation
 
-* While developing this solution, [Stefano De Angelis](https://twitter.com/\_deanste) suggested a Saturation model whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
+* While developing this solution, [Stefano De Angelis](https://github.com/deanstef) suggested a Saturation model whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
 *   This Saturation level is a _soft_ limit designed to prevent too much stake going to to one validator and which scales with the total online stake.
 
     **More than 10% of the currently online stake** will be considered a **Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
-* The soft limit per pool (as part of ‘finding space’) becomes the 10% threshold / num pools, so that the pools themselves will also try to prevent large imbalances.
+* The soft limit per pool (as part of ‘finding space’) becomes the 10% threshold / num pools, so that the pools themselves will also try to prevent large imbalances, with stake skipping pools at this level.
 * **Any validator exceeding this total threshold will be considered over-saturated and be negatively impacted.**  In this state, the following changes:
-  * **Rewards accrued in each epoch are diminished and the validator receives no rewards,** effectively reducing the APR for the pools.  This will encourage stakers to exit the pool or at least lower their stake within thresholds.  For example, if the current soft limit of the pool is twice the amount staked in the pool, the reward will be halved.  The below example showing a fictional 200 ALGO reward being available, with 100,000 ALGO being the 'soft limit' and 200,000 ALGO currently in the pool.  The 200 reward becomes 100 ALGO in this example.
+  * **Rewards accrued in each epoch are diminished and the validator receives no rewards,** effectively reducing the APR for the pools.  This will encourage stakers to exit the pool or at least lower their stake within thresholds.  For example, if the current saturation limit for a validator is twice the amount staked in the pool, the reward will be halved.  The below example showing a fictional 200 ALGO reward being available, with 100,000 ALGO being the 'soft limit' per validator and 200,000 ALGO currently staked to the validator.  The 200 reward becomes 100 ALGO in this example.
 
 $$
-maxPayableReward = \frac{algoRewardAvail * maxStakePool}{totalStakeInPool} = \frac{200*100000}{200000} = 100
+maxPayableReward = \frac{algoRewardAvail * maxStakePerValidator}{totalStakeInValidator} = \frac{200*100000}{200000} = 100
 $$
 
 #### Hard caps
