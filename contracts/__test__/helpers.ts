@@ -810,6 +810,51 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
     return itxnfees.microAlgos;
 }
 
+export async function claimTokens(stakeClient: StakingPoolClient, staker: Account) {
+    const simulateResults = await stakeClient
+        .compose()
+        .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+        .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+        .claimTokens(
+            {},
+            {
+                sendParams: {
+                    fee: AlgoAmount.MicroAlgos(240000),
+                },
+                sender: staker,
+            }
+        )
+        .simulate({ allowUnnamedResources: true });
+
+    const itxnfees = AlgoAmount.MicroAlgos(
+        1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700)
+    );
+    consoleLogger.info(`removeStake fees:${itxnfees.toString()}`);
+
+    try {
+        await stakeClient
+            .compose()
+            .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .claimTokens(
+                {},
+                {
+                    sendParams: {
+                        // pays us back and tells validator about balance changed
+                        fee: AlgoAmount.MicroAlgos(itxnfees.microAlgos),
+                    },
+                    sender: staker,
+                }
+            )
+            .execute({ populateAppCallResources: true });
+    } catch (exception) {
+        consoleLogger.warn((exception as LogicError).message);
+        // throw stakeClient.appClient.exposeLogicError(exception as Error);
+        throw exception;
+    }
+    return itxnfees.microAlgos;
+}
+
 export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
     let fees = AlgoAmount.MicroAlgos(240_000);
     const simulateResults = await stakeClient

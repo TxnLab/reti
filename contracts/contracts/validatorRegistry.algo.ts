@@ -787,7 +787,7 @@ export class ValidatorRegistry extends Contract {
 
         // Yup - we've been called by an official staking pool telling us about stake that was removed from it,
         // so we can update our validator's staking stats.
-        assert(amountRemoved > 0);
+        assert(amountRemoved > 0 || rewardRemoved > 0);
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.ValidatorList(poolKey.ID).value.Pools[poolKey.PoolID - 1].TotalAlgoStaked -= amountRemoved;
