@@ -16,7 +16,7 @@ The total reward for the pool is calculated based on the current pool balance an
 
 #### Soft caps and Validator Saturation
 
-* While developing this solution, [Stefano De Angelis](https://twitter.com/\_deanste) suggested a Saturation model similar to Cardano whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
+* While developing this solution, [Stefano De Angelis](https://twitter.com/\_deanste) suggested a Saturation model whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
 *   This Saturation level is a _soft_ limit designed to prevent too much stake going to to one validator and which scales with the total online stake.
 
     **More than 10% of the currently online stake** will be considered a **Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
