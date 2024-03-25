@@ -2332,7 +2332,7 @@ describe('TokenGatingByAsset', () => {
     });
 });
 
-describe('MaxAmtSanctioning', () => {
+describe('SaturatedValidator', () => {
     beforeEach(fixture.beforeEach);
     beforeEach(logs.beforeEach);
     afterEach(logs.afterEach);
@@ -2417,8 +2417,6 @@ describe('MaxAmtSanctioning', () => {
     });
 
     // Now we add 2 more pools, total of 3 - which means we can have up to 70m * 3 = 210m total stake yet in current config
-    // (might be an issue once online stake is 'dynamic' in avm) 10% of 2b online is 200m - so >200m the pools should be sanctioned
-    // in terms of preventing new stake, and also blocking rewards.
     test('addPools', async () => {
         const curSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorID);
         expect(curSoftMax).toEqual(constraints.MaxAlgoPerPool);
@@ -2439,11 +2437,13 @@ describe('MaxAmtSanctioning', () => {
         expect((await getValidatorState(validatorMasterClient, validatorID)).NumPools).toEqual(3);
         // Our maximum per pool should've changed now - to be max algo per validator / numNodes (3)
         const newSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorID);
-        expect(newSoftMax).toEqual(constraints.MaxAlgoPerValidator / BigInt(3));
+        expect(newSoftMax).toEqual(
+            BigInt(Math.min(Number(constraints.MaxAlgoPerValidator / 3n), Number(constraints.MaxAlgoPerPool)))
+        );
     });
 
     test('fillNewPools', async () => {
-        // bump by 15 mins at a time so we account for the entry time post-dating and can stake and be immediately
+        // bump by 15 mins at a time, so we account for the entry time post-dating and can stake and be immediately
         // 100%
         await fixture.context.algod.setBlockOffsetTimestamp(60 * 15).do();
 
@@ -2462,92 +2462,67 @@ describe('MaxAmtSanctioning', () => {
         const state = await getValidatorState(validatorMasterClient, validatorID);
         expect(state.TotalAlgoStaked).toEqual(constraints.MaxAlgoPerPool + newSoftMax);
 
-        // next add should go to pool 3 - (w/ min entry stake ofc) because pool 2 should be 'soft full' now
+        // Fill again - this will put us at max and with current dev defaults at least - over saturation limit
+        // 3 pools of 70m (210m) vs saturation limit of 10% of 2b or 200m.
         [poolKey] = await addStake(
             fixture.context,
             validatorMasterClient,
             validatorID,
             stakerAccount,
-            AlgoAmount.Algos(1000),
+            AlgoAmount.MicroAlgos(Number(newSoftMax)),
             0n
         );
         expect(poolKey.PoolID).toEqual(3n);
     });
 
     test('testPenalties', async () => {
-        // send a TON of algo to one of the pools so we'll go over maximum allowable stake (on next update)
         const state = await getValidatorState(validatorMasterClient, validatorID);
+        const origPoolBalance = await getPoolAvailBalance(fixture.context, pools[2]);
 
-        // make sure we add extra since 5% gets chopped off as validator rewards
-        const amountToSend = AlgoAmount.MicroAlgos(
-            Number(
-                constraints.MaxAlgoPerValidator -
-                    state.TotalAlgoStaked +
-                    ((constraints.MaxAlgoPerValidator - state.TotalAlgoStaked) * 60_000n) / 1_000_000n
-            )
-        );
-        const rewardSender = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(amountToSend.algos + 300), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd
-        );
-
-        await transferAlgos(
-            {
-                from: rewardSender,
-                to: getApplicationAddress(pools[2].PoolAppID),
-                amount: amountToSend,
-            },
-            fixture.context.algod
-        );
         const tmpPoolClient = new StakingPoolClient(
             { sender: validatorOwnerAccount, resolveBy: 'id', id: pools[2].PoolAppID },
             fixture.context.algod
         );
-        let newState = await getValidatorState(validatorMasterClient, validatorID);
-        consoleLogger.info(
-            `current algo staked prior to epoch update:${newState.TotalAlgoStaked}, amountToSend:${amountToSend.algos}`
-        );
-
-        await epochBalanceUpdate(tmpPoolClient);
-
-        const validatorReward = Math.floor((amountToSend.microAlgos * 50_000) / 1_000_000);
-        const poolBalance = await getPoolAvailBalance(fixture.context, pools[2]);
         const poolInfo = await getPoolInfo(validatorMasterClient, pools[2]);
-        newState = await getValidatorState(validatorMasterClient, validatorID);
-        expect(newState.TotalAlgoStaked).toEqual(
-            state.TotalAlgoStaked + BigInt(amountToSend.microAlgos - validatorReward)
+        const rewardAmount = AlgoAmount.Algos(200).microAlgos;
+        // ok, NOW it should be over the limit on next balance update - send a bit more algo - and it should be in
+        // saturated state now - so reward gets diminished, validator gets nothing, rest goes to fee sink
+        const rewardSender = await getTestAccount(
+            { initialFunds: AlgoAmount.MicroAlgos(rewardAmount + 4e6), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
         );
-        expect(poolBalance).toEqual(poolInfo.TotalAlgoStaked);
-        expect(newState.TotalAlgoStaked).toBeGreaterThanOrEqual(constraints.MaxAlgoPerValidator);
-
-        // ok, NOW it should be over the limit on next balance update - send a bit more algo - and it should all be
-        // slashed at this point - basically all going to fee sink
         await transferAlgos(
             {
                 from: rewardSender,
                 to: getApplicationAddress(pools[2].PoolAppID),
-                amount: AlgoAmount.Algos(200),
+                amount: AlgoAmount.MicroAlgos(rewardAmount),
             },
             fixture.context.algod
         );
         const wNewRewardPoolBal = await getPoolAvailBalance(fixture.context, pools[2]);
         // balance should be excess above totalAlgoStaked now...
-        expect(wNewRewardPoolBal).toEqual(poolInfo.TotalAlgoStaked + BigInt(AlgoAmount.Algos(200).microAlgos));
+        expect(wNewRewardPoolBal).toEqual(poolInfo.TotalAlgoStaked + BigInt(rewardAmount));
 
-        // but after next epochBalanceUpdate - it should be right back to totalAlgoStaked and feeSink should've grown by at least
-        // that much.
+        // but after next epochBalanceUpdate - it should have grown - but not by as much (depends on ratio of stake vs saturation limit)
         const origFeeSinkBal = await fixture.context.algod.accountInformation(FEE_SINK_ADDR).do();
         await epochBalanceUpdate(tmpPoolClient);
-        const postSanctionedPoolBal = await getPoolAvailBalance(fixture.context, pools[2]);
-        expect(postSanctionedPoolBal).toEqual(poolInfo.TotalAlgoStaked);
-        // reward should've gone all to the fee sink
-        const newFeeSinkBal = await fixture.context.algod.accountInformation(FEE_SINK_ADDR).do();
-        expect(newFeeSinkBal.amount).toBeGreaterThanOrEqual(origFeeSinkBal.amount + AlgoAmount.Algos(200).microAlgos);
 
-        // stake shouldn't have changed....
+        const postSaturatedPoolBal = await getPoolAvailBalance(fixture.context, pools[2]);
+
+        const diminishedRewards = (BigInt(rewardAmount) * constraints.AmtConsideredSaturated) / state.TotalAlgoStaked;
+        expect(postSaturatedPoolBal).toEqual(poolInfo.TotalAlgoStaked + diminishedRewards);
+        // reward should've been reduced with rest going to fee sink
+        const newFeeSinkBal = await fixture.context.algod.accountInformation(FEE_SINK_ADDR).do();
+        expect(newFeeSinkBal.amount).toBeGreaterThanOrEqual(
+            origFeeSinkBal.amount + (rewardAmount - Number(diminishedRewards))
+        );
+
+        // stake should've increased by diminishedRewards
         const newPoolInfo = await getPoolInfo(validatorMasterClient, pools[2]);
-        expect(poolBalance).toEqual(newPoolInfo.TotalAlgoStaked);
+        const newPoolBalance = await getPoolAvailBalance(fixture.context, pools[2]);
+        expect(newPoolBalance).toEqual(origPoolBalance + diminishedRewards);
+        expect(newPoolBalance).toEqual(newPoolInfo.TotalAlgoStaked);
     });
 });
 

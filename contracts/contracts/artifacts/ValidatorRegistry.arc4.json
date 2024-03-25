@@ -35,7 +35,7 @@
       "desc": "Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.",
       "args": [],
       "returns": {
-        "type": "(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)"
+        "type": "(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)"
       }
     },
     {

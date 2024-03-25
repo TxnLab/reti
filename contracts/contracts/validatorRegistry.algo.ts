@@ -18,7 +18,8 @@ import {
     MIN_PCT_TO_VALIDATOR,
     SSC_VALUE_BYTES,
     SSC_VALUE_UINT,
-    MAX_VALIDATOR_PCT_OF_ONLINE,
+    MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
+    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
 } from './constants.algo';
 
 const MAX_NODES = 4; // more just as a reasonable limit and cap on contract storage
@@ -146,6 +147,7 @@ type Constraints = {
     MinEntryStake: uint64; // in microAlgo
     MaxAlgoPerPool: uint64; // in microAlgo
     MaxAlgoPerValidator: uint64; // in microAlgo
+    AmtConsideredSaturated: uint64; // soft stake - when saturation starts - in microAlgo
     MaxNodes: uint64;
     MaxPoolsPerNode: uint64;
     MaxStakersPerPool: uint64;
@@ -269,6 +271,7 @@ export class ValidatorRegistry extends Contract {
             MinEntryStake: MIN_ALGO_STAKE_PER_POOL,
             MaxAlgoPerPool: MAX_ALGO_PER_POOL,
             MaxAlgoPerValidator: this.maxAllowedStake(),
+            AmtConsideredSaturated: this.algoSaturationLevel(),
             MaxNodes: MAX_NODES,
             MaxPoolsPerNode: MAX_POOLS_PER_NODE,
             MaxStakersPerPool: MAX_STAKERS_PER_POOL,
@@ -616,10 +619,11 @@ export class ValidatorRegistry extends Contract {
             receiver: this.app.address,
         });
 
-        // Ensure we're not over our protocol maximum for combined stake in all pools
+        // Ensure we're not over our protocol maximum for combined stake in all pools using the
+        // MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL percentage
         assert(
             this.ValidatorList(validatorID).value.State.TotalAlgoStaked < this.maxAllowedStake(),
-            'total staked for all of a validators pools may not exceed protocol maximum'
+            'total staked for all of a validators pools may not exceed hard cap'
         );
         // If the validator specified that a specific token creator is required to stake, verify that the required
         // balance is held by the staker, and that the asset they offered up to validate was created by the account
@@ -709,14 +713,14 @@ export class ValidatorRegistry extends Contract {
         const curTime = globals.latestTimestamp;
         const lastPayoutUpdate = this.ValidatorList(validatorID).value.TokenPayoutRatio.UpdatedForPayout;
         if (lastPayoutUpdate !== 0) {
+            // We've already done the calcs - return what we already have.
+            if ((AppID.fromUint64(pool1AppID).globalState('lastPayout') as uint64) === lastPayoutUpdate) {
+                return this.ValidatorList(validatorID).value.TokenPayoutRatio;
+            }
             const secsSinceLastPayout = curTime - lastPayoutUpdate;
             const epochInSecs = (this.ValidatorList(validatorID).value.Config.PayoutEveryXMins as uint64) * 60;
             // We've had one payout - so we need to be at least one epoch past the last payout.
             if (secsSinceLastPayout < epochInSecs) {
-                return this.ValidatorList(validatorID).value.TokenPayoutRatio;
-            }
-            // We've already done the calcs..
-            if ((AppID.fromUint64(pool1AppID).globalState('lastPayout') as uint64) === lastPayoutUpdate) {
                 return this.ValidatorList(validatorID).value.TokenPayoutRatio;
             }
         }
@@ -860,7 +864,7 @@ export class ValidatorRegistry extends Contract {
         // addStake calls but the values should be the same, and we shouldn't even try to add stake if it won't even
         // be accepted.
         // However, one thing extra we also handle is have a 'soft' maximum per pool so that the amounts balance out based on
-        // maxAllowedStake() (x % of all online stake) - taking that max / numPools.  This way as pools are added
+        // maxAllowedStake() (hard x % of all online stake) - taking that max / numPools.  This way as pools are added
         // to go beyond the individual pool maximum, the maximum for each pool starts to reflect the max allowed but
         // balanced across the pools.
         const maxPerPool = this.getCurMaxStakePerPool(validatorID);
@@ -1231,12 +1235,23 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
-     * Returns the maximum allowed stake per validator based on a percentage of all current online stake
+     * Returns the maximum allowed stake per validator based on a percentage of all current online stake before
+     * the validator is considered saturated - where rewards are diminished.
+     */
+    private algoSaturationLevel(): uint64 {
+        const online = this.getCurrentOnlineStake();
+
+        return wideRatio([online, MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL], [1000]);
+    }
+
+    /**
+     * Returns the MAXIMUM allowed stake per validator based on a percentage of all current online stake.
+     * Adding stake is completely blocked at this amount.
      */
     private maxAllowedStake(): uint64 {
         const online = this.getCurrentOnlineStake();
 
-        return wideRatio([online, MAX_VALIDATOR_PCT_OF_ONLINE], [1000]);
+        return wideRatio([online, MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL], [1000]);
     }
 
     private getCurrentOnlineStake(): uint64 {

@@ -175,6 +175,7 @@ func (r *Reti) LoadState(ctx context.Context) error {
 
 		promRewardAvailable.Set(localTotalRewards)
 
+		promAmtConsideredSaturated.Set(float64(constraints.AmtConsideredSaturated) / 1e6)
 		promMaxStakeAllowed.Set(float64(constraints.MaxAlgoPerValidator) / 1e6)
 
 		r.SetInfo(newInfo)

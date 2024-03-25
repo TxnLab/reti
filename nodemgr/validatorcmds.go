@@ -12,6 +12,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v3"
 
+	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
@@ -79,6 +80,12 @@ func DisplayValidatorInfo(ctx context.Context, command *cli.Command) error {
 	}
 	var config = App.retiClient.Info().Config
 	fmt.Println(config.String())
+	constraints, err := App.retiClient.GetProtocolConstraints()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Amt when saturated: %s\n", algo.FormattedAlgoAmount(constraints.AmtConsideredSaturated))
+	fmt.Printf("Max Algo per Validator: %s\n", algo.FormattedAlgoAmount(constraints.MaxAlgoPerValidator))
 	return nil
 }
 

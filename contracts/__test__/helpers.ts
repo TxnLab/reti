@@ -319,6 +319,8 @@ export class ProtocolConstraints {
 
     MaxAlgoPerValidator: bigint; // in microAlgo
 
+    AmtConsideredSaturated: bigint;
+
     MaxNodes: bigint;
 
     MaxPoolsPerNode: bigint;
@@ -333,10 +335,11 @@ export class ProtocolConstraints {
         MinEntryStake,
         MaxAlgoPerPool,
         MaxAlgoPerValidator,
+        AmtConsideredSaturated,
         MaxNodes,
         MaxPoolsPerNode,
         MaxStakersPerPool,
-    ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]) {
+    ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]) {
         this.EpochPayoutMinsMin = EpochPayoutMinsMin;
         this.EpochPayoutMinsMax = EpochPayoutMinsMax;
         this.MinPctToValidatorWFourDecimals = MinPctToValidatorWFourDecimals;
@@ -344,6 +347,7 @@ export class ProtocolConstraints {
         this.MinEntryStake = MinEntryStake;
         this.MaxAlgoPerPool = MaxAlgoPerPool;
         this.MaxAlgoPerValidator = MaxAlgoPerValidator;
+        this.AmtConsideredSaturated = AmtConsideredSaturated;
         this.MaxNodes = MaxNodes;
         this.MaxPoolsPerNode = MaxPoolsPerNode;
         this.MaxStakersPerPool = MaxStakersPerPool;
@@ -357,10 +361,11 @@ export class ProtocolConstraints {
         MinEntryStake,
         MaxAlgoPerPool,
         MaxAlgoPerValidator,
+        AmtConsideredSaturated,
         MaxNodes,
         MaxPoolsPerNode,
         MaxStakersPerPool,
-    ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]): ProtocolConstraints {
+    ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]): ProtocolConstraints {
         return {
             EpochPayoutMinsMin,
             EpochPayoutMinsMax,
@@ -369,6 +374,7 @@ export class ProtocolConstraints {
             MinEntryStake,
             MaxAlgoPerPool,
             MaxAlgoPerValidator,
+            AmtConsideredSaturated,
             MaxNodes,
             MaxPoolsPerNode,
             MaxStakersPerPool,

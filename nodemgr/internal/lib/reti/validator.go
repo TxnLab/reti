@@ -156,6 +156,7 @@ type ProtocolConstraints struct {
 	MinEntryStake                  uint64 // in microAlgo
 	MaxAlgoPerPool                 uint64 // in microAlgo
 	MaxAlgoPerValidator            uint64 // in microAlgo
+	AmtConsideredSaturated         uint64 // soft stake - when saturation starts - in microAlgo
 	MaxNodes                       uint64
 	MaxPoolsPerNode                uint64
 	MaxStakersPerPool              uint64
@@ -163,7 +164,7 @@ type ProtocolConstraints struct {
 
 func ProtocolConstraintsFromABIReturn(returnVal any) (*ProtocolConstraints, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
-		if len(arrReturn) != 10 {
+		if len(arrReturn) != 11 {
 			return nil, fmt.Errorf("should be 10 elements returned in ProtocolConstraints response")
 		}
 		constraints := &ProtocolConstraints{}
@@ -174,9 +175,10 @@ func ProtocolConstraintsFromABIReturn(returnVal any) (*ProtocolConstraints, erro
 		constraints.MinEntryStake = arrReturn[4].(uint64)
 		constraints.MaxAlgoPerPool = arrReturn[5].(uint64)
 		constraints.MaxAlgoPerValidator = arrReturn[6].(uint64)
-		constraints.MaxNodes = arrReturn[7].(uint64)
-		constraints.MaxPoolsPerNode = arrReturn[8].(uint64)
-		constraints.MaxStakersPerPool = arrReturn[9].(uint64)
+		constraints.AmtConsideredSaturated = arrReturn[7].(uint64)
+		constraints.MaxNodes = arrReturn[8].(uint64)
+		constraints.MaxPoolsPerNode = arrReturn[9].(uint64)
+		constraints.MaxStakersPerPool = arrReturn[10].(uint64)
 		return constraints, nil
 	}
 	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)

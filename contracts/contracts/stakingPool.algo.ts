@@ -7,7 +7,8 @@ import {
     ASSET_HOLDING_FEE,
     MAX_ALGO_PER_POOL,
     MAX_STAKERS_PER_POOL,
-    MAX_VALIDATOR_PCT_OF_ONLINE,
+    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
+    MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
     SSC_VALUE_BYTES,
     SSC_VALUE_UINT,
@@ -52,8 +53,10 @@ export class StakingPool extends Contract {
     // The pool ID we were assigned by the validator contract - sequential id per validator
     PoolID = GlobalStateKey<uint64>({ key: 'poolID' });
 
+    // number of stakers in THIS pool
     NumStakers = GlobalStateKey<uint64>({ key: 'numStakers' });
 
+    // TotalAlgoStaked is total amount staked in THIS pool.
     TotalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' });
 
     MinEntryStake = GlobalStateKey<uint64>({ key: 'minEntryStake' });
@@ -90,11 +93,9 @@ export class StakingPool extends Contract {
     ): void {
         if (creatingContractID === 0) {
             // this is likely initial template setup - everything should basically be zero...
-            assert(creatingContractID === 0);
             assert(validatorID === 0);
             assert(poolID === 0);
         } else {
-            assert(creatingContractID !== 0);
             assert(validatorID !== 0);
             assert(poolID !== 0);
         }
@@ -195,8 +196,8 @@ export class StakingPool extends Contract {
         assert(this.txn.sender === AppID.fromUint64(this.CreatingValidatorContractAppID.value).address);
         assert(staker !== globals.zeroAddress);
 
-        // Now, is the required amount actually being paid to US (this contract account - the staking pool)
-        // Sender doesn't matter - but it 'technically' should be coming from the Validator contract address
+        // Verify the payment of stake also came from the validator - as it receives the stake from the staker, holds
+        // any MBR (if needed) and then sends the stake on to us in the stakedAmountPayment transaction.
         verifyPayTxn(stakedAmountPayment, {
             sender: AppID.fromUint64(this.CreatingValidatorContractAppID.value).address,
             receiver: this.app.address,
@@ -561,14 +562,18 @@ export class StakingPool extends Contract {
         // total reward available is current balance - amount staked (so if 100 was staked but balance is 120 - reward is 20)
         // [not counting MBR which should never be counted - it's not payable]
         let algoRewardAvail = this.app.address.balance - this.TotalAlgoStaked.value - this.app.address.minBalance;
-        let sendRewardToFeeSink = false;
+        let isPoolSaturated = false;
+        const algoSaturationAmt = this.algoSaturationLevel();
 
-        // Now verify if our validator has exceeded the maxAllowedStake for the 'protocol' - if so, then we want to
-        // send ALL rewards back to the fee sink, and NOT to the validator, or the stakers.  We want people to unstake
-        // from the pools to get the total stake for this validator back under the limit.
-        if (validatorState.TotalAlgoStaked > this.maxAllowedStake()) {
-            log('validator stake exceeded protocol max, all reward sent back to fee sink');
-            sendRewardToFeeSink = true;
+        // Now verify if our validator has exceeded the saturation level for the 'protocol' (across all pools) - if so,
+        // then we want to:
+        // 1) not send the validator any rewards
+        // 2) send rewards to the stakers, but diminished - just use ratio of amount over the saturation threshold
+        // ie: diminishedReward = (algoRewardAvail * algoSaturationLevel [max per validator]) /  totalAlgoStaked [for validator]
+        // 3) The excess is sent to the fee sink.
+        if (validatorState.TotalAlgoStaked > algoSaturationAmt) {
+            log('validator in saturated state');
+            isPoolSaturated = true;
         }
 
         // if tokens are rewarded by this validator and determine how much we have to hand out
@@ -585,7 +590,7 @@ export class StakingPool extends Contract {
             if (tokenRewardBal >= validatorConfig.RewardPerPayout) {
                 // Now - adjust the token rewards to be relative based on this pools stake as % of 'total validator stake'
                 // using our prior snapshotted data
-                // @ts-ignore typescript thinks tokenPayoutRatio might not be set prior to this call but it has to be based on isTokenEligible
+                // @ts-ignore typescript thinks tokenPayoutRatio might not be set prior to this call but it has to be, based on isTokenEligible
                 const ourPoolPctOfWhole = tokenPayoutRatio.PoolPctOfWhole[this.PoolID.value - 1];
 
                 // now adjust the total reward to hand out for this pool based on this pools % of the whole
@@ -598,20 +603,29 @@ export class StakingPool extends Contract {
             }
         }
         if (tokenRewardAvail === 0) {
-            // no token reward - then algo MUST be paid out !
+            // no token reward - then algo MUST be paid out as we have to do 'something' !
             // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
             assert(algoRewardAvail > 1_000_000, 'Reward needs to be at least 1 ALGO');
         }
         log(concat('algo reward avail: ', algoRewardAvail.toString()));
         // log(concat('algo reward avail: %i', itob(algoRewardAvail)));
 
-        if (sendRewardToFeeSink) {
+        if (isPoolSaturated) {
+            // see comment where isPoolSaturated is set for changes in rewards...
+            // diminishedReward = (reward * maxStakePerPool) / stakeForValidator
+            const diminishedReward = wideRatio([algoRewardAvail, algoSaturationAmt], [validatorState.TotalAlgoStaked]);
+            // send excess to fee sink...
+            const excessToFeeSink = algoRewardAvail - diminishedReward;
+            increaseOpcodeBudget();
+            log(concat('dim rwd: ', diminishedReward.toString()));
+            log(concat('to sink: ', excessToFeeSink.toString()));
             sendPayment({
-                amount: algoRewardAvail,
+                amount: excessToFeeSink,
                 receiver: this.getFeeSink(),
-                note: 'validator exceeded protocol max, rewards sent back to fee sink',
+                note: 'pool saturated, portion sent back to fee sink',
             });
-            algoRewardAvail = 0;
+            // then distribute the smaller reward amount like normal (skipping validator payout entirely)
+            algoRewardAvail = diminishedReward;
         } else if (validatorConfig.PercentToValidator !== 0) {
             // determine the % that goes to validator...
             // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
@@ -922,12 +936,13 @@ export class StakingPool extends Contract {
     }
 
     /**
-     * Returns the maximum allowed stake per validator based on a percentage of all current online stake
+     * Returns the maximum allowed stake per validator based on a percentage of all current online stake before
+     * the validator is considered saturated - where rewards are diminished.
      */
-    private maxAllowedStake(): uint64 {
+    private algoSaturationLevel(): uint64 {
         const online = this.getCurrentOnlineStake();
 
-        return wideRatio([online, MAX_VALIDATOR_PCT_OF_ONLINE], [1000]);
+        return wideRatio([online, MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL], [1000]);
     }
 
     private getCurrentOnlineStake(): uint64 {
