@@ -18,7 +18,7 @@ Validators can define a number of parameters - some of which are immutable. More
 * Validator commission rate
 * Validator fee address
 * Minimum entry amount
-* Maximum stake per pool
+* Maximum stake per pool (if the validator wants to limit it in some way).  Default value will have max stake be same as max allowed and still receive incentives.
 * Number of pools per node (participation keys) - Maximum of 3
 * Max number of nodes - Maximum of 4
 
