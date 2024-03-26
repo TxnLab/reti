@@ -20,10 +20,18 @@ func GetDaemonCmdOpts() *cli.Command {
 		Usage:   "Run the application as a daemon",
 		Before:  checkConfigured, // make sure validator is already configured
 		Action:  runAsDaemon,
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:     "port",
+				Usage:    "port to expose prometheus metrics and /ready endpoint",
+				Value:    6260,
+				Required: false,
+			},
+		},
 	}
 }
 
-func runAsDaemon(ctx context.Context, _ *cli.Command) error {
+func runAsDaemon(ctx context.Context, cmd *cli.Command) error {
 	var wg sync.WaitGroup
 
 	if err := App.retiClient.LoadState(ctx); err != nil {
@@ -34,17 +42,15 @@ func runAsDaemon(ctx context.Context, _ *cli.Command) error {
 	// to notify the main goroutine when to stop the server.
 	errc := make(chan error)
 
-	// Setup interrupt handler. This optional step configures the process so
-	// that SIGINT and SIGTERM signals cause the services to stop gracefully.
+	// Setup interrupt handler so that ctrl-c or sigterm gracefully stops the process
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 		errc <- fmt.Errorf("%s", <-c)
 	}()
-
 	ctx, cancel := context.WithCancel(context.Background())
 
-	newDaemon().start(ctx, &wg, errc)
+	newDaemon().start(ctx, &wg, int(cmd.Value("port").(int64)))
 
 	misc.Infof(App.logger, "exiting (%v)", <-errc) // wait for termination signal
 

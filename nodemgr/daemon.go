@@ -45,7 +45,7 @@ func newDaemon() *Daemon {
 	}
 }
 
-func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, errc chan error) {
+func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, listenPort int) {
 	d.logger.Info("Réti daemon started")
 	wg.Add(1)
 	go func() {
@@ -65,8 +65,8 @@ func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, errc chan error)
 		http.Handle("/ready", isReady())
 		http.Handle("/metrics", promhttp.Handler())
 
-		host := ":http"
-		srv := &http.Server{Addr: host} // default to http/80
+		host := fmt.Sprintf(":%d", listenPort)
+		srv := &http.Server{Addr: host}
 		go func() {
 			misc.Infof(d.logger, "HTTP server listening on %q", host)
 			srv.ListenAndServe()
