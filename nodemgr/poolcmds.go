@@ -386,7 +386,7 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 		command.Value("validator").(uint64),
 		stakerAddr,
 		command.Value("amount").(uint64)*1e6,
-		0, // TODO do we bother handle token gating in CLI ?  prob not
+		0, // TODO do we bother handle token gating in CLI ?  best left to the UI
 	)
 	if err != nil {
 		return err

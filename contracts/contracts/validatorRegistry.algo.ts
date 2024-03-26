@@ -522,10 +522,7 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Allow the additional rewards (gating entry, additional token rewards) information be changed at will.
-     * The validator may want to adjust the tokens or amounts.
      * [ ONLY OWNER CAN CHANGE ]
-     * TODO: should there be limits on how often it can be changed?
-     * TODO: when they change the RewardTokenID - pool 1 has to opt-in to it !  should it send back the remaining of prior token ?
      */
     changeValidatorRewardInfo(
         validatorID: ValidatorID,
