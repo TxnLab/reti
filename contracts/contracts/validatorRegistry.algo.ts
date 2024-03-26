@@ -11,7 +11,6 @@ import {
     GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
     GATING_TYPE_SEGMENT_OF_NFD,
     GATING_TYPE_CONST_MAX,
-    MAX_ALGO_PER_POOL,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
     MIN_ALGO_STAKE_PER_POOL,
@@ -83,7 +82,7 @@ export type ValidatorConfig = {
 
     ValidatorCommissionAddress: Address; // [CHANGEABLE] account that receives the validation commission each epoch payout (can be ZeroAddress)
     MinEntryStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
-    MaxAlgoPerPool: uint64; // maximum stake allowed per pool (to keep under incentive limits)
+    MaxAlgoPerPool: uint64; // maximum stake allowed per pool - if validator wants to restrict it.  0 means to use 'current' limits.
     PoolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
 
     SunsettingOn: uint64; // [CHANGEABLE] timestamp when validator will sunset (if != 0)
@@ -269,7 +268,7 @@ export class ValidatorRegistry extends Contract {
             MinPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
             MaxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             MinEntryStake: MIN_ALGO_STAKE_PER_POOL,
-            MaxAlgoPerPool: MAX_ALGO_PER_POOL,
+            MaxAlgoPerPool: this.maxAlgoAllowedPerPool(),
             MaxAlgoPerValidator: this.maxAllowedStake(),
             AmtConsideredSaturated: this.algoSaturationLevel(),
             MaxNodes: MAX_NODES,
@@ -347,10 +346,13 @@ export class ValidatorRegistry extends Contract {
      */
     getCurMaxStakePerPool(validatorID: ValidatorID): uint64 {
         const numPools = this.ValidatorList(validatorID).value.State.NumPools as uint64;
-        const maxDividedBetweenPools = this.maxAllowedStake() / numPools;
+        const hardMaxDividedBetweenPools = this.maxAllowedStake() / numPools;
         let maxPerPool: uint64 = this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool;
-        if (maxDividedBetweenPools < maxPerPool) {
-            maxPerPool = maxDividedBetweenPools;
+        if (maxPerPool === 0) {
+            maxPerPool = this.maxAlgoAllowedPerPool();
+        }
+        if (hardMaxDividedBetweenPools < maxPerPool) {
+            maxPerPool = hardMaxDividedBetweenPools;
         }
         return maxPerPool;
     }
@@ -578,13 +580,12 @@ export class ValidatorRegistry extends Contract {
             globalNumByteSlice: AppID.fromUint64(this.StakingPoolTemplateAppID.value).globalNumByteSlice,
             extraProgramPages: AppID.fromUint64(this.StakingPoolTemplateAppID.value).extraProgramPages,
             applicationArgs: [
-                // creatingContractID, validatorID, poolID, minEntryStake, maxStakeAllowed
-                method('createApplication(uint64,uint64,uint64,uint64,uint64)void'),
+                // creatingContractID, validatorID, poolID, minEntryStake
+                method('createApplication(uint64,uint64,uint64,uint64)void'),
                 itob(this.app.id),
                 itob(validatorID),
                 itob(numPools as uint64),
                 itob(this.ValidatorList(validatorID).value.Config.MinEntryStake),
-                itob(this.ValidatorList(validatorID).value.Config.MaxAlgoPerPool),
             ],
         });
 
@@ -988,7 +989,7 @@ export class ValidatorRegistry extends Contract {
             );
         }
         assert(config.MinEntryStake >= MIN_ALGO_STAKE_PER_POOL);
-        assert(config.MaxAlgoPerPool <= MAX_ALGO_PER_POOL, 'enforce hard constraint to be safe to the network');
+        // we don't care about MaxAlgoPerPool - if set to 0 it floats w/ network incentive values: maxAlgoAllowedPerPool()
         assert(config.PoolsPerNode > 0 && config.PoolsPerNode <= MAX_POOLS_PER_NODE);
     }
 
@@ -1235,8 +1236,17 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
+     * Returns the MAXIMUM allowed stake per pool and still receive incentives - we'll treat this as the 'max per pool'
+     */
+    private maxAlgoAllowedPerPool(): uint64 {
+        // TODO replace w/ appropriate AVM call once available
+        return 70_000_000_000_000; // 70m ALGO in microAlgo
+    }
+
+    /**
      * Returns the maximum allowed stake per validator based on a percentage of all current online stake before
      * the validator is considered saturated - where rewards are diminished.
+     * NOTE: this function is defined twice - here and in staking pool contract.  Both must be identical.
      */
     private algoSaturationLevel(): uint64 {
         const online = this.getCurrentOnlineStake();

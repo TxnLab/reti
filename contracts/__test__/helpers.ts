@@ -136,7 +136,7 @@ const DefaultValidatorConfig: ValidatorConfig = {
     PercentToValidator: 10000, // 1.0000%
     ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-    MaxAlgoPerPool: BigInt(AlgoAmount.Algos(70e6).microAlgos),
+    MaxAlgoPerPool: 0n, // float w/ online caps
     PoolsPerNode: 3,
     SunsettingOn: BigInt(0),
     SunsettingTo: BigInt(0),

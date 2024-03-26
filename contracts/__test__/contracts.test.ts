@@ -84,7 +84,6 @@ beforeAll(async () => {
         validatorID: 0,
         poolID: 0,
         minEntryStake: 1_000_000,
-        maxStakeAllowed: 0,
     });
     validatorMasterClient = new ValidatorRegistryClient(
         {

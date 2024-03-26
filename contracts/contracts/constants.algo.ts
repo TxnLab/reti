@@ -3,7 +3,6 @@ export const MIN_ALGO_STAKE_PER_POOL = 1_000_000; // 1 ALGO
 
 export const MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL = 100; // this is 10.0%, not 100... and represents the SOFT cap where validator is considered saturated
 export const MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL = 150; // 15% is HARD cap - no new stake if this reached
-export const MAX_ALGO_PER_POOL = 70_000_000_000_000; // 70m ALGO in microAlgo
 
 export const MIN_PCT_TO_VALIDATOR = 0; // minimum percentage is 0 - let the market decide
 export const MAX_PCT_TO_VALIDATOR = 1000000; // 100% w/ four decimals (would be someone's own node for eg)

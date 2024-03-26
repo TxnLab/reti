@@ -5,9 +5,7 @@ import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
-    MAX_ALGO_PER_POOL,
     MAX_STAKERS_PER_POOL,
-    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
     MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
     SSC_VALUE_BYTES,
@@ -61,8 +59,6 @@ export class StakingPool extends Contract {
 
     MinEntryStake = GlobalStateKey<uint64>({ key: 'minEntryStake' });
 
-    MaxStakeAllowed = GlobalStateKey<uint64>({ key: 'maxStake' });
-
     // Last timestamp of a payout - used to ensure payout call isn't cheated and called prior to agreed upon schedule
     LastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' });
 
@@ -89,7 +85,6 @@ export class StakingPool extends Contract {
         validatorID: uint64,
         poolID: uint64,
         minEntryStake: uint64,
-        maxStakeAllowed: uint64
     ): void {
         if (creatingContractID === 0) {
             // this is likely initial template setup - everything should basically be zero...
@@ -100,14 +95,12 @@ export class StakingPool extends Contract {
             assert(poolID !== 0);
         }
         assert(minEntryStake >= MIN_ALGO_STAKE_PER_POOL);
-        assert(maxStakeAllowed <= MAX_ALGO_PER_POOL); // this should have already been checked by validator but... still
         this.CreatingValidatorContractAppID.value = creatingContractID;
         this.ValidatorID.value = validatorID;
         this.PoolID.value = poolID;
         this.NumStakers.value = 0;
         this.TotalAlgoStaked.value = 0;
         this.MinEntryStake.value = minEntryStake;
-        this.MaxStakeAllowed.value = maxStakeAllowed;
         this.LastPayout.value = globals.latestTimestamp; // set 'last payout' to init time of pool to establish baseline
     }
 
@@ -203,10 +196,8 @@ export class StakingPool extends Contract {
             receiver: this.app.address,
             amount: stakedAmountPayment.amount,
         });
-        assert(
-            stakedAmountPayment.amount + this.TotalAlgoStaked.value <= this.MaxStakeAllowed.value,
-            'adding this stake amount will exceed the max allowed in this pool'
-        );
+        // Stake 'maximums' are handled at the validator level - pre-add - so no checks needed here.
+
         // See if the account staking is already in our ledger of Stakers - if so, they're just adding to their stake
         // track first empty slot as we go along as well.
         const entryTime = this.getEntryTime();

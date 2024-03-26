@@ -25,11 +25,6 @@
           "name": "minEntryStake",
           "type": "uint64",
           "desc": "minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)"
-        },
-        {
-          "name": "maxStakeAllowed",
-          "type": "uint64",
-          "desc": "maximum algo allowed in this staking pool"
         }
       ],
       "returns": {
