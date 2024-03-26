@@ -6,7 +6,7 @@ Many parameters can ONLY be set up front, when defining the validator.
 Allowing them to be changed at will would be dangerous for stakers.
 {% endhint %}
 
-**General Process:** Anyone is able to add themselves as a Validator. The protocol has safeguards in place to ensure Validators can't amass a dangerous amount of stake on a single node.&#x20;
+**General Process:** Anyone is able to add themselves as a Validator. The protocol has safeguards in place to ensure Validators can't amass a dangerous amount of stake in a single pool, or combined across all pools for a single validator.
 
 ***
 
@@ -14,15 +14,14 @@ Allowing them to be changed at will would be dangerous for stakers.
 
 * **Owner Address:** Ideally, a cold-wallet address for security.
 * **Management Address:** A hot-wallet address accessible by the 'reti node daemon' for operational commands.
-* **Payout Epoch Time:** Frequency of payout balance adjustments (daily, weekly, etc.).
-* **Validator Fee Percentage:** Share of earned rewards for covering operating costs.
-* **Fee Payment Address:** An Algorand address designated for receiving validator fees, changeable by the owner.
+* **Payout Epoch Time (in minutes):** Frequency of payout balance adjustments (daily, weekly, etc.).  The node daemon will honor this time and trigger the 'epoch' based on the specified schedule for all pools.   The commission is paid out every epoch.  If the epoch is per day, then the commission % is that amount, per day.
+* **Validator Commission Percentage:** Percentage the validator takes out of earned rewards per-epoch for covering operating costs. &#x20;
+* **Commission Address:** An Algorand address designated for receiving the validator commission, changeable by the owner.
 * **Minimum Stake:** Establishes a lower limit for participation to avoid minimal contributions.
-* **Maximum Stake Per Pool:** Capped to encourage equitable incentive distribution and safety of the network.
-* **Pools Per Node:** Recommends a maximum of 3 pools per node, with a possibility of extending up to 6.
-* **Maximum Nodes:** Soft limit on node count to manage the overall number of pools effectively.
+* **Maximum Stake Per Pool:** Capped to encourage equitable incentive distribution and safety of the network.  The protocol has a hard cap currently at 70m but Validators can set a lower maximum if they would like.
+* **Pools Per Node:** There is a hard limit of 3 pools per node but the validator can define a smaller amount as a signal of how they will run deploy and limit their pools.
 * **NFD ID (Optional):** For associating validators with detailed information for transparency.
-* **Token / NFD Gating:** Validators can require stakers hold certain types of assets in order to join their pools. This can be used to restrict validator pools to members of a particular community - NFT holders, special 'membership' tokens, etc. Supported options are:
+* **Token / NFD Gating:** Validators can require that stakers hold certain types of assets in order to join their pools. This can be used to restrict validator pools to members of a particular community - NFT holders, special 'membership' tokens, etc. Supported options are:
   * **Tokens/NFTs** by Creator and min amount (Optional): Can set a creator account such that all stakers must hold an ASA created by this account (w/ optional minimum amount for tokens).
   * **Specific ASA ID**.
   * **Tokens/NFTs created by any address linked within a particular NFD**. This is so NFT projects with multiple creation wallets can just reference their NFD and then anyone holding an asset created by any account linked w/in the NFD is eligible.

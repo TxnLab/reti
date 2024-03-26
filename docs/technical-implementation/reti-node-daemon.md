@@ -2,8 +2,8 @@
 
 ## Overview
 
-* **Functionality:** Acts as both a command-line interface and a service daemon, compatible across Linux and OSX platforms. Windows could be supported in the future but is still problematic.
-* **Management:** Facilitates validator and pool configuration, leveraging a 'manager' account for transaction signatures.
+* **Functionality:** Acts as both a command-line interface and a service daemon, compatible across Linux and OSX platforms. Windows may be supported in the future.
+* **Management:** Facilitates minimal validator and pool configuration, leveraging a 'manager' account for transaction signatures.  The included UI is the preferred method of management.
 * **Participation Key Management:** Automates the creation and renewal of participation keys to maintain pool activity and online status.
 
 ***

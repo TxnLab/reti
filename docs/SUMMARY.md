@@ -25,8 +25,8 @@
 
 ## Resources
 
-* [Contribute](resources/contribute.md)
 * [FAQ](resources/faq.md)
+* [Contribute](resources/contribute.md)
 * [Monitoring](resources/monitoring.md)
 * [Report Bugs](resources/report-bugs.md)
 * [Running A Node](resources/running-a-node.md)
