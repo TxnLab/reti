@@ -62,6 +62,9 @@ export class StakingPool extends Contract {
     // Last timestamp of a payout - used to ensure payout call isn't cheated and called prior to agreed upon schedule
     LastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' });
 
+    // Epoch number this staking pool is on, with epoch 1 being the 'first' payout
+    EpochNumber = GlobalStateKey<uint64>({ key: 'epochNumber' });
+
     // Version of algod this pool is connected to - should be updated regularly
     AlgodVer = GlobalStateKey<bytes>({ key: 'algodVer' });
 
@@ -74,18 +77,12 @@ export class StakingPool extends Contract {
 
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
-     * @param creatingContractID - id of contract that constructed us - the validator application (single global instance)
-     * @param validatorID - id of validator we're a staking pool of
-     * @param poolID - which pool id are we
-     * @param minEntryStake - minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)
-     * @param maxStakeAllowed - maximum algo allowed in this staking pool
+     * @param {uint64} creatingContractID - id of contract that constructed us - the validator application (single global instance)
+     * @param {uint64} validatorID - id of validator we're a staking pool of
+     * @param {uint64} poolID - which pool id are we
+     * @param {uint64} minEntryStake - minimum amount to be in pool, but also minimum amount balance can't go below (without removing all!)
      */
-    createApplication(
-        creatingContractID: uint64,
-        validatorID: uint64,
-        poolID: uint64,
-        minEntryStake: uint64,
-    ): void {
+    createApplication(creatingContractID: uint64, validatorID: uint64, poolID: uint64, minEntryStake: uint64): void {
         if (creatingContractID === 0) {
             // this is likely initial template setup - everything should basically be zero...
             assert(validatorID === 0);
@@ -102,6 +99,7 @@ export class StakingPool extends Contract {
         this.TotalAlgoStaked.value = 0;
         this.MinEntryStake.value = minEntryStake;
         this.LastPayout.value = globals.latestTimestamp; // set 'last payout' to init time of pool to establish baseline
+        this.EpochNumber.value = 0;
     }
 
     /**
@@ -503,6 +501,7 @@ export class StakingPool extends Contract {
         }
         // Update our payout time - required to match
         this.LastPayout.value = curTime;
+        this.EpochNumber.value += 1;
 
         // Determine Token rewards if applicable
         // =====

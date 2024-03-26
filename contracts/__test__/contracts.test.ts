@@ -15,8 +15,6 @@ import {
     createAsset,
     createValidatorConfig,
     epochBalanceUpdate,
-    GATING_TYPE_ASSET_ID,
-    GATING_TYPE_ASSETS_CREATED_BY,
     gatingValueFromBigint,
     getCurMaxStatePerPool,
     getMbrAmountsFromValidatorClient,
@@ -35,6 +33,8 @@ import {
     ValidatorConfig,
     ValidatorPoolKey,
     verifyRewardAmounts,
+    GATING_TYPE_ASSET_ID,
+    GATING_TYPE_ASSETS_CREATED_BY,
 } from './helpers';
 
 const FEE_SINK_ADDR = 'Y76M3MSY6DKBRHBL7C3NNDXGS5IIMQVQVUAB6MP4XEMMGVF2QWNPL226CA';
@@ -866,9 +866,15 @@ describe('StakeWRewards', () => {
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
         consoleLogger.info(`pool stakers:${poolInfo.TotalStakers}, staked:${poolInfo.TotalAlgoStaked}`);
 
+        const epochBefore = BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint);
+
         // Perform epoch payout calculation  - we also get back how much it cost to issue the txn
         const fees = await epochBalanceUpdate(firstPoolClient);
         const expectedValidatorReward = reward.microAlgos * (PctToValidator / 100);
+
+        expect(BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint)).toEqual(
+            epochBefore + 1n
+        );
 
         const newValidatorState = await getValidatorState(validatorMasterClient, validatorID);
         const newOwnerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do();
