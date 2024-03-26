@@ -2,7 +2,7 @@
 
 Staking pools will receive rewards when they propose blocks, as long as they're above the 30K ALGO threshold and below the maximum amount defined by the protocl (around 70M currently) and have good performance. Rewards for stakers and validators are distributed periodically at the end of each epoch, which is a fixed period of time determined by the validator. The reward distribution and calculation is designed to prevent gaming of the system.
 
-There is a special limit per-validator of 10% of all online stake.  A type of slashing occurs if this is reached
+There is a special limit per-validator of 10% of all online stake.  A type of slashing occurs if this is reached.  See **Saturation** below.
 
 #### Reward Calculation
 
@@ -19,8 +19,7 @@ The total reward for the pool is calculated based on the current pool balance an
 * While developing this solution, [Stefano De Angelis](https://github.com/deanstef) suggested a Saturation model whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
 *   This Saturation level is a _soft_ limit designed to prevent too much stake going to to one validator and which scales with the total online stake.
 
-    **More than 10% of the currently online stake** will be considered a **Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
-* The soft limit per pool (as part of ‘finding space’) becomes the 10% threshold / num pools, so that the pools themselves will also try to prevent large imbalances, with stake skipping pools at this level.
+    **More than 10% of the currently online stake** **will be considered a Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
 * **Any validator exceeding this total threshold will be considered over-saturated and be negatively impacted.**  The effective APR is reduced.  In this state, the following changes:
   * **Rewards accrued in each epoch are reduced proportionally to the amount 'over' the threshold.**
   * **The validator receives no rewards**
