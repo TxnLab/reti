@@ -257,7 +257,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
                     <FormDescription>
-                      NFD which the validator uses to describe their validator pool (optional)
+                      NFD app ID which the validator uses to describe their validator pool
+                      (optional)
                     </FormDescription>
                     <FormMessage>{errors.nfdForInfo?.message}</FormMessage>
                   </FormItem>
