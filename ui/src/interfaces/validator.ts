@@ -104,6 +104,7 @@ export type RawConstraints = [
   bigint,
   bigint,
   bigint,
+  bigint,
 ]
 
 export interface Constraints {
@@ -114,6 +115,7 @@ export interface Constraints {
   minEntryStake: bigint
   maxAlgoPerPool: bigint
   maxAlgoPerValidator: bigint
+  saturationThreshold: bigint
   maxNodes: number
   maxPoolsPerNode: number
   maxStakersPerPool: number
