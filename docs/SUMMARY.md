@@ -4,7 +4,6 @@
 
 * [Réti Open Pooling Overview](README.md)
 * [Key Features](introduction/key-features.md)
-* [Old Version](reti-open-pooling.md)
 
 ## Getting Started
 

@@ -1,6 +1,8 @@
 # Smart Contracts
 
-## High-Level Overview
+The contracts are written using AlgoKit and TEALScript.  See [Tealscript](https://tealscript.algo.xyz) for details.
+
+See the README in the contracts/ directory for build / testing details.
 
 <figure><img src="../.gitbook/assets/Reti_Validator_Pools_Page_1.png" alt=""><figcaption><p>General Overview</p></figcaption></figure>
 
