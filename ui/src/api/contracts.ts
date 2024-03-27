@@ -25,10 +25,7 @@ import {
   transformValidatorData,
 } from '@/utils/contracts'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import {
-  getNfdRegistryAppIdFromViteEnvironment,
-  getRetiAppIdFromViteEnvironment,
-} from '@/utils/env'
+import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getActiveWalletAddress } from '@/utils/wallets'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -39,7 +36,6 @@ const algodClient = algokit.getAlgoClient({
 })
 
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
-const NFD_REGISTRY_APP_ID = getNfdRegistryAppIdFromViteEnvironment()
 
 const makeSimulateValidatorClient = (activeAddress: string) => {
   return new ValidatorRegistryClient(
@@ -47,9 +43,6 @@ const makeSimulateValidatorClient = (activeAddress: string) => {
       sender: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
       resolveBy: 'id',
       id: RETI_APP_ID,
-      deployTimeParams: {
-        NFDRegistryAppID: NFD_REGISTRY_APP_ID,
-      },
     },
     algodClient,
   )
@@ -61,9 +54,6 @@ const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAddress: s
       sender: { signer, addr: activeAddress } as TransactionSignerAccount,
       resolveBy: 'id',
       id: RETI_APP_ID,
-      deployTimeParams: {
-        NFDRegistryAppID: NFD_REGISTRY_APP_ID,
-      },
     },
     algodClient,
   )

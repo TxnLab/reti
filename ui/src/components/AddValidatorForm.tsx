@@ -32,10 +32,7 @@ import { Input } from '@/components/ui/input'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { Constraints } from '@/interfaces/validator'
 import { getAddValidatorFormSchema } from '@/utils/contracts'
-import {
-  getNfdRegistryAppIdFromViteEnvironment,
-  getRetiAppIdFromViteEnvironment,
-} from '@/utils/env'
+import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -46,7 +43,6 @@ const algodClient = algokit.getAlgoClient({
 })
 
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
-const NFD_REGISTRY_APP_ID = getNfdRegistryAppIdFromViteEnvironment()
 
 interface AddValidatorFormProps {
   constraints: Constraints
@@ -100,9 +96,6 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           sender: { signer, addr: activeAddress } as TransactionSignerAccount,
           resolveBy: 'id',
           id: RETI_APP_ID,
-          deployTimeParams: {
-            NFDRegistryAppID: NFD_REGISTRY_APP_ID,
-          },
         },
         algodClient,
       )
