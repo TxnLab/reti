@@ -23,7 +23,7 @@ func GetDaemonCmdOpts() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:     "port",
-				Usage:    "port to expose prometheus metrics and /ready endpoint",
+				Usage:    "port to expose prometheus /metrics and /ready endpoint",
 				Value:    6260,
 				Required: false,
 			},

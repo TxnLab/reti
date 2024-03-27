@@ -11,11 +11,15 @@
   "license": "MIT",
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^5.6.1",
-    "algosdk": "^2.7.0"
+    "algosdk": "^2.7.0",
+    "prompts": "^2.4.2",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.2",
     "@types/node": "^20.11.30",
+    "@types/prompts": "^2.4.9",
+    "@types/yargs": "^17.0.32",
     "typescript": "^5.4.2"
   }
 }

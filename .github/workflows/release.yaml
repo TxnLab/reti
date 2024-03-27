@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         # build and publish in parallel: linux/windows/darwin, amd64/arm64
-        goos: [linux, darwin]
+        goos: [linux, windows, darwin]
         goarch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
@@ -23,4 +23,6 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           extra_files: LICENSE README.md
+          goversion: '1.21'
+          project_path: './nodemgr'
 

@@ -75,6 +75,7 @@ func (lk *localKeyStore) loadFromEnvironment() {
 		}
 		key := envVal[0:strings.IndexByte(envVal, '=')]
 		envMnemonic := os.Getenv(key)
+		// Skip empty keys - ie: blank demonstration env examples
 		if envMnemonic == "" {
 			break
 		}

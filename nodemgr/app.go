@@ -70,6 +70,7 @@ func initApp() *RetiApp {
 			&cli.StringFlag{
 				Name:    "envfile",
 				Usage:   "env file to load",
+				Sources: cli.EnvVars("RETI_ENVFILE"),
 				Aliases: []string{"e"},
 				Action:  loadNamedEnvFile,
 			},
