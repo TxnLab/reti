@@ -4,11 +4,9 @@
 
 The first step is to run a node. Find a number of different resources in [Running a Node](../resources/running-a-node.md) if you don't already have one running.
 
-
-
 ## Define Validator
 
-Validators can define a number of parameters - some of which are immutable. More information on each paramter can be found in [Validators](../core-concepts/validators.md).
+Validators can define a number of parameters - some of which are immutable. More information on each parameter can be found in [Validators](../core-concepts/validators.md).
 
 **Mandatory Parameters**
 

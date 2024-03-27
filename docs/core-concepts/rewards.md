@@ -8,7 +8,7 @@ There is a special limit per-validator of 10% of all online stake.  A type of sl
 
 The total reward for the pool is calculated based on the current pool balance and the known staked amount. This reward is then distributed between the validator and stakers according to the following process:
 
-1. **Validator Commission**: The validator receives their predefined commission, which is an immutable percentage set when defining the validator record.
+1. **Validator Commission**: The validator receives their predefined commission, which is an immutable percentage set when defining the validator record (unless saturated).
 2. **Staker Reward Distribution**: The remaining reward is distributed among the stakers proportionally based on their stake and the duration they were active in the epoch.
    * Stakers who were active for the entire epoch receive their full share of the reward based on their percentage of the total staked amount.
    * Stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
@@ -17,7 +17,7 @@ The total reward for the pool is calculated based on the current pool balance an
 #### Soft caps and Validator Saturation
 
 * While developing this solution, [Stefano De Angelis](https://github.com/deanstef) suggested a Saturation model whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
-*   This Saturation level is a _soft_ limit designed to prevent too much stake going to to one validator and which scales with the total online stake.
+*   This Saturation level is a _soft_ limit designed to prevent too much stake going to one validator and which scales with the total online stake.
 
     **More than 10% of the currently online stake** **will be considered a Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
 * **Any validator exceeding this total threshold will be considered over-saturated and be negatively impacted.**  The effective APR is reduced.  In this state, the following changes:
