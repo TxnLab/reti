@@ -182,7 +182,7 @@ func DefineValidator() error {
 	}
 	config.MinEntryStake = uint64(minStake) * 1e6
 
-	maxPerPool, err := getInt("Enter the maximum algo stake allowed per pool", 20_000_000, 200_000, 100_000_000)
+	maxPerPool, err := getInt("Enter the maximum algo stake allowed per pool", 0, 0, 100_000_000)
 	if err != nil {
 		return err
 	}
