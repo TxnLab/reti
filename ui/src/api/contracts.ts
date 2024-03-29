@@ -37,7 +37,7 @@ const algodClient = algokit.getAlgoClient({
 
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 
-const makeSimulateValidatorClient = (activeAddress: string) => {
+export const makeSimulateValidatorClient = (activeAddress: string) => {
   return new ValidatorRegistryClient(
     {
       sender: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
@@ -48,7 +48,7 @@ const makeSimulateValidatorClient = (activeAddress: string) => {
   )
 }
 
-const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAddress: string) => {
+export const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAddress: string) => {
   return new ValidatorRegistryClient(
     {
       sender: { signer, addr: activeAddress } as TransactionSignerAccount,
@@ -59,7 +59,10 @@ const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAddress: s
   )
 }
 
-const makeSimulateStakingPoolClient = (poolAppId: number | bigint, activeAddress: string) => {
+export const makeSimulateStakingPoolClient = (
+  poolAppId: number | bigint,
+  activeAddress: string,
+) => {
   return new StakingPoolClient(
     {
       sender: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
@@ -70,7 +73,7 @@ const makeSimulateStakingPoolClient = (poolAppId: number | bigint, activeAddress
   )
 }
 
-const makeStakingPoolClient = (
+export const makeStakingPoolClient = (
   poolAppId: number | bigint,
   signer: algosdk.TransactionSigner,
   activeAddress: string,

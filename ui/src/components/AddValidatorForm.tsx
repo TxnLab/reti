@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
+import { makeSimulateValidatorClient, makeValidatorClient } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,10 +33,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
-import { Constraints } from '@/interfaces/validator'
+import { Constraints, ValidatorConfig } from '@/interfaces/validator'
 import { getAddValidatorFormSchema } from '@/utils/contracts'
-import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { cn } from '@/utils/ui'
 
@@ -45,8 +44,6 @@ const algodClient = algokit.getAlgoClient({
   port: algodConfig.port,
   token: algodConfig.token,
 })
-
-const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 
 interface AddValidatorFormProps {
   constraints: Constraints
@@ -136,37 +133,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         throw new Error('No active address')
       }
 
-      const validatorClient = new ValidatorRegistryClient(
-        {
-          sender: { signer, addr: activeAddress } as TransactionSignerAccount,
-          resolveBy: 'id',
-          id: RETI_APP_ID,
-        },
-        algodClient,
-      )
+      const validatorClient = makeValidatorClient(signer, activeAddress)
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
       const validatorAppRef = await validatorClient.appClient.getAppReference()
-
-      const validatorConfig = {
-        owner: values.owner,
-        manager: values.manager,
-        nfdForInfo: BigInt(nfdAppId),
-        entryGatingType: 0,
-        entryGatingValue: new Uint8Array(32),
-        gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
-        rewardTokenId: BigInt(values.rewardTokenId || 0),
-        rewardPerPayout: BigInt(values.rewardPerPayout || 0),
-        payoutEveryXMins: Number(values.payoutEveryXMins),
-        percentToValidator: Number(values.percentToValidator) * 10000,
-        validatorCommissionAddress: values.validatorCommissionAddress,
-        minEntryStake: BigInt(AlgoAmount.Algos(Number(values.minEntryStake)).microAlgos),
-        maxAlgoPerPool: BigInt(AlgoAmount.Algos(Number(values.maxAlgoPerPool)).microAlgos),
-        poolsPerNode: Number(values.poolsPerNode),
-        sunsettingOn: BigInt(values.sunsettingOn || 0),
-        sunsettingTo: BigInt(values.sunsettingTo || 0),
-      }
 
       const [validatorMbr] = (
         await validatorClient
@@ -192,7 +163,29 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         suggestedParams,
       })
 
-      const results = await validatorClient
+      const validatorConfig: ValidatorConfig = {
+        id: 0, // ID not known yet
+        owner: values.owner,
+        manager: values.manager,
+        nfdForInfo: nfdAppId,
+        entryGatingType: 0,
+        entryGatingValue: new Uint8Array(32),
+        gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
+        rewardTokenId: Number(values.rewardTokenId || 0),
+        rewardPerPayout: BigInt(values.rewardPerPayout || 0),
+        payoutEveryXMins: Number(values.payoutEveryXMins),
+        percentToValidator: Number(values.percentToValidator) * 10000,
+        validatorCommissionAddress: values.validatorCommissionAddress,
+        minEntryStake: BigInt(AlgoAmount.Algos(Number(values.minEntryStake)).microAlgos),
+        maxAlgoPerPool: BigInt(AlgoAmount.Algos(Number(values.maxAlgoPerPool)).microAlgos),
+        poolsPerNode: Number(values.poolsPerNode),
+        sunsettingOn: Number(values.sunsettingOn || 0),
+        sunsettingTo: Number(values.sunsettingTo || 0),
+      }
+
+      const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
+
+      const simulateResult = await simulateValidatorClient
         .compose()
         .addValidator({
           mbrPayment: {
@@ -201,7 +194,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           },
           nfdName: values.nfdForInfo || '',
           config: [
-            BigInt(0), // ID not known yet
+            validatorConfig.id,
             validatorConfig.owner,
             validatorConfig.manager,
             validatorConfig.nfdForInfo,
@@ -220,9 +213,52 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             validatorConfig.sunsettingTo,
           ],
         })
+        .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+      payValidatorMbr.group = undefined
+
+      // @todo: switch to Joe's new method(s)
+      const feesAmount = AlgoAmount.MicroAlgos(
+        1000 *
+          Math.floor(
+            ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
+          ),
+      )
+
+      const result = await validatorClient
+        .compose()
+        .addValidator(
+          {
+            mbrPayment: {
+              transaction: payValidatorMbr,
+              signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+            },
+            nfdName: values.nfdForInfo || '',
+            config: [
+              validatorConfig.id,
+              validatorConfig.owner,
+              validatorConfig.manager,
+              validatorConfig.nfdForInfo,
+              validatorConfig.entryGatingType,
+              validatorConfig.entryGatingValue,
+              validatorConfig.gatingAssetMinBalance,
+              validatorConfig.rewardTokenId,
+              validatorConfig.rewardPerPayout,
+              validatorConfig.payoutEveryXMins,
+              validatorConfig.percentToValidator,
+              validatorConfig.validatorCommissionAddress,
+              validatorConfig.minEntryStake,
+              validatorConfig.maxAlgoPerPool,
+              validatorConfig.poolsPerNode,
+              validatorConfig.sunsettingOn,
+              validatorConfig.sunsettingTo,
+            ],
+          },
+          { sendParams: { fee: feesAmount } },
+        )
         .execute({ populateAppCallResources: true })
 
-      const validatorId = Number(results.returns![0])
+      const validatorId = Number(result.returns![0])
 
       toast.success(
         <div className="flex items-center gap-x-2">
