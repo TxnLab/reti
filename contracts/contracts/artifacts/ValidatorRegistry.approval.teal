@@ -216,7 +216,7 @@ getMbrAmounts:
 	//                     3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER
 	//                 ), // size of key + all values
 	//         };
-	int 659
+	int 755
 	callsub costForBoxStorage
 	itob
 	int 1
@@ -281,7 +281,7 @@ getProtocolConstraints:
 	callsub algoSaturationLevel
 	itob
 	concat
-	byte 0x0000000000000004
+	byte 0x0000000000000008
 	concat
 	byte 0x0000000000000003
 	concat
@@ -973,7 +973,7 @@ getTokenPayoutRatio:
 	box_extract
 	retsub
 
-// getNodePoolAssignments(uint64)((uint64[3])[4])
+// getNodePoolAssignments(uint64)((uint64[3])[8])
 *abi_route_getNodePoolAssignments:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -982,7 +982,7 @@ getTokenPayoutRatio:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute getNodePoolAssignments(uint64)((uint64[3])[4])
+	// execute getNodePoolAssignments(uint64)((uint64[3])[8])
 	callsub getNodePoolAssignments
 	concat
 	log
@@ -1007,7 +1007,7 @@ getNodePoolAssignments:
 	// contracts/validatorRegistry.algo.ts:405
 	// return this.ValidatorList(validatorID).value.NodePoolAssignments;
 	int 554 // headOffset
-	int 96
+	int 192
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: uint64
 	itob
@@ -1149,7 +1149,7 @@ addValidator:
 	frame_dig 0 // validatorID: uint64
 	itob
 	concat
-	int 650
+	int 746
 	box_create
 	pop
 
@@ -1844,7 +1844,7 @@ addPool:
 	// contracts/validatorRegistry.algo.ts:566
 	// (numPools as uint64) >= MAX_POOLS
 	frame_dig 0 // numPools: uint64
-	int 12
+	int 24
 	>=
 	bz *if8_end
 
@@ -3820,14 +3820,14 @@ movePoolToNode:
 	// contracts/validatorRegistry.algo.ts:933
 	// nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments)
 	int 554 // headOffset
-	int 96
+	int 192
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 0 // nodePoolAssignments: ((uint64[3])[4])
+	frame_bury 0 // nodePoolAssignments: ((uint64[3])[8])
 
 	// contracts/validatorRegistry.algo.ts:934
 	// assert(nodeNum >= 1 && nodeNum <= MAX_NODES)
@@ -3837,7 +3837,7 @@ movePoolToNode:
 	dup
 	bz *skip_and2
 	frame_dig -3 // nodeNum: uint64
-	int 4
+	int 8
 	<=
 	&&
 
@@ -3853,7 +3853,7 @@ movePoolToNode:
 	// contracts/validatorRegistry.algo.ts:936
 	// srcNodeIdx < MAX_NODES
 	frame_dig 1 // srcNodeIdx: uint64
-	int 4
+	int 8
 	<
 	bz *for_5_end
 
@@ -3873,7 +3873,7 @@ movePoolToNode:
 	// *if27_condition
 	// contracts/validatorRegistry.algo.ts:938
 	// nodePoolAssignments.Nodes[srcNodeIdx].PoolAppIDs[i] === poolAppID
-	frame_dig 0 // nodePoolAssignments: ((uint64[3])[4])
+	frame_dig 0 // nodePoolAssignments: ((uint64[3])[8])
 	int 0
 	frame_dig 1 // srcNodeIdx: uint64
 	int 24
@@ -4797,14 +4797,14 @@ addPoolToNode:
 	// contracts/validatorRegistry.algo.ts:1101
 	// nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments)
 	int 554 // headOffset
-	int 96
+	int 192
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 0 // nodePoolAssignments: ((uint64[3])[4])
+	frame_bury 0 // nodePoolAssignments: ((uint64[3])[8])
 
 	// contracts/validatorRegistry.algo.ts:1102
 	// maxPoolsPerNodeForThisValidator = this.ValidatorList(validatorID).value.Config.PoolsPerNode as uint64
@@ -4827,7 +4827,7 @@ addPoolToNode:
 	dup
 	bz *skip_and8
 	frame_dig -3 // nodeNum: uint64
-	int 4
+	int 8
 	<=
 	&&
 
@@ -4850,7 +4850,7 @@ addPoolToNode:
 	// *if40_condition
 	// contracts/validatorRegistry.algo.ts:1107
 	// nodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] === 0
-	frame_dig 0 // nodePoolAssignments: ((uint64[3])[4])
+	frame_dig 0 // nodePoolAssignments: ((uint64[3])[8])
 	int 0
 	frame_dig -3 // nodeNum: uint64
 	int 1
@@ -5511,7 +5511,7 @@ getCurrentOnlineStake:
 	method "doesStakerNeedToPayMBR(address)bool"
 	method "getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]"
 	method "getTokenPayoutRatio(uint64)(uint64[12],uint64)"
-	method "getNodePoolAssignments(uint64)((uint64[3])[4])"
+	method "getNodePoolAssignments(uint64)((uint64[3])[8])"
 	method "getNFDRegistryID()uint64"
 	method "addValidator(pay,string,(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64))uint64"
 	method "changeValidatorManager(uint64,address)void"

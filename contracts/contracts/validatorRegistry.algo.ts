@@ -21,7 +21,7 @@ import {
     MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
 } from './constants.algo';
 
-const MAX_NODES = 4; // more just as a reasonable limit and cap on contract storage
+const MAX_NODES = 8; // more just as a reasonable limit and cap on contract storage
 const MAX_POOLS_PER_NODE = 3; // max number of pools per node
 // This MAX_POOLS constant has to be explicitly specified in ValidatorInfo.Pools[ xxx ] StaticArray!
 // if this constant is changed, the calculated value must be put in manually into the StaticArray definition.
