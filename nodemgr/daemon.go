@@ -274,7 +274,7 @@ func (d *Daemon) refetchConfig() error {
 		repeat.StopOnSuccess(),
 		repeat.LimitMaxTries(10),
 		repeat.FnOnError(func(err error) error {
-			d.logger.Warn("retrying fetch of validator info, error:%v", err.Error())
+			misc.Warnf(d.logger, "retrying fetch of validator info, error:%v", err.Error())
 			return err
 		}),
 		repeat.WithDelay(
@@ -516,7 +516,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 
 	epochMinutes := App.retiClient.Info().Config.PayoutEveryXMins
 
-	epochTimer := time.NewTimer(durationToNextEpoch(epochMinutes))
+	epochTimer := time.NewTimer(durationToNextEpoch(time.Now(), epochMinutes))
 	defer epochTimer.Stop()
 
 	for {
@@ -525,7 +525,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 			return
 		case <-epochTimer.C:
 			signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
-			epochTimer.Reset(durationToNextEpoch(epochMinutes))
+			epochTimer.Reset(durationToNextEpoch(time.Now(), epochMinutes))
 			var (
 				eg   syncutil.WaitGroup
 				info = App.retiClient.Info()
@@ -555,13 +555,11 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 	}
 }
 
-func durationToNextEpoch(epochMinutes int) time.Duration {
-	now := time.Now().UTC()
-	// add some slight fudge at end to be safe
-	dur := now.Round(time.Duration(epochMinutes)*time.Minute).Sub(now) + (1 * time.Second)
-	if dur < 0 {
+func durationToNextEpoch(curTime time.Time, epochMinutes int) time.Duration {
+	dur := curTime.Round(time.Duration(epochMinutes) * time.Minute).Sub(curTime)
+	if dur <= 0 {
 		dur = time.Duration(epochMinutes) * time.Minute
 	}
-	slog.Debug(fmt.Sprintf("%v epoch duration in mins:%d, dur to next epoch:%v", now, epochMinutes, dur))
+	slog.Debug(fmt.Sprintf("%v epoch duration in mins:%d, dur to next epoch:%v", curTime, epochMinutes, dur))
 	return dur
 }
