@@ -56,12 +56,14 @@
     "@txnlab/use-wallet": "^2.4.0",
     "@walletconnect/modal-sign-html": "^2.6.1",
     "algosdk": "^2.7.0",
+    "axios": "^1",
+    "axios-cache-interceptor": "^1",
     "big.js": "^6.2.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.10",
-    "lucide-react": "^0.343.0",
+    "lucide-react": "^0.363.0",
     "next-themes": "^0.2.1",
     "notistack": "^3.0.1",
     "react": "^18.2.0",
@@ -73,6 +75,7 @@
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "tslib": "^2.6.2",
+    "use-debounce": "^10.0.0",
     "zod": "^3.22.4"
   },
   "scripts": {

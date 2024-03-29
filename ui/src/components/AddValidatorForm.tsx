@@ -5,11 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet'
 import algosdk from 'algosdk'
-import { MonitorCheck } from 'lucide-react'
+import { isAxiosError } from 'axios'
+import { Check, MonitorCheck } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
+import { fetchNfd } from '@/api/nfd'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -34,6 +37,7 @@ import { Constraints } from '@/interfaces/validator'
 import { getAddValidatorFormSchema } from '@/utils/contracts'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { cn } from '@/utils/ui'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -49,6 +53,10 @@ interface AddValidatorFormProps {
 }
 
 export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
+  const [nfdAppId, setNfdAppId] = React.useState<number>(0)
+  const [isFetchingAppId, setIsFetchingAppId] = React.useState(false)
+  const [isSigning, setIsSigning] = React.useState(false)
+
   const { signer, activeAddress } = useWallet()
 
   const navigate = useNavigate({ from: '/add' })
@@ -78,7 +86,42 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     },
   })
 
-  const { errors } = form.formState
+  const { errors, isValid } = form.formState
+
+  const fetchNfdForInfo = async (value: string) => {
+    setIsFetchingAppId(true)
+
+    try {
+      const { data: nfd } = await fetchNfd(value)
+
+      if (!nfd || !nfd.appID) {
+        throw new Error('NFD not found')
+      }
+
+      // If we have an app ID, clear error if it exists
+      form.clearErrors('nfdForInfo')
+      setNfdAppId(nfd.appID)
+    } catch (error) {
+      if (isAxiosError(error) && error.response) {
+        if (error.response.status !== 404) {
+          console.error(error.message)
+        }
+      } else {
+        // Handle non-HTTP errors
+        console.error(error)
+      }
+      form.setError('nfdForInfo', { type: 'manual', message: 'NFD app ID not found' })
+    } finally {
+      setIsFetchingAppId(false)
+    }
+  }
+
+  const debouncedCheck = useDebouncedCallback(async (value) => {
+    const isValid = await form.trigger('nfdForInfo')
+    if (isValid) {
+      fetchNfdForInfo(value)
+    }
+  }, 500)
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
@@ -87,6 +130,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     const toastId = `${TOAST_ID}-validator`
 
     try {
+      setIsSigning(true)
+
       if (!activeAddress) {
         throw new Error('No active address')
       }
@@ -107,7 +152,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       const validatorConfig = {
         owner: values.owner,
         manager: values.manager,
-        nfdForInfo: BigInt(values.nfdForInfo || 0),
+        nfdForInfo: BigInt(nfdAppId),
         entryGatingType: 0,
         entryGatingValue: new Uint8Array(32),
         gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
@@ -154,7 +199,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             transaction: payValidatorMbr,
             signer: { signer, addr: activeAddress } as TransactionSignerAccount,
           },
-          nfdName: '',
+          nfdName: values.nfdForInfo || '',
           config: [
             BigInt(0), // ID not known yet
             validatorConfig.owner,
@@ -253,12 +298,54 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Associated NFD</FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          className={cn(
+                            'dark:bg-black/10',
+                            isFetchingAppId || nfdAppId > 0 ? 'pr-10' : '',
+                          )}
+                          placeholder=""
+                          autoComplete="new-password"
+                          spellCheck="false"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e) // Inform react-hook-form of the change
+                            setNfdAppId(0) // Reset NFD app ID
+                            debouncedCheck(e.target.value) // Perform debounced validation
+                          }}
+                        />
+                      </FormControl>
+                      <div
+                        className={cn(
+                          isFetchingAppId || nfdAppId > 0 ? 'opacity-100' : 'opacity-0',
+                          'pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3',
+                        )}
+                      >
+                        {isFetchingAppId ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5 animate-spin opacity-25"
+                            aria-hidden="true"
+                          >
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                          </svg>
+                        ) : nfdAppId ? (
+                          <Check className="h-5 w-5 text-green-500" />
+                        ) : null}
+                      </div>
+                    </div>
+
                     <FormDescription>
-                      NFD app ID which the validator uses to describe their validator pool
-                      (optional)
+                      NFD which the validator uses to describe their validator pool (optional)
                     </FormDescription>
                     <FormMessage>{errors.nfdForInfo?.message}</FormMessage>
                   </FormItem>
@@ -456,7 +543,6 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           <CardFooter className="flex justify-between">
             {/* <Button
               variant="outline"
-              size="default"
               onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                 event.preventDefault()
                 form.reset({
@@ -474,7 +560,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
             >
               Autofill
             </Button> */}
-            <Button type="submit" size="default">
+            <Button type="submit" disabled={isSigning || !isValid}>
               Add Validator
             </Button>
           </CardFooter>
