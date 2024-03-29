@@ -50,7 +50,7 @@ func runAsDaemon(ctx context.Context, cmd *cli.Command) error {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 
-	newDaemon().start(ctx, &wg, int(cmd.Uint("port")))
+	newDaemon().start(ctx, &wg, int(cmd.Int("port")))
 
 	misc.Infof(App.logger, "exiting (%v)", <-errc) // wait for termination signal
 
