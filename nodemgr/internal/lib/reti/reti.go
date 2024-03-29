@@ -139,7 +139,7 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		}
 
 		if r.NodeNum == 0 || int(r.NodeNum) > len(newInfo.NodePoolAssignments.Nodes) {
-			return fmt.Errorf("configured Node number:%d is invalid for number of on-chain nodes configured: %d", len(newInfo.NodePoolAssignments.Nodes))
+			return fmt.Errorf("configured Node number:%d is invalid for number of on-chain nodes configured: %d", r.NodeNum, len(newInfo.NodePoolAssignments.Nodes))
 		}
 
 		r.Logger.Debug("state re-loaded")

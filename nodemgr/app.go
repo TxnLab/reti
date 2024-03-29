@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/joho/godotenv"
@@ -72,7 +73,6 @@ func initApp() *RetiApp {
 				Usage:   "env file to load",
 				Sources: cli.EnvVars("RETI_ENVFILE"),
 				Aliases: []string{"e"},
-				Action:  loadNamedEnvFile,
 			},
 			&cli.StringFlag{
 				Name:    "network",
@@ -95,6 +95,11 @@ func initApp() *RetiApp {
 				Value:       0,
 				Destination: &appConfig.retiValidatorID,
 				OnlyOnce:    true,
+			},
+			&cli.BoolFlag{
+				Name:  "usehostname",
+				Usage: "Use the hostname (assuming -0, -1, -2, etc. suffix) as node number.  For use when paired w/ Kubernetes statefulsets",
+				Value: false,
 			},
 			&cli.UintFlag{
 				Name:        "node",
@@ -133,8 +138,14 @@ type RetiApp struct {
 // also validates) and an nfd nfdApi clinet - for nfd updates or fetches if caller
 // desires
 func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
-	network := cmd.Value("network").(string)
+	network := cmd.String("network")
 
+	if envfile := cmd.String("envfile"); envfile != "" {
+		err := loadNamedEnvFile(ctx, envfile)
+		if err != nil {
+			return err
+		}
+	}
 	// quick validity check on possible network names...
 	switch network {
 	case "sandbox", "betanet", "testnet", "mainnet", "voitestnet":
@@ -169,6 +180,21 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	if ac.retiNodeNum == 0 {
 		setIntFromEnv(&ac.retiNodeNum, "RETI_NODENUM")
 	}
+	if ac.retiNodeNum == 0 && cmd.Bool("usehostname") {
+		// we're assumed in kubernetes environment, try getting the node number from our hostname suffix
+		// ie: somehost-0 - where the node num would be 0 (and we add 1)
+		if hostname, err := os.Hostname(); err == nil {
+			parts := strings.Split(hostname, "-")
+			if len(parts) > 1 {
+				nodeNum, err := strconv.ParseUint(parts[len(parts)-1], 10, 64)
+				if err == nil {
+					ac.retiNodeNum = nodeNum + 1
+					misc.Infof(ac.logger, "used hostname %s to set node number to:%d", hostname, ac.retiNodeNum)
+				}
+			}
+		}
+	}
+
 	if ac.retiAppID == 0 {
 		return fmt.Errorf("the ID of the Reti Validator contract must be set using either -id or RETI_APPID env var!")
 	}
@@ -195,7 +221,7 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 }
 
 func setIntFromEnv(val *uint64, envName string) error {
-	if strVal := os.Getenv("envName"); strVal != "" {
+	if strVal := os.Getenv(envName); strVal != "" {
 		intVal, err := strconv.ParseUint(strVal, 10, 64)
 		if err != nil {
 			return err
@@ -212,7 +238,7 @@ func checkConfigured(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func loadNamedEnvFile(ctx context.Context, command *cli.Command, envFile string) error {
+func loadNamedEnvFile(ctx context.Context, envFile string) error {
 	misc.Infof(App.logger, "loading env file:%s", envFile)
 	return godotenv.Load(envFile)
 }

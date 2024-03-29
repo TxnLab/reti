@@ -37,6 +37,12 @@ func GetPoolCmdOpts() *cli.Command {
 						Usage: "Show ALL pools for this validator not just for this node",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:    "offline",
+						Aliases: []string{"o"},
+						Usage:   "Don't try to connect to the algod nodes to determine status",
+						Value:   false,
+					},
 				},
 			},
 			{
@@ -151,6 +157,16 @@ func GetPoolCmdOpts() *cli.Command {
 }
 
 func PoolsList(ctx context.Context, command *cli.Command) error {
+	// Display user-friendly version of pool list inside info using the TabWriter class, displaying
+	// final output using fmt.Print type statements
+	var (
+		totalRewards uint64
+		showAll      = command.Bool("all")
+		offlineAlgod = command.Bool("offline")
+		info         = App.retiClient.Info()
+		partKeys     = algo.PartKeysByAddress{}
+	)
+
 	state, err := App.retiClient.GetValidatorState(App.retiClient.Info().Config.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get validator state: %w", err)
@@ -159,9 +175,11 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	// we just want the latest round so we can show last vote/proposal relative to current round
 	status, err := App.algoClient.Status().Do(ctx)
 
-	partKeys, err := algo.GetParticipationKeys(ctx, App.algoClient)
-	if err != nil {
-		return err
+	if !offlineAlgod {
+		partKeys, err = algo.GetParticipationKeys(ctx, App.algoClient)
+		if err != nil {
+			return err
+		}
 	}
 	getParticipationData := func(account string, selectionPartKey []byte) (uint64, uint64) {
 		if keys, found := partKeys[account]; found {
@@ -173,14 +191,6 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		}
 		return 0, 0
 	}
-
-	// Display user-friendly version of pool list inside info using the TabWriter class, displaying
-	// final output using fmt.Print type statements
-	var (
-		totalRewards uint64
-		showAll      = command.Value("all").(bool)
-		info         = App.retiClient.Info()
-	)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
@@ -272,7 +282,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		info          = App.retiClient.Info()
 		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
 	)
-	poolID := int(command.Value("pool").(uint64))
+	poolID := int(command.Uint("pool"))
 	if poolID == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
@@ -327,7 +337,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 }
 
 func PoolAdd(ctx context.Context, command *cli.Command) error {
-	nodeNum := command.Value("node").(uint64)
+	nodeNum := command.Uint("node")
 	if nodeNum == 0 {
 		nodeNum = App.retiClient.NodeNum
 	}
@@ -354,7 +364,7 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
 	}
 
-	poolID := command.Value("pool").(uint64)
+	poolID := command.Uint("pool")
 	if poolID == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
@@ -378,14 +388,14 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 
 func StakeAdd(ctx context.Context, command *cli.Command) error {
 	// account, amount, validator
-	stakerAddr, err := types.DecodeAddress(command.Value("account").(string))
+	stakerAddr, err := types.DecodeAddress(command.String("account"))
 	if err != nil {
 		return err
 	}
 	poolKey, err := App.retiClient.AddStake(
-		command.Value("validator").(uint64),
+		command.Uint("validator"),
 		stakerAddr,
-		command.Value("amount").(uint64)*1e6,
+		command.Uint("amount")*1e6,
 		0, // TODO do we bother handle token gating in CLI ?  best left to the UI
 	)
 	if err != nil {
@@ -397,11 +407,11 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 
 func StakeRemove(ctx context.Context, command *cli.Command) error {
 	// account, amount, validator, pool
-	stakerAddr, err := types.DecodeAddress(command.Value("account").(string))
+	stakerAddr, err := types.DecodeAddress(command.String("account"))
 	if err != nil {
 		return err
 	}
-	validatorID := command.Value("validator").(uint64)
+	validatorID := command.Uint("validator")
 	var poolKey *reti.ValidatorPoolKey
 	// This staker must have staked something!
 	poolKeys, err := App.retiClient.GetStakedPoolsForAccount(stakerAddr)
@@ -409,7 +419,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	for _, key := range poolKeys {
-		if key.ID == validatorID && key.PoolID == command.Value("pool").(uint64) {
+		if key.ID == validatorID && key.PoolID == command.Uint("pool") {
 			poolKey = key
 			break
 		}
@@ -418,7 +428,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("staker has not staked in the specified pool")
 	}
 
-	err = App.retiClient.RemoveStake(*poolKey, stakerAddr, command.Value("amount").(uint64)*1e6)
+	err = App.retiClient.RemoveStake(*poolKey, stakerAddr, command.Uint("amount")*1e6)
 	if err != nil {
 		return err
 	}
@@ -428,7 +438,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 
 func PayoutPool(ctx context.Context, command *cli.Command) error {
 	var info = App.retiClient.Info()
-	poolID := command.Value("pool").(uint64)
+	poolID := command.Uint("pool")
 	if _, found := info.LocalPools[poolID]; !found {
 		return fmt.Errorf("pool num:%d not on this node", poolID)
 	}

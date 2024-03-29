@@ -114,7 +114,7 @@ func ChangeCommission(ctx context.Context, command *cli.Command) error {
 	}
 	signerAddr, _ := types.DecodeAddress(signer)
 
-	commissionAddress, err := types.DecodeAddress(command.Value("address").(string))
+	commissionAddress, err := types.DecodeAddress(command.String("address"))
 	if err != nil {
 		return err
 	}

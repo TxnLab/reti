@@ -64,13 +64,13 @@ func (lk *localKeyStore) SignWithAccount(ctx context.Context, tx types.Transacti
 	return crypto.SignTransaction(key, tx)
 }
 
-// loadFromEnvironment loads mnemonics from environment variables (can be in .env files as well) starting with "ALGO_MNEMONIC"
+// loadFromEnvironment loads mnemonics from environment variables (can be in .env files as well) containing "xxxxxx_MNEMONIC=(mnemonic string)"
 // and adds them to the localKeyStore's keys map. The number of loaded mnemonics is logged as well as the pks of each.
 // If an error occurs while adding a mnemonic, a fatal error is logged and the application exits.
 func (lk *localKeyStore) loadFromEnvironment() {
 	var numMnemonics int
 	for _, envVal := range os.Environ() {
-		if !strings.HasPrefix(envVal, "ALGO_MNEMONIC") {
+		if !strings.Contains(envVal, "_MNEMONIC") {
 			continue
 		}
 		key := envVal[0:strings.IndexByte(envVal, '=')]
