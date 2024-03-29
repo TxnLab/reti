@@ -19,7 +19,8 @@
 ## Technical Implementation
 
 * [Smart Contracts](technical-implementation/smart-contracts.md)
-* [Reti Node Daemon](technical-implementation/reti-node-daemon.md)
+* [Reti Node Daemon](technical-implementation/reti-node-daemon/README.md)
+  * [Configuration](technical-implementation/reti-node-daemon/configuration.md)
 * [Front End](technical-implementation/front-end.md)
 
 ## Resources

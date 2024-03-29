@@ -18,7 +18,10 @@ Allowing them to be changed at will would be dangerous for stakers.
 * **Validator Commission Percentage:** Percentage the validator takes out of earned rewards per-epoch for covering operating costs. &#x20;
 * **Commission Address:** An Algorand address designated for receiving the validator commission, changeable by the owner.
 * **Minimum Stake:** Establishes a lower limit for participation to avoid minimal contributions.
-* **Maximum Stake Per Pool:** Can be set by validator to a lower amount than protocol maximum, or left as unset (0).  The default maximum will be capped at the highest amount that can still receive incentives from the protocol.  This is currently 70m but will likely change over time as the amount of stake online changes.  The contracts will retrieve the amounts from future AVM opcodes.
+* **Maximum Stake Per Pool:** Can be set by validator to a lower amount than protocol maximum, or left as unset (0). &#x20;
+  * The default maximum is based on taking the LESSER of:
+    * 15% of online stake / number of pools
+    * The max Algo per account allowed that still receives incentive rewards.  This amount is currently 70 million algo but will likely change over time.
 * **Pools Per Node:** There is a hard limit of 3 pools per node but the validator can define a smaller amount as a signal of how they will run deploy and limit their pools.
 * **NFD ID (Optional):** For associating validators with detailed information for transparency.
 * **Token / NFD Gating:** Validators can require that stakers hold certain types of assets in order to join their pools. This can be used to restrict validator pools to members of a particular community - NFT holders, special 'membership' tokens, etc. Supported options are:
