@@ -18,6 +18,7 @@ import {
   RawPoolsInfo,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
+import { isValidName } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
@@ -158,13 +159,9 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         }),
       nfdForInfo: z
         .string()
-        .refine(
-          (val) =>
-            val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
-          {
-            message: 'NFD app ID is invalid',
-          },
-        )
+        .refine((val) => val === '' || isValidName(val), {
+          message: 'NFD name is invalid',
+        })
         .optional(),
       entryGatingType: z.string().optional(),
       entryGatingValue: z.string().optional(),
