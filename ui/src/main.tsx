@@ -45,6 +45,7 @@ if (import.meta.env.VITE_ALGOD_NETWORK === '') {
     { id: PROVIDER_ID.DEFLY, clientStatic: DeflyWalletConnect },
     { id: PROVIDER_ID.PERA, clientStatic: PeraWalletConnect },
     { id: PROVIDER_ID.DAFFI, clientStatic: DaffiWalletConnect },
+    PROVIDER_ID.KIBISIS,
     { id: PROVIDER_ID.EXODUS },
   ]
 }
