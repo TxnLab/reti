@@ -230,7 +230,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64[12],uint64)"
+        "type": "(uint64[36],uint64)"
       }
     }
   ]
