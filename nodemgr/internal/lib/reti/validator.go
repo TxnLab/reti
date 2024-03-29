@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"time"
 
@@ -17,12 +16,6 @@ import (
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
-)
-
-const (
-	// These MUST match the contracts !
-	MaxNodes        = 4
-	MaxPoolsPerNode = 3
 )
 
 // ValidatorInfo is loaded at startup but also on-demand via Reti.LoadState
@@ -42,26 +35,6 @@ type NodeConfig struct {
 
 type NodePoolAssignmentConfig struct {
 	Nodes []NodeConfig
-}
-
-func (npac *NodePoolAssignmentConfig) AddPoolToNode(nodeNum uint64, poolAppID uint64) error {
-	if len(npac.Nodes) != MaxNodes {
-		return errors.New("invalid NodePoolAssignmentConfig data ! nodes list should be fixed length")
-	}
-	if nodeNum == 0 || int(nodeNum) > len(npac.Nodes) {
-		return fmt.Errorf("invalid nodeNum value, must be between 1 and %d", MaxNodes)
-	}
-	// make sure the passed in poolAppID isn't set in ANY node
-	for i, node := range npac.Nodes {
-		if slices.Contains(node.PoolAppIDs, poolAppID) {
-			return fmt.Errorf("pool app id:%d already assigned to node number:%d", poolAppID, i+1)
-		}
-	}
-	if len(npac.Nodes[nodeNum-1].PoolAppIDs) >= MaxPoolsPerNode {
-		return fmt.Errorf("node number:%d is full", nodeNum)
-	}
-	npac.Nodes[nodeNum-1].PoolAppIDs = append(npac.Nodes[nodeNum-1].PoolAppIDs, poolAppID)
-	return nil
 }
 
 type ValidatorConfig struct {
@@ -745,7 +718,6 @@ func (r *Reti) GetValidatorNodePoolAssignments(id uint64) (*NodePoolAssignmentCo
 }
 
 func NodePoolAssignmentFromABIReturn(returnVal any) (*NodePoolAssignmentConfig, error) {
-	// getNodePoolAssignments(uint64)((uint64[4])[12])
 	var retPAC = &NodePoolAssignmentConfig{}
 	if arrReturn, ok := returnVal.([]any); ok {
 		for _, nodeConfigAny := range arrReturn {

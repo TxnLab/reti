@@ -84,14 +84,6 @@ func (h *MinimalHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 func NewMinimalHandler(out io.Writer, opts MinimalHandlerOptions) *MinimalHandler {
-	opts.SlogOpts.ReplaceAttr = func(groups []string, a slog.Attr) slog.Attr {
-		//if a.Key == slog.TimeKey && len(groups) == 0 {
-		//	return slog.Attr{}
-		//} else if a.Key == slog.LevelKey && len(groups) == 0 {
-		//	return slog.Attr{}
-		//}
-		return a
-	}
 	h := &MinimalHandler{
 		//handler: slog.NewTextHandler(out, &opts.SlogOpts),
 		handler: slog.NewJSONHandler(out, &opts.SlogOpts),

@@ -30,24 +30,22 @@ func initApp() *RetiApp {
 		// Are we running on something where output is a tty - so we're being run as CLI vs as a daemon
 		logger = slog.New(misc.NewMinimalHandler(os.Stdout,
 			misc.MinimalHandlerOptions{SlogOpts: slog.HandlerOptions{Level: logLevel, AddSource: true}}))
-
-		//logger = slog.Default()
-		//logger = slog.NewLogLogger()
-		//logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel,
-		//	ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-		//		if a.Key == slog.TimeKey ||
-		//			a.Key == slog.LevelKey {
-		//			return slog.Attr{}
-		//		}
-		//		//if a.Key == slog.TimeKey && len(groups) == 0 {
-		//		//	return slog.Attr{}
-		//		//} else if a.Key == slog.LevelKey && len(groups) == 0 {
-		//		//	return slog.Attr{}
-		//		//}
-		//		return a
-		//	}}))
 	} else {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel, AddSource: true}))
+		// not on console - output as json, but change json key names to be more compatibl w/ what google logging
+		// expects
+		opts := &slog.HandlerOptions{
+			AddSource: true,
+			Level:     logLevel,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				if a.Key == slog.MessageKey {
+					a.Key = "message"
+				} else if a.Key == slog.LevelKey && len(groups) == 0 {
+					a.Key = "severity"
+				}
+				return a
+			},
+		}
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, opts))
 	}
 	slog.SetDefault(logger)
 	if os.Getenv("DEBUG") == "1" {
@@ -82,8 +80,8 @@ func initApp() *RetiApp {
 				Sources: cli.EnvVars("ALGO_NETWORK"),
 			},
 			&cli.UintFlag{
-				Name:        "id",
-				Usage:       "The application ID of the Reti master validator contract",
+				Name:        "retiid",
+				Usage:       "[DEV ONLY] The application ID of the Reti master validator contract.",
 				Sources:     cli.EnvVars("RETI_APPID"),
 				Destination: &appConfig.retiAppID,
 				OnlyOnce:    true,

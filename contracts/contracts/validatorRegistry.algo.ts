@@ -1102,7 +1102,7 @@ export class ValidatorRegistry extends Contract {
         const maxPoolsPerNodeForThisValidator = this.ValidatorList(validatorID).value.Config.PoolsPerNode as uint64;
         // add the new staking pool to the specified node number - if there is room
         assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
-        // iterate  all the PoolAppIDs slots to see if any are free (non 0)
+        // iterate all the PoolAppIDs slots to see if any are free (appid of 0)
         for (let i = 0; i < maxPoolsPerNodeForThisValidator; i += 1) {
             if (nodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] === 0) {
                 // update box data

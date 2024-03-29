@@ -68,7 +68,7 @@ func GetPoolCmdOpts() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.UintFlag{
 						Name:  "node",
-						Usage: "The node number (1+) to add this pool to - defaults to root config",
+						Usage: "The node number (1+) to add this pool to - defaults to current node",
 						Value: 0,
 					},
 				},
@@ -339,6 +339,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 func PoolAdd(ctx context.Context, command *cli.Command) error {
 	nodeNum := command.Uint("node")
 	if nodeNum == 0 {
+		// just add to our current node if not specified
 		nodeNum = App.retiClient.NodeNum
 	}
 	if len(App.retiClient.Info().LocalPools) >= App.retiClient.Info().Config.PoolsPerNode {
