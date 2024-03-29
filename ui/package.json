@@ -80,6 +80,9 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:localnet": "vite --mode localnet --port 5173",
+    "dev:testnet": "vite --mode testnet --port 5183",
+    "dev:mainnet": "vite --mode mainnet --port 5193",
     "build": "tsc && vite build",
     "test": "jest --coverage --passWithNoTests",
     "playwright:test": "playwright test",
