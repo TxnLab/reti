@@ -1,5 +1,6 @@
 import { useWallet } from '@txnlab/use-wallet'
 import { Copy } from 'lucide-react'
+import * as React from 'react'
 import { SelectAccount } from '@/components/SelectAccount'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +24,14 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
 
   const provider = providers?.find((p) => p.metadata.id === activeAccount?.providerId)
   const accounts = provider?.accounts
+
+  // @todo: this is a temporary fix, should not be neded w/ use-wallet v3
+  React.useEffect(() => {
+    if (activeAccount && !provider) {
+      // wipe local storage if provider is not found
+      localStorage.removeItem('txnlab-use-wallet')
+    }
+  }, [activeAccount, provider])
 
   return (
     <DropdownMenu>
