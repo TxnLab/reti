@@ -216,7 +216,7 @@ getMbrAmounts:
 	//                     3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER
 	//                 ), // size of key + all values
 	//         };
-	int 1379
+	int 1067
 	callsub costForBoxStorage
 	itob
 	int 1
@@ -467,14 +467,14 @@ getPools:
 	// contracts/validatorRegistry.algo.ts:315
 	// poolSet = clone(this.ValidatorList(validatorID).value.Pools)
 	int 234 // headOffset
-	int 648
+	int 432
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 1 // poolSet: (uint64,uint16,uint64)[36]
+	frame_bury 1 // poolSet: (uint64,uint16,uint64)[24]
 
 	// contracts/validatorRegistry.algo.ts:316
 	// for (let i = 0; i < poolSet.length; i += 1)
@@ -485,14 +485,14 @@ getPools:
 	// contracts/validatorRegistry.algo.ts:316
 	// i < poolSet.length
 	frame_dig 2 // i: uint64
-	int 36
+	int 24
 	<
 	bz *for_0_end
 
 	// *if0_condition
 	// contracts/validatorRegistry.algo.ts:317
 	// poolSet[i].PoolAppID === 0
-	frame_dig 1 // poolSet: (uint64,uint16,uint64)[36]
+	frame_dig 1 // poolSet: (uint64,uint16,uint64)[24]
 	frame_dig 2 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -512,7 +512,7 @@ getPools:
 	// contracts/validatorRegistry.algo.ts:321
 	// retData.push(poolSet[i])
 	frame_dig 0 // retData: PoolInfo[]
-	frame_dig 1 // poolSet: (uint64,uint16,uint64)[36]
+	frame_dig 1 // poolSet: (uint64,uint16,uint64)[24]
 	frame_dig 2 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -575,7 +575,7 @@ getPoolAppID:
 	dup
 	bz *skip_and0
 	frame_dig -2 // poolID: uint64
-	int 36
+	int 24
 	<=
 	&&
 
@@ -935,7 +935,7 @@ getStakedPoolsForAccount:
 	popn 2
 	retsub
 
-// getTokenPayoutRatio(uint64)(uint64[36],uint64)
+// getTokenPayoutRatio(uint64)(uint64[24],uint64)
 *abi_route_getTokenPayoutRatio:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -944,7 +944,7 @@ getStakedPoolsForAccount:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute getTokenPayoutRatio(uint64)(uint64[36],uint64)
+	// execute getTokenPayoutRatio(uint64)(uint64[24],uint64)
 	callsub getTokenPayoutRatio
 	concat
 	log
@@ -963,8 +963,8 @@ getTokenPayoutRatio:
 
 	// contracts/validatorRegistry.algo.ts:398
 	// return this.ValidatorList(validatorID).value.TokenPayoutRatio;
-	int 882 // headOffset
-	int 296
+	int 666 // headOffset
+	int 200
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -1006,7 +1006,7 @@ getNodePoolAssignments:
 
 	// contracts/validatorRegistry.algo.ts:405
 	// return this.ValidatorList(validatorID).value.NodePoolAssignments;
-	int 1178 // headOffset
+	int 866 // headOffset
 	int 192
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: uint64
@@ -1149,7 +1149,7 @@ addValidator:
 	frame_dig 0 // validatorID: uint64
 	itob
 	concat
-	int 1370
+	int 1058
 	box_create
 	pop
 
@@ -2390,7 +2390,7 @@ verifyPoolKeyCaller:
 	assert
 	retsub
 
-// setTokenPayoutRatio(uint64)(uint64[36],uint64)
+// setTokenPayoutRatio(uint64)(uint64[24],uint64)
 *abi_route_setTokenPayoutRatio:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -2399,7 +2399,7 @@ verifyPoolKeyCaller:
 	txna ApplicationArgs 1
 	btoi
 
-	// execute setTokenPayoutRatio(uint64)(uint64[36],uint64)
+	// execute setTokenPayoutRatio(uint64)(uint64[24],uint64)
 	callsub setTokenPayoutRatio
 	concat
 	log
@@ -2461,8 +2461,8 @@ setTokenPayoutRatio:
 	// *if11_consequent
 	// contracts/validatorRegistry.algo.ts:706
 	// return this.ValidatorList(validatorID).value.TokenPayoutRatio;
-	int 882 // headOffset
-	int 296
+	int 666 // headOffset
+	int 200
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -2482,7 +2482,7 @@ setTokenPayoutRatio:
 
 	// contracts/validatorRegistry.algo.ts:712
 	// lastPayoutUpdate = this.ValidatorList(validatorID).value.TokenPayoutRatio.UpdatedForPayout
-	int 1170
+	int 858
 	int 8
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -2516,8 +2516,8 @@ setTokenPayoutRatio:
 	// *if13_consequent
 	// contracts/validatorRegistry.algo.ts:716
 	// return this.ValidatorList(validatorID).value.TokenPayoutRatio;
-	int 882 // headOffset
-	int 296
+	int 666 // headOffset
+	int 200
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -2566,8 +2566,8 @@ setTokenPayoutRatio:
 	// *if14_consequent
 	// contracts/validatorRegistry.algo.ts:722
 	// return this.ValidatorList(validatorID).value.TokenPayoutRatio;
-	int 882 // headOffset
-	int 296
+	int 666 // headOffset
+	int 200
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -2587,7 +2587,7 @@ setTokenPayoutRatio:
 *if12_end:
 	// contracts/validatorRegistry.algo.ts:725
 	// this.ValidatorList(validatorID).value.TokenPayoutRatio.UpdatedForPayout = curTime
-	int 1170
+	int 858
 	frame_dig 1 // curTime: uint64
 	itob
 	byte 0x76 // "v"
@@ -2670,7 +2670,7 @@ setTokenPayoutRatio:
 
 	// contracts/validatorRegistry.algo.ts:738
 	// this.ValidatorList(validatorID).value.TokenPayoutRatio.PoolPctOfWhole[i] = ourPoolPctOfWhole
-	int 882
+	int 666
 	frame_dig 7 // i: uint64
 	int 8
 	* // acc * typeLength
@@ -2696,8 +2696,8 @@ setTokenPayoutRatio:
 *for_2_end:
 	// contracts/validatorRegistry.algo.ts:740
 	// return this.ValidatorList(validatorID).value.TokenPayoutRatio;
-	int 882 // headOffset
-	int 296
+	int 666 // headOffset
+	int 200
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
@@ -3621,14 +3621,14 @@ findPoolForStaker:
 	// contracts/validatorRegistry.algo.ts:903
 	// pools = clone(this.ValidatorList(validatorID).value.Pools)
 	int 234 // headOffset
-	int 648
+	int 432
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
 	itob
 	concat
 	cover 2
 	box_extract
-	frame_bury 5 // pools: (uint64,uint16,uint64)[36]
+	frame_bury 5 // pools: (uint64,uint16,uint64)[24]
 
 	// contracts/validatorRegistry.algo.ts:904
 	// curNumPools = this.ValidatorList(validatorID).value.State.NumPools as uint64
@@ -3659,7 +3659,7 @@ findPoolForStaker:
 	// *if26_condition
 	// contracts/validatorRegistry.algo.ts:906
 	// pools[i].TotalAlgoStaked + amountToStake <= maxPerPool
-	frame_dig 5 // pools: (uint64,uint16,uint64)[36]
+	frame_dig 5 // pools: (uint64,uint16,uint64)[24]
 	frame_dig 7 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -3688,7 +3688,7 @@ findPoolForStaker:
 	+
 	itob
 	concat
-	frame_dig 5 // pools: (uint64,uint16,uint64)[36]
+	frame_dig 5 // pools: (uint64,uint16,uint64)[24]
 	frame_dig 7 // i: uint64
 	int 18
 	* // acc * typeLength
@@ -3819,7 +3819,7 @@ movePoolToNode:
 
 	// contracts/validatorRegistry.algo.ts:933
 	// nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments)
-	int 1178 // headOffset
+	int 866 // headOffset
 	int 192
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -3906,7 +3906,7 @@ movePoolToNode:
 
 	// contracts/validatorRegistry.algo.ts:941
 	// this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[srcNodeIdx].PoolAppIDs[i] = 0
-	int 1178
+	int 866
 	frame_dig 1 // srcNodeIdx: uint64
 	int 24
 	* // acc * typeLength
@@ -4796,7 +4796,7 @@ addPoolToNode:
 
 	// contracts/validatorRegistry.algo.ts:1101
 	// nodePoolAssignments = clone(this.ValidatorList(validatorID).value.NodePoolAssignments)
-	int 1178 // headOffset
+	int 866 // headOffset
 	int 192
 	byte 0x76 // "v"
 	frame_dig -1 // validatorID: ValidatorID
@@ -4874,7 +4874,7 @@ addPoolToNode:
 	// *if40_consequent
 	// contracts/validatorRegistry.algo.ts:1109
 	// this.ValidatorList(validatorID).value.NodePoolAssignments.Nodes[nodeNum - 1].PoolAppIDs[i] = poolAppID
-	int 1178
+	int 866
 	frame_dig -3 // nodeNum: uint64
 	int 1
 	-
@@ -5510,7 +5510,7 @@ getCurrentOnlineStake:
 	method "getCurMaxStakePerPool(uint64)uint64"
 	method "doesStakerNeedToPayMBR(address)bool"
 	method "getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]"
-	method "getTokenPayoutRatio(uint64)(uint64[36],uint64)"
+	method "getTokenPayoutRatio(uint64)(uint64[24],uint64)"
 	method "getNodePoolAssignments(uint64)((uint64[3])[8])"
 	method "getNFDRegistryID()uint64"
 	method "addValidator(pay,string,(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64))uint64"
@@ -5521,7 +5521,7 @@ getCurrentOnlineStake:
 	method "changeValidatorRewardInfo(uint64,uint8,byte[32],uint64,uint64)void"
 	method "addPool(pay,uint64,uint64)(uint64,uint64,uint64)"
 	method "addStake(pay,uint64,uint64)(uint64,uint64,uint64)"
-	method "setTokenPayoutRatio(uint64)(uint64[36],uint64)"
+	method "setTokenPayoutRatio(uint64)(uint64[24],uint64)"
 	method "stakeUpdatedViaRewards((uint64,uint64,uint64),uint64,uint64)void"
 	method "stakeRemoved((uint64,uint64,uint64),address,uint64,uint64,bool)void"
 	method "findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool,bool)"

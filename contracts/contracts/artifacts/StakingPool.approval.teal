@@ -2072,7 +2072,7 @@ epochBalanceUpdate:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "setTokenPayoutRatio(uint64)(uint64[36],uint64)"
+	method "setTokenPayoutRatio(uint64)(uint64[24],uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:530
@@ -2111,7 +2111,7 @@ epochBalanceUpdate:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[36],uint64)"
+	method "proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:536
@@ -3407,7 +3407,7 @@ linkToNFD:
 	itxn_submit
 	retsub
 
-// proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[36],uint64)
+// proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64)
 *abi_route_proxiedSetTokenPayoutRatio:
 	// The ABI return prefix
 	byte 0x151f7c75
@@ -3420,7 +3420,7 @@ linkToNFD:
 	==
 	assert
 
-	// execute proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[36],uint64)
+	// execute proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64)
 	callsub proxiedSetTokenPayoutRatio
 	concat
 	log
@@ -3544,7 +3544,7 @@ proxiedSetTokenPayoutRatio:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "setTokenPayoutRatio(uint64)(uint64[36],uint64)"
+	method "setTokenPayoutRatio(uint64)(uint64[24],uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:891
@@ -3739,7 +3739,7 @@ getCurrentOnlineStake:
 	method "goOnline(byte[],byte[],byte[],uint64,uint64,uint64)void"
 	method "goOffline()void"
 	method "linkToNFD(uint64,string)void"
-	method "proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[36],uint64)"
+	method "proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64)"
 	txna ApplicationArgs 0
 	match *abi_route_gas *abi_route_initStorage *abi_route_addStake *abi_route_removeStake *abi_route_claimTokens *abi_route_getStakerInfo *abi_route_payTokenReward *abi_route_updateAlgodVer *abi_route_epochBalanceUpdate *abi_route_goOnline *abi_route_goOffline *abi_route_linkToNFD *abi_route_proxiedSetTokenPayoutRatio
 	err

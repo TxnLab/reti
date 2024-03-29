@@ -116,7 +116,7 @@ type NodePoolAssignmentConfig = {
 
 export type PoolTokenPayoutRatio = {
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
-    PoolPctOfWhole: StaticArray<uint64, 36>;
+    PoolPctOfWhole: StaticArray<uint64, 24>;
     // epoch timestmap when set - only pool 1 caller can trigger/calculate this and only once per epoch
     // set and compared against pool 1's LastPayout property.
     UpdatedForPayout: uint64;
@@ -126,7 +126,7 @@ type ValidatorInfo = {
     Config: ValidatorConfig;
     State: ValidatorCurState;
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
-    Pools: StaticArray<PoolInfo, 36>;
+    Pools: StaticArray<PoolInfo, 24>;
     TokenPayoutRatio: PoolTokenPayoutRatio;
     NodePoolAssignments: NodePoolAssignmentConfig;
 };

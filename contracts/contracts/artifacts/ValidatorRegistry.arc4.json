@@ -176,7 +176,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64[36],uint64)"
+        "type": "(uint64[24],uint64)"
       }
     },
     {
@@ -397,7 +397,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64[36],uint64)",
+        "type": "(uint64[24],uint64)",
         "desc": "PoolTokenPayoutRatio - the finished ratio data"
       }
     },
