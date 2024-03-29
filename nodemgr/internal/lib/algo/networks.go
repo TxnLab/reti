@@ -86,7 +86,7 @@ func getDefaults(network string) NetworkConfig {
 	// VOI
 	//-----
 	case "voitestnet":
-		//cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
+		cfg.NFDAPIUrl = "https://api.nf.domains"
 		cfg.NodeURL = "https://testnet-api.voi.nodely.io"
 	}
 	return cfg
