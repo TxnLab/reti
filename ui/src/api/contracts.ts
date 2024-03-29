@@ -454,7 +454,7 @@ export async function addStake(
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
-    .simulate({ allowUnnamedResources: true })
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
   stakeTransferPayment.group = undefined
 
