@@ -513,9 +513,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="maxAlgoPerPool"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Maximum total stake <span className="text-red-500">*</span>
-                    </FormLabel>
+                    <FormLabel>Maximum total stake</FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>

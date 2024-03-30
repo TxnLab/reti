@@ -282,15 +282,22 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         }),
       maxAlgoPerPool: z
         .string()
-        .refine((val) => val !== '', {
-          message: 'Required field',
-        })
-        .refine((val) => !isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0, {
-          message: 'Must be a positive integer',
-        })
-        .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos <= constraints.maxAlgoPerPool, {
-          message: `Cannot exceed ${AlgoAmount.MicroAlgos(Number(constraints.maxAlgoPerPool)).algos} ALGO`,
-        }),
+        .refine(
+          (val) =>
+            val === '' ||
+            (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) >= 0),
+          {
+            message: 'Must be a positive integer',
+          },
+        )
+        .refine(
+          (val) =>
+            val === '' || AlgoAmount.Algos(Number(val)).microAlgos <= constraints.maxAlgoPerPool,
+          {
+            message: `Cannot exceed ${AlgoAmount.MicroAlgos(Number(constraints.maxAlgoPerPool)).algos} ALGO`,
+          },
+        )
+        .optional(),
       poolsPerNode: z
         .string()
         .refine((val) => val !== '', {
