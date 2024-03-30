@@ -3377,6 +3377,7 @@ linkToNFD:
 	// sendAppCall({
 	//             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
 	//             applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)],
+	//             applications: [AppID.fromUint64(nfdAppID)],
 	//         })
 	itxn_begin
 	int appl
@@ -3398,6 +3399,11 @@ linkToNFD:
 	itxn_field ApplicationArgs
 	global CurrentApplicationAddress
 	itxn_field ApplicationArgs
+
+	// contracts/stakingPool.algo.ts:869
+	// applications: [AppID.fromUint64(nfdAppID)]
+	frame_dig -1 // nfdAppID: uint64
+	itxn_field Applications
 
 	// Fee field not set, defaulting to 0
 	int 0
@@ -3439,7 +3445,7 @@ proxiedSetTokenPayoutRatio:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:879
+	// contracts/stakingPool.algo.ts:880
 	// assert(this.ValidatorID.value === poolKey.ID, 'caller must be part of same validator set!')
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
@@ -3451,7 +3457,7 @@ proxiedSetTokenPayoutRatio:
 	// caller must be part of same validator set!
 	assert
 
-	// contracts/stakingPool.algo.ts:880
+	// contracts/stakingPool.algo.ts:881
 	// assert(this.PoolID.value === 1, 'callee must be pool 1')
 	byte 0x706f6f6c4944 // "poolID"
 	app_global_get
@@ -3461,7 +3467,7 @@ proxiedSetTokenPayoutRatio:
 	// callee must be pool 1
 	assert
 
-	// contracts/stakingPool.algo.ts:881
+	// contracts/stakingPool.algo.ts:882
 	// assert(poolKey.PoolID !== 1, 'caller must NOT be pool 1')
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 8 8
@@ -3472,7 +3478,7 @@ proxiedSetTokenPayoutRatio:
 	// caller must NOT be pool 1
 	assert
 
-	// contracts/stakingPool.algo.ts:883
+	// contracts/stakingPool.algo.ts:884
 	// callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
 	//             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
 	//             methodArgs: [poolKey.ID, poolKey.PoolID],
@@ -3483,13 +3489,13 @@ proxiedSetTokenPayoutRatio:
 	method "getPoolAppID(uint64,uint64)uint64"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:884
+	// contracts/stakingPool.algo.ts:885
 	// applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:885
+	// contracts/stakingPool.algo.ts:886
 	// methodArgs: [poolKey.ID, poolKey.PoolID]
 	frame_dig -1 // poolKey: ValidatorPoolKey
 	extract 0 8
@@ -3516,7 +3522,7 @@ proxiedSetTokenPayoutRatio:
 	btoi
 	frame_bury 0 // callerPoolAppID: uint64
 
-	// contracts/stakingPool.algo.ts:887
+	// contracts/stakingPool.algo.ts:888
 	// assert(callerPoolAppID === poolKey.PoolAppID)
 	frame_dig 0 // callerPoolAppID: uint64
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -3525,7 +3531,7 @@ proxiedSetTokenPayoutRatio:
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:888
+	// contracts/stakingPool.algo.ts:889
 	// assert(this.txn.sender === AppID.fromUint64(poolKey.PoolAppID).address)
 	txn Sender
 	frame_dig -1 // poolKey: ValidatorPoolKey
@@ -3536,7 +3542,7 @@ proxiedSetTokenPayoutRatio:
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:890
+	// contracts/stakingPool.algo.ts:891
 	// return sendMethodCall<typeof ValidatorRegistry.prototype.setTokenPayoutRatio>({
 	//             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
 	//             methodArgs: [this.ValidatorID.value],
@@ -3547,13 +3553,13 @@ proxiedSetTokenPayoutRatio:
 	method "setTokenPayoutRatio(uint64)(uint64[24],uint64)"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:891
+	// contracts/stakingPool.algo.ts:892
 	// applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:892
+	// contracts/stakingPool.algo.ts:893
 	// methodArgs: [this.ValidatorID.value]
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
@@ -3583,7 +3589,7 @@ isOwnerOrManagerCaller:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:897
+	// contracts/stakingPool.algo.ts:898
 	// OwnerAndManager = sendMethodCall<typeof ValidatorRegistry.prototype.getValidatorOwnerAndManager>({
 	//             applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value),
 	//             methodArgs: [this.ValidatorID.value],
@@ -3594,13 +3600,13 @@ isOwnerOrManagerCaller:
 	method "getValidatorOwnerAndManager(uint64)(address,address)"
 	itxn_field ApplicationArgs
 
-	// contracts/stakingPool.algo.ts:898
+	// contracts/stakingPool.algo.ts:899
 	// applicationID: AppID.fromUint64(this.CreatingValidatorContractAppID.value)
 	byte 0x63726561746f72417070 // "creatorApp"
 	app_global_get
 	itxn_field ApplicationID
 
-	// contracts/stakingPool.algo.ts:899
+	// contracts/stakingPool.algo.ts:900
 	// methodArgs: [this.ValidatorID.value]
 	byte 0x76616c696461746f724944 // "validatorID"
 	app_global_get
@@ -3620,7 +3626,7 @@ isOwnerOrManagerCaller:
 	extract 4 0
 	frame_bury 0 // OwnerAndManager: (address,address)
 
-	// contracts/stakingPool.algo.ts:901
+	// contracts/stakingPool.algo.ts:902
 	// return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1];
 	txn Sender
 	frame_dig 0 // OwnerAndManager: (address,address)
@@ -3654,12 +3660,12 @@ getEntryTime:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:916
+	// contracts/stakingPool.algo.ts:917
 	// entryTime = globals.latestTimestamp
 	global LatestTimestamp
 	frame_bury 0 // entryTime: uint64
 
-	// contracts/stakingPool.algo.ts:919
+	// contracts/stakingPool.algo.ts:920
 	// return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10;
 	frame_dig 0 // entryTime: uint64
 	int 896
@@ -3673,7 +3679,7 @@ getEntryTime:
 getFeeSink:
 	proto 0 1
 
-	// contracts/stakingPool.algo.ts:923
+	// contracts/stakingPool.algo.ts:924
 	// return this.FeeSinkAddr;
 	pushbytes TMPL_FeeSinkAddr
 	retsub
@@ -3688,12 +3694,12 @@ algoSaturationLevel:
 	// Push empty bytes after the frame pointer to reserve space for local variables
 	byte 0x
 
-	// contracts/stakingPool.algo.ts:933
+	// contracts/stakingPool.algo.ts:934
 	// online = this.getCurrentOnlineStake()
 	callsub getCurrentOnlineStake
 	frame_bury 0 // online: uint64
 
-	// contracts/stakingPool.algo.ts:935
+	// contracts/stakingPool.algo.ts:936
 	// return wideRatio([online, MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL], [1000]);
 	frame_dig 0 // online: uint64
 	int 100
@@ -3715,7 +3721,7 @@ algoSaturationLevel:
 getCurrentOnlineStake:
 	proto 0 1
 
-	// contracts/stakingPool.algo.ts:940
+	// contracts/stakingPool.algo.ts:941
 	// return 2_000_000_000_000_000;
 	int 2_000_000_000_000_000
 	retsub

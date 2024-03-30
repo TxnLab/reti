@@ -866,6 +866,7 @@ export class StakingPool extends Contract {
         sendAppCall({
             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
             applicationArgs: ['verify_nfd_addr', nfdName, itob(nfdAppID), rawBytes(this.app.address)],
+            applications: [AppID.fromUint64(nfdAppID)],
         });
     }
 

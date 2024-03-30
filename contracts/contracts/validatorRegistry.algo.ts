@@ -437,6 +437,7 @@ export class ValidatorRegistry extends Contract {
             sendAppCall({
                 applicationID: AppID.fromUint64(this.NFDRegistryAppID),
                 applicationArgs: ['is_valid_nfd_appid', nfdName, itob(config.NFDForInfo)],
+                applications: [AppID.fromUint64(config.NFDForInfo)],
             });
             assert(btoi(this.itxn.lastLog) === 1, "provided NFD isn't valid");
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
@@ -501,6 +502,7 @@ export class ValidatorRegistry extends Contract {
         sendAppCall({
             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
             applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
+            applications: [AppID.fromUint64(nfdAppID)],
         });
         // we know sender is owner or manager - so if sender is owner of nfd - we're fine.
         assert(
@@ -1205,6 +1207,7 @@ export class ValidatorRegistry extends Contract {
         sendAppCall({
             applicationID: AppID.fromUint64(this.NFDRegistryAppID),
             applicationArgs: ['is_valid_nfd_appid', userOfferedNFDName, itob(nfdAppID)],
+            applications: [AppID.fromUint64(nfdAppID)],
         });
         return btoi(this.itxn.lastLog) === 1;
     }
