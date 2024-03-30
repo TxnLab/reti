@@ -440,14 +440,16 @@ export async function addStake(
     suggestedParams,
   })
 
-  const simulateResults = await validatorClient
+  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
+
+  const simulateResults = await simulateValidatorClient
     .compose()
     .gas({})
     .addStake(
       {
         stakedAmountPayment: {
           transaction: stakeTransferPayment,
-          signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+          signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
         },
         validatorID,
         valueToVerify: 0,

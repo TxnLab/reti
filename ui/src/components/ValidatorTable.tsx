@@ -1,4 +1,5 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   ColumnDef,
@@ -14,6 +15,7 @@ import {
 import { useWallet } from '@txnlab/use-wallet'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
+import { constraintsQueryOptions } from '@/api/queries'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
@@ -69,6 +71,8 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
   const { signer, activeAddress } = useWallet()
+
+  const { data: constraints } = useQuery(constraintsQueryOptions)
 
   const columns: ColumnDef<Validator>[] = [
     {
@@ -166,7 +170,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
-        const stakingDisabled = isStakingDisabled(validator)
+        const stakingDisabled = isStakingDisabled(validator, constraints)
         const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
         const addingPoolDisabled = isAddingPoolDisabled(validator)
         const canManage = canManageValidator(validator, activeAddress!)
@@ -325,7 +329,11 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
         </div>
       </div>
 
-      <AddStakeModal validator={addStakeValidator} setValidator={setAddStakeValidator} />
+      <AddStakeModal
+        validator={addStakeValidator}
+        setValidator={setAddStakeValidator}
+        constraints={constraints}
+      />
       <UnstakeModal
         validator={unstakeValidator}
         setValidator={setUnstakeValidator}

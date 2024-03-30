@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
@@ -15,6 +15,7 @@ import { useWallet } from '@txnlab/use-wallet'
 import dayjs from 'dayjs'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
+import { constraintsQueryOptions } from '@/api/queries'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
@@ -58,6 +59,8 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
 
   const { signer, activeAddress } = useWallet()
+
+  const { data: constraints } = useQuery(constraintsQueryOptions)
 
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -136,7 +139,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
 
         if (!validator || !activeAddress) return null
 
-        const stakingDisabled = isStakingDisabled(validator)
+        const stakingDisabled = isStakingDisabled(validator, constraints)
         const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
         const canManage = canManageValidator(validator, activeAddress)
 
@@ -284,7 +287,11 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
         )} */}
       </div>
 
-      <AddStakeModal validator={addStakeValidator} setValidator={setAddStakeValidator} />
+      <AddStakeModal
+        validator={addStakeValidator}
+        setValidator={setAddStakeValidator}
+        constraints={constraints}
+      />
       <UnstakeModal
         validator={unstakeValidator}
         setValidator={setUnstakeValidator}

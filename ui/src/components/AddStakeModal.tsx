@@ -36,16 +36,17 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
-import { Validator } from '@/interfaces/validator'
+import { Constraints, Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { formatAlgoAmount } from '@/utils/format'
 
 interface AddStakeModalProps {
   validator: Validator | null
   setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
+  constraints?: Constraints
 }
 
-export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
+export function AddStakeModal({ validator, setValidator, constraints }: AddStakeModalProps) {
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()
@@ -80,7 +81,7 @@ export function AddStakeModal({ validator, setValidator }: AddStakeModalProps) {
     queryFn: () => fetchMaxAvailableToStake(validator!.id),
     enabled: !!validator,
   })
-  const poolMaximumStake = poolMaximumQuery.data
+  const poolMaximumStake = poolMaximumQuery.data || Number(constraints?.maxAlgoPerPool)
 
   const stakerMaximumStake = React.useMemo(() => {
     const estimatedFee = AlgoAmount.MicroAlgos(240_000).microAlgos

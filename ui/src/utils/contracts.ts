@@ -399,9 +399,13 @@ export function calculateMaxStakers(validator: Validator): number {
   return maxStakers
 }
 
-export function isStakingDisabled(validator: Validator): boolean {
+export function isStakingDisabled(validator: Validator, constraints?: Constraints): boolean {
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
-  const { maxAlgoPerPool } = validator.config
+  let { maxAlgoPerPool } = validator.config
+
+  if (maxAlgoPerPool === 0n && !!constraints) {
+    maxAlgoPerPool = constraints.maxAlgoPerPool
+  }
 
   // @todo: fetch max stakers from contract
   const maxStakersPerPool = 200
