@@ -25,7 +25,10 @@ import (
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
-const OnlineStatus = "Online"
+const (
+	OnlineStatus             = "Online"
+	GeneratedKeyLengthInDays = 7
+)
 
 // Daemon provides a 'little' separation in that we initalize it with some data from the App global set up by
 // the process startup, but the Daemon tries to be fairly retrieval with its data retrieval and use.
@@ -297,8 +300,8 @@ func (d *Daemon) createPartKey(ctx context.Context, account string, firstValid u
 	if firstValid == 0 {
 		firstValid = status.LastRound
 	}
-	monthInSeconds := 60 * 60 * 24 * 30
-	lastValid := firstValid + uint64(float64(monthInSeconds)/d.AverageBlockTime().Seconds())
+	keyDurationInSeconds := GeneratedKeyLengthInDays * 60 * 60 * 24
+	lastValid := firstValid + uint64(float64(keyDurationInSeconds)/d.AverageBlockTime().Seconds())
 	return algo.GenerateParticipationKey(ctx, d.algoClient, d.logger, account, firstValid, lastValid)
 }
 
