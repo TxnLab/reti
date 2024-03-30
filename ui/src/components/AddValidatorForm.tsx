@@ -191,7 +191,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           {
             mbrPayment: {
               transaction: payValidatorMbr,
-              signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+              signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
             },
             nfdName: values.nfdForInfo || '',
             config: [
