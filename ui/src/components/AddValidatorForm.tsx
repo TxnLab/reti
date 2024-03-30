@@ -187,32 +187,35 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const simulateResult = await simulateValidatorClient
         .compose()
-        .addValidator({
-          mbrPayment: {
-            transaction: payValidatorMbr,
-            signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+        .addValidator(
+          {
+            mbrPayment: {
+              transaction: payValidatorMbr,
+              signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+            },
+            nfdName: values.nfdForInfo || '',
+            config: [
+              validatorConfig.id,
+              validatorConfig.owner,
+              validatorConfig.manager,
+              validatorConfig.nfdForInfo,
+              validatorConfig.entryGatingType,
+              validatorConfig.entryGatingValue,
+              validatorConfig.gatingAssetMinBalance,
+              validatorConfig.rewardTokenId,
+              validatorConfig.rewardPerPayout,
+              validatorConfig.payoutEveryXMins,
+              validatorConfig.percentToValidator,
+              validatorConfig.validatorCommissionAddress,
+              validatorConfig.minEntryStake,
+              validatorConfig.maxAlgoPerPool,
+              validatorConfig.poolsPerNode,
+              validatorConfig.sunsettingOn,
+              validatorConfig.sunsettingTo,
+            ],
           },
-          nfdName: values.nfdForInfo || '',
-          config: [
-            validatorConfig.id,
-            validatorConfig.owner,
-            validatorConfig.manager,
-            validatorConfig.nfdForInfo,
-            validatorConfig.entryGatingType,
-            validatorConfig.entryGatingValue,
-            validatorConfig.gatingAssetMinBalance,
-            validatorConfig.rewardTokenId,
-            validatorConfig.rewardPerPayout,
-            validatorConfig.payoutEveryXMins,
-            validatorConfig.percentToValidator,
-            validatorConfig.validatorCommissionAddress,
-            validatorConfig.minEntryStake,
-            validatorConfig.maxAlgoPerPool,
-            validatorConfig.poolsPerNode,
-            validatorConfig.sunsettingOn,
-            validatorConfig.sunsettingTo,
-          ],
-        })
+          { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
+        )
         .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
       payValidatorMbr.group = undefined
