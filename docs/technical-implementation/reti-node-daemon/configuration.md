@@ -38,6 +38,12 @@ If none of the addresses loaded via these mnemonics match the owenr or manager o
 
 <table><thead><tr><th>Command Line Option</th><th width="192">Environment Variable</th><th> </th></tr></thead><tbody><tr><td>--envfile {file}</td><td>RETI_ENVFILE</td><td>Specify an additional file to process like an .env file.</td></tr><tr><td>--validator</td><td>RETI_VALIDATORID</td><td>The validator ID of the validator running commands like the daemon</td></tr><tr><td>--node</td><td>RETI_NODENUM</td><td>The node number (1 - 6)</td></tr><tr><td>--usehostname</td><td></td><td>When running in Kubernetes environments, this sets the node number assuming the node daemon is running as a sidecar alongside an algod container.  The suffix of the (presumed statefulset) hostname is used for the node number.  Since stateful sets are sequentially numbered starting from 0, the node number will be the hostname suffix + 1.</td></tr><tr><td>--network</td><td>ALGO_NETWORK</td><td>Override the network to use (sandbox, betanet, testnet, mainnet, voitestnet)</td></tr><tr><td></td><td></td><td></td></tr></tbody></table>
 
+#### Options for 'Daemon' mode
+
+| Command Line Option |                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --port              | <p>Defaults to 6260.<br>Specifies the port the Node Daemon listens on for its HTTP endpoint.<br>The paths:<br>/ready<br>/metrics<br>are exposed.</p> |
+
 #### Environment only overrides
 
 Some options are only overriden through environment variables as they're more low-level.
