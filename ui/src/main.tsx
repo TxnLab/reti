@@ -44,7 +44,7 @@ const walletManager = new WalletManager({
   network,
   algod: {
     baseServer: algodConfig.server,
-    port: Number(algodConfig.port),
+    port: algodConfig.port,
     token: algodConfig.token as string,
   },
 })
