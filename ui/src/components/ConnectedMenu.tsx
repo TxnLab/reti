@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { WalletBalance } from '@/components/WalletBalance'
 import { copyToClipboard } from '@/utils/copyToClipboard'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 
@@ -51,24 +51,13 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
             </Button>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              Profile
-              <DropdownMenuShortcut className="hidden lg:inline">⇧⌘P</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              Withdraw Balance
-              <DropdownMenuShortcut className="hidden lg:inline">⌘W</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              Settings
-              <DropdownMenuShortcut className="hidden lg:inline">⌘S</DropdownMenuShortcut>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
+          <div className="px-2 py-2">
+            <WalletBalance activeAddress={activeAddress} />
+          </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => activeWallet?.disconnect()}>
             Disconnect
-            <DropdownMenuShortcut className="hidden lg:inline">⇧⌘Q</DropdownMenuShortcut>
+            <DropdownMenuShortcut className="hidden lg:inline">⇧D</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>
       )}

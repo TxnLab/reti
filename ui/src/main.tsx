@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/sonner'
+import { WalletShortcutHandler } from '@/components/WalletShortcutHandler'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import '@/styles/main.css'
 import {
@@ -74,6 +75,7 @@ function AppProviders() {
           <SnackbarProvider maxSnack={3}>
             <WalletProvider manager={walletManager}>
               <RouterProvider router={router} />
+              <WalletShortcutHandler />
             </WalletProvider>
           </SnackbarProvider>
         </QueryClientProvider>

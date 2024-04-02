@@ -1,3 +1,4 @@
+import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { AssetHolding, AssetParams } from '@algorandfoundation/algokit-utils/types/indexer'
 
 export interface AccountInformation {
@@ -7,6 +8,12 @@ export interface AccountInformation {
   assets?: AssetHolding[]
   'auth-addr'?: string
   // add more fields as needed
+}
+
+export type AccountBalance = {
+  amount: AlgoAmount
+  available: AlgoAmount
+  minimum: AlgoAmount
 }
 
 export type Exclude =
