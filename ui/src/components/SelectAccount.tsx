@@ -1,4 +1,4 @@
-import { Account } from '@txnlab/use-wallet'
+import { WalletAccount } from '@txnlab/use-wallet-react'
 import {
   Select,
   SelectContent,
@@ -9,8 +9,8 @@ import {
 import { ellipseAddress } from '@/utils/ellipseAddress'
 
 interface SelectAccountProps {
-  accounts: Account[] | undefined
-  activeAccount: Account | undefined
+  accounts: WalletAccount[] | undefined
+  activeAccount: WalletAccount | undefined
   onValueChange: (value: string) => void
 }
 

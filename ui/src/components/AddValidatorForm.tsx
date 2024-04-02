@@ -3,7 +3,7 @@ import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/type
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
 import { isAxiosError } from 'axios'
 import { Check, MonitorCheck } from 'lucide-react'
@@ -54,7 +54,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [isFetchingAppId, setIsFetchingAppId] = React.useState(false)
   const [isSigning, setIsSigning] = React.useState(false)
 
-  const { signer, activeAddress } = useWallet()
+  const { transactionSigner, activeAddress } = useWallet()
 
   const navigate = useNavigate({ from: '/add' })
 
@@ -133,7 +133,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         throw new Error('No active address')
       }
 
-      const validatorClient = makeValidatorClient(signer, activeAddress)
+      const validatorClient = makeValidatorClient(transactionSigner, activeAddress)
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
@@ -234,7 +234,10 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           {
             mbrPayment: {
               transaction: payValidatorMbr,
-              signer: { signer, addr: activeAddress } as TransactionSignerAccount,
+              signer: {
+                signer: transactionSigner,
+                addr: activeAddress,
+              } as TransactionSignerAccount,
             },
             nfdName: values.nfdForInfo || '',
             config: [

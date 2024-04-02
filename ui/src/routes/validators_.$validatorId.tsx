@@ -1,5 +1,5 @@
 import { ErrorComponent, Navigate, createFileRoute, redirect } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { ValidatorNotFoundError } from '@/api/contracts'
 import { validatorQueryOptions } from '@/api/queries'
 import { Meta } from '@/components/Meta'
@@ -31,9 +31,9 @@ export const Route = createFileRoute('/validators/$validatorId')({
 function Dashboard() {
   const validator = Route.useLoaderData()
 
-  const { activeAddress, isReady } = useWallet()
+  const { activeAddress } = useWallet()
 
-  if (isReady && !activeAddress) {
+  if (!activeAddress) {
     return <Navigate to="/" />
   }
 

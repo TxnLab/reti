@@ -1,15 +1,6 @@
-import { DeflyWalletConnect } from '@blockshake/defly-connect'
-import { DaffiWalletConnect } from '@daffiwallet/connect'
-import { PeraWalletConnect } from '@perawallet/connect'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import {
-  PROVIDER_ID,
-  ProvidersArray,
-  WalletProvider,
-  useInitializeProviders,
-} from '@txnlab/use-wallet'
-import algosdk from 'algosdk'
+import { SupportedWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
 import { SnackbarProvider } from 'notistack'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -20,35 +11,42 @@ import { ThemeProvider } from '@/providers/ThemeProvider'
 import '@/styles/main.css'
 import {
   getAlgodConfigFromViteEnvironment,
+  getAlgodNetwork,
   getKmdConfigFromViteEnvironment,
 } from '@/utils/network/getAlgoClientConfigs'
 import { routeTree } from './routeTree.gen'
 
 // use-wallet configuration
-let providersArray: ProvidersArray
-if (import.meta.env.VITE_ALGOD_NETWORK === '') {
+let wallets: SupportedWallet[]
+if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
   const kmdConfig = getKmdConfigFromViteEnvironment()
-  providersArray = [
+  wallets = [
     {
-      id: PROVIDER_ID.KMD,
-      clientOptions: {
+      id: WalletId.KMD,
+      options: {
         wallet: kmdConfig.wallet,
-        password: kmdConfig.password,
-        host: kmdConfig.server,
+        baseServer: kmdConfig.server,
         token: String(kmdConfig.token),
         port: String(kmdConfig.port),
       },
     },
   ]
 } else {
-  providersArray = [
-    { id: PROVIDER_ID.DEFLY, clientStatic: DeflyWalletConnect },
-    { id: PROVIDER_ID.PERA, clientStatic: PeraWalletConnect },
-    { id: PROVIDER_ID.DAFFI, clientStatic: DaffiWalletConnect },
-    PROVIDER_ID.KIBISIS,
-    { id: PROVIDER_ID.EXODUS },
-  ]
+  wallets = [WalletId.DEFLY, WalletId.PERA, WalletId.KIBISIS, WalletId.EXODUS]
 }
+
+const algodConfig = getAlgodConfigFromViteEnvironment()
+const network = getAlgodNetwork()
+
+const walletManager = new WalletManager({
+  wallets,
+  network,
+  algod: {
+    baseServer: algodConfig.server,
+    port: Number(algodConfig.port),
+    token: algodConfig.token as string,
+  },
+})
 
 // Tanstack Query client instance
 const queryClient = new QueryClient()
@@ -69,25 +67,12 @@ declare module '@tanstack/react-router' {
 }
 
 function AppProviders() {
-  const algodConfig = getAlgodConfigFromViteEnvironment()
-
-  const walletProviders = useInitializeProviders({
-    providers: providersArray,
-    nodeConfig: {
-      network: algodConfig.network,
-      nodeServer: algodConfig.server,
-      nodePort: String(algodConfig.port),
-      nodeToken: String(algodConfig.token),
-    },
-    algosdkStatic: algosdk,
-  })
-
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <SnackbarProvider maxSnack={3}>
-            <WalletProvider value={walletProviders}>
+            <WalletProvider manager={walletManager}>
               <RouterProvider router={router} />
             </WalletProvider>
           </SnackbarProvider>

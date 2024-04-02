@@ -62,9 +62,9 @@ dependencies:
   '@tanstack/router-devtools':
     specifier: ^1.18.4
     version: 1.20.4(csstype@3.1.3)(react-dom@18.2.0)(react@18.2.0)
-  '@txnlab/use-wallet':
-    specifier: ^2.4.0
-    version: 2.7.0(@blockshake/defly-connect@1.1.6)(@daffiwallet/connect@1.0.3)(@perawallet/connect@1.3.4)(@types/react@18.2.67)(@walletconnect/modal-sign-html@2.6.2)(algosdk@2.7.0)(react-dom@18.2.0)(react@18.2.0)
+  '@txnlab/use-wallet-react':
+    specifier: 3.0.0-beta.1
+    version: 3.0.0-beta.1(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(algosdk@2.7.0)(react-dom@18.2.0)(react@18.2.0)
   '@walletconnect/modal-sign-html':
     specifier: ^2.6.1
     version: 2.6.2(@types/react@18.2.67)(react@18.2.0)
@@ -2592,6 +2592,18 @@ packages:
       use-sync-external-store: 1.2.0(react@18.2.0)
     dev: false
 
+  /@tanstack/react-store@0.3.1(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-PfV271d345It6FdcX4c9gd+llKGddtvau8iJnybTAWmYVyDeFWfIIkiAJ5iNITJmI02AzqgtcV3QLNBBlpBUjA==}
+    peerDependencies:
+      react: ^17.0.0 || ^18.0.0
+      react-dom: ^17.0.0 || ^18.0.0
+    dependencies:
+      '@tanstack/store': 0.3.1
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      use-sync-external-store: 1.2.0(react@18.2.0)
+    dev: false
+
   /@tanstack/react-table@8.14.0(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-l9iwO99oz/azy5RT5VkVRsHHuy7o//fiXgLxzl3fad8qf7Bj+9ihsfmE6Q+BNjH4wHbxZkahwxtb3ngGq9FQxA==}
     engines: {node: '>=12'}
@@ -2640,6 +2652,10 @@ packages:
     resolution: {integrity: sha512-GnolmC8Fr4mvsHE1fGQmR3Nm0eBO3KnZjDU0a+P3TeQNM/dDscFGxtA7p31NplQNW3KwBw4t1RVFmz0VeKLxcw==}
     dev: false
 
+  /@tanstack/store@0.3.1:
+    resolution: {integrity: sha512-A49KN8SpLMWaNmZGPa9K982RQ81W+m7W6iStcQVeKeVS70JZRqkF0fDwKByREPq6qz9/kS0aQFOPQ0W6wIeU5g==}
+    dev: false
+
   /@tanstack/table-core@8.14.0:
     resolution: {integrity: sha512-wDhpKJahGHWhmRt4RxtV3pES63CoeadljGWS/xeS9OJr1HBl2NB+OO44ht3sxDH5j5TRDAbQzC0NvSlsUfn7lQ==}
     engines: {node: '>=12'}
@@ -2657,46 +2673,94 @@ packages:
   /@tsconfig/node16@1.0.4:
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
-  /@txnlab/use-wallet@2.7.0(@blockshake/defly-connect@1.1.6)(@daffiwallet/connect@1.0.3)(@perawallet/connect@1.3.4)(@types/react@18.2.67)(@walletconnect/modal-sign-html@2.6.2)(algosdk@2.7.0)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-Nj0V9lqLAkPKdM1GO6qUJocnvf+WNWdL7N8NOBg+KdxZcpJLrABqf8OIR4C4OzL/tB2GqXUPTgq0cbv4fZB0Ow==}
+  /@txnlab/use-wallet-react@3.0.0-beta.1(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(algosdk@2.7.0)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-uMhDEh0YHCHim6+IGnJXF7bRwEoEl13givyancxtEe8gVoBnRKXX9CE6itfV6Yz8xFrBrVSCkKRjIDxny1swCA==}
     peerDependencies:
-      '@blockshake/defly-connect': ^1.1.5
-      '@daffiwallet/connect': ^1.0.3
-      '@magic-ext/algorand': ^17.0.0
-      '@perawallet/connect': ^1.2.1
-      '@randlabs/myalgo-connect': ^1.4.2
-      '@walletconnect/modal-sign-html': '*'
-      algosdk: ^2.1.0
-      magic-sdk: ^22.0.0
-      react: ^18.2.0
-      react-dom: ^18.2.0
+      '@blockshake/defly-connect': ^1.1.6
+      '@perawallet/connect': ^1.3.3
+      '@walletconnect/modal': ^2.6.2
+      '@walletconnect/sign-client': ^2.10.2
+      algosdk: ^2.6.0
+      lute-connect: ^1.1.3
+      react: ^17.0.0 || ^18.0.0
+      react-dom: ^17.0.0 || ^18.0.0
     peerDependenciesMeta:
       '@blockshake/defly-connect':
         optional: true
-      '@daffiwallet/connect':
-        optional: true
-      '@magic-ext/algorand':
-        optional: true
       '@perawallet/connect':
         optional: true
-      '@randlabs/myalgo-connect':
+      '@walletconnect/modal':
         optional: true
-      '@walletconnect/modal-sign-html':
+      '@walletconnect/sign-client':
         optional: true
-      magic-sdk:
+      lute-connect:
         optional: true
     dependencies:
       '@blockshake/defly-connect': 1.1.6(algosdk@2.7.0)
-      '@daffiwallet/connect': 1.0.3(algosdk@2.7.0)
       '@perawallet/connect': 1.3.4(algosdk@2.7.0)
-      '@walletconnect/modal-sign-html': 2.6.2(@types/react@18.2.67)(react@18.2.0)
+      '@tanstack/react-store': 0.3.1(react-dom@18.2.0)(react@18.2.0)
+      '@txnlab/use-wallet': 3.0.0-beta.1(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)
       algosdk: 2.7.0
-      immer: 9.0.21
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
-      zustand: 4.5.2(@types/react@18.2.67)(immer@9.0.21)(react@18.2.0)
     transitivePeerDependencies:
-      - '@types/react'
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@upstash/redis'
+      - '@vercel/kv'
+      - ioredis
+      - uWebSockets.js
+    dev: false
+
+  /@txnlab/use-wallet@3.0.0-beta.1(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4):
+    resolution: {integrity: sha512-Nin3zqt0vq8sq34CV7ckIkI8gY9DfiBH7oCdVfm1/IDvXk2c/HpPL6uZKE3ZeNL9N/9BB5vAwoHpWjWtCRXdhg==}
+    peerDependencies:
+      '@blockshake/defly-connect': ^1.1.6
+      '@perawallet/connect': ^1.3.3
+      '@walletconnect/modal': ^2.6.2
+      '@walletconnect/sign-client': ^2.10.2
+      lute-connect: ^1.1.3
+    peerDependenciesMeta:
+      '@blockshake/defly-connect':
+        optional: true
+      '@perawallet/connect':
+        optional: true
+      '@walletconnect/modal':
+        optional: true
+      '@walletconnect/sign-client':
+        optional: true
+      lute-connect:
+        optional: true
+    dependencies:
+      '@blockshake/defly-connect': 1.1.6(algosdk@2.7.0)
+      '@perawallet/connect': 1.3.4(algosdk@2.7.0)
+      '@tanstack/store': 0.3.1
+      '@walletconnect/utils': 2.11.3
+      algosdk: 2.7.0
+      buffer: 6.0.3
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@upstash/redis'
+      - '@vercel/kv'
+      - ioredis
+      - uWebSockets.js
     dev: false
 
   /@types/babel__core@7.20.5:
@@ -3371,6 +3435,32 @@ packages:
       - uWebSockets.js
     dev: false
 
+  /@walletconnect/types@2.11.3:
+    resolution: {integrity: sha512-JY4wA9MVosDW9dcJMTpnwliste0aJGJ1X6Q4ulLsQsgWRSEBRkLila0oUT01TDBW9Yq8uUp7uFOUTaKx6KWVAg==}
+    dependencies:
+      '@walletconnect/events': 1.0.1
+      '@walletconnect/heartbeat': 1.2.1
+      '@walletconnect/jsonrpc-types': 1.0.3
+      '@walletconnect/keyvaluestorage': 1.1.1
+      '@walletconnect/logger': 2.0.1
+      events: 3.3.0
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@upstash/redis'
+      - '@vercel/kv'
+      - ioredis
+      - uWebSockets.js
+    dev: false
+
   /@walletconnect/utils@1.8.0:
     resolution: {integrity: sha512-zExzp8Mj1YiAIBfKNm5u622oNw44WOESzo6hj+Q3apSMIb0Jph9X3GDIdbZmvVZsNPxWDL7uodKgZcCInZv2vA==}
     dependencies:
@@ -3395,6 +3485,40 @@ packages:
       '@walletconnect/safe-json': 1.0.2
       '@walletconnect/time': 1.0.2
       '@walletconnect/types': 2.10.0
+      '@walletconnect/window-getters': 1.0.1
+      '@walletconnect/window-metadata': 1.0.1
+      detect-browser: 5.3.0
+      query-string: 7.1.3
+      uint8arrays: 3.1.1
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@upstash/redis'
+      - '@vercel/kv'
+      - ioredis
+      - uWebSockets.js
+    dev: false
+
+  /@walletconnect/utils@2.11.3:
+    resolution: {integrity: sha512-jsdNkrl/IcTkzWFn0S2d0urzBXg6RxVJtUYRsUx3qI3wzOGiABP9ui3yiZ3SgZOv9aRe62PaNp1qpbYZ+zPb8Q==}
+    dependencies:
+      '@stablelib/chacha20poly1305': 1.0.1
+      '@stablelib/hkdf': 1.0.1
+      '@stablelib/random': 1.0.2
+      '@stablelib/sha256': 1.0.1
+      '@stablelib/x25519': 1.0.3
+      '@walletconnect/relay-api': 1.0.9
+      '@walletconnect/safe-json': 1.0.2
+      '@walletconnect/time': 1.0.2
+      '@walletconnect/types': 2.11.3
       '@walletconnect/window-getters': 1.0.1
       '@walletconnect/window-metadata': 1.0.1
       detect-browser: 5.3.0
@@ -4812,10 +4936,6 @@ packages:
     resolution: {integrity: sha512-5Fytz/IraMjqpwfd34ke28PTVMjZjJG2MPn5t7OE4eUCUNf8BAa7b5WUS9/Qvr6mwOQS7Mk6vdsMno5he+T8Xw==}
     engines: {node: '>= 4'}
     dev: true
-
-  /immer@9.0.21:
-    resolution: {integrity: sha512-bc4NBHqOqSfRW7POMkHd51LvClaeMXpm8dx0e8oE2GORbq5aRK7Bxl4FyzVLdGtLmvLKL7BTDBG5ACQm4HWjTA==}
-    dev: false
 
   /import-fresh@3.3.0:
     resolution: {integrity: sha512-veYYhQa+D1QBKznvhUHxb8faxlrwUnxseDAbAp457E0wLNio2bOSKnjYDhMj+YiAq61xrMGhQk9iXVk5FzgQMw==}
@@ -7468,24 +7588,3 @@ packages:
 
   /zod@3.22.4:
     resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
-
-  /zustand@4.5.2(@types/react@18.2.67)(immer@9.0.21)(react@18.2.0):
-    resolution: {integrity: sha512-2cN1tPkDVkwCy5ickKrI7vijSjPksFRfqS6237NzT0vqSsztTNnQdHw9mmN7uBdk3gceVXU0a+21jFzFzAc9+g==}
-    engines: {node: '>=12.7.0'}
-    peerDependencies:
-      '@types/react': '>=16.8'
-      immer: '>=9.0.6'
-      react: '>=16.8'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      immer:
-        optional: true
-      react:
-        optional: true
-    dependencies:
-      '@types/react': 18.2.67
-      immer: 9.0.21
-      react: 18.2.0
-      use-sync-external-store: 1.2.0(react@18.2.0)
-    dev: false

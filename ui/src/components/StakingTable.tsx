@@ -11,7 +11,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import dayjs from 'dayjs'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
@@ -58,7 +58,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
   const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
 
-  const { signer, activeAddress } = useWallet()
+  const { transactionSigner, activeAddress } = useWallet()
 
   const { data: constraints } = useQuery(constraintsQueryOptions)
 
@@ -192,7 +192,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
                             validator,
                             row.original.pools,
                             100,
-                            signer,
+                            transactionSigner,
                             activeAddress,
                             queryClient,
                             router,

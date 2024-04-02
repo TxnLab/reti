@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
 import { constraintsQueryOptions } from '@/api/queries'
@@ -70,7 +70,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
-  const { signer, activeAddress } = useWallet()
+  const { transactionSigner, activeAddress } = useWallet()
 
   const { data: constraints } = useQuery(constraintsQueryOptions)
 
@@ -236,7 +236,12 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
                       <DropdownMenuGroup>
                         <DropdownMenuItem
                           onClick={async () =>
-                            await sendRewardTokensToPool(validator, 5000, signer, activeAddress!)
+                            await sendRewardTokensToPool(
+                              validator,
+                              5000,
+                              transactionSigner,
+                              activeAddress!,
+                            )
                           }
                           disabled={sendRewardTokensDisabled}
                         >

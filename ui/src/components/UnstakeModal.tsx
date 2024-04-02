@@ -2,7 +2,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { ArrowDownLeft } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
@@ -62,7 +62,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
   const queryClient = useQueryClient()
   const router = useRouter()
-  const { signer, activeAddress } = useWallet()
+  const { transactionSigner, activeAddress } = useWallet()
 
   const formSchema = z.object({
     amountToUnstake: z
@@ -170,7 +170,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
       toast.loading('Sign transactions to remove stake...', { id: toastId })
 
-      await removeStake(pool.poolKey.poolAppId, amountToUnstake, signer, activeAddress)
+      await removeStake(pool.poolKey.poolAppId, amountToUnstake, transactionSigner, activeAddress)
 
       toast.success(
         <div className="flex items-center gap-x-2">

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { Coins, Pencil, Percent, Users, Waves } from 'lucide-react'
 import * as React from 'react'
 import { poolAssignmentQueryOptions } from '@/api/queries'

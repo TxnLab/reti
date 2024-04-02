@@ -1,4 +1,4 @@
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { Copy } from 'lucide-react'
 import { SelectAccount } from '@/components/SelectAccount'
 import { Button } from '@/components/ui/button'
@@ -19,10 +19,7 @@ interface ConnectedMenuProps {
 }
 
 export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
-  const { providers, activeAccount } = useWallet()
-
-  const provider = providers?.find((p) => p.metadata.id === activeAccount?.providerId)
-  const accounts = provider?.accounts
+  const { activeWallet, activeAccount } = useWallet()
 
   return (
     <DropdownMenu>
@@ -31,14 +28,14 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
           {ellipseAddress(activeAddress)}
         </Button>
       </DropdownMenuTrigger>
-      {provider && activeAccount && (
+      {activeWallet && activeAccount && (
         <DropdownMenuContent align="end" className="w-64">
           <div className="flex items-center justify-between gap-x-2 px-2 py-1.5 text-sm font-semibold">
-            {!!accounts && accounts.length > 1 ? (
+            {!!activeWallet && activeWallet.accounts.length > 1 ? (
               <SelectAccount
-                accounts={accounts}
+                accounts={activeWallet.accounts}
                 activeAccount={activeAccount}
-                onValueChange={provider.setActiveAccount}
+                onValueChange={activeWallet.setActiveAccount}
               />
             ) : (
               <span>{ellipseAddress(activeAddress)}</span>
@@ -69,7 +66,7 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => provider?.disconnect()}>
+          <DropdownMenuItem onClick={() => activeWallet?.disconnect()}>
             Disconnect
             <DropdownMenuShortcut className="hidden lg:inline">⇧⌘Q</DropdownMenuShortcut>
           </DropdownMenuItem>

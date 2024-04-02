@@ -1,4 +1,4 @@
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +12,7 @@ import {
 
 export function Connect() {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
-  const { providers } = useWallet()
+  const { wallets } = useWallet()
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -29,14 +29,14 @@ export function Connect() {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {providers?.map((provider) => (
+          {wallets?.map((wallet) => (
             <Button
-              key={provider.metadata.id}
+              key={wallet.id}
               variant="secondary"
-              onClick={() => provider.connect()}
+              onClick={() => wallet.connect()}
               className="w-full"
             >
-              {provider.metadata.name}
+              {wallet.metadata.name}
             </Button>
           ))}
         </div>

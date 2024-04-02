@@ -1,3 +1,4 @@
+import { NetworkId } from '@txnlab/use-wallet-react'
 import { AlgoViteClientConfig, AlgoViteKMDConfig } from '@/interfaces/network'
 
 export function getAlgodConfigFromViteEnvironment(): AlgoViteClientConfig {
@@ -43,5 +44,22 @@ export function getKmdConfigFromViteEnvironment(): AlgoViteKMDConfig {
     token: import.meta.env.VITE_KMD_TOKEN,
     wallet: import.meta.env.VITE_KMD_WALLET,
     password: import.meta.env.VITE_KMD_PASSWORD,
+  }
+}
+
+export function getAlgodNetwork(): NetworkId {
+  const config = getAlgodConfigFromViteEnvironment()
+
+  switch (config.network) {
+    case 'mainnet':
+      return NetworkId.MAINNET
+    case 'testnet':
+      return NetworkId.TESTNET
+    case 'betanet':
+      return NetworkId.BETANET
+    case 'localnet':
+      return NetworkId.LOCALNET
+    default:
+      throw new Error(`Unknown network: ${config.network}`)
   }
 }

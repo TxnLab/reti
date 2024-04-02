@@ -1,6 +1,6 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { fetchStakerValidatorData } from '@/api/contracts'
 import { validatorsQueryOptions } from '@/api/queries'
 import { Meta } from '@/components/Meta'
@@ -34,7 +34,7 @@ function Dashboard() {
   const validatorsQuery = useSuspenseQuery(validatorsQueryOptions)
   const validators = validatorsQuery.data
 
-  const { activeAddress, isReady } = useWallet()
+  const { activeAddress } = useWallet()
 
   const stakesQuery = useQuery<StakerValidatorData[]>({
     queryKey: ['stakes', { staker: activeAddress! }],
@@ -45,7 +45,7 @@ function Dashboard() {
 
   const stakesByValidator = stakesQuery.data || []
 
-  if (isReady && !activeAddress) {
+  if (!activeAddress) {
     return <Navigate to="/" />
   }
 
@@ -58,7 +58,7 @@ function Dashboard() {
           <StakingTable
             validators={validators || []}
             stakesByValidator={stakesByValidator}
-            isLoading={!isReady || stakesQuery.isLoading}
+            isLoading={stakesQuery.isLoading}
           />
           <ValidatorTable validators={validators || []} stakesByValidator={stakesByValidator} />
         </div>

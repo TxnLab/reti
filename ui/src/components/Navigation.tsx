@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import {
   NavigationMenu,
   NavigationMenuItem,

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -48,7 +48,7 @@ export function AddPoolModal({
 
   const queryClient = useQueryClient()
   const router = useRouter()
-  const { signer, activeAddress } = useWallet()
+  const { transactionSigner, activeAddress } = useWallet()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -106,7 +106,7 @@ export function AddPoolModal({
         validator!.id,
         Number(data.nodeNum),
         poolMbr,
-        signer,
+        transactionSigner,
         activeAddress,
       )
 
@@ -117,7 +117,7 @@ export function AddPoolModal({
         stakingPool.poolAppId,
         poolInitMbr,
         optInRewardToken,
-        signer,
+        transactionSigner,
         activeAddress,
       )
 

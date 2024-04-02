@@ -2,7 +2,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { ArrowUpRight } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
@@ -51,7 +51,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
 
   const queryClient = useQueryClient()
   const router = useRouter()
-  const { signer, activeAddress } = useWallet()
+  const { transactionSigner, activeAddress } = useWallet()
 
   // @todo: this will be available globally from wallet menu
   const availableBalanceQuery = useQuery({
@@ -190,7 +190,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
-      const poolKey = await addStake(validator!.id, totalAmount, signer, activeAddress)
+      const poolKey = await addStake(validator!.id, totalAmount, transactionSigner, activeAddress)
 
       toast.success(
         <div className="flex items-center gap-x-2">

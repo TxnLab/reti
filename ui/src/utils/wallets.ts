@@ -1,37 +1,24 @@
-import { Account } from '@txnlab/use-wallet'
+import { State, defaultState } from '@txnlab/use-wallet-react'
 
-type WalletState = {
-  accounts: Account[]
-  activeAccount: Account | null | undefined
-}
-
-type UseWalletState = {
-  state: WalletState
-}
-
-export function getWalletStateFromLocalStorage(): WalletState {
+export function getWalletStateFromLocalStorage(): State {
   try {
-    const serializedState = localStorage.getItem('txnlab-use-wallet')
+    const serializedState = localStorage.getItem('@txnlab/use-wallet:v3')
     if (serializedState === null) {
-      return {
-        accounts: [],
-        activeAccount: null,
-      }
+      return defaultState
     }
-    const parsedState = JSON.parse(serializedState) as UseWalletState
-    return parsedState.state
+    const parsedState = JSON.parse(serializedState) as State
+    return parsedState
   } catch (error) {
     console.error('Error getting wallet state:', error)
-    return {
-      accounts: [],
-      activeAccount: null,
-    }
+    return defaultState
   }
 }
 
 export function getActiveWalletAddress(): string | null {
   const state = getWalletStateFromLocalStorage()
-  return state.activeAccount?.address || null
+  const wallets = state.wallets
+  const activeWalletState = state.activeWallet ? wallets[state.activeWallet] || null : null
+  return activeWalletState ? activeWalletState.activeAccount?.address || null : null
 }
 
 /**
@@ -39,6 +26,6 @@ export function getActiveWalletAddress(): string | null {
  * @returns {boolean}
  */
 export function isWalletConnected(): boolean {
-  const state = getWalletStateFromLocalStorage()
-  return !!state.activeAccount
+  const activeWalletAddress = getActiveWalletAddress()
+  return !!activeWalletAddress
 }

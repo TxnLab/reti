@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useWallet } from '@txnlab/use-wallet'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { Crown } from 'lucide-react'
 import { Connect } from '@/components/Connect'
 import { ConnectedMenu } from '@/components/ConnectedMenu'
