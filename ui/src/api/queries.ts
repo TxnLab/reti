@@ -7,6 +7,8 @@ import {
   fetchValidator,
   fetchValidators,
 } from '@/api/contracts'
+import { fetchNfd } from '@/api/nfd'
+import { NfdGetNFDParams } from '@/interfaces/nfd'
 
 export const validatorsQueryOptions = queryOptions({
   queryKey: ['validators'],
@@ -48,4 +50,14 @@ export const balanceQueryOptions = (address: string | null) =>
     queryFn: () => fetchBalance(address),
     enabled: !!address,
     refetchInterval: 1000 * 30,
+  })
+
+export const nfdQueryOptions = (
+  nameOrId: string | number,
+  params: NfdGetNFDParams = { view: 'brief' },
+) =>
+  queryOptions({
+    queryKey: ['nfd', String(nameOrId), params],
+    queryFn: () => fetchNfd(String(nameOrId), params),
+    enabled: !!nameOrId,
   })

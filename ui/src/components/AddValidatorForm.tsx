@@ -89,15 +89,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     setIsFetchingAppId(true)
 
     try {
-      const { data: nfd } = await fetchNfd(value)
-
-      if (!nfd || !nfd.appID) {
-        throw new Error('NFD not found')
-      }
+      const nfd = await fetchNfd(value, { view: 'tiny' })
 
       // If we have an app id, clear error if it exists
       form.clearErrors('nfdForInfo')
-      setNfdAppId(nfd.appID)
+      setNfdAppId(nfd.appID!)
     } catch (error) {
       if (isAxiosError(error) && error.response) {
         if (error.response.status !== 404) {

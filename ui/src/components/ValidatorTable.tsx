@@ -21,6 +21,7 @@ import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -77,7 +78,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
   const columns: ColumnDef<Validator>[] = [
     {
       accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="id" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="ID" />,
       size: 70,
     },
     {
@@ -89,7 +90,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
 
         const nfdAppId = validator.config.nfdForInfo
         if (nfdAppId > 0) {
-          return ellipseAddress(validator.config.owner) // @todo: fetch NFD by appId
+          return <NfdThumbnail nameOrId={nfdAppId} />
         }
         return ellipseAddress(validator.config.owner)
       },
@@ -130,7 +131,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
     {
       id: 'stakers',
       accessorFn: (row) => row.state.totalStakers,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="stakers" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Stakers" />,
       cell: ({ row }) => {
         const validator = row.original
 
