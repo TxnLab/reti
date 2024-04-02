@@ -399,7 +399,14 @@ export function calculateMaxStakers(validator: Validator): number {
   return maxStakers
 }
 
-export function isStakingDisabled(validator: Validator, constraints?: Constraints): boolean {
+export function isStakingDisabled(
+  activeAddress: string | null,
+  validator: Validator,
+  constraints?: Constraints,
+): boolean {
+  if (!activeAddress) {
+    return true
+  }
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
   let { maxAlgoPerPool } = validator.config
 
@@ -421,16 +428,23 @@ export function isStakingDisabled(validator: Validator, constraints?: Constraint
 }
 
 export function isUnstakingDisabled(
+  activeAddress: string | null,
   validator: Validator,
   stakesByValidator: StakerValidatorData[],
 ): boolean {
+  if (!activeAddress) {
+    return true
+  }
   const noPools = validator.state.numPools === 0
   const validatorHasStake = stakesByValidator.some((stake) => stake.validatorId === validator.id)
 
   return noPools || !validatorHasStake
 }
 
-export function isAddingPoolDisabled(validator: Validator): boolean {
+export function isAddingPoolDisabled(activeAddress: string | null, validator: Validator): boolean {
+  if (!activeAddress) {
+    return true
+  }
   // @todo: define totalNodes as global constant or fetch from protocol constraints
   const totalNodes = 4
   const { numPools } = validator.state
@@ -441,7 +455,10 @@ export function isAddingPoolDisabled(validator: Validator): boolean {
   return !hasAvailableSlots
 }
 
-export function canManageValidator(validator: Validator, activeAddress: string): boolean {
+export function canManageValidator(activeAddress: string | null, validator: Validator): boolean {
+  if (!activeAddress) {
+    return false
+  }
   const { owner, manager } = validator.config
   return owner === activeAddress || manager === activeAddress
 }

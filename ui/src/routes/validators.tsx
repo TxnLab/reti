@@ -13,5 +13,5 @@ export const Route = createFileRoute('/validators')({
 })
 
 function Validators() {
-  return <Navigate to="/dashboard" />
+  return <Navigate to="/" />
 }
