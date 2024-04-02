@@ -139,9 +139,9 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
 
         if (!validator || !activeAddress) return null
 
-        const stakingDisabled = isStakingDisabled(validator, constraints)
-        const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
-        const canManage = canManageValidator(validator, activeAddress)
+        const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
+        const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
+        const canManage = canManageValidator(activeAddress, validator)
 
         const isDevelopment = process.env.NODE_ENV === 'development'
         const canSimulateEpoch = isDevelopment && canManage

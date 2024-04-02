@@ -171,10 +171,10 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
-        const stakingDisabled = isStakingDisabled(validator, constraints)
-        const unstakingDisabled = isUnstakingDisabled(validator, stakesByValidator)
-        const addingPoolDisabled = isAddingPoolDisabled(validator)
-        const canManage = canManageValidator(validator, activeAddress!)
+        const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
+        const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
+        const addingPoolDisabled = isAddingPoolDisabled(activeAddress, validator)
+        const canManage = canManageValidator(activeAddress, validator)
 
         const isDevelopment = process.env.NODE_ENV === 'development'
         const hasRewardToken = validator.config.rewardTokenId > 0
