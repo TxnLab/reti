@@ -14,9 +14,9 @@ export interface NFDProperties {
  * NFD contains all known information about an NFD record
  */
 export interface Nfd {
-  /** NFD Application ID */
+  /** NFD Application id */
   appID?: number
-  /** NFD ASA ID */
+  /** NFD ASA id */
   asaID?: number
   /** Whether the verified Avatar set in this NFD is newer (arc19) then is set into the NFD. This will only be present on direct NFD fetch and if true */
   avatarOutdated?: boolean
@@ -35,9 +35,9 @@ export interface Nfd {
   metaTags?: string[]
   name: string
   nfdAccount?: string
-  /** Owner of NFD */
+  /** owner of NFD */
   owner?: string
-  /** NFD Application ID of Parent if this is a segment */
+  /** NFD Application id of Parent if this is a segment */
   parentAppID?: number
   properties?: NFDProperties
   /** Reserved owner of NFD */

@@ -12,7 +12,7 @@ package swagger
 type ModelError struct {
 	// Is the error a server-side fault?
 	Fault bool `json:"fault"`
-	// ID is a unique identifier for this particular occurrence of the problem.
+	// id is a unique identifier for this particular occurrence of the problem.
 	Id string `json:"id"`
 	// Message is a human-readable explanation specific to this occurrence of the problem.
 	Message string `json:"message"`

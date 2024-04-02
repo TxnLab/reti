@@ -1,13 +1,13 @@
 /* eslint-disable import/no-relative-packages */
 import * as algokit from '@algorandfoundation/algokit-utils';
-import { Account, Address, decodeAddress, secretKeyToMnemonic } from 'algosdk';
+import { Account, decodeAddress, secretKeyToMnemonic } from 'algosdk';
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount';
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing';
 import * as fs from 'fs';
 import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client';
 import yargs from 'yargs';
 import prompts from 'prompts';
-import { mnemonicAccount, mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils';
+import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils';
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 
@@ -91,16 +91,16 @@ async function main() {
             resolveBy: 'id',
             id: 0,
             deployTimeParams: {
-                NFDRegistryAppID: registryAppID,
-                FeeSinkAddr: decodeAddress(feeSink).publicKey,
+                nfdRegistryAppId: registryAppID,
+                feeSinkAddr: decodeAddress(feeSink).publicKey,
             },
         },
         algod
     );
     const tmplPool = await poolClient.create.createApplication({
-        creatingContractID: 0,
-        validatorID: 0,
-        poolID: 0,
+        creatingContractId: 0,
+        validatorId: 0,
+        poolId: 0,
         minEntryStake: 1_000_000, // 1 algo min is hard req in contract creation
     });
 
@@ -112,12 +112,12 @@ async function main() {
             resolveBy: 'id',
             id: 0,
             deployTimeParams: {
-                NFDRegistryAppID: registryAppID,
+                nfdRegistryAppId: registryAppID,
             },
         },
         algod
     );
-    const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppID: tmplPool.appId });
+    const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppId: tmplPool.appId });
 
     // Fund the validator w/ min .1 ALGO !
     algokit.transferAlgos({ from: creatorAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(0.1) }, algod);

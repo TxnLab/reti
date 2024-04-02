@@ -10,11 +10,11 @@ import (
 const (
 	// Global state keys in Validator contract
 	VldtrNumValidators = "numV"
-	VldtrPoolTmplID    = "poolTemplateAppID"
+	VldtrPoolTmplID    = "poolTemplateAppId"
 
 	// Global state keys in Staking pool contract
 	StakePoolCreatorApp    = "creatorApp"
-	StakePoolValidatorID   = "validatorID"
+	StakePoolValidatorID   = "validatorId"
 	StakePoolPoolID        = "poolID"
 	StakePoolNumStakers    = "numStakers"
 	StakePoolStaked        = "staked"

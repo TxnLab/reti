@@ -77,7 +77,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
   const columns: ColumnDef<Validator>[] = [
     {
       accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="ID" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="id" />,
       size: 70,
     },
     {
@@ -130,7 +130,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
     {
       id: 'stakers',
       accessorFn: (row) => row.state.totalStakers,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Stakers" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="stakers" />,
       cell: ({ row }) => {
         const validator = row.original
 

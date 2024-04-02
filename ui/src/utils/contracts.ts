@@ -177,7 +177,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           (val) =>
             val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
           {
-            message: 'Invalid reward token ID',
+            message: 'Invalid reward token id',
           },
         )
         .optional(),
@@ -326,7 +326,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           (val) =>
             val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
           {
-            message: 'Invalid Validator ID',
+            message: 'Invalid Validator id',
           },
         )
         .optional(),
@@ -340,7 +340,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['entryGatingValue'],
-              message: 'EntryGatingValue must be empty when entryGatingType is 0',
+              message: 'entryGatingValue must be empty when entryGatingType is 0',
             })
           }
           break
@@ -350,7 +350,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
               code: z.ZodIssueCode.custom,
               path: ['entryGatingValue'],
               message:
-                'EntryGatingValue must be a valid Algorand address when entryGatingType is 1',
+                'entryGatingValue must be a valid Algorand address when entryGatingType is 1',
             })
           }
           break

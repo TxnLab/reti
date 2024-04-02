@@ -18,7 +18,7 @@ end
 group Add pool for validator
 autonumber 0
 validator -> master: [payment of mbr for new pool]
-validator -> master: addPool(mbrPayment: PayTxn, validatorID: ValidatorID): ValidatorPoolKey
+validator -> master: addPool(mbrPayment: PayTxn, validatorId: ValidatorID): ValidatorPoolKey
 autonumber stop
 master -> pool: [itxn] creates new staking pool contract instance
 master -> validator: returns {Validator ID, Pool ID, Pool App ID}

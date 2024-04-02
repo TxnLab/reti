@@ -98,6 +98,6 @@ func (lk *localKeyStore) addMnemonic(mnemonicPhrase string) error {
 		return fmt.Errorf("failed to add mnemonic: %w", err)
 	}
 	lk.keys[account.Address.String()] = key
-	misc.Infof(lk.log, "Mnemonics available for Account:%s", account.Address.String())
+	misc.Infof(lk.log, "Mnemonics available for account:%s", account.Address.String())
 	return nil
 }

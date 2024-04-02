@@ -19,9 +19,9 @@ export type RawValidatorConfig = [
 ]
 
 export interface ValidatorConfig {
-  id: number // ID of this validator (sequentially assigned)
-  owner: string // Account that controls config - presumably cold-wallet
-  manager: string // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
+  id: number // id of this validator (sequentially assigned)
+  owner: string // account that controls config - presumably cold-wallet
+  manager: string // account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
   nfdForInfo: number
   entryGatingType: number
   entryGatingValue: Uint8Array
@@ -35,7 +35,7 @@ export interface ValidatorConfig {
   maxAlgoPerPool: bigint // maximum stake allowed per pool (to keep under incentive limits)
   poolsPerNode: number // Number of pools to allow per node (max of 3 is recommended)
   sunsettingOn: number // timestamp when validator will sunset (if != 0)
-  sunsettingTo: number // validator ID that validator is 'moving' to (if known)
+  sunsettingTo: number // validator id that validator is 'moving' to (if known)
 }
 
 export type RawValidatorState = [number | bigint, bigint, bigint, bigint]

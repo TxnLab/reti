@@ -6,7 +6,7 @@
       "name": "createApplication",
       "args": [
         {
-          "name": "poolTemplateAppID",
+          "name": "poolTemplateAppId",
           "type": "uint64"
         }
       ],
@@ -24,7 +24,7 @@
     },
     {
       "name": "getMbrAmounts",
-      "desc": "Returns the MBR amounts needed for various actions:[AddValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contractAddPoolMbr: uint64 - mbr needed to add a new pool - paid to validatorPoolInitMbr: uint64 - mbr needed to initStorage() of pool - paid to pool itselfAddStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)]",
+      "desc": "Returns the MBR amounts needed for various actions:[addValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contractaddPoolMbr: uint64 - mbr needed to add a new pool - paid to validatorpoolInitMbr: uint64 - mbr needed to initStorage() of pool - paid to pool itselfaddStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)]",
       "args": [],
       "returns": {
         "type": "(uint64,uint64,uint64,uint64)"
@@ -50,7 +50,7 @@
       "name": "getValidatorConfig",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         }
       ],
@@ -62,7 +62,7 @@
       "name": "getValidatorState",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         }
       ],
@@ -74,7 +74,7 @@
       "name": "getValidatorOwnerAndManager",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         }
       ],
@@ -87,7 +87,7 @@
       "desc": "Return list of all pools for this validator.",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
           "desc": "@return{PoolInfo[]}- array of poolsNot callable from other contracts because>1K return but can be called w/ simulate which bumps log returns"
         }
@@ -100,7 +100,7 @@
       "name": "getPoolAppID",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         },
         {
@@ -126,12 +126,12 @@
     },
     {
       "name": "getCurMaxStakePerPool",
-      "desc": "Calculate the maximum stake per pool for a given validator.Normally this would be MaxAlgoPerPool, but it should also never go above MaxAllowedStake / NumPools soas pools are added the max allowed per pool can reduce.",
+      "desc": "Calculate the maximum stake per pool for a given validator.Normally this would be maxAlgoPerPool, but it should also never go above MaxAllowedStake / numPools soas pools are added the max allowed per pool can reduce.",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator."
+          "desc": "The id of the validator."
         }
       ],
       "returns": {
@@ -170,9 +170,9 @@
       "desc": "Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that tokenpayouts across pools can be based on a stable snaphost of stake.",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator.@return{PoolTokenPayoutRatio}- The token payout ratio for the validator."
+          "desc": "The id of the validator.@return{PoolTokenPayoutRatio}- The token payout ratio for the validator."
         }
       ],
       "returns": {
@@ -183,7 +183,7 @@
       "name": "getNodePoolAssignments",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         }
       ],
@@ -220,17 +220,17 @@
       ],
       "returns": {
         "type": "uint64",
-        "desc": "validator ID"
+        "desc": "validator id"
       }
     },
     {
       "name": "changeValidatorManager",
-      "desc": "Changes the Validator Manager for a specific Validator ID.[ ONLY OWNER CAN CHANGE ]",
+      "desc": "Changes the Validator manager for a specific Validator id.[ ONLY OWNER CAN CHANGE ]",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator to change the manager for."
+          "desc": "The id of the validator to change the manager for."
         },
         {
           "name": "manager",
@@ -247,9 +247,9 @@
       "desc": "Updates the sunset information for a given validator.[ ONLY OWNER CAN CHANGE ]",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator to update."
+          "desc": "The id of the validator to update."
         },
         {
           "name": "sunsettingOn",
@@ -259,7 +259,7 @@
         {
           "name": "sunsettingTo",
           "type": "uint64",
-          "desc": "The new sunset to validator ID."
+          "desc": "The new sunset to validator id."
         }
       ],
       "returns": {
@@ -268,17 +268,17 @@
     },
     {
       "name": "changeValidatorNFD",
-      "desc": "Changes the NFD for a validator in the ValidatorList contract.[ ONLY OWNER OR MANAGER CAN CHANGE ]",
+      "desc": "Changes the NFD for a validator in the validatorList contract.[ ONLY OWNER OR MANAGER CAN CHANGE ]",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator to update."
+          "desc": "The id of the validator to update."
         },
         {
           "name": "nfdAppID",
           "type": "uint64",
-          "desc": "The application ID of the NFD to assign to the validator."
+          "desc": "The application id of the NFD to assign to the validator."
         },
         {
           "name": "nfdName",
@@ -295,7 +295,7 @@
       "desc": "Change the commission address that validator rewards are sent to.[ ONLY OWNER CAN CHANGE ]",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         },
         {
@@ -312,7 +312,7 @@
       "desc": "Allow the additional rewards (gating entry, additional token rewards) information be changed at will.[ ONLY OWNER CAN CHANGE ]",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         },
         {
@@ -346,9 +346,9 @@
           "desc": "payment from caller which covers mbr increase of adding a new pool"
         },
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "is ID of validator to pool to (must be owner or manager)"
+          "desc": "is id of validator to pool to (must be owner or manager)"
         },
         {
           "name": "nodeNum",
@@ -371,9 +371,9 @@
           "desc": "payment coming from staker to place into a pool"
         },
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator."
+          "desc": "The id of the validator."
         },
         {
           "name": "valueToVerify",
@@ -388,10 +388,10 @@
     },
     {
       "name": "setTokenPayoutRatio",
-      "desc": "setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratiosof stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered bypool 1 doing payout.  Pools other than 1 doing payout call pool 1 to ask it do it first.It would be 60/40% in the PoolPctOfWhole values.  The token reward payouts then use these values instead oftheir 'current' stake which changes as part of the payouts themselves (and people could be changing stakeduring the epoch updates across pools)Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multipletimes in same epoch.  Just return.",
+      "desc": "setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratiosof stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered bypool 1 doing payout.  pools other than 1 doing payout call pool 1 to ask it do it first.It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead oftheir 'current' stake which changes as part of the payouts themselves (and people could be changing stakeduring the epoch updates across pools)Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multipletimes in same epoch.  Just return.",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
           "desc": "validator id (and thus pool) calling us.  Verified so that sender MUST be pool 1 of this validator."
         }
@@ -403,7 +403,7 @@
     },
     {
       "name": "stakeUpdatedViaRewards",
-      "desc": "stakeUpdatedViaRewards is called by Staking Pools to inform the validator (us) that a particular amount of totalstake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App ID is validated against our pool list as well.",
+      "desc": "stakeUpdatedViaRewards is called by Staking pools to inform the validator (us) that a particular amount of totalstake has been added to the specified pool.  This is used to update the stats we have in our PoolInfo storage.The calling App id is validated against our pool list as well.",
       "args": [
         {
           "name": "poolKey",
@@ -427,12 +427,12 @@
     },
     {
       "name": "stakeRemoved",
-      "desc": "stakeRemoved is called by Staking Pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.If any amount of rewardRemoved is specified, then that amount of reward is sent to the useThe calling App ID is validated against our pool list as well.",
+      "desc": "stakeRemoved is called by Staking pools to inform the validator (us) that a particular amount of total stake has been removedfrom the specified pool.  This is used to update the stats we have in our PoolInfo storage.If any amount of rewardRemoved is specified, then that amount of reward is sent to the useThe calling App id is validated against our pool list as well.",
       "args": [
         {
           "name": "poolKey",
           "type": "(uint64,uint64,uint64)",
-          "desc": "ValidatorPoolKey type - [validatorID, PoolID] compound type"
+          "desc": "ValidatorPoolKey type - [validatorId, poolId] compound type"
         },
         {
           "name": "staker",
@@ -459,12 +459,12 @@
     },
     {
       "name": "findPoolForStaker",
-      "desc": "Finds the pool for a staker based on the provided validator ID, staker address, and amount to stake.First checks the stakers 'already staked list' for the validator preferring those (adding if possible) then addsto new pool if necessary.",
+      "desc": "Finds the pool for a staker based on the provided validator id, staker address, and amount to stake.First checks the stakers 'already staked list' for the validator preferring those (adding if possible) then addsto new pool if necessary.",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
-          "desc": "The ID of the validator."
+          "desc": "The id of the validator."
         },
         {
           "name": "staker",
@@ -487,7 +487,7 @@
       "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]Only callable by owner or manager",
       "args": [
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64"
         },
         {

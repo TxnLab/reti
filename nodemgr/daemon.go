@@ -331,14 +331,14 @@ func (d *Daemon) removeExpiredKeys(ctx context.Context, partKeys algo.PartKeysBy
 
 func (d *Daemon) ensureParticipation(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	/** conditions to cover for participation keys / accounts
-	1) Account has NO local participation key (online or offline) (ie: they could've moved to new node)
+	1) account has NO local participation key (online or offline) (ie: they could've moved to new node)
 		Create brand new 1-month key - will go online as part of subsequent checks once part key becomes visible
-	2) Account is NOT online but has one or more part keys
+	2) account is NOT online but has one or more part keys
 		Go online against newest part key - done
-	3) Account has ONE local part key AND IS ONLINE
+	3) account has ONE local part key AND IS ONLINE
 		Assumed 'steady state' - check lifetime of CURRENT key and if expiring within 1 day
 		If expiring soon, create new key w/ firstValid set to existing key's lastValid - 1 day of rounds.
-	4) Account is online and has multiple local part keys
+	4) account is online and has multiple local part keys
 		If Online (assumed steady state when a future pending part key has been created)
 			Sort keys descending by first valid
 			If part key first valid is >= current round AND not current part. key id for account
@@ -352,18 +352,18 @@ func (d *Daemon) ensureParticipation(ctx context.Context, poolAccounts map[strin
 	if err := d.ensureParticipationNotOnline(ctx, poolAccounts, partKeys); err != nil {
 		return err
 	}
-	// Account has 1 part key, IS ONLINE and might expire soon (needing to generate new key)
+	// account has 1 part key, IS ONLINE and might expire soon (needing to generate new key)
 	if err := d.ensureParticipationCheckNeedsRenewed(ctx, poolAccounts, partKeys); err != nil {
 		return err
 	}
-	// Account is online - see if there's a newer key to 'switch' to
+	// account is online - see if there's a newer key to 'switch' to
 	if err := d.ensureParticipationCheckNeedsSwitched(ctx, poolAccounts, partKeys); err != nil {
 		return err
 	}
 	return nil
 }
 
-// Handle: Account has NO local participation key (online or offline)
+// Handle: account has NO local participation key (online or offline)
 func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	for account, _ := range poolAccounts {
 		// for accounts w/ no keys at all - we just create keys - we'll go online as part of later checks
@@ -379,7 +379,7 @@ func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts 
 	return nil
 }
 
-// Handle: Account is NOT online but has one or more part keys - go online against newest
+// Handle: account is NOT online but has one or more part keys - go online against newest
 func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	var (
 		err            error
@@ -410,7 +410,7 @@ func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts 
 }
 
 /*
-Account has 1 part key AND IS ONLINE
+account has 1 part key AND IS ONLINE
 
 	We only allow 1 part key so we don't keep trying to create new key when we're close to expiration.
 	Assumed 'steady state' - check lifetime of key and if expiring within 1 day
@@ -451,7 +451,7 @@ func (d *Daemon) ensureParticipationCheckNeedsRenewed(ctx context.Context, poolA
 }
 
 /*
-Handle: Account is online and has multiple local part keys
+Handle: account is online and has multiple local part keys
 
 	If Online (assumed steady state when a future pending part key has been created)
 	Sort keys descending by first valid

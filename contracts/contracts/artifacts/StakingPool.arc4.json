@@ -7,17 +7,17 @@
       "desc": "Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.",
       "args": [
         {
-          "name": "creatingContractID",
+          "name": "creatingContractId",
           "type": "uint64",
           "desc": "id of contract that constructed us - the validator application (single global instance)"
         },
         {
-          "name": "validatorID",
+          "name": "validatorId",
           "type": "uint64",
           "desc": "id of validator we're a staking pool of"
         },
         {
-          "name": "poolID",
+          "name": "poolId",
           "type": "uint64",
           "desc": "which pool id are we"
         },
@@ -122,7 +122,7 @@
         {
           "name": "rewardToken",
           "type": "uint64",
-          "desc": "ID of reward token (to avoid re-entrancy in calling validator back to get id)"
+          "desc": "id of reward token (to avoid re-entrancy in calling validator back to get id)"
         },
         {
           "name": "amountToSend",
@@ -150,7 +150,7 @@
     },
     {
       "name": "epochBalanceUpdate",
-      "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)Stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.Note: ANYONE can call this.",
+      "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.Note: ANYONE can call this.",
       "args": [],
       "returns": {
         "type": "void"
@@ -207,7 +207,7 @@
       "name": "linkToNFD",
       "args": [
         {
-          "name": "nfdAppID",
+          "name": "nfdAppId",
           "type": "uint64"
         },
         {

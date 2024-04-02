@@ -1,8 +1,8 @@
-# Staking Pools
+# Staking pools
 
 **Pool Creation:** Validators have the ability to create new staking pools on each node, up to a defined limit. Each pool originates as a unique staking pool contract, created by the master Validator contract from a pre-defined template. This ensures each pool operates as a distinct Algorand account eligible for consensus participation.
 
-**Stake Addition:** Users participate by directing their stake to specific validators, chosen by ID through the master validator contract. The system intelligently allocates the user's stake to the appropriate pool within the chosen validator's portfolio.  If the staker is already in a particular pool for that validator, their stake will be added their first unless the pool is full.
+**Stake Addition:** Users participate by directing their stake to specific validators, chosen by id through the master validator contract. The system intelligently allocates the user's stake to the appropriate pool within the chosen validator's portfolio.  If the staker is already in a particular pool for that validator, their stake will be added their first unless the pool is full.
 
 **Ledger System:** A comprehensive ledger within each pool tracks up to 200 stakers. This ledger records crucial details such as the staker's account, the timing of their stake entry, the amount staked, and accumulated rewards. The design of the ledger aims to:
 

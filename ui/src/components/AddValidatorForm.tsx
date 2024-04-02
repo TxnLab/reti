@@ -95,7 +95,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         throw new Error('NFD not found')
       }
 
-      // If we have an app ID, clear error if it exists
+      // If we have an app id, clear error if it exists
       form.clearErrors('nfdForInfo')
       setNfdAppId(nfd.appID)
     } catch (error) {
@@ -107,7 +107,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         // Handle non-HTTP errors
         console.error(error)
       }
-      form.setError('nfdForInfo', { type: 'manual', message: 'NFD app ID not found' })
+      form.setError('nfdForInfo', { type: 'manual', message: 'NFD app id not found' })
     } finally {
       setIsFetchingAppId(false)
     }
@@ -164,7 +164,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       })
 
       const validatorConfig: ValidatorConfig = {
-        id: 0, // ID not known yet
+        id: 0, // id not known yet
         owner: values.owner,
         manager: values.manager,
         nfdForInfo: nfdAppId,
@@ -350,7 +350,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           {...field}
                           onChange={(e) => {
                             field.onChange(e) // Inform react-hook-form of the change
-                            setNfdAppId(0) // Reset NFD app ID
+                            setNfdAppId(0) // Reset NFD app id
                             debouncedCheck(e.target.value) // Perform debounced validation
                           }}
                         />

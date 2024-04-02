@@ -8,13 +8,13 @@
 
 ## Getting Started
 
-* [Quick Start For Stakers](getting-started/quick-start-for-stakers.md)
+* [Quick Start For stakers](getting-started/quick-start-for-stakers.md)
 * [Quick Start For Validators](getting-started/quick-start-for-validators.md)
 
 ## Core Concepts
 
 * [Rewards](core-concepts/rewards.md)
-* [Staking Pools](core-concepts/staking-pools.md)
+* [Staking pools](core-concepts/staking-pools.md)
 * [Validators](core-concepts/validators.md)
 
 ## Technical Implementation

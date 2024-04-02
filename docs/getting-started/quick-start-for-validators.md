@@ -12,8 +12,8 @@ Validators can define a number of parameters - some of which are immutable. More
 
 **Mandatory Parameters**
 
-* Owner address
-* Manager address
+* owner address
+* manager address
 * Payout frequency
 * Validator commission rate
 * Validator fee address
@@ -30,7 +30,7 @@ Validators can define a number of parameters - some of which are immutable. More
 * Token / NFD Gating:&#x20;
   * Supported gating options include:
     * Tokens/NFTs by creator and min amount
-    * Specific ASA ID
+    * Specific ASA id
     * Tokens/NFTs created by any address linked within a particular NFD.
     * Owning a segment of a particular NFD Root
 

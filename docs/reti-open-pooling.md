@@ -18,7 +18,7 @@ TxnLab, Inc.
 
 ****
 
-*   **Overview:**  A comprehensive open-source codebase covering smart-contracts, back-end infrastructure, basic system tests, and front-end interfaces for staking pools. Validators will be able to create staking pools with different configurations, allowing a certain amount of stake into their pools. Stakers will be able to participate in these pools through various front-end interfaces(most likely offered by community projects ), but a basic UI will be provided that users can launch on their own machines that provide staking controls. This same UI could be hosted by the Foundation to start. 
+*   **Overview:**  A comprehensive open-source codebase covering smart-contracts, back-end infrastructure, basic system tests, and front-end interfaces for staking pools. Validators will be able to create staking pools with different configurations, allowing a certain amount of stake into their pools. stakers will be able to participate in these pools through various front-end interfaces(most likely offered by community projects ), but a basic UI will be provided that users can launch on their own machines that provide staking controls. This same UI could be hosted by the Foundation to start. 
 *   **Customization:** All parameters can be adjusted by the validator when configuring their pools, offering maximum flexibility for any community. Things like minimum stake amount, commission, and max stak e amount can be set by each validator. Certain parameters can't be changed so that validators can't change the rules on stakers . Being open-source, new variations of the contract could certainly be created and deployed by users but they would be completely different validators and pools at that point as they would be under a different 'validator' registry contract.
 *   **Smart-Contract Code:** The contracts will be written with AlgoKit / TEALScript. Early work on these contracts have already led to significant improvements in TEALScript and AlgoKit tooling as the boundaries are pushed and bugs are found. The resulting contracts should provide a good example of a fully functioning, broadly used dApp with multiple language SDK use (Go, and TypeScript).
 *   **Back-end and Front-end Code:** The Réti node daemon will be written in Go and is planned to run on the primary supported platforms (Linux, OSX) as a native binary. The simple front-end will likely be TypeScript/React. The front-end example will be functional but basic as we will not be offering our own staking service. Basic add, view, stake/unstake functionality will be there but it will lack analytics/reporting.
@@ -36,19 +36,19 @@ operation guidelines.]{.c0}
 
 **Key Elements Defined by Validators:**
 
-*   **Owner Address:** Ideally, a cold-wallet address for security.
+*   **owner Address:** Ideally, a cold-wallet address for security.
 *   **Management Address:** A hot-wallet address accessible by the 'reti node daemon' for operational commands.
 *   **Payout Epoch Time:** Frequency of payout balance adjustments (daily, weekly, etc.).
 *   **Validator Fee Percentage:** Share of earned rewards for  covering operating costs.
 *   **Fee Payment Address:** An Algorand address designated for  receiving validator fees, changeable by the owner.
 *   **Minimum Stake:** Establishes a lower limit for participation  to avoid minimal contributions.
 *   **Maximum Stake Per Pool:** Capped to encourage equitable incentive distribution.
-*   **Pools Per Node:** Recommends a maximum of 3 pools per node, with a possibility of extending up to 6.
-*   **Maximum Nodes:** Soft limit on node count to manage the overall number of pools effectively.
-*   **NFD ID (Optional):** For associating validators with detailed information for transparency.
+*   **pools Per Node:** Recommends a maximum of 3 pools per node, with a possibility of extending up to 6.
+*   **Maximum nodes:** Soft limit on node count to manage the overall number of pools effectively.
+*   **NFD id (Optional):** For associating validators with detailed information for transparency.
 *   **Token / NFD Gating:** Validators can require stakers hold certain types of assets in order to join their pools. This can be used to restrict validator pools to members of a particular community - NFT holders, special 'membership' tokens, etc. Supported options are:
     *   **Tokens/NFTs** by Creator and min amount (Optional): Can set a creator account such that all stakers must hold an ASA created by this account (w/ optional minimum amount for tokens).
-    *   **Specific ASA ID**.
+    *   **Specific ASA id**.
     *   **Tokens/NFTs created by any address linked within a particular NFD**. This is so NFT projects with multiple creation wallets can just reference their NFD and then anyone holding an asset created by any account linked w/in the NFD is eligible.
     *  **Owning a segment (including via linked addresses) of a particular NFD Root.** A project could have its own project root NFD, e.g., orange.algo, barb.algo, voi.algo, etc., and specify that only people owning a segment of a specific root can join.
     *   **Reward token and reward rate (Optional)** : A validator can define a token that users are awarded in addition to the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own token, e.g., hold at least 5000 VEST/COOP/AKTA, etc., to enter a staking pool, with 1 day epochs, and all stakers get X amount of their token as daily rewards (added to stakers' available balance) for removal at any time.
@@ -56,7 +56,7 @@ operation guidelines.]{.c0}
 
 ----
 
-Staking Pools
+Staking pools
 
 *   **Pool Creation:** Validators can initiate new pools within their node limit, each acting as a distinct Algorand account for consensus participation.
 *   **Stake Addition:** Users can contribute to specific validators, with allocations managed through a central validator contract to appropriate pools.
@@ -90,7 +90,7 @@ Monitoring
 ![](.gitbook/assets/validator.png)
 
 ----
-#### Basic Staker Operations
+#### Basic staker Operations
 ![](.gitbook/assets/staker.png)
 
 ### VI. Conclusion

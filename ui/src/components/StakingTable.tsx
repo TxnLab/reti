@@ -98,7 +98,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
     },
     {
       accessorKey: 'balance',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="balance" />,
       cell: ({ row }) => (
         <AlgoDisplayAmount amount={row.original.balance} microalgos mutedRemainder />
       ),
@@ -113,7 +113,7 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
     {
       accessorKey: 'rewardTokenBalance',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Reward Token Balance" />
+        <DataTableColumnHeader column={column} title="Reward Token balance" />
       ),
       cell: ({ row }) => {
         const validator = validators.find((v) => v.id === row.original.validatorId)

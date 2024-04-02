@@ -27,11 +27,11 @@ export const GATING_TYPE_CREATED_BY_NFD_ADDRESSES = 3;
 export const GATING_TYPE_SEGMENT_OF_NFD = 4;
 
 export class ValidatorConfig {
-    ID: bigint; // ID of this validator (sequentially assigned)
+    ID: bigint; // id of this validator (sequentially assigned)
 
-    Owner: string; // Account that controls config - presumably cold-wallet
+    Owner: string; // account that controls config - presumably cold-wallet
 
-    Manager: string; // Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
+    Manager: string; // account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
 
     // Optional NFD AppID which the validator uses to describe their validator pool
     // NFD must be currently OWNED by address that adds the validator
@@ -61,7 +61,7 @@ export class ValidatorConfig {
 
     SunsettingOn: bigint; // timestamp when validator will sunset (if != 0)
 
-    SunsettingTo: bigint; // validator ID that validator is 'moving' to (if known)
+    SunsettingTo: bigint; // validator id that validator is 'moving' to (if known)
 
     // getValidatorConfig(uint64)(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)
     // constructor to take array of values like ABI string above and set into the named instance vars
@@ -212,72 +212,72 @@ function validatorConfigAsArray(
 }
 
 class ValidatorCurState {
-    NumPools: number; // current number of pools this validator has - capped at MaxPools
+    numPools: number; // current number of pools this validator has - capped at MaxPools
 
-    TotalStakers: bigint; // total number of stakers across all pools
+    totalStakers: bigint; // total number of stakers across all pools
 
-    TotalAlgoStaked: bigint; // total amount staked to this validator across ALL of its pools
+    totalAlgoStaked: bigint; // total amount staked to this validator across ALL of its pools
 
-    RewardTokenHeldBack: bigint; // amount of token held back for future payout to stakers
+    rewardTokenHeldBack: bigint; // amount of token held back for future payout to stakers
 
-    constructor([NumPools, TotalStakers, TotalAlgoStaked, RewardTokenHeldBack]: [number, bigint, bigint, bigint]) {
-        this.NumPools = Number(NumPools);
-        this.TotalStakers = TotalStakers;
-        this.TotalAlgoStaked = TotalAlgoStaked;
-        this.RewardTokenHeldBack = RewardTokenHeldBack;
+    constructor([numPools, totalStakers, totalAlgoStaked, rewardTokenHeldBack]: [number, bigint, bigint, bigint]) {
+        this.numPools = Number(numPools);
+        this.totalStakers = totalStakers;
+        this.totalAlgoStaked = totalAlgoStaked;
+        this.rewardTokenHeldBack = rewardTokenHeldBack;
     }
 }
 
 export class PoolInfo {
-    PoolAppID: bigint; // The App ID of this staking pool contract instance
+    poolAppId: bigint; // The App id of this staking pool contract instance
 
-    TotalStakers: number;
+    totalStakers: number;
 
-    TotalAlgoStaked: bigint;
+    totalAlgoStaked: bigint;
 
-    constructor([PoolAppID, TotalStakers, TotalAlgoStaked]: [bigint, number, bigint]) {
-        this.PoolAppID = PoolAppID;
-        this.TotalStakers = Number(TotalStakers);
-        this.TotalAlgoStaked = TotalAlgoStaked;
+    constructor([poolAppId, totalStakers, totalAlgoStaked]: [bigint, number, bigint]) {
+        this.poolAppId = poolAppId;
+        this.totalStakers = Number(totalStakers);
+        this.totalAlgoStaked = totalAlgoStaked;
     }
 }
 
 export class ValidatorPoolKey {
-    ID: bigint;
+    id: bigint;
 
-    PoolID: bigint; // 0 means INVALID ! - so 1 is index, technically of [0]
+    poolId: bigint; // 0 means INVALID ! - so 1 is index, technically of [0]
 
-    PoolAppID: bigint;
+    poolAppId: bigint;
 
-    constructor([ID, PoolID, PoolAppID]: [bigint, bigint, bigint]) {
-        this.ID = ID;
-        this.PoolID = PoolID;
-        this.PoolAppID = PoolAppID;
+    constructor([id, poolId, poolAppId]: [bigint, bigint, bigint]) {
+        this.id = id;
+        this.poolId = poolId;
+        this.poolAppId = poolAppId;
     }
 
     encode(): [bigint, bigint, bigint] {
-        return [this.ID, this.PoolID, this.PoolAppID];
+        return [this.id, this.poolId, this.poolAppId];
     }
 }
 
 // StakedInfo is the testing-friendly version of what's stored as a static array in each staking pool
 export class StakedInfo {
-    Staker: Address;
+    staker: Address;
 
-    Balance: bigint;
+    balance: bigint;
 
-    TotalRewarded: bigint;
+    totalRewarded: bigint;
 
-    RewardTokenBalance: bigint;
+    rewardTokenBalance: bigint;
 
-    EntryTime: bigint;
+    entryTime: bigint;
 
     constructor(data: Uint8Array) {
-        this.Staker = decodeAddress(encodeAddress(data.slice(0, 32)));
-        this.Balance = bytesToBigInt(data.slice(32, 40));
-        this.TotalRewarded = bytesToBigInt(data.slice(40, 48));
-        this.RewardTokenBalance = bytesToBigInt(data.slice(48, 56));
-        this.EntryTime = bytesToBigInt(data.slice(56, 64));
+        this.staker = decodeAddress(encodeAddress(data.slice(0, 32)));
+        this.balance = bytesToBigInt(data.slice(32, 40));
+        this.totalRewarded = bytesToBigInt(data.slice(40, 48));
+        this.rewardTokenBalance = bytesToBigInt(data.slice(48, 56));
+        this.entryTime = bytesToBigInt(data.slice(56, 64));
     }
 
     public static fromValues([Staker, Balance, TotalRewarded, RewardTokenBalance, EntryTime]: [
@@ -287,7 +287,7 @@ export class StakedInfo {
         bigint,
         bigint,
     ]): StakedInfo {
-        return { Staker: decodeAddress(Staker), Balance, TotalRewarded, RewardTokenBalance, EntryTime };
+        return { staker: decodeAddress(Staker), balance: Balance, totalRewarded: TotalRewarded, rewardTokenBalance: RewardTokenBalance, entryTime: EntryTime };
     }
 
     public static FromBoxData(boxData: Uint8Array): StakedInfo[] {
@@ -411,9 +411,9 @@ export async function getStakeInfoFromBoxValue(stakeClient: StakingPoolClient) {
     return StakedInfo.FromBoxData(stakerData);
 }
 
-export function getValidatorListBoxName(validatorID: number) {
+export function getValidatorListBoxName(validatorId: number) {
     const prefix = new TextEncoder().encode('v');
-    return concatUint8Arrays(prefix, encodeUint64(validatorID));
+    return concatUint8Arrays(prefix, encodeUint64(validatorId));
 }
 
 function getStakerPoolSetBoxName(stakerAccount: Account) {
@@ -505,12 +505,12 @@ export async function addValidator(
     }
 }
 
-export async function getValidatorState(validatorClient: ValidatorRegistryClient, validatorID: number) {
+export async function getValidatorState(validatorClient: ValidatorRegistryClient, validatorId: number) {
     return new ValidatorCurState(
         (
             await validatorClient
                 .compose()
-                .getValidatorState({ validatorID }, {})
+                .getValidatorState({ validatorId }, {})
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
     );
@@ -519,7 +519,7 @@ export async function getValidatorState(validatorClient: ValidatorRegistryClient
 export async function addStakingPool(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
-    validatorID: number,
+    validatorId: number,
     nodeNum: number,
     vldtrAcct: Account,
     poolMbr: bigint,
@@ -547,7 +547,7 @@ export async function addStakingPool(
             .addPool(
                 {
                     mbrPayment: { transaction: payPoolMbr, signer: context.testAccount },
-                    validatorID,
+                    validatorId,
                     nodeNum,
                 },
                 {
@@ -567,14 +567,14 @@ export async function addStakingPool(
     // Pay the mbr to the newly created staking pool contract to cover its upcoming box mbr storage req
     const payStakingPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,
-        to: getApplicationAddress(poolKey.PoolAppID),
+        to: getApplicationAddress(poolKey.poolAppId),
         amount: Number(poolInitMbr),
         suggestedParams,
     });
 
     // now tell it to initialize its storage (w/ our mbr payment)
     const newPoolClient = new StakingPoolClient(
-        { sender: vldtrAcct, resolveBy: 'id', id: poolKey.PoolAppID },
+        { sender: vldtrAcct, resolveBy: 'id', id: poolKey.poolAppId },
         context.algod
     );
 
@@ -612,12 +612,12 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
     }
 }
 
-export async function getCurMaxStatePerPool(validatorClient: ValidatorRegistryClient, validatorID: number) {
+export async function getCurMaxStatePerPool(validatorClient: ValidatorRegistryClient, validatorId: number) {
     try {
         return (
             await validatorClient
                 .compose()
-                .getCurMaxStakePerPool({ validatorID })
+                .getCurMaxStakePerPool({ validatorId })
                 .simulate({ allowUnnamedResources: true })
         ).returns![0];
     } catch (exception) {
@@ -658,12 +658,12 @@ export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Acco
     }
 }
 
-export async function getTokenPayoutRatio(validatorClient: ValidatorRegistryClient, validatorID: number) {
+export async function getTokenPayoutRatio(validatorClient: ValidatorRegistryClient, validatorId: number) {
     return new PoolTokenPayoutRatio(
         (
             await validatorClient
                 .compose()
-                .getTokenPayoutRatio({ validatorID }, {})
+                .getTokenPayoutRatio({ validatorId }, {})
                 .simulate({ allowUnnamedResources: true })
         ).returns![0]
     );
@@ -688,7 +688,7 @@ export async function addStake(
             .compose()
             .gas({})
             .findPoolForStaker(
-                { validatorID: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
+                { validatorId: vldtrId, staker: staker.addr, amountToStake: algoAmount.microAlgos },
                 {
                     sendParams: {
                         fee: AlgoAmount.MicroAlgos(2000),
@@ -707,7 +707,7 @@ export async function addStake(
         const willBeNewStaker = expectedPool[1];
 
         consoleLogger.info(
-            `addStake findPool will add to validator:${poolKey.ID}, pool:${poolKey.PoolID} and willBeNew:${willBeNewStaker}`
+            `addStake findPool will add to validator:${poolKey.id}, pool:${poolKey.poolId} and willBeNew:${willBeNewStaker}`
         );
 
         // Pay the stake to the validator contract
@@ -727,7 +727,7 @@ export async function addStake(
                 // This the actual send of stake to the ac
                 {
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
-                    validatorID: vldtrId,
+                    validatorId: vldtrId,
                     valueToVerify,
                 },
                 { sendParams: { fee: fees }, sender: staker }
@@ -756,7 +756,7 @@ export async function addStake(
                     // This the actual send of stake to the validator contract (which then sends to the staking pool)
                     stakedAmountPayment: { transaction: stakeTransfer, signer: staker },
                     // --
-                    validatorID: vldtrId,
+                    validatorId: vldtrId,
                     valueToVerify,
                 },
                 { sendParams: { fee: fees }, sender: staker }
@@ -908,10 +908,10 @@ export async function logStakingPoolInfo(
     // iterate stakers displaying the info
     consoleLogger.info(`${msgToDisplay}, last Payout: ${lastPayoutTime.toUTCString()}`);
     for (let i = 0; i < stakers.length; i += 1) {
-        if (encodeAddress(stakers[i].Staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
-            const entryTime = new Date(Number(stakers[i].EntryTime) * 1000);
+        if (encodeAddress(stakers[i].staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
+            const entryTime = new Date(Number(stakers[i].entryTime) * 1000);
             consoleLogger.info(
-                `${i}: Staker:${encodeAddress(stakers[i].Staker.publicKey)}, Balance:${stakers[i].Balance}, Rwd Tokens:${stakers[i].RewardTokenBalance} Entry:${entryTime.toUTCString()}`
+                `${i}: Staker:${encodeAddress(stakers[i].staker.publicKey)}, Balance:${stakers[i].balance}, Rwd Tokens:${stakers[i].rewardTokenBalance} Entry:${entryTime.toUTCString()}`
             );
         }
     }
@@ -926,10 +926,10 @@ export async function verifyRewardAmounts(
     payoutEveryXMins: number
 ): Promise<void> {
     const payoutDaysInSecs = payoutEveryXMins * 24 * 60 * 60;
-    // iterate stakersPriorToReward and total the 'Balance' value to get a 'total amount'
+    // iterate stakersPriorToReward and total the 'balance' value to get a 'total amount'
     // then determine if the stakersAfterReward version's balance incremented in accordance w/ their percentage of
     // the 'total' - where they get that percentage of the rewardedAmount.
-    const totalAmount = stakersPriorToReward.reduce((total, staker) => BigInt(total) + staker.Balance, BigInt(0));
+    const totalAmount = stakersPriorToReward.reduce((total, staker) => BigInt(total) + staker.balance, BigInt(0));
 
     // Figure out the timestamp of prior block and use that as the 'current time' for purposes
     // of matching the epoch payout calculations in the contract
@@ -949,15 +949,15 @@ export async function verifyRewardAmounts(
     let tokenRewardsAvail: bigint = tokenRewardedAmount;
 
     for (let i = 0; i < stakersPriorToReward.length; i += 1) {
-        if (encodeAddress(stakersPriorToReward[i].Staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
+        if (encodeAddress(stakersPriorToReward[i].staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
             continue;
         }
-        const stakerEntryTime = new Date(Number(stakersPriorToReward[i].EntryTime) * 1000);
+        const stakerEntryTime = new Date(Number(stakersPriorToReward[i].entryTime) * 1000);
         if (stakerEntryTime.getTime() >= payoutTimeToUse.getTime()) {
             continue;
         }
-        const origBalance = stakersPriorToReward[i].Balance;
-        const origRwdTokenBal = stakersPriorToReward[i].RewardTokenBalance;
+        const origBalance = stakersPriorToReward[i].balance;
+        const origRwdTokenBal = stakersPriorToReward[i].rewardTokenBalance;
         const timeInPoolSecs: bigint =
             (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000);
         const timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs); // 34.7% becomes 347
@@ -966,26 +966,26 @@ export async function verifyRewardAmounts(
             const expectedReward =
                 (BigInt(origBalance) * algoRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
             consoleLogger.info(
-                `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].Balance - origBalance} ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`
+                `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].balance - origBalance} ${encodeAddress(stakersPriorToReward[i].staker.publicKey)}`
             );
 
-            if (origBalance + expectedReward !== stakersAfterReward[i].Balance) {
+            if (origBalance + expectedReward !== stakersAfterReward[i].balance) {
                 consoleLogger.warn(
-                    `staker:${i} expected: ${origBalance + expectedReward} reward but got: ${stakersAfterReward[i].Balance}`
+                    `staker:${i} expected: ${origBalance + expectedReward} reward but got: ${stakersAfterReward[i].balance}`
                 );
-                expect(stakersAfterReward[i].Balance).toBe(origBalance + expectedReward);
+                expect(stakersAfterReward[i].balance).toBe(origBalance + expectedReward);
             }
             const expectedTokenReward =
                 (BigInt(origBalance) * tokenRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000));
             consoleLogger.info(
-                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].RewardTokenBalance - origRwdTokenBal}`
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].rewardTokenBalance - origRwdTokenBal}`
             );
 
-            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].RewardTokenBalance) {
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].rewardTokenBalance) {
                 consoleLogger.warn(
-                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].RewardTokenBalance}`
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].rewardTokenBalance}`
                 );
-                expect(stakersAfterReward[i].RewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
+                expect(stakersAfterReward[i].rewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
             }
 
             partialStakeAmount += origBalance;
@@ -998,17 +998,17 @@ export async function verifyRewardAmounts(
 
     // now go through again and only worry about full 100% time-in-epoch stakers
     for (let i = 0; i < stakersPriorToReward.length; i += 1) {
-        if (encodeAddress(stakersPriorToReward[i].Staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
+        if (encodeAddress(stakersPriorToReward[i].staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
             continue;
         }
-        const stakerEntryTime = new Date(Number(stakersPriorToReward[i].EntryTime) * 1000);
+        const stakerEntryTime = new Date(Number(stakersPriorToReward[i].entryTime) * 1000);
         if (stakerEntryTime.getTime() >= payoutTimeToUse.getTime()) {
             consoleLogger.info(
-                `staker:${i}, ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)} SKIPPED because entry is newer at:${stakerEntryTime.toString()}`
+                `staker:${i}, ${encodeAddress(stakersPriorToReward[i].staker.publicKey)} SKIPPED because entry is newer at:${stakerEntryTime.toString()}`
             );
         } else {
-            const origBalance = stakersPriorToReward[i].Balance;
-            const origRwdTokenBal = stakersPriorToReward[i].RewardTokenBalance;
+            const origBalance = stakersPriorToReward[i].balance;
+            const origRwdTokenBal = stakersPriorToReward[i].rewardTokenBalance;
             const timeInPoolSecs: bigint =
                 (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000);
             let timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs); // 34.7% becomes 347
@@ -1020,25 +1020,25 @@ export async function verifyRewardAmounts(
             }
             const expectedReward = (BigInt(origBalance) * algoRewardsAvail) / newPoolTotalStake;
             consoleLogger.info(
-                `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / newPoolTotalStake) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].Balance - origBalance} ${encodeAddress(stakersPriorToReward[i].Staker.publicKey)}`
+                `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / newPoolTotalStake) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].balance - origBalance} ${encodeAddress(stakersPriorToReward[i].staker.publicKey)}`
             );
             const expectedTokenReward = (BigInt(origBalance) * tokenRewardsAvail) / newPoolTotalStake;
             consoleLogger.info(
-                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].RewardTokenBalance - origRwdTokenBal}`
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].rewardTokenBalance - origRwdTokenBal}`
             );
 
-            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].RewardTokenBalance) {
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].rewardTokenBalance) {
                 consoleLogger.warn(
-                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].RewardTokenBalance}`
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].rewardTokenBalance}`
                 );
-                expect(stakersAfterReward[i].RewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
+                expect(stakersAfterReward[i].rewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward);
             }
         }
     }
 }
 
 export async function getPoolAvailBalance(context: AlgorandTestAutomationContext, poolKey: ValidatorPoolKey) {
-    const poolAcctInfo = await context.algod.accountInformation(getApplicationAddress(poolKey.PoolAppID)).do();
+    const poolAcctInfo = await context.algod.accountInformation(getApplicationAddress(poolKey.poolAppId)).do();
     return BigInt(poolAcctInfo.amount - poolAcctInfo['min-balance']);
 }
 

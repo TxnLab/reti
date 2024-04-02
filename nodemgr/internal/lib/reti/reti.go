@@ -55,13 +55,13 @@ func New(
 	logger *slog.Logger,
 	algoClient *algod.Client,
 	signer algo.MultipleWalletSigner,
-	validatorID uint64,
+	validatorId uint64,
 	nodeNum uint64,
 ) (*Reti, error) {
 
 	retReti := &Reti{
 		RetiAppID:   validatorAppID,
-		ValidatorID: validatorID,
+		ValidatorID: validatorId,
 		NodeNum:     nodeNum,
 
 		Logger:     logger,
@@ -79,7 +79,7 @@ func New(
 	retReti.validatorContract = validatorContract
 	retReti.poolContract = poolContract
 
-	misc.Infof(logger, "client initialized, Protocol App ID:%d, Validator ID:%d, Node Number:%d", validatorAppID, validatorID, nodeNum)
+	misc.Infof(logger, "client initialized, Protocol App id:%d, Validator id:%d, Node Number:%d", validatorAppID, validatorId, nodeNum)
 
 	return retReti, nil
 }
@@ -95,7 +95,7 @@ func (r *Reti) IsConfigured() bool {
 // Prometheus metrics are also updated based on loaded state.
 func (r *Reti) LoadState(ctx context.Context) error {
 	if r.RetiAppID == 0 {
-		return errors.New("reti App ID not defined")
+		return errors.New("reti App id not defined")
 	}
 	appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppID).Do(ctx)
 	if err != nil {

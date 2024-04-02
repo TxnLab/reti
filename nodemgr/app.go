@@ -81,14 +81,14 @@ func initApp() *RetiApp {
 			},
 			&cli.UintFlag{
 				Name:        "retiid",
-				Usage:       "[DEV ONLY] The application ID of the Reti master validator contract.",
+				Usage:       "[DEV ONLY] The application id of the Reti master validator contract.",
 				Sources:     cli.EnvVars("RETI_APPID"),
 				Destination: &appConfig.retiAppID,
 				OnlyOnce:    true,
 			},
 			&cli.UintFlag{
 				Name:        "validator",
-				Usage:       "The Validator ID for your validator.  Can be unset if defining for first time.",
+				Usage:       "The Validator id for your validator.  Can be unset if defining for first time.",
 				Sources:     cli.EnvVars("RETI_VALIDATORID"),
 				Value:       0,
 				Destination: &appConfig.retiValidatorID,
@@ -194,7 +194,7 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if ac.retiAppID == 0 {
-		return fmt.Errorf("the ID of the Reti Validator contract must be set using either -id or RETI_APPID env var!")
+		return fmt.Errorf("the id of the Reti Validator contract must be set using either -id or RETI_APPID env var!")
 	}
 
 	// This will load and initialize mnemonics from the environment - and handles all 'local' signing for the app

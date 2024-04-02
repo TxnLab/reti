@@ -24,7 +24,7 @@ type ValidatorInfo struct {
 	Pools               []PoolInfo
 	NodePoolAssignments NodePoolAssignmentConfig
 
-	// A generated map of pool ID's and the App ID assigned to it - for 'our' node
+	// A generated map of pool id's and the App id assigned to it - for 'our' node
 	// determined via Pools and NodePoolAssignments
 	LocalPools map[uint64]uint64
 }
@@ -40,9 +40,9 @@ type NodePoolAssignmentConfig struct {
 type ValidatorConfig struct {
 	// ID of this validator (sequentially assigned)
 	ID uint64
-	// Account that controls config - presumably cold-wallet
+	// account that controls config - presumably cold-wallet
 	Owner string
-	// Account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
+	// account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
 	Manager string
 	// Optional NFD AppID which the validator uses to describe their validator pool
 	NFDForInfo uint64
@@ -179,13 +179,13 @@ func formattedMinutes(mins int) string {
 func (v *ValidatorConfig) String() string {
 	var out strings.Builder
 
-	out.WriteString(fmt.Sprintf("ID: %d\n", v.ID))
-	out.WriteString(fmt.Sprintf("Owner: %s\n", v.Owner))
-	out.WriteString(fmt.Sprintf("Manager: %s\n", v.Manager))
+	out.WriteString(fmt.Sprintf("id: %d\n", v.ID))
+	out.WriteString(fmt.Sprintf("owner: %s\n", v.Owner))
+	out.WriteString(fmt.Sprintf("manager: %s\n", v.Manager))
 	out.WriteString(fmt.Sprintf("Validator Commission Address: %s\n", v.ValidatorCommissionAddress))
 	out.WriteString(fmt.Sprintf("%% to Validator: %.04f\n", float64(v.PercentToValidator)/10_000.0))
 	if v.NFDForInfo != 0 {
-		out.WriteString(fmt.Sprintf("NFD ID: %d\n", v.NFDForInfo))
+		out.WriteString(fmt.Sprintf("NFD id: %d\n", v.NFDForInfo))
 	}
 	switch v.EntryGatingType {
 	case GatingTypeNone:
@@ -201,20 +201,20 @@ func (v *ValidatorConfig) String() string {
 		out.WriteString(fmt.Sprintf("Reward Token Requires ASA:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
 		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
 	case GatingTypeCreatedByNFDAddresses:
-		out.WriteString(fmt.Sprintf("Reward Token NFD Creator Addresses, NFD ID:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token NFD Creator Addresses, NFD id:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
 		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
 	case GatingTypeSegmentOfNFD:
-		out.WriteString(fmt.Sprintf("Reward Token NFD Segments of Root NFD ID:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token NFD Segments of Root NFD id:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
 	}
 	if v.EntryGatingType != GatingTypeNone {
-		out.WriteString(fmt.Sprintf("Reward Token ID: %d\n", v.RewardTokenID))
+		out.WriteString(fmt.Sprintf("Reward Token id: %d\n", v.RewardTokenID))
 		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
 	}
 
 	out.WriteString(fmt.Sprintf("Payout Every %s\n", formattedMinutes(v.PayoutEveryXMins)))
 	out.WriteString(fmt.Sprintf("Min Entry Stake: %s\n", algo.FormattedAlgoAmount(v.MinEntryStake)))
 	out.WriteString(fmt.Sprintf("Max Algo Per Pool: %s\n", algo.FormattedAlgoAmount(v.MaxAlgoPerPool)))
-	out.WriteString(fmt.Sprintf("Max Pools per Node: %d\n", v.PoolsPerNode))
+	out.WriteString(fmt.Sprintf("Max pools per Node: %d\n", v.PoolsPerNode))
 	if v.SunsettingOn != 0 {
 		out.WriteString(fmt.Sprintf("Sunsetting On: %s\n", time.Unix(int64(v.SunsettingOn), 0).Format(time.RFC3339)))
 		if v.SunsettingTo != 0 {
@@ -233,7 +233,7 @@ type ValidatorCurState struct {
 }
 
 func (v *ValidatorCurState) String() string {
-	return fmt.Sprintf("NumPools: %d, TotalStakers: %d, TotalAlgoStaked: %d", v.NumPools, v.TotalStakers, v.TotalAlgoStaked)
+	return fmt.Sprintf("numPools: %d, totalStakers: %d, totalAlgoStaked: %d", v.NumPools, v.TotalStakers, v.TotalAlgoStaked)
 }
 
 func ValidatorCurStateFromABIReturn(returnVal any) (*ValidatorCurState, error) {
@@ -259,7 +259,7 @@ type ValidatorPoolKey struct {
 }
 
 func (v *ValidatorPoolKey) String() string {
-	return fmt.Sprintf("ValidatorPoolKey{ID: %d, PoolID: %d, PoolAppID: %d}", v.ID, v.PoolID, v.PoolAppID)
+	return fmt.Sprintf("ValidatorPoolKey{id: %d, poolId: %d, poolAppId: %d}", v.ID, v.PoolID, v.PoolAppID)
 }
 
 func ValidatorPoolKeyFromABIReturn(returnVal any) (*ValidatorPoolKey, error) {
@@ -278,7 +278,7 @@ func ValidatorPoolKeyFromABIReturn(returnVal any) (*ValidatorPoolKey, error) {
 }
 
 type PoolInfo struct {
-	PoolAppID       uint64 // The App ID of this staking pool contract instance
+	PoolAppID       uint64 // The App id of this staking pool contract instance
 	TotalStakers    int
 	TotalAlgoStaked uint64
 }
@@ -329,7 +329,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	ownerAddr, _ := types.DecodeAddress(info.Config.Owner)
 	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
 	commissionAddr, _ := types.DecodeAddress(info.Config.ValidatorCommissionAddress)
-	//mustHoldCreatorAddr, _ := types.DecodeAddress(info.Config.MustHoldCreatorNFT)
+	//mustHoldCreatorAddr, _ := types.DecodeAddress(info.config.MustHoldCreatorNFT)
 
 	// first determine how much we have to add in MBR to the validator
 	mbrs, err := r.getMbrAmounts(ownerAddr)
@@ -405,8 +405,8 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	if err != nil {
 		return 0, err
 	}
-	if validatorID, ok := result.MethodResults[0].ReturnValue.(uint64); ok {
-		return validatorID, nil
+	if validatorId, ok := result.MethodResults[0].ReturnValue.(uint64); ok {
+		return validatorId, nil
 	}
 	return 0, nil
 }
@@ -792,7 +792,7 @@ func (r *Reti) ChangeValidatorCommissionAddress(id uint64, sender types.Address,
 			id,
 			commissionAddress,
 		},
-		ForeignApps: []uint64{r.poolTemplateAppID()},
+		ForeignApps: []uint64{r.poolTemplateAppId()},
 		BoxReferences: []types.AppBoxReference{
 			{AppID: 0, Name: GetValidatorListBoxName(id)},
 			{AppID: 0, Name: nil}, // extra i/o
@@ -855,7 +855,7 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 			info.Config.ID,
 			nodeNum,
 		},
-		ForeignApps: []uint64{r.poolTemplateAppID()},
+		ForeignApps: []uint64{r.poolTemplateAppId()},
 		BoxReferences: []types.AppBoxReference{
 			{AppID: 0, Name: GetValidatorListBoxName(info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
@@ -913,7 +913,7 @@ func (r *Reti) MovePoolToNode(poolAppID uint64, nodeNum uint64) error {
 			nodeNum,
 		},
 		ForeignApps: []uint64{
-			r.poolTemplateAppID(),
+			r.poolTemplateAppId(),
 			poolAppID,
 		},
 		BoxReferences: []types.AppBoxReference{
@@ -1013,7 +1013,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	return nil
 }
 
-func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64, assetIDToCheck uint64) (*ValidatorPoolKey, error) {
+func (r *Reti) AddStake(validatorId uint64, staker types.Address, amount uint64, assetIDToCheck uint64) (*ValidatorPoolKey, error) {
 	var (
 		err           error
 		amountToStake = uint64(amount)
@@ -1041,7 +1041,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64,
 
 	// Because we can't do easy simulate->execute in Go we have to figure out the references ourselves which means we need to know in advance
 	// what staking pool we'll go to.  So we can just ask validator to find the pool for us and then use that (some small race conditions obviously)
-	futurePoolKey, err := r.FindPoolForStaker(validatorID, staker, amount)
+	futurePoolKey, err := r.FindPoolForStaker(validatorId, staker, amount)
 	if err != nil {
 		return nil, err
 	}
@@ -1065,7 +1065,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64,
 			AppID:  r.RetiAppID,
 			Method: gasMethod,
 			BoxReferences: []types.AppBoxReference{
-				{AppID: 0, Name: GetValidatorListBoxName(validatorID)},
+				{AppID: 0, Name: GetValidatorListBoxName(validatorId)},
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
@@ -1094,7 +1094,7 @@ func (r *Reti) AddStake(validatorID uint64, staker types.Address, amount uint64,
 				// MBR payment
 				payTxWithSigner,
 				// --
-				validatorID,
+				validatorId,
 				assetIDToCheck,
 			},
 			ForeignApps: []uint64{futurePoolKey.PoolAppID},
@@ -1333,6 +1333,6 @@ func (r *Reti) getNumValidators() (uint64, error) {
 	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrNumValidators)
 }
 
-func (r *Reti) poolTemplateAppID() uint64 {
+func (r *Reti) poolTemplateAppId() uint64 {
 	return r.poolTmplAppID
 }

@@ -53,7 +53,7 @@ func GetPoolCmdOpts() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.UintFlag{
 						Name:     "pool",
-						Usage:    "Pool ID (the number in 'pool list')",
+						Usage:    "Pool id (the number in 'pool list')",
 						Value:    1,
 						Required: true,
 					},
@@ -79,7 +79,7 @@ func GetPoolCmdOpts() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.UintFlag{
 						Name:     "pool",
-						Usage:    "Pool ID (the number in 'pool list' to claim for this node.  Do NOT use the same pool on multiple nodes !!",
+						Usage:    "Pool id (the number in 'pool list' to claim for this node.  Do NOT use the same pool on multiple nodes !!",
 						Required: true,
 					},
 				},
@@ -91,7 +91,7 @@ func GetPoolCmdOpts() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.UintFlag{
 						Name:     "pool",
-						Usage:    "Pool ID (the number in 'pool list')",
+						Usage:    "Pool id (the number in 'pool list')",
 						Value:    1,
 						Required: true,
 					},
@@ -196,9 +196,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Viewing pools for our Node:", App.retiClient.NodeNum)
 	if !showAll {
-		fmt.Fprintln(tw, "Pool (O=Online)\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
 	} else {
-		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App ID\t# Stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
 
 	}
 	for i, pool := range info.Pools {
@@ -287,7 +287,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
 	if poolID > len(info.Pools) {
-		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
+		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolID)
 	}
 
 	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
@@ -321,7 +321,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Time\t")
+	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Time\t")
 	for _, stakerData := range ledger {
 		if stakerData.Account == types.ZeroAddress {
 			continue
@@ -370,10 +370,10 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
 	if _, found := info.LocalPools[poolID]; found {
-		return fmt.Errorf("pool with ID %d has already been claimed by this validator", poolID)
+		return fmt.Errorf("pool with id %d has already been claimed by this validator", poolID)
 	}
 	if poolID > uint64(len(info.Pools)) {
-		return fmt.Errorf("pool with ID %d does not exist. See the pool list -all output for list", poolID)
+		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolID)
 	}
 	err = App.retiClient.MovePoolToNode(info.Pools[poolID-1].PoolAppID, App.retiClient.NodeNum)
 	if err != nil {
@@ -412,7 +412,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	validatorID := command.Uint("validator")
+	validatorId := command.Uint("validator")
 	var poolKey *reti.ValidatorPoolKey
 	// This staker must have staked something!
 	poolKeys, err := App.retiClient.GetStakedPoolsForAccount(stakerAddr)
@@ -420,7 +420,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	for _, key := range poolKeys {
-		if key.ID == validatorID && key.PoolID == command.Uint("pool") {
+		if key.ID == validatorId && key.PoolID == command.Uint("pool") {
 			poolKey = key
 			break
 		}

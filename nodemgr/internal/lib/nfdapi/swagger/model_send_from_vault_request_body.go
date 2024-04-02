@@ -20,7 +20,7 @@ type SendFromVaultRequestBody struct {
 	Receiver string `json:"receiver"`
 	// Specifies that the receiver account is something the caller can sign for. If specified, then opt-in transactions it signs may be included
 	ReceiverCanSign bool `json:"receiverCanSign,omitempty"`
-	// Account or NFD Vault the asset should be sent to (if allowed)
+	// account or NFD Vault the asset should be sent to (if allowed)
 	ReceiverType string `json:"receiverType,omitempty"`
 	// Sender of transaction, must be NFD owner
 	Sender string `json:"sender"`

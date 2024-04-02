@@ -12,11 +12,12 @@ package swagger
 import (
 	"context"
 	"fmt"
-	"github.com/antihax/optional"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/antihax/optional"
 )
 
 // Linger please
@@ -194,7 +195,7 @@ Fetch NFD analytics via various filters
      * @param "SaleType" (optional.Interface of []string) -
      * @param "Length" (optional.Interface of []string) -  Length of NFD
      * @param "Traits" (optional.Interface of []string) -  Traits of NFD
-     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
+     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application id to find. Used for fetching segments of an NFD
      * @param "MinPrice" (optional.Int64) -  Minimum price of NFD
      * @param "MaxPrice" (optional.Int64) -  Maximum price of NFD
      * @param "AfterTime" (optional.Time) -  Fetch analytics events that occurred only after the specified time
@@ -531,11 +532,11 @@ NfdApiService Browse NFDs via various filters
      * @param "Name" (optional.String) -  name or partial match of NFD name to filter on
      * @param "Category" (optional.Interface of []string) -
      * @param "SaleType" (optional.Interface of []string) -
-     * @param "State" (optional.Interface of []string) -
-     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
+     * @param "state" (optional.Interface of []string) -
+     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application id to find. Used for fetching segments of an NFD
      * @param "Length" (optional.Interface of []string) -  Length of NFD
      * @param "Traits" (optional.Interface of []string) -  Traits of NFD
-     * @param "Owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
+     * @param "owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
      * @param "ReservedFor" (optional.String) -  An Algorand account address to find all NFDs reserved for that address
      * @param "Prefix" (optional.String) -  The start of an NFD name, fetching multiple NFDs that have that prefix
      * @param "Substring" (optional.String) -  Part of an NFD name, fetching multiple NFDs that have that substring (minimum 3 characters)
@@ -2084,8 +2085,8 @@ func (a *NfdApiService) NfdGetLookup(ctx context.Context, address []string, loca
 }
 
 /*
-NfdApiService Get a specific NFD by name or by its application ID
-Get a specific NFD by name or by its application ID
+NfdApiService Get a specific NFD by name or by its application id
+Get a specific NFD by name or by its application id
  * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  * @param nameOrID
  * @param optional nil or *NfdApiNfdGetNFDOpts - Optional Parameters:
@@ -2722,9 +2723,9 @@ func (a *NfdApiService) NfdGetRevAddressSig(ctx context.Context, address string)
 
 /*
 NfdApiService isValidASA nfd
-Determines if specified NFD NFT ASA ID is authentic NFD
+Determines if specified NFD NFT ASA id is authentic NFD
   - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-  - @param asaID Asset ID of a presumed NFD ASA to verify.  The API will verify the found asset references an NFD that in turn references that asset.
+  - @param asaID Asset id of a presumed NFD ASA to verify.  The API will verify the found asset references an NFD that in turn references that asset.
 
 @return IsValidAsaResponseBody
 */
@@ -2839,9 +2840,9 @@ func (a *NfdApiService) NfdIsValidASA(ctx context.Context, asaID int64) (IsValid
 
 /*
 NfdApiService isValidNFD nfd
-Determines if specified NFD Application ID is authentic
+Determines if specified NFD Application id is authentic
   - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-  - @param appID Application ID of a presumed NFD to verify.  The API will perform a forward-name lookup of the name within the NFD to verify it points to the same ID
+  - @param appID Application id of a presumed NFD to verify.  The API will perform a forward-name lookup of the name within the NFD to verify it points to the same id
 
 @return IsValidNfdResponseBody
 */
@@ -3727,7 +3728,7 @@ NfdApiService [DEPRECATED] Search for NFDs based on select lookup criteria
 [DEPRECATED] Find NFDs based on owner and/or reservations, name search (prefix or substring), or verified property search.  For typical &#x27;reverse-lookup&#x27; functionality see the getNFDsForAddresses method (/nfd/address?address&#x3D;xx...).  Fetching a specific NFD, use nfd/{name}.  Prefix search is useful for interactive lookups.
  * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  * @param optional nil or *NfdApiNfdSearchV1Opts - Optional Parameters:
-     * @param "Owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
+     * @param "owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
      * @param "ReservedFor" (optional.String) -  An Algorand account address to find all NFDs reserved for that address
      * @param "Prefix" (optional.String) -  The start of an NFD name, fetching multiple NFDs that have that prefix - forces &#x27;thumbnail&#x27; view !
      * @param "Substring" (optional.String) -  Part of an NFD name, fetching multiple NFDs that have that substring (minimum 3 characters) - forces &#x27;thumbnail&#x27; view !
@@ -3894,11 +3895,11 @@ Search NFDs via various filters
      * @param "Name" (optional.String) -  name or partial match of NFD name to filter on
      * @param "Category" (optional.Interface of []string) -
      * @param "SaleType" (optional.Interface of []string) -
-     * @param "State" (optional.Interface of []string) -
-     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application ID to find. Used for fetching segments of an NFD
+     * @param "state" (optional.Interface of []string) -
+     * @param "ParentAppID" (optional.Int64) -  The parent NFD Application id to find. Used for fetching segments of an NFD
      * @param "Length" (optional.Interface of []string) -  Length of NFD
      * @param "Traits" (optional.Interface of []string) -  Traits of NFD
-     * @param "Owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
+     * @param "owner" (optional.String) -  An Algorand account address to find all NFDs owned by that address
      * @param "ReservedFor" (optional.String) -  An Algorand account address to find all NFDs reserved for that address
      * @param "ExcludeUserReserved" (optional.Bool) -  Should NFDs reserved for an account (transfers for example or unclaimed winning auctions) be excluded
      * @param "Prefix" (optional.String) -  The start of an NFD name, fetching multiple NFDs that have that prefix
@@ -6166,7 +6167,7 @@ NfdApiService verifyConfirm nfd
 Verify a particular piece of data on, or off-chain.  Each verification differs in its requirements
   - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
   - @param body
-  - @param id ID of challenge, must be used in subsequent confirmation call
+  - @param id id of challenge, must be used in subsequent confirmation call
 
 @return VerifyConfirmResponseBody
 */

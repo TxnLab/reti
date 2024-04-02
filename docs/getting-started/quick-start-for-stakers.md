@@ -1,4 +1,4 @@
-# Quick Start For Stakers
+# Quick Start For stakers
 
 ## Comparing Validators
 
@@ -31,7 +31,7 @@ Validator's may have restrictions set on their pools including:
 * Token / NFD Gating:&#x20;
   * Supported gating options include:
     * Tokens/NFTs by creator and minimum amount
-    * Specific ASA ID
+    * Specific ASA id
     * Tokens/NFTs created by any address linked within a particular NFD
     * Owning a segment of a particular NFD Root
 

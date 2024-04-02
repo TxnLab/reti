@@ -9,10 +9,10 @@ There is a special limit per-validator of 10% of all online stake.  A type of sl
 The total reward for the pool is calculated based on the current pool balance and the known staked amount. This reward is then distributed between the validator and stakers according to the following process:
 
 1. **Validator Commission**: The validator receives their predefined commission, which is an immutable percentage set when defining the validator record.
-2. **Staker Reward Distribution**: The remaining reward is distributed among the stakers proportionally based on their stake and the duration they were active in the epoch.
-   * Stakers who were active for the entire epoch receive their full share of the reward based on their percentage of the total staked amount.
-   * Stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
-3. **Compounding**: Staker rewards are directly added to their staked balance, compounding their future rewards.
+2. **staker Reward Distribution**: The remaining reward is distributed among the stakers proportionally based on their stake and the duration they were active in the epoch.
+   * stakers who were active for the entire epoch receive their full share of the reward based on their percentage of the total staked amount.
+   * stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
+3. **Compounding**: staker rewards are directly added to their staked balance, compounding their future rewards.
 
 #### Soft caps and Validator Saturation
 
@@ -50,7 +50,7 @@ Some validators may offer additional token rewards to incentivize staking. If a 
 
 #### Stake Removal
 
-Stakers can remove their stake from the pool at any time. When stake is removed, the staker can decide how much they want to withdraw. It must either be the entire stake, or a balance above the minimum entry for the pool.&#x20;
+stakers can remove their stake from the pool at any time. When stake is removed, the staker can decide how much they want to withdraw. It must either be the entire stake, or a balance above the minimum entry for the pool.&#x20;
 
 ## Payout Process
 

@@ -18,7 +18,7 @@ import (
 )
 
 type TxnSigner interface {
-	// SignTxn signs the specified transaction, returning Transaction ID, signed transaction bytes, and error
+	// SignTxn signs the specified transaction, returning Transaction id, signed transaction bytes, and error
 	SignTxn(ctx context.Context, tx types.Transaction) (string, []byte, error)
 }
 
@@ -43,7 +43,7 @@ func SignGroupTransactions(ctx context.Context, txns []types.Transaction, signer
 	if len(txns) > 1 {
 		gid, err = crypto.ComputeGroupID(txns)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to compute group ID: %w", err)
+			return nil, nil, fmt.Errorf("failed to compute group id: %w", err)
 		}
 	}
 	var signedTxns []byte
@@ -80,7 +80,7 @@ func SignGroupTransactionsForFrontend(ctx context.Context, log *slog.Logger, txn
 	if len(txns) > 1 {
 		gid, err = crypto.ComputeGroupID(txns)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compute group ID: %w", err)
+			return nil, fmt.Errorf("failed to compute group id: %w", err)
 		}
 	}
 	for i, txn := range txns {

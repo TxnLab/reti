@@ -13,7 +13,7 @@ package swagger
 type SegmentPriceResponseBody struct {
 	// Price of ALGO in USD
 	AlgoUsd float64 `json:"algoUsd"`
-	// Algorand carry cost - amount required for MBR (Minimum Balance Requirement) of contracts, escrows, etc
+	// Algorand carry cost - amount required for MBR (Minimum balance Requirement) of contracts, escrows, etc
 	CarryCost int64 `json:"carryCost"`
 	// Discount rate % that is applied for this segment name - 0 if discount point not reached - starting after 2500 NFDs
 	DiscountRate float64 `json:"discountRate"`

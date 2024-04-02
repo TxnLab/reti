@@ -6,7 +6,7 @@ database "Staking pool(*)" as pool
 group Add stake to validator
 autonumber 0
 staker -> master: [payment of stake (portion stays as MBR if first-time in protocol)
-staker -> master:  addStake(stakedAmountPayment: PayTxn, validatorID: ValidatorID, tokenToVerify: uint64): ValidatorPoolKey
+staker -> master:  addStake(stakedAmountPayment: PayTxn, validatorId: ValidatorID, tokenToVerify: uint64): ValidatorPoolKey
 note right: updating totals for validator and protocol
 autonumber stop
 master -> master: checks stakers existing staked pools w/ validator\nthen checks avail pools

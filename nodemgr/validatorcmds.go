@@ -195,12 +195,12 @@ func DefineValidator() error {
 
 	info := &reti.ValidatorInfo{Config: config}
 
-	validatorID, err := App.retiClient.AddValidator(info, nfdName)
+	validatorId, err := App.retiClient.AddValidator(info, nfdName)
 	if err != nil {
 		return err
 	}
-	info.Config.ID = validatorID
-	slog.Info("New Validator added, your Validator ID is:", "id", info.Config.ID)
+	info.Config.ID = validatorId
+	slog.Info("New Validator added, your Validator id is:", "id", info.Config.ID)
 	return App.retiClient.LoadState(context.Background())
 }
 

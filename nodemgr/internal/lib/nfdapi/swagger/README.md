@@ -39,7 +39,7 @@ Class | Method | HTTP request | Description
 *NfdApi* | [**NfdDonations**](docs/NfdApi.md#nfddonations) | **Get** /nfd/donations/{name} | donations nfd
 *NfdApi* | [**NfdEscrowOffer**](docs/NfdApi.md#nfdescrowoffer) | **Post** /nfd/escrowOffer/{name} | escrowOffer nfd
 *NfdApi* | [**NfdGetLookup**](docs/NfdApi.md#nfdgetlookup) | **Get** /nfd/lookup | Reverse Address lookup with results returned per address
-*NfdApi* | [**NfdGetNFD**](docs/NfdApi.md#nfdgetnfd) | **Get** /nfd/{nameOrID} | Get a specific NFD by name or by its application ID
+*NfdApi* | [**NfdGetNFD**](docs/NfdApi.md#nfdgetnfd) | **Get** /nfd/{nameOrID} | Get a specific NFD by name or by its application id
 *NfdApi* | [**NfdGetNFDsForAddresses**](docs/NfdApi.md#nfdgetnfdsforaddresses) | **Get** /nfd/address | [DEPRECATED] Reverse Address lookup
 *NfdApi* | [**NfdGetNFDsForAddressesV2**](docs/NfdApi.md#nfdgetnfdsforaddressesv2) | **Get** /nfd/v2/address | Reverse Address lookup with results returned per address
 *NfdApi* | [**NfdGetNameSig**](docs/NfdApi.md#nfdgetnamesig) | **Get** /nfd/nameSig/{name} | getNameSig nfd

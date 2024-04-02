@@ -96,22 +96,22 @@ export function callGetNumValidators(validatorClient: ValidatorRegistryClient) {
 }
 
 export function callGetValidatorConfig(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
   return validatorClient
     .compose()
-    .getValidatorConfig({ validatorID })
+    .getValidatorConfig({ validatorId })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
 export function callGetValidatorState(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
   return validatorClient
     .compose()
-    .getValidatorState({ validatorID })
+    .getValidatorState({ validatorId })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
@@ -217,12 +217,12 @@ export async function fetchValidators(client?: ValidatorRegistryClient) {
 export class ValidatorNotFoundError extends Error {}
 
 export function callGetNodePoolAssignments(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
   return validatorClient
     .compose()
-    .getNodePoolAssignments({ validatorID })
+    .getNodePoolAssignments({ validatorId })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
@@ -259,12 +259,12 @@ export async function fetchNodePoolAssignments(
 }
 
 export function callGetTokenPayoutRatio(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
   return validatorClient
     .compose()
-    .getTokenPayoutRatio({ validatorID })
+    .getTokenPayoutRatio({ validatorId })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
@@ -320,7 +320,7 @@ export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise
 }
 
 export async function addStakingPool(
-  validatorID: number,
+  validatorId: number,
   nodeNum: number,
   poolMbr: number,
   signer: algosdk.TransactionSigner,
@@ -348,7 +348,7 @@ export async function addStakingPool(
           transaction: payValidatorAddPoolMbr,
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
-        validatorID,
+        validatorId,
         nodeNum,
       },
       {
@@ -423,7 +423,7 @@ export async function doesStakerNeedToPayMbr(
 }
 
 export async function addStake(
-  validatorID: number,
+  validatorId: number,
   stakeAmount: number, // microalgos
   signer: algosdk.TransactionSigner,
   activeAddress: string,
@@ -451,7 +451,7 @@ export async function addStake(
           transaction: stakeTransferPayment,
           signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
         },
-        validatorID,
+        validatorId,
         valueToVerify: 0,
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
@@ -474,7 +474,7 @@ export async function addStake(
           transaction: stakeTransferPayment,
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
-        validatorID,
+        validatorId,
         valueToVerify: 0,
       },
       { sendParams: { fee: feesAmount } },
@@ -491,19 +491,19 @@ export async function addStake(
 }
 
 export async function callFindPoolForStaker(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   staker: string,
   amountToStake: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
   return validatorClient
     .compose()
-    .findPoolForStaker({ validatorID, staker, amountToStake })
+    .findPoolForStaker({ validatorId, staker, amountToStake })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
 export async function isNewStakerToValidator(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   staker: string,
   minEntryStake: number | bigint,
 ) {
@@ -514,7 +514,7 @@ export async function isNewStakerToValidator(
   }
 
   const validatorClient = makeSimulateValidatorClient(activeAddress)
-  const result = await callFindPoolForStaker(validatorID, staker, minEntryStake, validatorClient)
+  const result = await callFindPoolForStaker(validatorId, staker, minEntryStake, validatorClient)
 
   const [_, isNewStaker] = result.returns![0]
 
@@ -635,7 +635,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
       const existingData = acc.find((data) => data.validatorId === validatorId)
 
       if (existingData) {
-        // Staker is in another pool for this validator, update validator totals
+        // staker is in another pool for this validator, update validator totals
         existingData.balance += pool.balance
         existingData.totalRewarded += pool.totalRewarded
         existingData.rewardTokenBalance += pool.rewardTokenBalance
@@ -833,12 +833,12 @@ export async function fetchPoolInfo(
 }
 
 export async function callGetPools(
-  validatorID: number | bigint,
+  validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
   return validatorClient
     .compose()
-    .getPools({ validatorID })
+    .getPools({ validatorId })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
