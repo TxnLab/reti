@@ -22,12 +22,12 @@ type Reti struct {
 	algoClient *algod.Client
 	signer     algo.MultipleWalletSigner
 
-	// RetiAppID is simply the master validator contract id
-	RetiAppID   uint64
-	ValidatorID uint64
+	// RetiAppId is simply the master validator contract id
+	RetiAppId   uint64
+	ValidatorId uint64
 	NodeNum     uint64
 
-	poolTmplAppID uint64
+	poolTmplAppId uint64
 
 	validatorContract *abi.Contract
 	poolContract      *abi.Contract
@@ -51,7 +51,7 @@ func (r *Reti) SetInfo(Info ValidatorInfo) {
 }
 
 func New(
-	validatorAppID uint64,
+	validatorAppId uint64,
 	logger *slog.Logger,
 	algoClient *algod.Client,
 	signer algo.MultipleWalletSigner,
@@ -60,8 +60,8 @@ func New(
 ) (*Reti, error) {
 
 	retReti := &Reti{
-		RetiAppID:   validatorAppID,
-		ValidatorID: validatorId,
+		RetiAppId:   validatorAppId,
+		ValidatorId: validatorId,
 		NodeNum:     nodeNum,
 
 		Logger:     logger,
@@ -79,13 +79,13 @@ func New(
 	retReti.validatorContract = validatorContract
 	retReti.poolContract = poolContract
 
-	misc.Infof(logger, "client initialized, Protocol App id:%d, Validator id:%d, Node Number:%d", validatorAppID, validatorId, nodeNum)
+	misc.Infof(logger, "client initialized, Protocol App id:%d, Validator id:%d, Node Number:%d", validatorAppId, validatorId, nodeNum)
 
 	return retReti, nil
 }
 
 func (r *Reti) IsConfigured() bool {
-	return r.RetiAppID != 0 && r.ValidatorID != 0 && r.NodeNum != 0
+	return r.RetiAppId != 0 && r.ValidatorId != 0 && r.NodeNum != 0
 }
 
 // LoadState loads the state of the Reti instance by retrieving information from
@@ -94,25 +94,25 @@ func (r *Reti) IsConfigured() bool {
 // keys we have available (which will have to sign for either owner or manager depending on call)
 // Prometheus metrics are also updated based on loaded state.
 func (r *Reti) LoadState(ctx context.Context) error {
-	if r.RetiAppID == 0 {
+	if r.RetiAppId == 0 {
 		return errors.New("reti App id not defined")
 	}
-	appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppID).Do(ctx)
+	appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppId).Do(ctx)
 	if err != nil {
 		return err
 	}
-	r.poolTmplAppID, _ = algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrPoolTmplID)
+	r.poolTmplAppId, _ = algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrPoolTmplId)
 
 	// Now load all the data from the chain for our validator, etc.
-	if r.ValidatorID != 0 {
-		config, err := r.GetValidatorConfig(r.ValidatorID)
+	if r.ValidatorId != 0 {
+		config, err := r.GetValidatorConfig(r.ValidatorId)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorConfig: %w", err)
 		}
 		// verify this validator is one we have either owner or manager keys for !!
 		_, err = r.signer.FindFirstSigner([]string{config.Owner, config.Manager})
 		if err != nil {
-			return fmt.Errorf("neither owner or manager address for validator id:%d has local keys present", r.ValidatorID)
+			return fmt.Errorf("neither owner or manager address for validator id:%d has local keys present", r.ValidatorId)
 		}
 		constraints, err := r.GetProtocolConstraints()
 		if err != nil {
@@ -122,12 +122,12 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		// We could get total stake etc for all pools at once via the validator state but since there will be multiple instances
 		// of this daemon we should just report per-validator data and the validator can max / sum, etc. as appropriate
 		// in their metrics dashboard - taking data from all daemons.
-		pools, err := r.GetValidatorPools(r.ValidatorID)
+		pools, err := r.GetValidatorPools(r.ValidatorId)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorPools: %w", err)
 		}
 
-		assignments, err := r.GetValidatorNodePoolAssignments(r.ValidatorID)
+		assignments, err := r.GetValidatorNodePoolAssignments(r.ValidatorId)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorNodePoolAssignments: %w", err)
 		}
@@ -150,13 +150,13 @@ func (r *Reti) LoadState(ctx context.Context) error {
 			localTotalStaked  uint64
 			localTotalRewards float64
 		)
-		for _, poolAppID := range newInfo.NodePoolAssignments.Nodes[r.NodeNum-1].PoolAppIDs {
+		for _, poolAppID := range newInfo.NodePoolAssignments.Nodes[r.NodeNum-1].PoolAppIds {
 			var poolID uint64
 			for poolIdx, pool := range pools {
-				if pool.PoolAppID == poolAppID {
+				if pool.PoolAppId == poolAppID {
 					localStakers += uint64(pool.TotalStakers)
 					localTotalStaked += pool.TotalAlgoStaked
-					localTotalRewards += float64(r.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)) / 1e6
+					localTotalRewards += float64(r.PoolAvailableRewards(pool.PoolAppId, pool.TotalAlgoStaked)) / 1e6
 
 					poolID = uint64(poolIdx + 1)
 					break

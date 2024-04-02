@@ -49,7 +49,7 @@ export class StakingPool extends Contract {
     validatorId = GlobalStateKey<uint64>({ key: 'validatorId' });
 
     // The pool id we were assigned by the validator contract - sequential id per validator
-    poolId = GlobalStateKey<uint64>({ key: 'poolID' });
+    poolId = GlobalStateKey<uint64>({ key: 'poolId' });
 
     // number of stakers in THIS pool
     numStakers = GlobalStateKey<uint64>({ key: 'numStakers' });
@@ -516,7 +516,7 @@ export class StakingPool extends Contract {
         if (isTokenEligible) {
             if (this.poolId.value !== 1) {
                 // If we're not pool 1 - figure out its address..
-                poolOneAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
+                poolOneAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppId>({
                     applicationID: AppID.fromUint64(this.creatingValidatorContractAppId.value),
                     methodArgs: [this.validatorId.value, 1],
                 });
@@ -881,7 +881,7 @@ export class StakingPool extends Contract {
         assert(this.poolId.value === 1, 'callee must be pool 1');
         assert(poolKey.poolId !== 1, 'caller must NOT be pool 1');
 
-        const callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
+        const callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppId>({
             applicationID: AppID.fromUint64(this.creatingValidatorContractAppId.value),
             methodArgs: [poolKey.id, poolKey.poolId],
         });

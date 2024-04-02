@@ -97,14 +97,14 @@
       }
     },
     {
-      "name": "getPoolAppID",
+      "name": "getPoolAppId",
       "args": [
         {
           "name": "validatorId",
           "type": "uint64"
         },
         {
-          "name": "poolID",
+          "name": "poolId",
           "type": "uint64"
         }
       ],
@@ -432,7 +432,7 @@
         {
           "name": "poolKey",
           "type": "(uint64,uint64,uint64)",
-          "desc": "ValidatorPoolKey type - [validatorId, poolId] compound type"
+          "desc": "calling us from which stake was removed"
         },
         {
           "name": "staker",
@@ -491,7 +491,7 @@
           "type": "uint64"
         },
         {
-          "name": "poolAppID",
+          "name": "poolAppId",
           "type": "uint64"
         },
         {

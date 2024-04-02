@@ -135,7 +135,7 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 }
 
 type onlineInfo struct {
-	poolAppID                 uint64
+	poolAppId                 uint64
 	isOnline                  bool
 	selectionParticipationKey []byte
 	firstValid                uint64
@@ -144,26 +144,26 @@ type onlineInfo struct {
 func (d *Daemon) checkPools(ctx context.Context) {
 	// get online status and partkey info for all our accounts (ignoring any that don't have balances yet)
 	var poolAccounts = map[string]onlineInfo{}
-	for poolID, poolAppID := range App.retiClient.Info().LocalPools {
-		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(poolAppID).String())
+	for poolId, poolAppId := range App.retiClient.Info().LocalPools {
+		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(poolAppId).String())
 		if err != nil {
-			d.logger.Warn("account fetch error", "account", crypto.GetApplicationAddress(poolAppID).String(), "error", err)
+			d.logger.Warn("account fetch error", "account", crypto.GetApplicationAddress(poolAppId).String(), "error", err)
 			return
 		}
 		info := onlineInfo{
-			poolAppID:                 poolAppID,
+			poolAppId:                 poolAppId,
 			isOnline:                  acctInfo.Status == OnlineStatus,
 			selectionParticipationKey: acctInfo.Participation.SelectionParticipationKey,
 			firstValid:                acctInfo.Participation.VoteFirstValid,
 		}
 		if acctInfo.Amount-acctInfo.MinBalance > 1e6 {
-			poolAccounts[crypto.GetApplicationAddress(poolAppID).String()] = info
+			poolAccounts[crypto.GetApplicationAddress(poolAppId).String()] = info
 		}
 		// ensure pools were initialized properly (since it's a two-step process - the second step may have been skipped?)
 		err = App.retiClient.CheckAndInitStakingPoolStorage(&reti.ValidatorPoolKey{
 			ID:        App.retiClient.Info().Config.ID,
-			PoolID:    poolID,
-			PoolAppID: poolAppID,
+			PoolId:    poolId,
+			PoolAppId: poolAppId,
 		})
 		if err != nil {
 			misc.Errorf(d.logger, "error ensuring participation init: %v", err)
@@ -212,17 +212,17 @@ func (d *Daemon) updatePoolVersions(ctx context.Context) {
 		misc.Errorf(d.logger, "unable to fetch version string from algod instance, err:%v", err)
 		return
 	}
-	for _, poolAppID := range App.retiClient.Info().LocalPools {
-		algodVer, err := App.retiClient.GetAlgodVer(poolAppID)
+	for _, poolAppId := range App.retiClient.Info().LocalPools {
+		algodVer, err := App.retiClient.GetAlgodVer(poolAppId)
 		if err != nil && !errors.Is(err, algo.ErrStateKeyNotFound) {
-			misc.Errorf(d.logger, "unable to fetch algod version from staking pool app id:%d, err:%v", poolAppID, err)
+			misc.Errorf(d.logger, "unable to fetch algod version from staking pool app id:%d, err:%v", poolAppId, err)
 			return
 		}
 		if algodVer != versString {
 			// Update version in staking pool
-			err = App.retiClient.UpdateAlgodVer(poolAppID, versString, managerAddr)
+			err = App.retiClient.UpdateAlgodVer(poolAppId, versString, managerAddr)
 			if err != nil {
-				misc.Errorf(d.logger, "unable to update algod version in staking pool app id:%d, err:%v", poolAppID, err)
+				misc.Errorf(d.logger, "unable to update algod version in staking pool app id:%d, err:%v", poolAppId, err)
 				return
 			}
 		}
@@ -399,11 +399,11 @@ func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts 
 			keyToUse := keysForAccount[0]
 			misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToUse.Id)
 
-			err = App.retiClient.GoOnline(info.poolAppID, managerAddr, keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey, keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
+			err = App.retiClient.GoOnline(info.poolAppId, managerAddr, keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey, keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
 			if err != nil {
-				return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err:%w", account, info.poolAppID, err)
+				return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err:%w", account, info.poolAppId, err)
 			}
-			misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppID)
+			misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppId)
 		}
 	}
 	return nil
@@ -503,11 +503,11 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 		}
 		// Ok, time to switch to the new key - it's in valid range
 		misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToCheck.Id)
-		err = App.retiClient.GoOnline(info.poolAppID, managerAddr, keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey, keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
+		err = App.retiClient.GoOnline(info.poolAppId, managerAddr, keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey, keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
 		if err != nil {
-			return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppID)
+			return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppId)
 		}
-		misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppID)
+		misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppId)
 	}
 	return nil
 
@@ -536,7 +536,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 			for i, pool := range info.Pools {
 				// usual go hack so we don't reference pointers of the iterators
 				i := i
-				appid := pool.PoolAppID
+				appid := pool.PoolAppId
 				if _, found := info.LocalPools[uint64(i+1)]; !found {
 					continue
 				}

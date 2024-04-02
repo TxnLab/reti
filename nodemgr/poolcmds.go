@@ -209,15 +209,15 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		// find the pool in the node assignments (so we can show node num if necessary)
 		nodeNum := 0
 		for nodeIdx, nodeConfigs := range info.NodePoolAssignments.Nodes {
-			for _, appID := range nodeConfigs.PoolAppIDs {
-				if appID == pool.PoolAppID {
+			for _, appId := range nodeConfigs.PoolAppIds {
+				if appId == pool.PoolAppId {
 					nodeNum = nodeIdx + 1
 					break
 				}
 			}
 		}
 		if nodeNum == 0 {
-			return fmt.Errorf("unable to determine node number for pool appid:%d", pool.PoolAppID)
+			return fmt.Errorf("unable to determine node number for pool appid:%d", pool.PoolAppId)
 		}
 		if uint64(nodeNum) == App.retiClient.NodeNum {
 			nodeStr = "*"
@@ -226,18 +226,18 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		} else {
 			nodeStr = strconv.Itoa(nodeNum)
 		}
-		acctInfo, err := algo.GetBareAccount(context.Background(), App.algoClient, crypto.GetApplicationAddress(pool.PoolAppID).String())
+		acctInfo, err := algo.GetBareAccount(context.Background(), App.algoClient, crypto.GetApplicationAddress(pool.PoolAppId).String())
 		if err != nil {
-			return fmt.Errorf("account fetch error, account:%s, err:%w", crypto.GetApplicationAddress(pool.PoolAppID).String(), err)
+			return fmt.Errorf("account fetch error, account:%s, err:%w", crypto.GetApplicationAddress(pool.PoolAppId).String(), err)
 		}
 		if acctInfo.Status == OnlineStatus {
 			onlineStr = "O"
 		}
 
-		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppID, pool.TotalAlgoStaked)
+		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppId, pool.TotalAlgoStaked)
 		totalRewards += rewardAvail
 
-		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppID).String(), acctInfo.Participation.SelectionParticipationKey)
+		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppId).String(), acctInfo.Participation.SelectionParticipationKey)
 		var (
 			voteData string
 			partData string
@@ -258,11 +258,11 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 			}
 		}
 		if !showAll {
-			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppID, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
 				voteData, partData)
 		} else {
-			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppID, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
 				voteData, partData)
 
@@ -282,15 +282,15 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		info          = App.retiClient.Info()
 		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
 	)
-	poolID := int(command.Uint("pool"))
-	if poolID == 0 {
+	poolId := int(command.Uint("pool"))
+	if poolId == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
-	if poolID > len(info.Pools) {
-		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolID)
+	if poolId > len(info.Pools) {
+		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolId)
 	}
 
-	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolID-1].PoolAppID)
+	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolId-1].PoolAppId)
 	if err == nil {
 		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
 	} else {
@@ -312,12 +312,12 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[poolID-1].PoolAppID)
+	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[poolId-1].PoolAppId)
 	if err != nil {
 		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
 	}
 
-	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolID-1].PoolAppID, info.Pools[poolID-1].TotalAlgoStaked)
+	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolId-1].PoolAppId, info.Pools[poolId-1].TotalAlgoStaked)
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
@@ -365,17 +365,17 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
 	}
 
-	poolID := command.Uint("pool")
-	if poolID == 0 {
+	poolId := command.Uint("pool")
+	if poolId == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
-	if _, found := info.LocalPools[poolID]; found {
-		return fmt.Errorf("pool with id %d has already been claimed by this validator", poolID)
+	if _, found := info.LocalPools[poolId]; found {
+		return fmt.Errorf("pool with id %d has already been claimed by this validator", poolId)
 	}
-	if poolID > uint64(len(info.Pools)) {
-		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolID)
+	if poolId > uint64(len(info.Pools)) {
+		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolId)
 	}
-	err = App.retiClient.MovePoolToNode(info.Pools[poolID-1].PoolAppID, App.retiClient.NodeNum)
+	err = App.retiClient.MovePoolToNode(info.Pools[poolId-1].PoolAppId, App.retiClient.NodeNum)
 	if err != nil {
 		return fmt.Errorf("error in call to MovePoolToNode, err:%w", err)
 	}
@@ -402,7 +402,7 @@ func StakeAdd(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	misc.Infof(App.logger, "stake added into pool:%d", poolKey.PoolID)
+	misc.Infof(App.logger, "stake added into pool:%d", poolKey.PoolId)
 	return nil
 }
 
@@ -420,7 +420,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return err
 	}
 	for _, key := range poolKeys {
-		if key.ID == validatorId && key.PoolID == command.Uint("pool") {
+		if key.ID == validatorId && key.PoolId == command.Uint("pool") {
 			poolKey = key
 			break
 		}
@@ -433,7 +433,7 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	misc.Infof(App.logger, "stake removed from pool:%d", poolKey.PoolID)
+	misc.Infof(App.logger, "stake removed from pool:%d", poolKey.PoolId)
 	return nil
 }
 

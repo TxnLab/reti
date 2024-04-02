@@ -115,7 +115,7 @@ createApplication:
 
 	// contracts/stakingPool.algo.ts:97
 	// this.poolId.value = poolId
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	frame_dig -3 // poolId: uint64
 	app_global_put
 
@@ -353,7 +353,7 @@ initStorage:
 	frame_dig 1 // isTokenEligible: bool
 	dup
 	bz *skip_and1
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -405,7 +405,7 @@ initStorage:
 	frame_dig 1 // isTokenEligible: bool
 	dup
 	bz *skip_and2
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -974,7 +974,7 @@ removeStake:
 	// *if11_condition
 	// contracts/stakingPool.algo.ts:280
 	// this.poolId.value === 1
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -1241,7 +1241,7 @@ removeStake:
 	byte 0x76616c696461746f724964 // "validatorId"
 	app_global_get
 	itob
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	itob
 	concat
@@ -1396,7 +1396,7 @@ claimTokens:
 	// *if16_condition
 	// contracts/stakingPool.algo.ts:372
 	// this.poolId.value === 1
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -1551,7 +1551,7 @@ claimTokens:
 	byte 0x76616c696461746f724964 // "validatorId"
 	app_global_get
 	itob
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	itob
 	concat
@@ -1759,7 +1759,7 @@ payTokenReward:
 
 	// contracts/stakingPool.algo.ts:447
 	// assert(this.poolId.value === 1, 'must be pool 1 in order to be called to pay out token rewards')
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -1999,7 +1999,7 @@ epochBalanceUpdate:
 	// *if21_condition
 	// contracts/stakingPool.algo.ts:517
 	// this.poolId.value !== 1
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	!=
@@ -2007,14 +2007,14 @@ epochBalanceUpdate:
 
 	// *if21_consequent
 	// contracts/stakingPool.algo.ts:519
-	// poolOneAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
+	// poolOneAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppId>({
 	//                     applicationID: AppID.fromUint64(this.creatingValidatorContractAppId.value),
 	//                     methodArgs: [this.validatorId.value, 1],
 	//                 })
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getPoolAppID(uint64,uint64)uint64"
+	method "getPoolAppId(uint64,uint64)uint64"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:520
@@ -2057,7 +2057,7 @@ epochBalanceUpdate:
 	// *if22_condition
 	// contracts/stakingPool.algo.ts:528
 	// this.poolId.value === 1
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -2124,7 +2124,7 @@ epochBalanceUpdate:
 	byte 0x76616c696461746f724964 // "validatorId"
 	app_global_get
 	itob
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	itob
 	concat
@@ -2284,7 +2284,7 @@ epochBalanceUpdate:
 	// ourPoolPctOfWhole = tokenPayoutRatio.poolPctOfWhole[this.poolId.value - 1]
 	frame_dig 7 // tokenPayoutRatio: PoolTokenPayoutRatio
 	int 0
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	-
@@ -3178,7 +3178,7 @@ epochBalanceUpdate:
 	byte 0x76616c696461746f724964 // "validatorId"
 	app_global_get
 	itob
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	itob
 	concat
@@ -3459,7 +3459,7 @@ proxiedSetTokenPayoutRatio:
 
 	// contracts/stakingPool.algo.ts:881
 	// assert(this.poolId.value === 1, 'callee must be pool 1')
-	byte 0x706f6f6c4944 // "poolID"
+	byte 0x706f6f6c4964 // "poolId"
 	app_global_get
 	int 1
 	==
@@ -3479,14 +3479,14 @@ proxiedSetTokenPayoutRatio:
 	assert
 
 	// contracts/stakingPool.algo.ts:884
-	// callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppID>({
+	// callerPoolAppID = sendMethodCall<typeof ValidatorRegistry.prototype.getPoolAppId>({
 	//             applicationID: AppID.fromUint64(this.creatingValidatorContractAppId.value),
 	//             methodArgs: [poolKey.id, poolKey.poolId],
 	//         })
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getPoolAppID(uint64,uint64)uint64"
+	method "getPoolAppId(uint64,uint64)uint64"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:885

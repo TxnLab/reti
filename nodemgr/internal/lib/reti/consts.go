@@ -10,12 +10,12 @@ import (
 const (
 	// Global state keys in Validator contract
 	VldtrNumValidators = "numV"
-	VldtrPoolTmplID    = "poolTemplateAppId"
+	VldtrPoolTmplId    = "poolTemplateAppId"
 
 	// Global state keys in Staking pool contract
 	StakePoolCreatorApp    = "creatorApp"
-	StakePoolValidatorID   = "validatorId"
-	StakePoolPoolID        = "poolID"
+	StakePoolValidatorId   = "validatorId"
+	StakePoolPoolId        = "poolId"
 	StakePoolNumStakers    = "numStakers"
 	StakePoolStaked        = "staked"
 	StakePoolMinEntryStake = "minEntryStake"
@@ -26,7 +26,7 @@ const (
 	// Gating types
 	GatingTypeNone                  = 0
 	GatingTypeAssetsCreatedBy       = 1
-	GatingTypeAssetID               = 2
+	GatingTypeAssetId               = 2
 	GatingTypeCreatedByNFDAddresses = 3
 	GatingTypeSegmentOfNFD          = 4
 )

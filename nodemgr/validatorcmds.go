@@ -129,7 +129,7 @@ func ChangeCommission(ctx context.Context, command *cli.Command) error {
 func DefineValidator() error {
 	var (
 		err      error
-		nfdAppID uint64
+		nfdAppId uint64
 		nfdName  string
 	)
 
@@ -154,11 +154,11 @@ func DefineValidator() error {
 	}
 	config.Manager = manager
 	if y, _ := yesNo("Do you want to associate an NFD with this"); y == "y" {
-		nfdAppID, nfdName, err = getNFDAppID("Enter the NFD Name for this validator", config.Owner)
+		nfdAppId, nfdName, err = getNFDAppId("Enter the NFD Name for this validator", config.Owner)
 		if err != nil {
 			return err
 		}
-		config.NFDForInfo = nfdAppID
+		config.NFDForInfo = nfdAppId
 	}
 	// Use the promptui library to ask questions for each of the configuration items in ValidatorConfig
 	config.PayoutEveryXMins, err = getInt("Enter the payout frequency (in minutes - 1, 60 (1 hr), max 7 days)", 1, 1, 60*24*7)
@@ -227,9 +227,9 @@ func getInt(prompt string, defVal int, minVal int, maxVal int) (int, error) {
 	return value, nil
 }
 
-func getNFDAppID(prompt string, owner string) (uint64, string, error) {
+func getNFDAppId(prompt string, owner string) (uint64, string, error) {
 	var (
-		nfdID   uint64
+		nfdId   uint64
 		nfdName string
 	)
 	_, err := (&promptui.Prompt{
@@ -245,7 +245,7 @@ func getNFDAppID(prompt string, owner string) (uint64, string, error) {
 			if nfd.Owner != owner {
 				return fmt.Errorf("nfd owner:%s is not same as owner you specified:%s", nfd.Owner, owner)
 			}
-			nfdID = uint64(nfd.AppID)
+			nfdId = uint64(nfd.AppID)
 			nfdName = nfd.Name
 			return nil
 		},
@@ -253,7 +253,7 @@ func getNFDAppID(prompt string, owner string) (uint64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	return nfdID, nfdName, nil
+	return nfdId, nfdName, nil
 }
 
 func getAlgoAccount(prompt string, defVal string) (string, error) {

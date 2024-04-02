@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@algorandfoundation/algokit-utils':
-    specifier: ^5.6.1
-    version: 5.6.1(algosdk@2.7.0)
+    specifier: ^5.8.0
+    version: 5.8.0(algosdk@2.7.0)
   algosdk:
     specifier: ^2.7.0
     version: 2.7.0
@@ -20,11 +20,11 @@ dependencies:
 
 devDependencies:
   '@tsconfig/node18':
-    specifier: ^18.2.2
-    version: 18.2.2
+    specifier: ^18.2.4
+    version: 18.2.4
   '@types/node':
-    specifier: ^20.11.30
-    version: 20.11.30
+    specifier: ^20.12.2
+    version: 20.12.2
   '@types/prompts':
     specifier: ^2.4.9
     version: 2.4.9
@@ -32,13 +32,13 @@ devDependencies:
     specifier: ^17.0.32
     version: 17.0.32
   typescript:
-    specifier: ^5.4.2
-    version: 5.4.2
+    specifier: ^5.4.3
+    version: 5.4.3
 
 packages:
 
-  /@algorandfoundation/algokit-utils@5.6.1(algosdk@2.7.0):
-    resolution: {integrity: sha512-lC27i9I0knu88yykFcBcLhpoCaZQByxZp1/vrGlEUeMcVe4fPhvzYpipnIzPySkuRJjwn0XVKKuawAkg1gZ/OQ==}
+  /@algorandfoundation/algokit-utils@5.8.0(algosdk@2.7.0):
+    resolution: {integrity: sha512-BxwUBQ0BaAPpOZt7e2kwP0pfvG2W2AqOBBI6Y3AbJ01a9P7yJ1wIaJfqG02aiG4mpKbLgz84WBQij+0DqGK80Q==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
@@ -47,12 +47,12 @@ packages:
       buffer: 6.0.3
     dev: false
 
-  /@tsconfig/node18@18.2.2:
-    resolution: {integrity: sha512-d6McJeGsuoRlwWZmVIeE8CUA27lu6jLjvv1JzqmpsytOYYbVi1tHZEnwCNVOXnj4pyLvneZlFlpXUK+X9wBWyw==}
+  /@tsconfig/node18@18.2.4:
+    resolution: {integrity: sha512-5xxU8vVs9/FNcvm3gE07fPbn9tl6tqGGWA9tSlwsUEkBxtRnTsNmwrV8gasZ9F/EobaSv9+nu8AxUKccw77JpQ==}
     dev: true
 
-  /@types/node@20.11.30:
-    resolution: {integrity: sha512-dHM6ZxwlmuZaRmUPfv1p+KrdD1Dci04FbdEm/9wEMouFqxYoFl5aMkt0VMAUtYRQDyYvD41WJLukhq/ha3YuTw==}
+  /@types/node@20.12.2:
+    resolution: {integrity: sha512-zQ0NYO87hyN6Xrclcqp7f8ZbXNbRfoGWNcMvHTPQp9UUrwI0mI7XBz+cu7/W6/VClYo2g63B0cjull/srU7LgQ==}
     dependencies:
       undici-types: 5.26.5
     dev: true
@@ -60,7 +60,7 @@ packages:
   /@types/prompts@2.4.9:
     resolution: {integrity: sha512-qTxFi6Buiu8+50/+3DGIWLHM6QuWsEKugJnnP6iv2Mc4ncxE4A/OJkjuVOA+5X0X1S/nq5VJRa8Lu+nwcvbrKA==}
     dependencies:
-      '@types/node': 20.11.30
+      '@types/node': 20.12.2
       kleur: 3.0.3
     dev: true
 
@@ -227,8 +227,8 @@ packages:
     resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
     dev: false
 
-  /typescript@5.4.2:
-    resolution: {integrity: sha512-+2/g0Fds1ERlP6JsakQQDXjZdZMM+rqpamFZJEKh4kwTIn3iDkgKtby0CeNd5ATNZ4Ry1ax15TMx0W2V+miizQ==}
+  /typescript@5.4.3:
+    resolution: {integrity: sha512-KrPd3PKaCLr78MalgiwJnA25Nm8HAmdwN3mYUYZgG/wizIo9EainNVQI9/yDavtVFRN2h3k8uf3GLHuhDMgEHg==}
     engines: {node: '>=14.17'}
     hasBin: true
     dev: true

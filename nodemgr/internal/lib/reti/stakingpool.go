@@ -52,7 +52,7 @@ func (r *Reti) GetPoolID(poolAppID uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolPoolID)
+	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolPoolId)
 }
 
 func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
@@ -89,9 +89,9 @@ func (r *Reti) UpdateAlgodVer(poolAppID uint64, algodVer string, caller types.Ad
 		AppID:       poolAppID,
 		Method:      updateAlgodVerMethod,
 		MethodArgs:  []any{algodVer},
-		ForeignApps: []uint64{r.RetiAppID},
+		ForeignApps: []uint64{r.RetiAppId},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.ValidatorID)},
+			{AppID: r.RetiAppId, Name: GetValidatorListBoxName(r.ValidatorId)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
@@ -117,7 +117,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	)
 
 	// make sure we even have enough rewards to do the payout
-	pools, err := r.GetValidatorPools(r.ValidatorID)
+	pools, err := r.GetValidatorPools(r.ValidatorId)
 	if err != nil {
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
@@ -147,9 +147,9 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:       poolAppID,
 			Method:      gasMethod,
-			ForeignApps: []uint64{r.RetiAppID},
+			ForeignApps: []uint64{r.RetiAppId},
 			BoxReferences: []types.AppBoxReference{
-				{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.ValidatorID)},
+				{AppID: r.RetiAppId, Name: GetValidatorListBoxName(r.ValidatorId)},
 				{AppID: 0, Name: GetStakerLedgerBoxName()},
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
@@ -246,9 +246,9 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, s
 			voteLast,
 			voteKeyDilution,
 		},
-		ForeignApps: []uint64{r.RetiAppID},
+		ForeignApps: []uint64{r.RetiAppId},
 		BoxReferences: []types.AppBoxReference{
-			{AppID: r.RetiAppID, Name: GetValidatorListBoxName(r.ValidatorID)},
+			{AppID: r.RetiAppId, Name: GetValidatorListBoxName(r.ValidatorId)},
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,

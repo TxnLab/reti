@@ -30,4 +30,5 @@ The PNPM package manager was used for this project.  See [pnpm](https://pnpm.io/
 
 ### Bootstrap script
 
-A bootstrap script is in the ./bootstrap directory.  Running `pnpm run bootstrap` will bootstrap a validator instance on the  local sandbox, and update an .env.sandbox file inside the nodemgr directory for local CLI use/testing.  It is recommended to use a named sandbox configuration that has devmode disabled so blocks proceed normally. 
+A bootstrap script is in the ./bootstrap directory.  Running `pnpm run bootstrap --network {network}` will bootstrap the validator.  The localnet networkbootstraps the local sandbox and also funds two new test accounts - updating an .env.sandbox file inside the nodemgr directory for local CLI use/testing.  It is recommended to use a named sandbox configuration that has devmode disabled so blocks proceed normally.
+
