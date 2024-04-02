@@ -1,0 +1,52 @@
+@startuml
+actor "Staker" as staker
+actor "Validator" as validator
+actor "Master Contract" as master
+database "Staking pool(*)" as pool
+group get mbr data
+validator -> master: [SIMULATE] getMbrAmounts()(uint64,uint64,uint64,uint64)
+master->validator: returns MBRs to add Validator, add Pool, pool init, dnew first-time Staker
+end
+group Add self as new validator
+autonumber 0
+validator -> master: [payment of Validator MBR for new validator]
+validator -> master: addValidator(mbrPayment: PayTxn, nfdName: string, config: ValidatorConfig): uint64
+autonumber stop
+master -> validator: initializes new validator record, returns validator ID
+end
+
+group Add pool for validator
+autonumber 0
+validator -> master: [payment of mbr for new pool]
+validator -> master: addPool(mbrPayment: PayTxn, validatorId: ValidatorID): ValidatorPoolKey
+autonumber stop
+master -> pool: [itxn] creates new staking pool contract instance
+master -> validator: returns {Validator ID, Pool ID, Pool App ID}
+...  - Initialize Pool Storage - ...
+autonumber 0
+validator -> pool: [payment of box storage mbr for stakers ledger in pool]
+validator -> pool: initStorage(mbrPayment: PayTxn)
+autonumber stop
+pool -> pool: [If Pool 1 &\nif reward token set]\nOpt-In to Reward Token
+...  - If Reward Token Defined - ...
+validator -> pool: (sends reward token [at any time] to Pool 1 or future Reward Token rewards)
+end
+
+group Execute Epoch payouts
+autonumber 0
+validator -> pool: [dummy gas() txn for ref filling]
+validator -> pool: [dummy gas() txn for ref filling]
+validator -> pool: [technically, anyone can call] - epochBalanceUpdate() - can only be called every X minutes as defined by validator)
+autonumber 0
+pool -> validator: [itxn] getValidatorConfig()
+pool -> validator: [itxn] [TokenEligible && POOL 1] setTokenPayoutRatio
+autonumber 2
+pool -> validator: [itxn] [TokenEligible && POOL != 1] getPoolAppID of pool 1
+pool -> pool: [itxn] [TokenEligible && POOL != 1]\ncalls Pool 1: setTokenPayoutRatio (if pool 1)
+pool -> validator: [itxn] getValidatorState()
+pool -> validator: [itxn] (to validator's commission address) PAYMENT of validator's per-epoch commission - x% of available reward in pool.
+autonumber stop
+pool -> validator: [itxn] stakeUpdatedViaRewards()
+pool -> pool: updates 'ledger' for all stakers based on\ntime in epoch & stake %
+end
+@enduml

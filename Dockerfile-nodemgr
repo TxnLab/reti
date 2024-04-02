@@ -1,0 +1,23 @@
+FROM golang:1.21-alpine as builder
+# Install git and certificates
+RUN apk --no-cache add tzdata zip ca-certificates git
+# Make repository path
+RUN mkdir -p /go/src/app
+WORKDIR /go/src/app
+
+# just fetch the dependencies in a cachable layer
+COPY nodemgr/go.* ./nodemgr/
+RUN cd nodemgr && go mod download && cd ..
+
+# Copy all project files (.env's are skipped due to .dockerignore)
+COPY . ./
+RUN --mount=type=cache,target=/root/.cache/go-build env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -C nodemgr -v -o /out/ .
+
+FROM scratch
+
+WORKDIR /app
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /out/* /app/
+
+ENTRYPOINT ["/app/reti"]
