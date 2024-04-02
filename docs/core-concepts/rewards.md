@@ -2,30 +2,33 @@
 
 Staking pools will receive rewards when they propose blocks, as long as they're above the 30K ALGO threshold and below the maximum amount defined by the protocl (around 70M currently) and have good performance. Rewards for stakers and validators are distributed periodically at the end of each epoch, which is a fixed period of time determined by the validator. The reward distribution and calculation is designed to prevent gaming of the system.
 
-There is a special limit per-validator of 10% of all online stake.  A type of slashing occurs if this is reached
+There is a special limit per-validator of 10% of all online stake.  A type of slashing occurs if this is reached.  See **Saturation** below.
 
 #### Reward Calculation
 
 The total reward for the pool is calculated based on the current pool balance and the known staked amount. This reward is then distributed between the validator and stakers according to the following process:
 
-1. **Validator Commission**: The validator receives their predefined commission, which is an immutable percentage set when defining the validator record.
-2. **staker Reward Distribution**: The remaining reward is distributed among the stakers proportionally based on their stake and the duration they were active in the epoch.
-   * stakers who were active for the entire epoch receive their full share of the reward based on their percentage of the total staked amount.
-   * stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
-3. **Compounding**: staker rewards are directly added to their staked balance, compounding their future rewards.
+1. **Validator Commission**: The validator receives their predefined commission, which is an immutable percentage set when defining the validator record (unless saturated).
+2. **Staker Reward Distribution**: The remaining reward is distributed among the stakers proportionally based on their stake and the duration they were active in the epoch.
+   * Stakers who were active for the entire epoch receive their full share of the reward based on their percentage of the total staked amount.
+   * Stakers who added or removed stake during the epoch receive a partial reward proportional to the time they were active in the epoch.
+3. **Compounding**: Staker rewards are directly added to their staked balance, compounding their future rewards.
 
 #### Soft caps and Validator Saturation
 
 * While developing this solution, [Stefano De Angelis](https://github.com/deanstef) suggested a Saturation model whereby stake is still allowed to be added to pools, but a **Saturated** validator starts to have diminished rewards. &#x20;
-*   This Saturation level is a _soft_ limit designed to prevent too much stake going to to one validator and which scales with the total online stake.
+*   This Saturation level is a _soft_ limit designed to prevent too much stake going to one validator and which scales with the total online stake.
 
-    **More than 10% of the currently online stake** will be considered a **Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
-* The soft limit per pool (as part of ‘finding space’) becomes the 10% threshold / num pools, so that the pools themselves will also try to prevent large imbalances, with stake skipping pools at this level.
-* **Any validator exceeding this total threshold will be considered over-saturated and be negatively impacted.**  In this state, the following changes:
-  * **Rewards accrued in each epoch are diminished and the validator receives no rewards,** effectively reducing the APR for the pools.  This will encourage stakers to exit the pool or at least lower their stake within thresholds.  For example, if the current saturation limit for a validator is twice the amount staked in the pool, the reward will be halved.  The below example showing a fictional 200 ALGO reward being available, with 100,000 ALGO being the 'soft limit' per validator and 200,000 ALGO currently staked to the validator.  The 200 reward becomes 100 ALGO in this example.
+    **More than 10% of the currently online stake** **will be considered a Saturated validator.**  The AVM  will have a new opcode so that contracts may query the current online stake value.  The pools will use this value for the soft limit.
+* **Any validator exceeding this total threshold will be considered over-saturated and be negatively impacted.**  The effective APR is reduced.  In this state, the following changes:
+  * **Rewards accrued in each epoch are reduced proportionally to the amount 'over' the threshold.**
+  * **The validator receives no rewards**
+  * The remainder (rewards - paid outreduced rewards) is sent back to the fee sink where it will accrue for future payout to the protocol and node runners.
+  * The intended result is that this will encourage stakers to exit the pool or at least lower their stake to be within the thresholds. &#x20;
+    * For example, if the current saturation limit for a validator is twice the amount staked in the pool, the reward will be halved.  The below example showing a fictional 200 ALGO reward being available, with 100,000 ALGO being the 'soft limit' per validator and 200,000 ALGO currently staked to the validator.  The 200 reward becomes 100 ALGO in this example.
 
 $$
-maxPayableReward = \frac{algoRewardAvail * maxStakePerValidator}{totalStakeInValidator} = \frac{200*100000}{200000} = 100
+reward = \frac{algoReward * maxStakePerValidator}{totalStakeInValidator} = \frac{200*100000}{200000} = 100
 $$
 
 #### Hard caps
@@ -50,7 +53,7 @@ Some validators may offer additional token rewards to incentivize staking. If a 
 
 #### Stake Removal
 
-stakers can remove their stake from the pool at any time. When stake is removed, the staker can decide how much they want to withdraw. It must either be the entire stake, or a balance above the minimum entry for the pool.&#x20;
+Stakers can remove their stake from the pool at any time. When stake is removed, the staker can decide how much they want to withdraw. It must either be the entire stake, or a balance above the minimum entry for the pool.&#x20;
 
 ## Payout Process
 

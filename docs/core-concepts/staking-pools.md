@@ -4,6 +4,13 @@
 
 **Stake Addition:** Users participate by directing their stake to specific validators, chosen by id through the master validator contract. The system intelligently allocates the user's stake to the appropriate pool within the chosen validator's portfolio.  If the staker is already in a particular pool for that validator, their stake will be added their first unless the pool is full.
 
+Pools are considered full based on taking the LESSER of:
+
+* 15% of online stake / number of pools
+* The max Algo per account allowed that still receives incentive rewards.
+
+No new stake can be added to a validator if the total Algo staked across all of the validators pools reaches 15% of online stake.
+
 **Ledger System:** A comprehensive ledger within each pool tracks up to 200 stakers. This ledger records crucial details such as the staker's account, the timing of their stake entry, the amount staked, and accumulated rewards. The design of the ledger aims to:
 
 * Prevent manipulation of reward distribution by adjusting entry times to neutralize advantage gained from last-minute large stakes.
