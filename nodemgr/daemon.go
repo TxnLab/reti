@@ -497,7 +497,7 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 			// newest key is key we're already online with... done
 			continue
 		}
-		if keyToCheck.EffectiveFirstValid > curRound {
+		if keyToCheck.Key.VoteFirstValid > curRound {
 			// activeKey isn't even in range yet ignore for now
 			continue
 		}
@@ -505,7 +505,7 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 		misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToCheck.Id)
 		err = App.retiClient.GoOnline(info.poolAppId, managerAddr, keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey, keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
 		if err != nil {
-			return fmt.Errorf("unable to go online for account:%s [pool app id:%d]", account, info.poolAppId)
+			return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err: %w", account, info.poolAppId, err)
 		}
 		misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppId)
 	}
