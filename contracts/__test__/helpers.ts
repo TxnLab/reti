@@ -287,7 +287,13 @@ export class StakedInfo {
         bigint,
         bigint,
     ]): StakedInfo {
-        return { staker: decodeAddress(Staker), balance: Balance, totalRewarded: TotalRewarded, rewardTokenBalance: RewardTokenBalance, entryTime: EntryTime };
+        return {
+            staker: decodeAddress(Staker),
+            balance: Balance,
+            totalRewarded: TotalRewarded,
+            rewardTokenBalance: RewardTokenBalance,
+            entryTime: EntryTime,
+        };
     }
 
     public static FromBoxData(boxData: Uint8Array): StakedInfo[] {
@@ -437,30 +443,6 @@ export async function getProtocolConstraints(validatorClient: ValidatorRegistryC
 
 function dumpLogs(logs: Uint8Array[]) {
     consoleLogger.info(logs.map((uint8array) => new TextDecoder().decode(uint8array)).join('\n'));
-    // logs.forEach((uint8array) => {
-    //     let strVal = new TextDecoder().decode(uint8array);
-    //
-    //     // Get the indices where '%i' exists
-    //     const foundIndices = [...strVal.matchAll(/%i/g)].map((e) => e.index);
-    //
-    //     // Start index so we know where to start reading for the 64-bit big endian number
-    //     const endIndex = strVal.lastIndexOf('%i') + 2; // includes the two characters in '%i'
-    //
-    //     // Change Uint8Array to ArrayBuffer
-    //     const arrayBuffer = ArrayBuffer.from(uint8array.buffer);
-    //     const dataView = new DataView(arrayBuffer, endIndex);
-    //
-    //     // Replace each '%i' with their corresponding integers
-    //     foundIndices.reverse().forEach((index, iteration) => {
-    //         // 64-bit big endian integer
-    //         const integer64Bit = dataView.getBigInt64(iteration * 8);
-    //
-    //         // Replace the '%i' with the integer
-    //         strVal = strVal.substring(0, index) + integer64Bit + strVal.substring(index! + 2);
-    //     });
-    //
-    //     consoleLogger.info(strVal);
-    // });
 }
 
 export async function addValidator(

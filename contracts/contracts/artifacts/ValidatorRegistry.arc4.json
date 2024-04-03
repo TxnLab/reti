@@ -418,7 +418,17 @@
         {
           "name": "rewardTokenAmountReserved",
           "type": "uint64",
-          "desc": "amount this validator's total stake increased via rewards (that should beseen as 'accounted for/pending spent')"
+          "desc": "amount this validator's total stake increased via rewards (that should be"
+        },
+        {
+          "name": "validatorCommission",
+          "type": "uint64",
+          "desc": "the commission amount the validator was paid, if any"
+        },
+        {
+          "name": "saturatedBurnToFeeSink",
+          "type": "uint64",
+          "desc": "if the pool was in saturated state, the amount sent back to the fee sink.seen as 'accounted for/pending spent')"
         }
       ],
       "returns": {

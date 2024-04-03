@@ -65,6 +65,7 @@ module.exports = {
                 'no-param-reassign': 'off',
                 'no-restricted-syntax': 'off',
                 'no-continue': 'off',
+                '@typescript-eslint/ban-ts-comment': 'off',
             },
         },
         {
