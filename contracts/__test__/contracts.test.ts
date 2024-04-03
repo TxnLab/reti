@@ -2531,7 +2531,7 @@ describe('SaturatedValidator', () => {
     });
 });
 
-// Uncomment skip when want to do full pool testing
+// Remove skip when want to do full pool (200 stakers) testing
 describe.skip('ValidatorWFullPoolWRewards', () => {
     beforeEach(fixture.beforeEach);
     beforeEach(logs.beforeEach);

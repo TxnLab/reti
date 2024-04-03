@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { SupportedWallet, WalletId, WalletManager, WalletProvider } from '@txnlab/use-wallet-react'
+import { SupportedWallet, WalletId, WalletManager, WalletProvider, useWallet } from '@txnlab/use-wallet-react'
 import { SnackbarProvider } from 'notistack'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -44,7 +44,7 @@ const walletManager = new WalletManager({
   network,
   algod: {
     baseServer: algodConfig.server,
-    port: Number(algodConfig.port),
+    port: algodConfig.port,
     token: algodConfig.token as string,
   },
 })
@@ -57,6 +57,7 @@ const router = createRouter({
   routeTree,
   context: {
     queryClient,
+    walletManager: undefined!,
   },
   defaultPreloadStaleTime: 0,
 })
@@ -67,6 +68,11 @@ declare module '@tanstack/react-router' {
   }
 }
 
+function InnerApp() {
+  const { activeAddress } = useWallet()
+  return <RouterProvider router={router} context={{ queryClient, walletManager: { activeAddress }}} />
+}
+
 function AppProviders() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
@@ -74,7 +80,7 @@ function AppProviders() {
         <QueryClientProvider client={queryClient}>
           <SnackbarProvider maxSnack={3}>
             <WalletProvider manager={walletManager}>
-              <RouterProvider router={router} />
+              <InnerApp />
               <WalletShortcutHandler />
             </WalletProvider>
           </SnackbarProvider>

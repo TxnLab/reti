@@ -12,21 +12,14 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as ValidatorsImport } from './routes/validators'
-import { Route as DashboardImport } from './routes/dashboard'
 import { Route as AddImport } from './routes/add'
 import { Route as IndexImport } from './routes/index'
 import { Route as ValidatorsValidatorIdImport } from './routes/validators_.$validatorId'
-import { Route as ValidatorsValidatorIdManageImport } from './routes/validators_.$validatorId_.manage'
 
 // Create/Update Routes
 
 const ValidatorsRoute = ValidatorsImport.update({
   path: '/validators',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const DashboardRoute = DashboardImport.update({
-  path: '/dashboard',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -45,12 +38,6 @@ const ValidatorsValidatorIdRoute = ValidatorsValidatorIdImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const ValidatorsValidatorIdManageRoute =
-  ValidatorsValidatorIdManageImport.update({
-    path: '/validators/$validatorId/manage',
-    getParentRoute: () => rootRoute,
-  } as any)
-
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -63,20 +50,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddImport
       parentRoute: typeof rootRoute
     }
-    '/dashboard': {
-      preLoaderRoute: typeof DashboardImport
-      parentRoute: typeof rootRoute
-    }
     '/validators': {
       preLoaderRoute: typeof ValidatorsImport
       parentRoute: typeof rootRoute
     }
     '/validators/$validatorId': {
       preLoaderRoute: typeof ValidatorsValidatorIdImport
-      parentRoute: typeof rootRoute
-    }
-    '/validators/$validatorId/manage': {
-      preLoaderRoute: typeof ValidatorsValidatorIdManageImport
       parentRoute: typeof rootRoute
     }
   }
@@ -87,10 +66,8 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
   AddRoute,
-  DashboardRoute,
   ValidatorsRoute,
   ValidatorsValidatorIdRoute,
-  ValidatorsValidatorIdManageRoute,
 ])
 
 /* prettier-ignore-end */
