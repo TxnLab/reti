@@ -181,8 +181,8 @@ async function main() {
         );
         console.log('Modified .env.sandbox in nodemgr directory with these values for testing');
 
-				// Create a .env.localnet file in the ui directory with the validator app id
-				createViteEnvFileForLocalnet(validatorApp.appId);
+        // Create a .env.localnet file in the ui directory with the validator app id
+        createViteEnvFileForLocalnet(validatorApp.appId);
     }
 }
 
