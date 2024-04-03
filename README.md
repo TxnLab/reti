@@ -10,7 +10,7 @@ The Réti Open Pooling protocol enables the creation of decentralized staking po
 
 Before starting, ensure you have the following installed:
 - **Docker**: Required for running AlgoKit. [Installation guide](https://www.docker.com/get-started).
-- **AlgoKit**: Version 1.1 or later is required. [Installation guide](https://github.com/algorandfoundation/algokit-cli#install). Verify by running `algokit --version`.
+- **AlgoKit**: Version 2.0 or later is required. [Installation guide](https://github.com/algorandfoundation/algokit-cli#install). Verify by running `algokit --version`.
 - **PNPM**: Version 8.0 or later for package management. [Installation guide](https://pnpm.io/installation). Verify by running `pnpm --version`.
 
 ## Quick Start
