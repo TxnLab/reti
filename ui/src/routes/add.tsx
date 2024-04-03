@@ -6,11 +6,10 @@ import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { AddValidatorForm } from '@/components/AddValidatorForm'
-import { isWalletConnected } from '@/utils/wallets'
 
 export const Route = createFileRoute('/add')({
-  beforeLoad: async () => {
-    if (!isWalletConnected()) {
+  beforeLoad: ({ context }) => {
+    if (!context.walletManager.activeAddress) {
       throw redirect({
         to: '/',
       })
