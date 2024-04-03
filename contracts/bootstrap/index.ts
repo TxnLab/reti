@@ -11,7 +11,7 @@ import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-util
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient';
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient';
 
-async function getNetworkConfig(network: string): Promise<[AlgoClientConfig, bigint, string]> {
+function getNetworkConfig(network: string): [AlgoClientConfig, bigint, string] {
     let registryAppID: bigint;
     let feeSink: string;
     switch (network) {
@@ -43,6 +43,40 @@ async function getNetworkConfig(network: string): Promise<[AlgoClientConfig, big
     return [config, registryAppID, feeSink];
 }
 
+/**
+ * Creates a .env.localnet file in /ui root folder with updated VITE_RETI_APP_ID
+ * @param {number | bigint} validatorAppId app id of the master validator contract
+ */
+function createViteEnvFileForLocalnet(validatorAppId: number | bigint): void {
+    const templateFilePath = '../../ui/.env.template';
+    const outputFilePath = '../../ui/.env.localnet';
+
+    // Read the .env.template file
+    const templateContent = fs.readFileSync(templateFilePath, 'utf8');
+
+    const sectionStartMarker = '# ========================\n# LocalNet configuration:';
+    const sectionEndMarker = '# ========================\n# TestNet configuration:';
+
+    const startIndex = templateContent.indexOf(sectionStartMarker);
+    const endIndex = templateContent.indexOf(sectionEndMarker, startIndex);
+
+    if (startIndex === -1 || endIndex === -1) {
+        console.error('Failed to extract LocalNet configuration from .env.template');
+        return;
+    }
+
+    // Extract the LocalNet configuration section
+    let localNetSection = templateContent.substring(startIndex, endIndex);
+
+    // Replace VITE_RETI_APP_ID placeholder with the actual validatorAppId
+    localNetSection = localNetSection.replace('VITE_RETI_APP_ID=0', `VITE_RETI_APP_ID=${validatorAppId.toString()}`);
+
+    // Write the new .env.localnet file
+    fs.writeFileSync(outputFilePath, localNetSection);
+
+    console.log(`Created ${outputFilePath} with updated VITE_RETI_APP_ID.`);
+}
+
 async function main() {
     const args = await yargs.option('network', {
         default: 'localnet',
@@ -50,7 +84,7 @@ async function main() {
         demandOption: true,
     }).argv;
 
-    const [algodconfig, registryAppID, feeSink] = await getNetworkConfig(args.network);
+    const [algodconfig, registryAppID, feeSink] = getNetworkConfig(args.network);
 
     const algod = algokit.getAlgoClient(algodconfig);
     const localConfig = algokit.getConfigFromEnvOrDefaults();
@@ -146,6 +180,9 @@ async function main() {
             `ALGO_MNEMONIC_${creatorAcct.addr.substring(0, 4)}=${secretKeyToMnemonic(creatorAcct.sk)}\nRETI_APPID=${validatorApp.appId}\nALGO_MNEMONIC_${staker1.addr.substring(0, 4)}=${secretKeyToMnemonic(staker1.sk)}\nALGO_MNEMONIC_${staker2.addr.substring(0, 4)}=${secretKeyToMnemonic(staker2.sk)}\n`
         );
         console.log('Modified .env.sandbox in nodemgr directory with these values for testing');
+
+				// Create a .env.localnet file in the ui directory with the validator app id
+				createViteEnvFileForLocalnet(validatorApp.appId);
     }
 }
 
