@@ -384,6 +384,9 @@ export function calculateMaxStake(
   algos = false,
 ): number {
   const { numPools } = validator.state
+  if (numPools === 0) {
+    return 0
+  }
   const hardMaxDividedBetweenPools = constraints.maxAlgoPerValidator / BigInt(numPools)
   let { maxAlgoPerPool } = validator.config
   if (maxAlgoPerPool === 0n) {
