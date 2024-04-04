@@ -3,25 +3,39 @@
   "baseBranches": ["dev"],
   "timezone": "America/New_York",
   "packageRules": [
-    {
-      "matchFileNames": ["contracts/**"],
-      "extends": ["config:recommended", ":assignee(pbennett)"]
-    },
-    {
-      "matchFileNames": ["ui/**"],
-      "extends": [
-        "config:js-app",
-        ":assignee(drichar)",
-        ":automergeLinters",
-        ":automergeTypes",
-        ":combinePatchMinorReleases",
-        ":maintainLockFilesWeekly",
-        ":rebaseStalePrs",
-        ":renovatePrefix",
-        ":semanticCommitScope(ui)",
-        ":semanticPrefixChore",
-        "group:allNonMajor"
-      ]
-    }
-  ]
+		{
+			"matchFileNames": ["nodemgr/**", "Dockerfile-nodemgr"],
+			"extends": [
+				"config:recommended",
+				":assignee(pbennett)",
+				":semanticCommitScope(nodemgr)",
+				":semanticPrefixChore"
+			]
+		},
+		{
+			"matchFileNames": ["contracts/**", "**/workflows/release.yaml"],
+			"extends": [
+				"config:recommended",
+				":assignee(pbennett)",
+				":semanticCommitScope(contracts)",
+				":semanticPrefixChore"
+			]
+		},
+		{
+			"matchFileNames": ["ui/**", "**/workflows/ci-ui.yaml"],
+			"extends": [
+				"config:js-app",
+				":assignee(drichar)",
+				":automergeLinters",
+				":automergeTypes",
+				":combinePatchMinorReleases",
+				":maintainLockFilesWeekly",
+				":rebaseStalePrs",
+				":renovatePrefix",
+				":semanticCommitScope(ui)",
+				":semanticPrefixChore",
+				"group:allNonMajor"
+			]
+		}
+	]
 }
