@@ -405,9 +405,8 @@ export function calculateMaxStake(
   return maxStake
 }
 
-export function calculateMaxStakers(validator: Validator): number {
-  // @todo: fetch max stakers from contract
-  const maxStakersPerPool = 200
+export function calculateMaxStakers(validator: Validator, constraints?: Constraints): number {
+  const maxStakersPerPool = constraints?.maxStakersPerPool || 0
   const maxStakers = maxStakersPerPool * validator.state.numPools
 
   return maxStakers
@@ -428,8 +427,7 @@ export function isStakingDisabled(
     maxAlgoPerPool = constraints.maxAlgoPerPool
   }
 
-  // @todo: fetch max stakers from contract
-  const maxStakersPerPool = 200
+  const maxStakersPerPool = constraints?.maxStakersPerPool || 0
 
   const maxStakers = maxStakersPerPool * numPools
   const maxStake = Number(maxAlgoPerPool) * numPools
@@ -455,16 +453,19 @@ export function isUnstakingDisabled(
   return noPools || !validatorHasStake
 }
 
-export function isAddingPoolDisabled(activeAddress: string | null, validator: Validator): boolean {
-  if (!activeAddress) {
+export function isAddingPoolDisabled(
+  activeAddress: string | null,
+  validator: Validator,
+  constraints?: Constraints,
+): boolean {
+  if (!activeAddress || !constraints) {
     return true
   }
-  // @todo: define totalNodes as global constant or fetch from protocol constraints
-  const totalNodes = 4
+  const maxNodes = constraints.maxNodes
   const { numPools } = validator.state
   const { poolsPerNode } = validator.config
 
-  const hasAvailableSlots = numPools < poolsPerNode * totalNodes
+  const hasAvailableSlots = numPools < poolsPerNode * maxNodes
 
   return !hasAvailableSlots
 }
