@@ -380,11 +380,11 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
 
 export function calculateMaxStake(
   validator: Validator,
-  constraints: Constraints,
+  constraints?: Constraints,
   algos = false,
 ): number {
   const { numPools } = validator.state
-  if (numPools === 0) {
+  if (numPools === 0 || !constraints) {
     return 0
   }
   const hardMaxDividedBetweenPools = constraints.maxAlgoPerValidator / BigInt(numPools)
