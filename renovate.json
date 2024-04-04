@@ -1,6 +1,28 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
+  "baseBranches": ["dev"],
+  "timezone": "America/New_York",
+  "packageRules": [
+    {
+      "matchFileNames": ["contracts/**"],
+      "extends": ["config:recommended", ":assignee(pbennett)"]
+    },
+    {
+      "matchFileNames": ["ui/**"],
+      "extends": [
+        "config:js-app",
+        ":assignee(drichar)",
+        ":automergeLinters",
+        ":automergeTypes",
+        ":combinePatchMinorReleases",
+        ":maintainLockFilesWeekly",
+        ":rebaseStalePrs",
+        ":renovatePrefix",
+        ":semanticCommitScope(ui)",
+        ":semanticPrefixChore",
+        "group:allNonMajor",
+        "schedule:earlyMondays"
+      ]
+    }
   ]
 }
