@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
+  walletManager: { activeAddress: string | null }
 }>()({
   component: () => (
     <>

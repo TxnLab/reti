@@ -722,9 +722,17 @@ export class ValidatorRegistry extends Contract {
      * @param {ValidatorPoolKey} poolKey - ValidatorPoolKey type
      * @param {uint64} algoToAdd - amount this validator's total stake increased via rewards
      * @param {uint64} rewardTokenAmountReserved - amount this validator's total stake increased via rewards (that should be
+     * @param {uint64} validatorCommission - the commission amount the validator was paid, if any
+     * @param {uint64} saturatedBurnToFeeSink - if the pool was in saturated state, the amount sent back to the fee sink.
      * seen as 'accounted for/pending spent')
      */
-    stakeUpdatedViaRewards(poolKey: ValidatorPoolKey, algoToAdd: uint64, rewardTokenAmountReserved: uint64): void {
+    stakeUpdatedViaRewards(
+        poolKey: ValidatorPoolKey,
+        algoToAdd: uint64,
+        rewardTokenAmountReserved: uint64,
+        validatorCommission: uint64,
+        saturatedBurnToFeeSink: uint64
+    ): void {
         this.verifyPoolKeyCaller(poolKey);
 
         // Update the specified amount of stake (+reward tokens reserved) - update pool stats, then total validator stats
@@ -743,6 +751,8 @@ export class ValidatorRegistry extends Contract {
         //     poolAppId: AppID.fromUint64(poolKey.poolAppId),
         //     algoAdded: algoToAdd,
         //     rewardTokenHeldBack: rewardTokenAmountReserved,
+        //     saturatedBurnToFeeSink: saturatedBurnToFeeSink,
+        //     validatorCommission: validatorCommission,
         // });
     }
 
@@ -1003,7 +1013,7 @@ export class ValidatorRegistry extends Contract {
     //
     // /**
     //  * Logs how much algo was detected as being added to a staking pool as part of epoch reward calculations.
-    //  * If the validator pays out reward tokens, the amount of tokens held back are logged as well.
+    //  * Commission amount to validator, excess burned if pool is saturated, and the amount of tokens held back are logged as well.
     //  */
     // retiOP_epochRewardUpdate = new EventLogger<{
     //     // Validator ID
@@ -1012,6 +1022,10 @@ export class ValidatorRegistry extends Contract {
     //     poolNum: uint16;
     //     // Pool application ID
     //     poolAppId: AppID;
+    //     // Amount validator received (if anything)
+    //     validatorCommission: uint64;
+    //     // Saturated burn sent BACK to fee sink (if saturated pool)
+    //     saturatedBurnToFeeSink: uint64;
     //     // Algo amount added
     //     algoAdded: uint64;
     //     // Reward token amount held back for future payout
@@ -1344,14 +1358,6 @@ export class ValidatorRegistry extends Contract {
     }
 
     /**
-     * Returns the MAXIMUM allowed stake per pool and still receive incentives - we'll treat this as the 'max per pool'
-     */
-    private maxAlgoAllowedPerPool(): uint64 {
-        // TODO replace w/ appropriate AVM call once available
-        return 70_000_000_000_000; // 70m ALGO in microAlgo
-    }
-
-    /**
      * Returns the maximum allowed stake per validator based on a percentage of all current online stake before
      * the validator is considered saturated - where rewards are diminished.
      * NOTE: this function is defined twice - here and in staking pool contract.  Both must be identical.
@@ -1370,6 +1376,14 @@ export class ValidatorRegistry extends Contract {
         const online = this.getCurrentOnlineStake();
 
         return wideRatio([online, MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL], [1000]);
+    }
+
+    /**
+     * Returns the MAXIMUM allowed stake per pool and still receive incentives - we'll treat this as the 'max per pool'
+     */
+    private maxAlgoAllowedPerPool(): uint64 {
+        // TODO replace w/ appropriate AVM call once available
+        return 70_000_000_000_000; // 70m ALGO in microAlgo
     }
 
     private getCurrentOnlineStake(): uint64 {

@@ -1,48 +1,71 @@
-import { Navigate, createFileRoute } from '@tanstack/react-router'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
+import { fetchStakerValidatorData } from '@/api/contracts'
+import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
+import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { StakingTable } from '@/components/StakingTable'
+import { ValidatorTable } from '@/components/ValidatorTable'
+import { StakerValidatorData } from '@/interfaces/staking'
 
 export const Route = createFileRoute('/')({
-  component: Index,
+  beforeLoad: () => {
+    return {
+      validatorsQueryOptions,
+      constraintsQueryOptions,
+    }
+  },
+  loader: async ({ context: { queryClient, validatorsQueryOptions, constraintsQueryOptions } }) => {
+    queryClient.ensureQueryData(validatorsQueryOptions)
+    queryClient.ensureQueryData(constraintsQueryOptions)
+  },
+  component: Dashboard,
+  pendingComponent: () => <div>Loading...</div>,
+  errorComponent: ({ error }) => {
+    if (error instanceof Error) {
+      return <div>{error?.message}</div>
+    }
+    return <div>Error loading validator data</div>
+  },
 })
 
-function Index() {
-  const { wallets, activeAddress } = useWallet()
+function Dashboard() {
+  const validatorsQuery = useSuspenseQuery(validatorsQueryOptions)
+  const validators = validatorsQuery.data
 
-  if (activeAddress) {
-    return <Navigate to="/dashboard" />
-  }
+  const constraintsQuery = useSuspenseQuery(constraintsQueryOptions)
+  const constraints = constraintsQuery.data
+
+  const { activeAddress } = useWallet()
+
+  const stakesQuery = useQuery<StakerValidatorData[]>({
+    queryKey: ['stakes', { staker: activeAddress! }],
+    queryFn: () => fetchStakerValidatorData(activeAddress!),
+    enabled: !!activeAddress,
+    retry: false,
+  })
+
+  const stakesByValidator = stakesQuery.data || []
 
   return (
     <>
-      <PageHeader title={activeAddress ? 'Staking Dashboard' : null} />
+      <Meta title="Dashboard" />
+      <PageHeader title="Staking Dashboard" />
       <PageMain>
-        <div className="flex items-center justify-center py-24">
-          <Card className="w-[350]">
-            <CardHeader>
-              <CardTitle>Connect your wallet</CardTitle>
-              <CardDescription>
-                Connect your wallet to access your account and manage staking.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 py-4">
-                {wallets?.map((wallet) => (
-                  <Button
-                    key={wallet.id}
-                    variant="secondary"
-                    onClick={() => wallet.connect()}
-                    className="w-full"
-                  >
-                    {wallet.metadata.name}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mt-4 space-y-8">
+          <StakingTable
+            validators={validators || []}
+            stakesByValidator={stakesByValidator}
+            isLoading={stakesQuery.isLoading}
+            constraints={constraints}
+          />
+          <ValidatorTable
+            validators={validators || []}
+            stakesByValidator={stakesByValidator}
+            constraints={constraints}
+          />
         </div>
       </PageMain>
     </>

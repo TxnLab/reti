@@ -1,0 +1,24 @@
+{
+  "name": "reti",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TxnLab/reti.git"
+  },
+  "workspaces": [
+    "contracts",
+    "contracts/bootstrap",
+    "ui"
+  ],
+  "scripts": {
+    "compile": "pnpm -F './contracts' run build",
+    "bootstrap": "pnpm run bootstrap:localnet",
+    "dev": "pnpm run dev:localnet",
+    "bootstrap:localnet": "pnpm -F './contracts/bootstrap' run bootstrap",
+    "bootstrap:testnet": "pnpm -F './contracts/bootstrap' run bootstrap --network testnet",
+    "bootstrap:mainnet": "pnpm -F './contracts/bootstrap' run bootstrap --network mainnet",
+    "dev:localnet": "pnpm -F './ui' run dev:localnet",
+    "dev:testnet": "pnpm -F './ui' run dev:testnet",
+    "dev:mainnet": "pnpm -F './ui' run dev:mainnet"
+  }
+}

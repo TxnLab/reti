@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Crown } from 'lucide-react'
 import { Connect } from '@/components/Connect'
 import { ConnectedMenu } from '@/components/ConnectedMenu'
 import { MobileMenu } from '@/components/MobileMenu'
 import { ModeToggle } from '@/components/ModeToggle'
 import { Navigation } from '@/components/Navigation'
+import { useTheme } from '@/providers/ThemeProvider'
 
 interface LayoutProps {
   title?: string
@@ -14,6 +14,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { activeAddress } = useWallet()
+  const { theme } = useTheme()
 
   return (
     <div className="min-h-full">
@@ -26,7 +27,10 @@ export function Layout({ children }: LayoutProps) {
               </div>
               <div className="flex flex-shrink-0 items-center">
                 <Link to="/" activeOptions={{ exact: true }}>
-                  <Crown className="h-8 w-auto" />
+                  <img
+                    src={theme === 'dark' ? '/img/logowhite.svg' : '/img/logoblack.svg'}
+                    className="h-8 w-auto"
+                  />
                 </Link>
               </div>
               <div className="hidden md:ml-6 md:flex md:items-center md:space-x-4">

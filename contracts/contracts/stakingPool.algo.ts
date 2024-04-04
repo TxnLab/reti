@@ -494,8 +494,6 @@ export class StakingPool extends Contract {
         const epochInSecs = (validatorConfig.payoutEveryXMins as uint64) * 60;
         if (this.lastPayout.exists) {
             const secsSinceLastPayout = curTime - this.lastPayout.value;
-            log(concat('secs since last payout: %i', itob(secsSinceLastPayout)));
-
             // We've had one payout - so we need to be at least one epoch past the last payout.
             assert(secsSinceLastPayout >= epochInSecs, "Can't payout earlier than last payout + epoch time");
         }
@@ -562,7 +560,6 @@ export class StakingPool extends Contract {
         // ie: diminishedReward = (algoRewardAvail * algoSaturationLevel [max per validator]) /  totalAlgoStaked [for validator]
         // 3) The excess is sent to the fee sink.
         if (validatorState.totalAlgoStaked > algoSaturationAmt) {
-            log('validator in saturated state');
             isPoolSaturated = true;
         }
 
@@ -571,6 +568,8 @@ export class StakingPool extends Contract {
         // as being held back (for tracking what has been assigned for payout)
         let tokenRewardAvail = 0;
         let tokenRewardPaidOut = 0;
+        let validatorCommissionPaidOut = 0;
+        let excessToFeeSink = 0;
         if (isTokenEligible) {
             const tokenRewardBal =
                 poolOneAddress.assetBalance(AssetID.fromUint64(validatorConfig.rewardTokenId)) - rewardTokenHeldBack;
@@ -580,16 +579,13 @@ export class StakingPool extends Contract {
             if (tokenRewardBal >= validatorConfig.rewardPerPayout) {
                 // Now - adjust the token rewards to be relative based on this pools stake as % of 'total validator stake'
                 // using our prior snapshotted data
-                // @ts-ignore typescript thinks tokenPayoutRatio might not be set prior to this call but it has to be, based on isTokenEligible
+                // ignore is because ts thinks tokenPayoutRatio might not be set prior to this call but it has to be,
+                // based on isTokenEligible
+                // @ts-ignore typescript
                 const ourPoolPctOfWhole = tokenPayoutRatio.poolPctOfWhole[this.poolId.value - 1];
 
                 // now adjust the total reward to hand out for this pool based on this pools % of the whole
                 tokenRewardAvail = wideRatio([validatorConfig.rewardPerPayout, ourPoolPctOfWhole], [1_000_000]);
-                // increaseOpcodeBudget();
-                // log(concat('token ourPctOfWhole: ', (ourPoolPctOfWhole / 10000).toString()));
-                // log(concat('token reward held back: ', rewardTokenHeldBack.toString()));
-                log(concat('token reward avail: ', tokenRewardAvail.toString()));
-                // log(concat('token reward avail: %i', itob(tokenRewardAvail)));
             }
         }
         if (tokenRewardAvail === 0) {
@@ -597,54 +593,45 @@ export class StakingPool extends Contract {
             // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
             assert(algoRewardAvail > 1_000_000, 'Reward needs to be at least 1 ALGO');
         }
-        log(concat('algo reward avail: ', algoRewardAvail.toString()));
-        // log(concat('algo reward avail: %i', itob(algoRewardAvail)));
 
         if (isPoolSaturated) {
             // see comment where isPoolSaturated is set for changes in rewards...
             // diminishedReward = (reward * maxStakePerPool) / stakeForValidator
             const diminishedReward = wideRatio([algoRewardAvail, algoSaturationAmt], [validatorState.totalAlgoStaked]);
             // send excess to fee sink...
-            const excessToFeeSink = algoRewardAvail - diminishedReward;
-            increaseOpcodeBudget();
-            log(concat('dim rwd: ', diminishedReward.toString()));
-            log(concat('to sink: ', excessToFeeSink.toString()));
+            excessToFeeSink = algoRewardAvail - diminishedReward;
             sendPayment({
                 amount: excessToFeeSink,
                 receiver: this.getFeeSink(),
-                note: 'pool saturated, portion sent back to fee sink',
+                note: 'pool saturated, excess to fee sink',
             });
             // then distribute the smaller reward amount like normal (skipping validator payout entirely)
             algoRewardAvail = diminishedReward;
         } else if (validatorConfig.percentToValidator !== 0) {
             // determine the % that goes to validator...
             // ie: 100[algo] * 50_000 (5% w/4 decimals) / 1_000_000 == 5 [algo]
-            const validatorPay = wideRatio(
+            validatorCommissionPaidOut = wideRatio(
                 [algoRewardAvail, validatorConfig.percentToValidator as uint64],
                 [1_000_000]
             );
 
             // and adjust reward for entire pool accordingly
-            algoRewardAvail -= validatorPay;
+            algoRewardAvail -= validatorCommissionPaidOut;
 
             // ---
             // pay the validator their cut...
-            if (validatorPay > 0) {
-                log(concat('paying validator: %i', itob(validatorPay)));
+            if (validatorCommissionPaidOut > 0) {
                 sendPayment({
-                    amount: validatorPay,
+                    amount: validatorCommissionPaidOut,
                     receiver: validatorConfig.validatorCommissionAddress,
                     note: 'validator reward',
                 });
-                log(concat('remaining reward: %i', itob(algoRewardAvail)));
             }
         }
 
-        if (algoRewardAvail === 0 && tokenRewardAvail === 0) {
-            // likely a personal validator node - probably had validator % at 1000 and we just issued the entire reward
-            // to them.  Since we also have no token reward to assign - we're done
-            return;
-        }
+        // We could exit now if (algoRewardAvail === 0 && tokenRewardAvail === 0) which would be the case if validator had
+        // commission at 100% for eg, but we still want to inform the validator contract of our payouts
+        // so that it can log the appropriate events for indexers, so don't exit early.
 
         // Now we "pay" (but really just update their tracked balance) the stakers the remainder based on their % of
         // pool and time in this epoch.
@@ -697,7 +684,6 @@ export class StakingPool extends Contract {
                         partialStakersTotalStake += cmpStaker.balance;
                         timePercentage = (timeInPool * 1000) / epochInSecs;
 
-                        // log(concat('% in pool: ', (timePercentage / 10).toString()));
                         if (tokenRewardAvail > 0) {
                             // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                             const stakerTokenReward = wideRatio(
@@ -733,7 +719,6 @@ export class StakingPool extends Contract {
                 }
             }
         }
-        log(concat('partial staker total stake: %i', itob(partialStakersTotalStake)));
 
         // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
         // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
@@ -757,19 +742,10 @@ export class StakingPool extends Contract {
 
                         // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
                         if (tokenRewardAvail > 0) {
-                            // increaseOpcodeBudget();
-                            // log(concat('staker balance: ', cmpStaker.balance.toString()));
-                            // log(concat('tkn rwd avail: ', tokenRewardAvail.toString()));
-                            // increaseOpcodeBudget();
-                            // log(concat('new pool stake: ', newPoolTotalStake.toString()));
-
                             const stakerTokenReward = wideRatio(
                                 [cmpStaker.balance, tokenRewardAvail],
                                 [newPoolTotalStake]
                             );
-                            // increaseOpcodeBudget();
-                            // log(concat('paying staker token reward: ', stakerTokenReward.toString()));
-
                             // instead of sending them algo now - just increase their ledger balance, so they can claim
                             // it at any time.
                             cmpStaker.rewardTokenBalance += stakerTokenReward;
@@ -795,18 +771,18 @@ export class StakingPool extends Contract {
         // determined stake increases
         this.totalAlgoStaked.value += increasedStake;
 
-        log(concat('incr stake: %i', itob(increasedStake)));
-        log(concat('tok. rwd paid: %i', itob(tokenRewardPaidOut)));
-
         // Call the validator contract and tell it we've got new stake added
-        // It'll verify we're a valid staking pool id and update it
-        // stakeUpdatedViaRewards((uint64,uint64,uint64),uint64)void
+        // It'll verify we're a valid staking pool id and update the various stats, also logging an event to
+        // track the data.
+        // stakeUpdatedViaRewards(poolKey,algoToAdd,rewardTokenAmountReserved,validatorCommission,saturatedBurnToFeeSink)
         sendMethodCall<typeof ValidatorRegistry.prototype.stakeUpdatedViaRewards>({
             applicationID: AppID.fromUint64(this.creatingValidatorContractAppId.value),
             methodArgs: [
                 { id: this.validatorId.value, poolId: this.poolId.value, poolAppId: this.app.id },
                 increasedStake,
                 tokenRewardPaidOut,
+                validatorCommissionPaidOut,
+                excessToFeeSink,
             ],
         });
     }

@@ -26,7 +26,6 @@ import {
 } from '@/utils/contracts'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
-import { getActiveWalletAddress } from '@/utils/wallets'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -37,10 +36,12 @@ const algodClient = algokit.getAlgoClient({
 
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 
-export const makeSimulateValidatorClient = (activeAddress: string) => {
+const FEE_SINK = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
+
+export const makeSimulateValidatorClient = (senderAddr: string = FEE_SINK) => {
   return new ValidatorRegistryClient(
     {
-      sender: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
+      sender: { addr: senderAddr || FEE_SINK, signer: algosdk.makeEmptyTransactionSigner() },
       resolveBy: 'id',
       id: RETI_APP_ID,
     },
@@ -61,11 +62,11 @@ export const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAdd
 
 export const makeSimulateStakingPoolClient = (
   poolAppId: number | bigint,
-  activeAddress: string,
+  senderAddr: string = FEE_SINK,
 ) => {
   return new StakingPoolClient(
     {
-      sender: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
+      sender: { addr: senderAddr, signer: algosdk.makeEmptyTransactionSigner() },
       resolveBy: 'id',
       id: poolAppId,
     },
@@ -120,13 +121,7 @@ export async function fetchValidator(
   client?: ValidatorRegistryClient,
 ) {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+    const validatorClient = client || makeSimulateValidatorClient()
 
     const [config, state, validatorPoolData, poolTokenPayoutRatios, nodePoolAssignments] =
       await Promise.all([
@@ -170,13 +165,7 @@ export async function fetchValidator(
 
 export async function fetchValidators(client?: ValidatorRegistryClient) {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+    const validatorClient = client || makeSimulateValidatorClient()
 
     // App call to fetch total number of validators
     const numValidatorsResponse = await callGetNumValidators(validatorClient)
@@ -230,13 +219,7 @@ export async function fetchNodePoolAssignments(
   validatorId: string | number | bigint,
 ): Promise<NodePoolAssignmentConfig> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = makeSimulateValidatorClient(activeAddress)
+    const validatorClient = makeSimulateValidatorClient()
 
     const nodePoolAssignmentResponse = await callGetNodePoolAssignments(
       Number(validatorId),
@@ -270,13 +253,7 @@ export function callGetTokenPayoutRatio(
 
 export async function fetchTokenPayoutRatio(validatorId: string | number | bigint) {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = makeSimulateValidatorClient(activeAddress)
+    const validatorClient = makeSimulateValidatorClient()
 
     const result = await callGetTokenPayoutRatio(Number(validatorId), validatorClient)
 
@@ -296,13 +273,7 @@ export function callGetMbrAmounts(validatorClient: ValidatorRegistryClient) {
 
 export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise<MbrAmounts> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+    const validatorClient = client || makeSimulateValidatorClient()
 
     const mbrAmountsResponse = await callGetMbrAmounts(validatorClient)
     const [validatorMbr, poolMbr, poolInitMbr, stakerMbr] = mbrAmountsResponse.returns![0]
@@ -507,13 +478,7 @@ export async function isNewStakerToValidator(
   staker: string,
   minEntryStake: number | bigint,
 ) {
-  const activeAddress = getActiveWalletAddress()
-
-  if (!activeAddress) {
-    throw new Error('No active wallet found')
-  }
-
-  const validatorClient = makeSimulateValidatorClient(activeAddress)
+  const validatorClient = makeSimulateValidatorClient()
   const result = await callFindPoolForStaker(validatorId, staker, minEntryStake, validatorClient)
 
   const [_, isNewStaker] = result.returns![0]
@@ -533,13 +498,7 @@ export async function callGetStakedPoolsForAccount(
 
 export async function fetchStakedPoolsForAccount(staker: string): Promise<ValidatorPoolKey[]> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = makeSimulateValidatorClient(activeAddress)
+    const validatorClient = makeSimulateValidatorClient()
     const result = await callGetStakedPoolsForAccount(staker, validatorClient)
 
     const stakedPools = result.returns![0]
@@ -567,13 +526,7 @@ export async function fetchStakerPoolData(
   staker: string,
 ): Promise<StakerPoolData> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const stakingPoolClient = makeSimulateStakingPoolClient(poolKey.poolAppId, activeAddress)
+    const stakingPoolClient = makeSimulateStakingPoolClient(poolKey.poolAppId)
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
 
@@ -601,12 +554,6 @@ export async function fetchStakerPoolData(
 
 export async function fetchStakerValidatorData(staker: string): Promise<StakerValidatorData[]> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
     const poolKeys = await fetchStakedPoolsForAccount(staker)
 
     const allPools: Array<StakerPoolData> = []
@@ -674,13 +621,7 @@ export async function fetchProtocolConstraints(
   client?: ValidatorRegistryClient,
 ): Promise<Constraints> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+    const validatorClient = client || makeSimulateValidatorClient()
 
     const result = await callGetProtocolConstraints(validatorClient)
 
@@ -809,13 +750,7 @@ export async function fetchPoolInfo(
   client?: ValidatorRegistryClient,
 ): Promise<PoolInfo> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+    const validatorClient = client || makeSimulateValidatorClient()
 
     const result = await callGetPoolInfo(poolKey, validatorClient)
 
@@ -847,13 +782,7 @@ export async function fetchValidatorPools(
   client?: ValidatorRegistryClient,
 ): Promise<PoolInfo[]> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+    const validatorClient = client || makeSimulateValidatorClient()
 
     const result = await callGetPools(Number(validatorId), validatorClient)
 
@@ -872,13 +801,7 @@ export async function fetchValidatorPools(
 
 export async function fetchMaxAvailableToStake(validatorId: string | number): Promise<number> {
   try {
-    const activeAddress = getActiveWalletAddress()
-
-    if (!activeAddress) {
-      throw new Error('No active wallet found')
-    }
-
-    const validatorClient = makeSimulateValidatorClient(activeAddress)
+    const validatorClient = makeSimulateValidatorClient()
 
     const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
     const rawConfig = validatorConfigResult.returns![0]
