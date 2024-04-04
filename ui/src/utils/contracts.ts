@@ -378,9 +378,20 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
     })
 }
 
-export function calculateMaxStake(validator: Validator, algos = false): number {
+export function calculateMaxStake(
+  validator: Validator,
+  constraints: Constraints,
+  algos = false,
+): number {
   const { numPools } = validator.state
-  const { maxAlgoPerPool } = validator.config
+  const hardMaxDividedBetweenPools = constraints.maxAlgoPerValidator / BigInt(numPools)
+  let { maxAlgoPerPool } = validator.config
+  if (maxAlgoPerPool === 0n) {
+    maxAlgoPerPool = constraints.maxAlgoPerPool
+  }
+  if (hardMaxDividedBetweenPools < maxAlgoPerPool) {
+    maxAlgoPerPool = hardMaxDividedBetweenPools
+  }
 
   const maxStake = Number(maxAlgoPerPool) * numPools
 
