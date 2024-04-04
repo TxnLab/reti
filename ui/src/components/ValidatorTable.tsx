@@ -116,7 +116,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
           notation: 'compact',
         }).format(currentStake)
 
-        const maxStake = calculateMaxStake(validator, true)
+        const maxStake = calculateMaxStake(validator, constraints!, true)
         const maxStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
         }).format(maxStake)
