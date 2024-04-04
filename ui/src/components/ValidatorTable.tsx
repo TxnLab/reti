@@ -1,5 +1,4 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   ColumnDef,
@@ -15,7 +14,6 @@ import {
 import { useWallet } from '@txnlab/use-wallet-react'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
-import { constraintsQueryOptions } from '@/api/queries'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
@@ -42,7 +40,7 @@ import {
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { StakerValidatorData } from '@/interfaces/staking'
-import { Validator } from '@/interfaces/validator'
+import { Constraints, Validator } from '@/interfaces/validator'
 import {
   calculateMaxStake,
   calculateMaxStakers,
@@ -59,9 +57,14 @@ import { cn } from '@/utils/ui'
 interface ValidatorTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
+  constraints: Constraints
 }
 
-export function ValidatorTable({ validators, stakesByValidator }: ValidatorTableProps) {
+export function ValidatorTable({
+  validators,
+  stakesByValidator,
+  constraints,
+}: ValidatorTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -72,8 +75,6 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
   const { transactionSigner, activeAddress } = useWallet()
-
-  const { data: constraints } = useQuery(constraintsQueryOptions)
 
   const columns: ColumnDef<Validator>[] = [
     {
@@ -313,7 +314,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                     {row.getVisibleCells().map((cell) => (

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
@@ -15,7 +15,6 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import dayjs from 'dayjs'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
-import { constraintsQueryOptions } from '@/api/queries'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
@@ -38,7 +37,7 @@ import {
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { StakerValidatorData } from '@/interfaces/staking'
-import { Validator } from '@/interfaces/validator'
+import { Constraints, Validator } from '@/interfaces/validator'
 import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { simulateEpoch } from '@/utils/development'
 import { cn } from '@/utils/ui'
@@ -47,9 +46,15 @@ interface StakingTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
   isLoading: boolean
+  constraints: Constraints
 }
 
-export function StakingTable({ validators, stakesByValidator, isLoading }: StakingTableProps) {
+export function StakingTable({
+  validators,
+  stakesByValidator,
+  isLoading,
+  constraints,
+}: StakingTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -59,8 +64,6 @@ export function StakingTable({ validators, stakesByValidator, isLoading }: Staki
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
 
   const { transactionSigner, activeAddress } = useWallet()
-
-  const { data: constraints } = useQuery(constraintsQueryOptions)
 
   const router = useRouter()
   const queryClient = useQueryClient()
