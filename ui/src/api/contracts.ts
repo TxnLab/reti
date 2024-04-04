@@ -26,7 +26,6 @@ import {
 } from '@/utils/contracts'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
-import { getActiveWalletAddress } from '@/utils/wallets'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
