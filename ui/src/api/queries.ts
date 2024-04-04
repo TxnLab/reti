@@ -41,7 +41,7 @@ export const mbrQueryOptions = queryOptions({
 export const constraintsQueryOptions = queryOptions({
   queryKey: ['constraints'],
   queryFn: () => fetchProtocolConstraints(),
-  staleTime: Infinity,
+  staleTime: 1000 * 60 * 30, // every 30 mins
 })
 
 export const balanceQueryOptions = (address: string | null) =>

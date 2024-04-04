@@ -2,7 +2,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { fetchStakerValidatorData } from '@/api/contracts'
-import { validatorsQueryOptions } from '@/api/queries'
+import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
@@ -11,7 +11,16 @@ import { ValidatorTable } from '@/components/ValidatorTable'
 import { StakerValidatorData } from '@/interfaces/staking'
 
 export const Route = createFileRoute('/')({
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(validatorsQueryOptions),
+  beforeLoad: () => {
+    return {
+      validatorsQueryOptions,
+      constraintsQueryOptions,
+    }
+  },
+  loader: async ({ context: { queryClient, validatorsQueryOptions, constraintsQueryOptions } }) => {
+    queryClient.ensureQueryData(validatorsQueryOptions)
+    queryClient.ensureQueryData(constraintsQueryOptions)
+  },
   component: Dashboard,
   pendingComponent: () => <div>Loading...</div>,
   errorComponent: ({ error }) => {
@@ -25,6 +34,9 @@ export const Route = createFileRoute('/')({
 function Dashboard() {
   const validatorsQuery = useSuspenseQuery(validatorsQueryOptions)
   const validators = validatorsQuery.data
+
+  const constraintsQuery = useSuspenseQuery(constraintsQueryOptions)
+  const constraints = constraintsQuery.data
 
   const { activeAddress } = useWallet()
 
@@ -47,8 +59,13 @@ function Dashboard() {
             validators={validators || []}
             stakesByValidator={stakesByValidator}
             isLoading={stakesQuery.isLoading}
+            constraints={constraints}
           />
-          <ValidatorTable validators={validators || []} stakesByValidator={stakesByValidator} />
+          <ValidatorTable
+            validators={validators || []}
+            stakesByValidator={stakesByValidator}
+            constraints={constraints}
+          />
         </div>
       </PageMain>
     </>

@@ -1,14 +1,6 @@
-import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
-import { isWalletConnected } from '@/utils/wallets'
+import { Navigate, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/validators')({
-  beforeLoad: async () => {
-    if (!isWalletConnected()) {
-      throw redirect({
-        to: '/',
-      })
-    }
-  },
   component: Validators,
 })
 

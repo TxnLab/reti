@@ -1,6 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { SupportedWallet, WalletId, WalletManager, WalletProvider, useWallet } from '@txnlab/use-wallet-react'
+import {
+  SupportedWallet,
+  WalletId,
+  WalletManager,
+  WalletProvider,
+  useWallet,
+} from '@txnlab/use-wallet-react'
 import { SnackbarProvider } from 'notistack'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -70,7 +76,9 @@ declare module '@tanstack/react-router' {
 
 function InnerApp() {
   const { activeAddress } = useWallet()
-  return <RouterProvider router={router} context={{ queryClient, walletManager: { activeAddress }}} />
+  return (
+    <RouterProvider router={router} context={{ queryClient, walletManager: { activeAddress } }} />
+  )
 }
 
 function AppProviders() {
