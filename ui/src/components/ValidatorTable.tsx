@@ -138,7 +138,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
         if (validator.state.numPools == 0) return '--'
 
         const totalStakers = validator.state.totalStakers
-        const maxStakers = calculateMaxStakers(validator)
+        const maxStakers = calculateMaxStakers(validator, constraints)
 
         return (
           <span className="whitespace-nowrap">
@@ -173,7 +173,7 @@ export function ValidatorTable({ validators, stakesByValidator }: ValidatorTable
         const validator = row.original
         const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
         const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
-        const addingPoolDisabled = isAddingPoolDisabled(activeAddress, validator)
+        const addingPoolDisabled = isAddingPoolDisabled(activeAddress, validator, constraints)
         const canManage = canManageValidator(activeAddress, validator)
 
         const isDevelopment = process.env.NODE_ENV === 'development'
