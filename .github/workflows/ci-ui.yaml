@@ -1,0 +1,60 @@
+name: CI Workflow (UI)
+
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ dev, main ]
+
+jobs:
+  run-ci:
+    name: Lint, Typecheck, Test, and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm --filter ./ui install
+
+      - name: Lint
+        run: pnpm --filter ./ui run lint
+
+      - name: Prettier
+        run: pnpm --filter ./ui run prettier
+
+      - name: Typecheck
+        run: pnpm --filter ./ui run typecheck
+
+      - name: Run tests
+        run: pnpm --filter ./ui run test
+
+      - name: Build
+        run: pnpm --filter ./ui run build
