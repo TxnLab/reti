@@ -42,19 +42,19 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --filter ./ui
+        run: pnpm --filter ./ui install
 
       - name: Lint
-        run: pnpm run lint --filter ./ui
+        run: pnpm --filter ./ui run lint
 
       - name: Prettier
-        run: pnpm run prettier --filter ./ui
+        run: pnpm --filter ./ui run prettier
 
       - name: Typecheck
-        run: pnpm run typecheck --filter ./ui
+        run: pnpm --filter ./ui run typecheck
 
       - name: Run tests
-        run: pnpm run test --filter ./ui
+        run: pnpm --filter ./ui run test
 
       - name: Build
-        run: pnpm run build --filter ./ui
+        run: pnpm --filter ./ui run build
