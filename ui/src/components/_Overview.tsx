@@ -1,4 +1,4 @@
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { ValidatorDetailsProps } from '@/components/ValidatorDetails'
 
 export function Overview({ validator }: ValidatorDetailsProps) {
