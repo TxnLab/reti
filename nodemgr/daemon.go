@@ -28,6 +28,7 @@ import (
 const (
 	OnlineStatus             = "Online"
 	GeneratedKeyLengthInDays = 7
+	DaysPriorToExpToRenew    = 1
 )
 
 // Daemon provides a 'little' separation in that we initalize it with some data from the App global set up by
@@ -439,7 +440,7 @@ func (d *Daemon) ensureParticipationCheckNeedsRenewed(ctx context.Context, poolA
 				continue
 			}
 			expValidDistance := time.Duration(activeKey.Key.VoteLastValid-curRound) * avgBlockTime
-			if expValidDistance.Hours() < 24*7 {
+			if expValidDistance.Hours() <= 24*DaysPriorToExpToRenew {
 				oneDayOfBlocks := (24 * time.Hour) / avgBlockTime
 				misc.Infof(d.logger, "activeKey: %s for %s expiring in %v, creating new key with ~1 day lead-time", activeKey.Id, activeKey.Address, expValidDistance)
 				d.createPartKey(ctx, account, activeKey.Key.VoteLastValid-uint64(oneDayOfBlocks))
