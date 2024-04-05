@@ -14,7 +14,7 @@ import { validatorHasAvailableSlots } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 
-export interface ValidatorDetailsProps {
+interface ValidatorDetailsProps {
   validator: Validator
 }
 

@@ -1,7 +1,11 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { ValidatorDetailsProps } from '@/components/ValidatorDetails'
+import { Validator } from '@/interfaces/validator'
 
-export function Overview({ validator }: ValidatorDetailsProps) {
+interface OverviewProps {
+  validator: Validator
+}
+
+export function Overview({ validator }: OverviewProps) {
   const poolData = validator?.pools.map((pool, index) => ({
     name: `Pool ${index + 1}`,
     stakers: pool.totalStakers,
