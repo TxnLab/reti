@@ -319,9 +319,7 @@ func (d *Daemon) removeExpiredKeys(ctx context.Context, partKeys algo.PartKeysBy
 				misc.Infof(d.logger, "key:%s for account:%s is expired, removing", key.Id, key.Address)
 				err = algo.DeleteParticipationKey(ctx, d.algoClient, d.logger, key.Id)
 				if err != nil {
-					if err != nil {
-						return false, fmt.Errorf("error deleting participation key for id:%s, err:%w", key.Id, err)
-					}
+					return false, fmt.Errorf("error deleting participation key for id:%s, err:%w", key.Id, err)
 				}
 				anyRemoved = true
 			}
@@ -366,7 +364,7 @@ func (d *Daemon) ensureParticipation(ctx context.Context, poolAccounts map[strin
 
 // Handle: account has NO local participation key (online or offline)
 func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
-	for account, _ := range poolAccounts {
+	for account := range poolAccounts {
 		// for accounts w/ no keys at all - we just create keys - we'll go online as part of later checks
 		if _, found := partKeys[account]; !found {
 			_, err := d.createPartKey(ctx, account, 0)
@@ -381,7 +379,7 @@ func (d *Daemon) ensureParticipationNoKeysYet(ctx context.Context, poolAccounts 
 }
 
 // Handle: account is NOT online but has one or more part keys - go online against newest
-func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
+func (d *Daemon) ensureParticipationNotOnline(_ context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	var (
 		err            error
 		managerAddr, _ = types.DecodeAddress(App.retiClient.Info().Config.Manager)
@@ -402,9 +400,9 @@ func (d *Daemon) ensureParticipationNotOnline(ctx context.Context, poolAccounts 
 
 			err = App.retiClient.GoOnline(info.poolAppId, managerAddr, keyToUse.Key.VoteParticipationKey, keyToUse.Key.SelectionParticipationKey, keyToUse.Key.StateProofKey, keyToUse.Key.VoteFirstValid, keyToUse.Key.VoteLastValid, keyToUse.Key.VoteKeyDilution)
 			if err != nil {
-				return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err:%w", account, info.poolAppId, err)
+				return fmt.Errorf("unable to go online for key:%s, account:%s [pool app id:%d], err:%w", keyToUse.Id, account, info.poolAppId, err)
 			}
-			misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppId)
+			misc.Infof(d.logger, "participation key:%s went online for account:%s [pool app id:%d]", keyToUse.Id, account, info.poolAppId)
 		}
 	}
 	return nil
@@ -443,7 +441,11 @@ func (d *Daemon) ensureParticipationCheckNeedsRenewed(ctx context.Context, poolA
 			if expValidDistance.Hours() <= 24*DaysPriorToExpToRenew {
 				oneDayOfBlocks := (24 * time.Hour) / avgBlockTime
 				misc.Infof(d.logger, "activeKey: %s for %s expiring in %v, creating new key with ~1 day lead-time", activeKey.Id, activeKey.Address, expValidDistance)
-				d.createPartKey(ctx, account, activeKey.Key.VoteLastValid-uint64(oneDayOfBlocks))
+				_, err = d.createPartKey(ctx, account, activeKey.Key.VoteLastValid-uint64(oneDayOfBlocks))
+				if err != nil {
+					d.logger.Warn("failure in creating new key w/in ensureParticipationCheckNeedsRenewed", "error", err)
+					continue
+				}
 			}
 		}
 	}
@@ -562,7 +564,9 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 func durationToNextEpoch(curTime time.Time, epochMinutes int) time.Duration {
 	dur := curTime.Round(time.Duration(epochMinutes) * time.Minute).Sub(curTime)
 	if dur <= 0 {
-		dur = time.Duration(epochMinutes) * time.Minute
+		// We've rounded backwards - so go to that rounded time, and then get time from curTime to that future time.
+		// ie: 12:10:00 hourly epoch - rounds down to 12:00:00 but next epoch is 13:00:00, so duration should be 50 minutes.
+		dur = curTime.Add(dur).Add(time.Duration(epochMinutes) * time.Minute).Sub(curTime)
 	}
 	slog.Debug(fmt.Sprintf("%v epoch duration in mins:%d, dur to next epoch:%v", curTime, epochMinutes, dur))
 	return dur
