@@ -18,7 +18,7 @@ import {
   RawPoolsInfo,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
-import { isValidName } from '@/utils/nfd'
+import { isValidName, isValidRoot } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
@@ -332,7 +332,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .optional(),
     })
     .superRefine((data, ctx) => {
-      const { entryGatingType, entryGatingValue } = data
+      const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = data
 
       switch (entryGatingType) {
         case '0':
@@ -349,14 +349,11 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['entryGatingValue'],
-              message:
-                'entryGatingValue must be a valid Algorand address when entryGatingType is 1',
+              message: 'Invalid Algorand address',
             })
           }
           break
         case '2':
-        case '3':
-        case '4':
           if (
             !(
               !isNaN(Number(entryGatingValue)) &&
@@ -367,13 +364,45 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['entryGatingValue'],
-              message:
-                'entryGatingValue must be a positive integer when entryGatingType is 2, 3, or 4',
+              message: 'Invalid asset ID',
+            })
+          }
+          break
+        case '3':
+          if (typeof entryGatingValue !== 'string' || !isValidName(entryGatingValue)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingValue'],
+              message: 'NFD name is invalid',
+            })
+          }
+          break
+        case '4':
+          if (typeof entryGatingValue !== 'string' || !isValidRoot(entryGatingValue)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingValue'],
+              message: 'Root/Parent NFD name is invalid',
             })
           }
           break
         default:
           break
+      }
+
+      if (['1', '2', '3', '4'].includes(String(entryGatingType))) {
+        if (
+          !gatingAssetMinBalance ||
+          isNaN(Number(gatingAssetMinBalance)) ||
+          !Number.isInteger(Number(gatingAssetMinBalance)) ||
+          Number(gatingAssetMinBalance) <= 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['gatingAssetMinBalance'],
+            message: 'Must be a positive integer',
+          })
+        }
       }
     })
 }

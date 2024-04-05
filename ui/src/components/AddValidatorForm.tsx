@@ -33,7 +33,15 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Constraints, ValidatorConfig } from '@/interfaces/validator'
+import { gatingValueFromBigint } from '@/utils/bytes'
 import { getAddValidatorFormSchema } from '@/utils/contracts'
 // import { validatorAutoFill } from '@/utils/development'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
@@ -68,7 +76,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       owner: '',
       manager: '',
       nfdForInfo: '',
-      entryGatingType: '',
+      entryGatingType: '0',
       entryGatingValue: '',
       gatingAssetMinBalance: '',
       rewardTokenId: '',
@@ -117,6 +125,41 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     }
   }, 500)
 
+  const selectedGatingType = form.watch('entryGatingType')
+
+  const isEntryGatingEnabled = ['1', '2', '3', '4'].includes(String(selectedGatingType))
+  const isGatingAssetMinBalanceEnabled = ['1', '2', '3'].includes(String(selectedGatingType))
+
+  const getEntryGatingValueLabel = () => {
+    switch (String(selectedGatingType)) {
+      case '1':
+        return 'Entry Gating Asset Creator Account'
+      case '2':
+        return 'Entry Gating Asset ID'
+      case '3':
+        return 'Entry Gating Asset Creator NFD'
+      case '4':
+        return 'Entry Gating Root/Parent NFD'
+      default:
+        return 'Unknown'
+    }
+  }
+
+  const getEntryGatingValueDescription = () => {
+    switch (String(selectedGatingType)) {
+      case '1':
+        return 'Must hold asset created by this account to enter pool'
+      case '2':
+        return 'Must hold asset with this ID to enter pool'
+      case '3':
+        return 'Must hold asset created by an account linked to this NFD to enter pool'
+      case '4':
+        return 'Must hold a segment of this root/parent NFD to enter pool'
+      default:
+        return 'Unknown'
+    }
+  }
+
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
 
@@ -160,13 +203,20 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         suggestedParams,
       })
 
+      const entryGatingType = Number(values.entryGatingType || 0)
+
+      const entryGatingValue =
+        entryGatingType == 1
+          ? algosdk.decodeAddress(values.entryGatingValue!).publicKey // relying on form validation
+          : gatingValueFromBigint(BigInt(values.entryGatingValue!))
+
       const validatorConfig: ValidatorConfig = {
         id: 0, // id not known yet
         owner: values.owner,
         manager: values.manager,
         nfdForInfo: nfdAppId,
-        entryGatingType: 0,
-        entryGatingValue: new Uint8Array(32),
+        entryGatingType,
+        entryGatingValue,
         gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
         rewardTokenId: Number(values.rewardTokenId || 0),
         rewardPerPayout: BigInt(values.rewardPerPayout || 0),
@@ -393,15 +443,78 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="gatingAssetMinBalance"
+                name="entryGatingType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Creator NFT Minimum Balance</FormLabel>
+                    <FormLabel>Entry Gating Asset</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={(gatingType) => {
+                          field.onChange(gatingType) // Inform react-hook-form of the change
+
+                          form.setValue('entryGatingValue', '') // Reset gating value
+                          form.clearErrors('entryGatingValue') // Clear any errors for gating value
+
+                          const isNfdSegmentGating = gatingType === '4'
+                          const gatingMinBalance = isNfdSegmentGating ? '1' : ''
+
+                          form.setValue('gatingAssetMinBalance', gatingMinBalance) // Set/reset min balance
+                          form.clearErrors('gatingAssetMinBalance') // Clear any errors for gating min balance
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select asset gating type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="0">None</SelectItem>
+                          <SelectItem value="1">Asset by Creator Account</SelectItem>
+                          <SelectItem value="2">Asset ID</SelectItem>
+                          <SelectItem value="3">Asset Created by NFD</SelectItem>
+                          <SelectItem value="4">NFD Segment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormDescription>
+                      Require stakers to hold a qualified asset to enter pool (optional)
+                    </FormDescription>
+                    <FormMessage>{errors.entryGatingType?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="entryGatingValue"
+                render={({ field }) => (
+                  <FormItem className={cn({ hidden: !isEntryGatingEnabled })}>
+                    <FormLabel>
+                      {getEntryGatingValueLabel()} <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                    </FormControl>
+                    <FormDescription>{getEntryGatingValueDescription()}</FormDescription>
+                    <FormMessage>{errors.entryGatingValue?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gatingAssetMinBalance"
+                render={({ field }) => (
+                  <FormItem className={cn({ hidden: !isGatingAssetMinBalanceEnabled })}>
+                    <FormLabel>
+                      Entry Gating Asset Minimum Balance <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input className="dark:bg-black/10" placeholder="" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Minimum required balance of the asset described above
+                      Minimum required balance of the entry gating asset
                     </FormDescription>
                     <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
                   </FormItem>
