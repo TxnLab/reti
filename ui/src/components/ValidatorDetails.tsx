@@ -14,7 +14,7 @@ import { validatorHasAvailableSlots } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 
-interface ValidatorDetailsProps {
+export interface ValidatorDetailsProps {
   validator: Validator
 }
 
@@ -109,10 +109,10 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
         <div className="grid gap-4 lg:grid-cols-7">
           <Card className="lg:col-span-4">
             <CardHeader>
-              <CardTitle>Analytics</CardTitle>
+              <CardTitle>Stake by Pool</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-              <Overview />
+              <Overview validator={validator} />
             </CardContent>
           </Card>
           <Card className="lg:col-span-3">
