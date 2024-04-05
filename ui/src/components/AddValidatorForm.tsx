@@ -35,6 +35,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Constraints, ValidatorConfig } from '@/interfaces/validator'
 import { getAddValidatorFormSchema } from '@/utils/contracts'
+// import { validatorAutoFill } from '@/utils/development'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { cn } from '@/utils/ui'
 
@@ -581,17 +582,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               variant="outline"
               onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                 event.preventDefault()
-                form.reset({
-                  owner: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
-                  manager: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
-                  payoutEveryXMins: '1',
-                  percentToValidator: '5',
-                  validatorCommissionAddress:
-                    'Q5MNRF52SRS4MBXWAQKCTQG6U53JJEUAKYGQXZIXNUIGZKJE7FO72GRZBU',
-                  minEntryStake: '1000',
-                  maxAlgoPerPool: '20000000',
-                  poolsPerNode: '3',
-                })
+                form.reset(validatorAutoFill(activeAddress as string))
               }}
             >
               Autofill
