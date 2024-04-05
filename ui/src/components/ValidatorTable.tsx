@@ -53,6 +53,7 @@ import { formatDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
+import { ValidatorRewards } from '@/components/ValidatorRewards'
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -146,6 +147,17 @@ export function ValidatorTable({
             {totalStakers} / {maxStakers}
           </span>
         )
+      },
+    },
+    {
+      id: 'reward',
+      accessorFn: (row) => row.state.totalStakers,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Reward Avail" />,
+      cell: ({ row }) => {
+        const validator = row.original
+        if (validator.state.numPools == 0) return '--'
+
+        return <ValidatorRewards validator={validator} />
       },
     },
     {

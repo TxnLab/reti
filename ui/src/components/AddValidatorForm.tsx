@@ -89,7 +89,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     setIsFetchingAppId(true)
 
     try {
-      const nfd = await fetchNfd(value, { view: 'tiny' })
+      const nfd = await fetchNfd(value, { view: 'brief' })
 
       // If we have an app id, clear error if it exists
       form.clearErrors('nfdForInfo')
@@ -112,7 +112,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const debouncedCheck = useDebouncedCallback(async (value) => {
     const isValid = await form.trigger('nfdForInfo')
     if (isValid) {
-      fetchNfdForInfo(value)
+      await fetchNfdForInfo(value)
     }
   }, 500)
 
@@ -273,7 +273,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         },
       )
 
-      navigate({ to: '/' })
+      await navigate({ to: '/' })
     } catch (error) {
       toast.error('Failed to create validator', { id: toastId })
       console.error(error)
