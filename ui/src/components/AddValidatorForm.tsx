@@ -89,7 +89,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     setIsFetchingAppId(true)
 
     try {
-      const nfd = await fetchNfd(value, { view: 'tiny' })
+      const nfd = await fetchNfd(value, { view: 'brief' })
 
       // If we have an app id, clear error if it exists
       form.clearErrors('nfdForInfo')
