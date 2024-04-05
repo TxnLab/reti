@@ -1,0 +1,40 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "baseBranches": ["dev"],
+  "timezone": "America/New_York",
+  "packageRules": [
+		{
+			"matchFileNames": ["nodemgr/**", "Dockerfile-nodemgr"],
+			"extends": [
+				"config:recommended",
+				":assignee(pbennett)",
+				":semanticCommitScope(nodemgr)",
+				":semanticPrefixChore"
+			]
+		},
+		{
+			"matchFileNames": ["contracts/**", "**/workflows/release.yaml"],
+			"extends": [
+				"config:recommended",
+				":assignee(pbennett)",
+				":semanticCommitScope(contracts)",
+				":semanticPrefixChore"
+			]
+		},
+		{
+			"matchFileNames": ["ui/**", "**/workflows/ci-ui.yaml"],
+			"extends": [
+				"config:js-app",
+				":assignee(drichar)",
+				":automergeLinters",
+				":automergeTypes",
+				":combinePatchMinorReleases",
+				":maintainLockFilesWeekly",
+				":rebaseStalePrs",
+				":renovatePrefix",
+				":semanticCommitScope(ui)",
+				":semanticPrefixChore"
+			]
+		}
+	]
+}
