@@ -21,7 +21,7 @@ export const validatorQueryOptions = (validatorId: number | string) =>
   queryOptions({
     queryKey: ['validator', String(validatorId)],
     queryFn: () => fetchValidator(validatorId),
-    // staleTime: Infinity,
+    refetchInterval: 1000, // 1 min polling on validator info
     retry: false,
   })
 
