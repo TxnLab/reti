@@ -34,11 +34,7 @@
 				":renovatePrefix",
 				":semanticCommitScope(ui)",
 				":semanticPrefixChore"
-			],
-			"groupName": "all non-major UI dependencies",
-			"groupSlug": "all-minor-patch-ui",
-			"matchPackagePatterns": ["*"],
-			"matchUpdateTypes": ["minor", "patch"]
+			]
 		}
 	]
 }
