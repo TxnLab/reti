@@ -143,7 +143,13 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		newParams.FlatFee = true
 		newParams.Fee = 0
 
-		// we need to stack up references in this gas method for resource pooling
+		extraApps := []uint64{}
+
+		if r.info.Config.NFDForInfo != 0 {
+			extraApps = append(extraApps, r.info.Config.NFDForInfo)
+		}
+
+		// we need to stack up references in these two gas methods for resource pooling
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
 			AppID:       poolAppID,
 			Method:      gasMethod,
@@ -157,6 +163,18 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
 			},
+			SuggestedParams: newParams,
+			OnComplete:      types.NoOpOC,
+			Sender:          caller,
+			Signer:          algo.SignWithAccountForATC(r.signer, caller.String()),
+		})
+		if err != nil {
+			return atc, err
+		}
+		err = atc.AddMethodCall(transaction.AddMethodCallParams{
+			AppID:           poolAppID,
+			Method:          gasMethod,
+			ForeignApps:     extraApps,
 			SuggestedParams: newParams,
 			OnComplete:      types.NoOpOC,
 			Sender:          caller,

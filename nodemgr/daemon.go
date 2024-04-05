@@ -522,8 +522,10 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 
 	epochMinutes := App.retiClient.Info().Config.PayoutEveryXMins
 
-	epochTimer := time.NewTimer(durationToNextEpoch(time.Now(), epochMinutes))
+	dur := durationToNextEpoch(time.Now(), epochMinutes)
+	epochTimer := time.NewTimer(dur)
 	defer epochTimer.Stop()
+	misc.Infof(d.logger, "First epoch trigger in:%v", dur)
 
 	for {
 		select {
