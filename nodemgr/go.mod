@@ -1,6 +1,6 @@
 module github.com/TxnLab/reti
 
-go 1.21.4
+go 1.22.2
 
 require (
 	github.com/algorand/go-algorand-sdk/v2 v2.4.0
