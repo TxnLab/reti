@@ -25,6 +25,7 @@ import { routeTree } from './routeTree.gen'
 
 // use-wallet configuration
 let wallets: SupportedWallet[]
+const siteName = 'Réti Pooling'
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
   const kmdConfig = getKmdConfigFromViteEnvironment()
   wallets = [
@@ -37,9 +38,16 @@ if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
         port: String(kmdConfig.port),
       },
     },
+    { id: WalletId.LUTE, options: { siteName } },
   ]
 } else {
-  wallets = [WalletId.DEFLY, WalletId.PERA, WalletId.KIBISIS, WalletId.EXODUS]
+  wallets = [
+    WalletId.DEFLY,
+    WalletId.PERA,
+    WalletId.KIBISIS,
+    WalletId.EXODUS,
+    { id: WalletId.LUTE, options: { siteName } },
+  ]
 }
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
