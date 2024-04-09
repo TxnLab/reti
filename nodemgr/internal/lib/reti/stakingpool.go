@@ -126,7 +126,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		misc.Infof(r.Logger, "Pool:%d epoch update - reward too small:%s", poolID, algo.FormattedAlgoAmount(rewardAvail))
 		return ErrNotEnoughRewardAvailable
 	}
-	misc.Infof(r.Logger, "Pool:%d epoch update for app id:%d", poolID, poolAppID)
+	misc.Infof(r.Logger, "Pool:%d epoch update for app id:%d, avail rewards:%s", poolID, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
