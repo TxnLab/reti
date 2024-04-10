@@ -1,5 +1,11 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { AssetHolding, AssetParams } from '@algorandfoundation/algokit-utils/types/indexer'
+import { AssetParams } from '@algorandfoundation/algokit-utils/types/indexer'
+
+export interface AssetHolding {
+  amount: number
+  'asset-id': number
+  'is-frozen': boolean
+}
 
 export interface AccountInformation {
   address: string

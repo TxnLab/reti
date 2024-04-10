@@ -2,7 +2,11 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { fetchStakerValidatorData } from '@/api/contracts'
-import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
+import {
+  assetHoldingQueryOptions,
+  constraintsQueryOptions,
+  validatorsQueryOptions,
+} from '@/api/queries'
 import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
@@ -48,6 +52,9 @@ function Dashboard() {
     retry: false,
   })
 
+  const assetHoldingQuery = useQuery(assetHoldingQueryOptions(activeAddress))
+  const heldAssets = assetHoldingQuery.data || []
+
   const stakesByValidator = stakesQuery.data || []
 
   return (
@@ -64,11 +71,13 @@ function Dashboard() {
             stakesByValidator={stakesByValidator}
             isLoading={stakesQuery.isLoading}
             constraints={constraints}
+            heldAssets={heldAssets}
           />
           <ValidatorTable
             validators={validators || []}
             stakesByValidator={stakesByValidator}
             constraints={constraints}
+            heldAssets={heldAssets}
           />
         </div>
       </PageMain>

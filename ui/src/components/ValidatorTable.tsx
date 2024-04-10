@@ -39,6 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { AssetHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import {
@@ -59,12 +60,14 @@ interface ValidatorTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
   constraints: Constraints
+  heldAssets: AssetHolding[]
 }
 
 export function ValidatorTable({
   validators,
   stakesByValidator,
   constraints,
+  heldAssets,
 }: ValidatorTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -203,7 +206,7 @@ export function ValidatorTable({
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
-        const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
+        const stakingDisabled = isStakingDisabled(activeAddress, validator, heldAssets, constraints)
         const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
         const addingPoolDisabled = isAddingPoolDisabled(activeAddress, validator, constraints)
         const canManage = canManageValidator(activeAddress, validator)

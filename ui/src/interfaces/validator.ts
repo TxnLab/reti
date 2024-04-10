@@ -40,7 +40,10 @@ export interface ValidatorConfig {
   sunsettingTo: number // validator id that validator is 'moving' to (if known)
 }
 
-export type ValidatorConfigInput = Omit<ToStringTypes<ValidatorConfig>, 'id'>
+export type ValidatorConfigInput = Omit<
+  ToStringTypes<ValidatorConfig>,
+  'id' | 'maxAlgoPerPool' | 'sunsettingOn' | 'sunsettingTo'
+>
 
 export type RawValidatorState = [number | bigint, bigint, bigint, bigint]
 

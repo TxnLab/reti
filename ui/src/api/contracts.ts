@@ -546,6 +546,7 @@ export async function doesStakerNeedToPayMbr(
 export async function addStake(
   validatorId: number,
   stakeAmount: number, // microalgos
+  valueToVerify: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
@@ -573,7 +574,7 @@ export async function addStake(
           signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
         },
         validatorId,
-        valueToVerify: 0,
+        valueToVerify,
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
@@ -596,7 +597,7 @@ export async function addStake(
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
         validatorId,
-        valueToVerify: 0,
+        valueToVerify,
       },
       { sendParams: { fee: feesAmount } },
     )

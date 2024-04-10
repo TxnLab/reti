@@ -1,6 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
+import { AssetHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -17,7 +18,7 @@ import {
   PoolInfo,
   RawPoolsInfo,
 } from '@/interfaces/validator'
-import { dayjs } from '@/utils/dayjs'
+import { decodeUint8ArrayToBigint } from '@/utils/bytes'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
@@ -412,12 +413,31 @@ export function calculateMaxStakers(validator: Validator, constraints?: Constrai
 export function isStakingDisabled(
   activeAddress: string | null,
   validator: Validator,
+  heldAssets: AssetHolding[],
   constraints?: Constraints,
 ): boolean {
   if (!activeAddress) {
     return true
   }
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
+  const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = validator.config
+
+  if (entryGatingType > 0) {
+    if (entryGatingType === 1) {
+      // @todo: handle assets by to creator address
+    } else {
+      const assetId = decodeUint8ArrayToBigint(entryGatingValue)
+      const heldAsset = heldAssets.find((asset) => asset['asset-id'] === Number(assetId))
+      if (!heldAsset) {
+        return true
+      }
+      const hasMinimumBalance = (heldAsset?.amount || 0) >= Number(gatingAssetMinBalance)
+      if (!hasMinimumBalance) {
+        return true
+      }
+    }
+  }
+
   let { maxAlgoPerPool } = validator.config
 
   if (maxAlgoPerPool === 0n && !!constraints) {

@@ -37,6 +37,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
+import { decodeUint8ArrayToBigint } from '@/utils/bytes'
 import { dayjs } from '@/utils/dayjs'
 import { formatAlgoAmount } from '@/utils/format'
 
@@ -179,18 +180,37 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         throw new Error('No wallet connected')
       }
 
+      if (!validator) {
+        throw new Error('Missing validator data')
+      }
+
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
       const totalAmount = mbrRequired ? amountToStake + stakerMbr : amountToStake
 
       const isNewStaker = await isNewStakerToValidator(
-        validator!.id,
+        validator.id,
         activeAddress,
-        Number(validator!.config.minEntryStake),
+        Number(validator.config.minEntryStake),
       )
+
+      const { entryGatingType, entryGatingValue } = validator.config
+
+      const valueToVerify =
+        entryGatingType === 0
+          ? 0
+          : entryGatingType === 1
+            ? 0 // @todo: handle assets by creator address
+            : Number(decodeUint8ArrayToBigint(entryGatingValue))
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
-      const poolKey = await addStake(validator!.id, totalAmount, transactionSigner, activeAddress)
+      const poolKey = await addStake(
+        validator!.id,
+        totalAmount,
+        valueToVerify,
+        transactionSigner,
+        activeAddress,
+      )
 
       toast.success(
         <div className="flex items-center gap-x-2">
