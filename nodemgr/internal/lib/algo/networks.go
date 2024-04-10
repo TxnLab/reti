@@ -21,6 +21,10 @@ type NetworkConfig struct {
 	RetiAppID uint64
 }
 
+func (n NetworkConfig) String() string {
+	return fmt.Sprintf("NodeDataDir: %s, NFDAPIUrl: %s, NodeURL: %s, NodeToken: (length:%d), NodeHeaders: %v, RetiAppID: %d", n.NodeDataDir, n.NFDAPIUrl, n.NodeURL, len(n.NodeToken), n.NodeHeaders, n.RetiAppID)
+}
+
 func GetNetworkConfig(network string) NetworkConfig {
 	cfg := getDefaults(network)
 
