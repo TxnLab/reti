@@ -1,4 +1,11 @@
-export function PageHeader({ title }: { title?: string | null }) {
+import { Separator } from '@/components/ui/separator'
+
+interface PageHeaderProps {
+  title?: string | null
+  description?: string
+}
+
+export function PageHeader({ title, description }: PageHeaderProps) {
   if (!title) return null
   return (
     <header>
@@ -6,6 +13,8 @@ export function PageHeader({ title }: { title?: string | null }) {
         <h1 className="text-3xl font-bold leading-tight tracking-tight text-stone-900 dark:text-white">
           {title}
         </h1>
+        {description && <p className="mt-2 text-lg text-muted-foreground">{description}</p>}
+        <Separator className="my-8" />
       </div>
     </header>
   )

@@ -52,9 +52,12 @@ function Dashboard() {
   return (
     <>
       <Meta title="Dashboard" />
-      <PageHeader title="Staking Dashboard" />
+      <PageHeader
+        title="Staking Dashboard"
+        description="Browse validators in the protocol and manage your staking activity."
+      />
       <PageMain>
-        <div className="mt-4 space-y-8">
+        <div className="space-y-8">
           <StakingTable
             validators={validators || []}
             stakesByValidator={stakesByValidator}

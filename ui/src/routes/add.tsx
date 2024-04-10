@@ -39,11 +39,12 @@ function AddValidator() {
   return (
     <>
       <Meta title="Add Validator" />
-      <PageHeader title="Add a Validator" />
+      <PageHeader
+        title="Add a Validator"
+        description="Create a new validator with the specified configuration."
+      />
       <PageMain>
-        <div className="py-8">
-          <AddValidatorForm constraints={constraints} />
-        </div>
+        <AddValidatorForm constraints={constraints} />
       </PageMain>
     </>
   )
