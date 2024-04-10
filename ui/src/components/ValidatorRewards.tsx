@@ -4,14 +4,21 @@ import { getAccountBalance } from '@/api/algod'
 import { getApplicationAddress } from 'algosdk'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 
-async function fetchTotalBalances(validator: Validator) {
+/**
+ * Fetches the total excess balances (rewards) of all pools for a given validator.
+ * @param {Validator} validator - The validator object.
+ * @return {number} - The total balances rounded to the nearest whole ALGO.
+ * @throws {Error} - If an error occurs during the fetch.
+ */
+async function fetchRewardBalances(validator: Validator) {
   try {
     let totalBalances = 0
     for (const pool of validator.pools) {
       const poolBal = await getAccountBalance(getApplicationAddress(pool.poolAppId), true)
       totalBalances += poolBal
     }
-    return totalBalances - Number(validator.state.totalAlgoStaked)
+    // Truncate to nearest whole ALGO
+    return Math.round((totalBalances - Number(validator.state.totalAlgoStaked)) / 1e6) * 1e6
   } catch (error) {
     console.error(error)
     return 0
@@ -25,7 +32,7 @@ interface ValidatorRewardsProps {
 export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
   const totalBalancesQuery = useQuery({
     queryKey: ['valrewards', validator.id],
-    queryFn: () => fetchTotalBalances(validator),
+    queryFn: () => fetchRewardBalances(validator),
     refetchInterval: 30000,
   })
 

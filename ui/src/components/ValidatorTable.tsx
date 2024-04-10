@@ -113,6 +113,8 @@ export function ValidatorTable({
       cell: ({ row }) => {
         const validator = row.original
 
+        if (validator.state.numPools === 0) return '--'
+
         const currentStake = AlgoAmount.MicroAlgos(Number(validator.state.totalAlgoStaked)).algos
         const currentStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
@@ -126,6 +128,23 @@ export function ValidatorTable({
         return (
           <span className="whitespace-nowrap">
             {currentStakeCompact} / {maxStakeCompact}
+          </span>
+        )
+      },
+    },
+    {
+      id: 'pools',
+      accessorFn: (row) => row.state.numPools,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="# Pools" />,
+      cell: ({ row }) => {
+        const validator = row.original
+        const { poolsPerNode } = validator.config
+        const maxNodes = constraints.maxNodes
+
+        // if (validator.state.numPools === 0) return '--'
+        return (
+          <span className="whitespace-nowrap">
+            {validator.state.numPools} / {poolsPerNode * maxNodes}
           </span>
         )
       },
