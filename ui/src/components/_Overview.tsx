@@ -64,12 +64,8 @@ export function Stakers({ validator }: OverviewProps) {
         {/*<Tooltip />*/}
         <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
         <YAxis
-          // label="Stakers"
-          // yAxisId="right"
-          // orientation="right"
           stroke="#888888"
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          domain={[(dataMin: number) => 0, (dataMax: number) => 200]}
+          domain={[0, 200]}
           fontSize={12}
           tickLine={true}
           axisLine={true}
