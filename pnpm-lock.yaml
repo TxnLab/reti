@@ -22,7 +22,7 @@ importers:
         version: 3.0.1
       '@algorandfoundation/tealscript':
         specifier: ^0.90.0
-        version: 0.90.0
+        version: 0.90.1
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -346,8 +346,8 @@ packages:
       algosdk: 2.7.0
       buffer: 6.0.3
 
-  /@algorandfoundation/tealscript@0.90.0:
-    resolution: {integrity: sha512-YhSXyKo7NcpJ5nZi3rnUNo7AELo6B6AFTM+r+0HV35aJKt9v9EC6edS0GIlku1mOQRvIDbRUebbNz0ab4DtV8A==}
+  /@algorandfoundation/tealscript@0.90.1:
+    resolution: {integrity: sha512-PgvLwXC+RFT7fzeCYTcCDNBJEGgkCIllF7QFYKXBbbdTCLDpcrtRfp67kiCpEFnJB4P3C8K0GaqEGx4zSbpbaA==}
     hasBin: true
     dependencies:
       '@microsoft/tsdoc': 0.14.2
@@ -4613,6 +4613,10 @@ packages:
   /caniuse-lite@1.0.30001606:
     resolution: {integrity: sha512-LPbwnW4vfpJId225pwjZJOgX1m9sGfbw/RKJvw/t0QhYOOaTXHvkjVGFGPpvwEzufrjvTlsULnVTxdy4/6cqkg==}
 
+  /caniuse-lite@1.0.30001608:
+    resolution: {integrity: sha512-cjUJTQkk9fQlJR2s4HMuPMvTiRggl0rAVMtthQuyOlDWuqHXqN8azLq+pi8B2TjwKJ32diHjUqRIKeFX4z1FoA==}
+    dev: false
+
   /capital-case@1.0.4:
     resolution: {integrity: sha512-ds37W8CytHgwnhGGTi88pcPyR15qoNkOpYwmMMfnWqqWgESapLqvDx6huFjQ5vqWSn2Z06173XNA7LtMOeUh1A==}
     dependencies:
@@ -7302,7 +7306,7 @@ packages:
       '@next/env': 14.1.4
       '@swc/helpers': 0.5.2
       busboy: 1.6.0
-      caniuse-lite: 1.0.30001606
+      caniuse-lite: 1.0.30001608
       graceful-fs: 4.2.11
       postcss: 8.4.31
       react: 18.2.0
