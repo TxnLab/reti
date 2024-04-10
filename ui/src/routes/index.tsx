@@ -2,7 +2,12 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { fetchStakerValidatorData } from '@/api/contracts'
-import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
+import {
+  assetHoldingQueryOptions,
+  constraintsQueryOptions,
+  validatorsQueryOptions,
+} from '@/api/queries'
+import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
@@ -22,7 +27,7 @@ export const Route = createFileRoute('/')({
     queryClient.ensureQueryData(constraintsQueryOptions)
   },
   component: Dashboard,
-  pendingComponent: () => <div>Loading...</div>,
+  pendingComponent: () => <Loading size="lg" className="opacity-50" />,
   errorComponent: ({ error }) => {
     if (error instanceof Error) {
       return <div>{error?.message}</div>
@@ -47,24 +52,32 @@ function Dashboard() {
     retry: false,
   })
 
+  const assetHoldingQuery = useQuery(assetHoldingQueryOptions(activeAddress))
+  const heldAssets = assetHoldingQuery.data || []
+
   const stakesByValidator = stakesQuery.data || []
 
   return (
     <>
       <Meta title="Dashboard" />
-      <PageHeader title="Staking Dashboard" />
+      <PageHeader
+        title="Staking Dashboard"
+        description="Browse validators in the protocol and manage your staking activity."
+      />
       <PageMain>
-        <div className="mt-4 space-y-8">
+        <div className="space-y-8">
           <StakingTable
             validators={validators || []}
             stakesByValidator={stakesByValidator}
             isLoading={stakesQuery.isLoading}
             constraints={constraints}
+            heldAssets={heldAssets}
           />
           <ValidatorTable
             validators={validators || []}
             stakesByValidator={stakesByValidator}
             constraints={constraints}
+            heldAssets={heldAssets}
           />
         </div>
       </PageMain>

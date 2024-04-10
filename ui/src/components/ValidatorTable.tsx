@@ -39,6 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { AssetCreatorHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import {
@@ -59,12 +60,14 @@ interface ValidatorTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
   constraints: Constraints
+  heldAssets: AssetCreatorHolding[]
 }
 
 export function ValidatorTable({
   validators,
   stakesByValidator,
   constraints,
+  heldAssets,
 }: ValidatorTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -113,6 +116,8 @@ export function ValidatorTable({
       cell: ({ row }) => {
         const validator = row.original
 
+        if (validator.state.numPools === 0) return '--'
+
         const currentStake = AlgoAmount.MicroAlgos(Number(validator.state.totalAlgoStaked)).algos
         const currentStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
@@ -126,6 +131,23 @@ export function ValidatorTable({
         return (
           <span className="whitespace-nowrap">
             {currentStakeCompact} / {maxStakeCompact}
+          </span>
+        )
+      },
+    },
+    {
+      id: 'pools',
+      accessorFn: (row) => row.state.numPools,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="# Pools" />,
+      cell: ({ row }) => {
+        const validator = row.original
+        const { poolsPerNode } = validator.config
+        const maxNodes = constraints.maxNodes
+
+        // if (validator.state.numPools === 0) return '--'
+        return (
+          <span className="whitespace-nowrap">
+            {validator.state.numPools} / {poolsPerNode * maxNodes}
           </span>
         )
       },
@@ -184,7 +206,7 @@ export function ValidatorTable({
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
-        const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
+        const stakingDisabled = isStakingDisabled(activeAddress, validator, heldAssets, constraints)
         const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
         const addingPoolDisabled = isAddingPoolDisabled(activeAddress, validator, constraints)
         const canManage = canManageValidator(activeAddress, validator)
@@ -352,6 +374,7 @@ export function ValidatorTable({
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
         constraints={constraints}
+        heldAssets={heldAssets}
       />
       <UnstakeModal
         validator={unstakeValidator}

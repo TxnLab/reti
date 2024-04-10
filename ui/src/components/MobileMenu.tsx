@@ -1,43 +1,66 @@
-import * as React from 'react'
-import { Menu } from 'lucide-react'
-import { Navigation } from '@/components/Navigation'
+import { Link } from '@tanstack/react-router'
+import { useWallet } from '@txnlab/use-wallet-react'
+import { Menu, FlaskConical, Home, Monitor } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  // SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 export function MobileMenu() {
-  const [isOpen, setIsOpen] = React.useState<boolean>(false)
+  const { activeAddress } = useWallet()
+  const isDevelopment = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative p-2 text-stone-400 hover:text-stone-900 dark:text-stone-600 dark:hover:text-white"
-        >
-          <span className="absolute -inset-0.5" />
-          <span className="sr-only">Open main menu</span>
-          <Menu className="block h-6 w-6" aria-hidden="true" />
+        <Button variant="ghost" size="icon" className="shrink-0 md:hidden">
+          <Menu className="h-6 w-6" />
+          <span className="sr-only">Toggle navigation menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="text-left">
-        <SheetHeader className="text-left">
-          <SheetTitle>Reti Staking</SheetTitle>
-          {/* <SheetDescription>
-            This is a placeholder for the mobile menu. It will contain the main navigation and other
-            actions.
-          </SheetDescription> */}
-        </SheetHeader>
-        <div className="py-6">
-          <Navigation orientation="vertical" showHome />
-        </div>
+      <SheetContent side="left">
+        <nav className="grid gap-6 text-lg font-medium">
+          <SheetClose asChild>
+            <Link to="/" className="flex items-center gap-2 text-lg font-semibold">
+              <Logo wordMark className="h-9 w-auto" />
+              <span className="sr-only">Réti Pooling</span>
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link
+              to="/"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground [&.active]:text-foreground"
+            >
+              <Home className="h-5 w-5" />
+              Dashboard
+            </Link>
+          </SheetClose>
+
+          {activeAddress && (
+            <>
+              <SheetClose asChild>
+                <Link
+                  to="/add"
+                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground [&.active]:text-foreground"
+                >
+                  <Monitor className="h-5 w-5" />
+                  Add Validator
+                </Link>
+              </SheetClose>
+
+              {isDevelopment && (
+                <SheetClose asChild>
+                  <Link
+                    to="/token"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground [&.active]:text-foreground"
+                  >
+                    <FlaskConical className="h-5 w-5" />
+                    Create Token
+                  </Link>
+                </SheetClose>
+              )}
+            </>
+          )}
+        </nav>
       </SheetContent>
     </Sheet>
   )

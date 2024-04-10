@@ -1,6 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
+import { AssetCreatorHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -17,8 +18,8 @@ import {
   PoolInfo,
   RawPoolsInfo,
 } from '@/interfaces/validator'
-import { dayjs } from '@/utils/dayjs'
-import { isValidName } from '@/utils/nfd'
+import { decodeUint8ArrayToBigint } from '@/utils/bytes'
+import { isValidName, isValidRoot } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
@@ -157,20 +158,16 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => algosdk.isValidAddress(val), {
           message: 'Invalid Algorand address',
         }),
-      nfdForInfo: z
-        .string()
-        .refine((val) => val === '' || isValidName(val), {
-          message: 'NFD name is invalid',
-        })
-        .optional(),
-      entryGatingType: z.string().optional(),
-      entryGatingValue: z.string().optional(),
+      nfdForInfo: z.string().refine((val) => val === '' || isValidName(val), {
+        message: 'NFD name is invalid',
+      }),
+      entryGatingType: z.string(),
+      entryGatingValue: z.string(),
       gatingAssetMinBalance: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid minimum balance',
-        })
-        .optional(),
+        }),
       rewardTokenId: z
         .string()
         .refine(
@@ -179,14 +176,12 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           {
             message: 'Invalid reward token id',
           },
-        )
-        .optional(),
+        ),
       rewardPerPayout: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid reward amount per payout',
-        })
-        .optional(),
+        }),
       payoutEveryXMins: z
         .string()
         .refine((val) => val !== '', {
@@ -280,24 +275,6 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos >= constraints.minEntryStake, {
           message: `Must be at least ${AlgoAmount.MicroAlgos(Number(constraints.minEntryStake)).algos} ALGO`,
         }),
-      maxAlgoPerPool: z
-        .string()
-        .refine(
-          (val) =>
-            val === '' ||
-            (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) >= 0),
-          {
-            message: 'Must be a positive integer',
-          },
-        )
-        .refine(
-          (val) =>
-            val === '' || AlgoAmount.Algos(Number(val)).microAlgos <= constraints.maxAlgoPerPool,
-          {
-            message: `Cannot exceed ${AlgoAmount.MicroAlgos(Number(constraints.maxAlgoPerPool)).algos} ALGO`,
-          },
-        )
-        .optional(),
       poolsPerNode: z
         .string()
         .refine((val) => val !== '', {
@@ -309,30 +286,9 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => Number(val) <= constraints.maxPoolsPerNode, {
           message: `Cannot exceed ${constraints.maxPoolsPerNode} pools per node`,
         }),
-      sunsettingOn: z
-        .string()
-        .refine(
-          (val) =>
-            val === '' ||
-            (Number.isInteger(Number(val)) && dayjs.unix(Number(val)).isAfter(dayjs())),
-          {
-            message: 'Must be a valid UNIX timestamp and later than current time',
-          },
-        )
-        .optional(),
-      sunsettingTo: z
-        .string()
-        .refine(
-          (val) =>
-            val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
-          {
-            message: 'Invalid Validator id',
-          },
-        )
-        .optional(),
     })
     .superRefine((data, ctx) => {
-      const { entryGatingType, entryGatingValue } = data
+      const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = data
 
       switch (entryGatingType) {
         case '0':
@@ -349,14 +305,11 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['entryGatingValue'],
-              message:
-                'entryGatingValue must be a valid Algorand address when entryGatingType is 1',
+              message: 'Invalid Algorand address',
             })
           }
           break
         case '2':
-        case '3':
-        case '4':
           if (
             !(
               !isNaN(Number(entryGatingValue)) &&
@@ -367,15 +320,60 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['entryGatingValue'],
-              message:
-                'entryGatingValue must be a positive integer when entryGatingType is 2, 3, or 4',
+              message: 'Invalid asset ID',
+            })
+          }
+          break
+        case '3':
+          if (typeof entryGatingValue !== 'string' || !isValidName(entryGatingValue)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingValue'],
+              message: 'NFD name is invalid',
+            })
+          }
+          break
+        case '4':
+          if (typeof entryGatingValue !== 'string' || !isValidRoot(entryGatingValue)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingValue'],
+              message: 'Root/Parent NFD name is invalid',
             })
           }
           break
         default:
           break
       }
+
+      if (['1', '2', '3', '4'].includes(String(entryGatingType))) {
+        if (
+          !gatingAssetMinBalance ||
+          isNaN(Number(gatingAssetMinBalance)) ||
+          !Number.isInteger(Number(gatingAssetMinBalance)) ||
+          Number(gatingAssetMinBalance) <= 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['gatingAssetMinBalance'],
+            message: 'Must be a positive integer',
+          })
+        }
+      }
     })
+}
+
+export function getEpochLengthMinutes(value: string, epochTimeframe: string): number {
+  switch (epochTimeframe) {
+    case 'minutes':
+      return Number(value)
+    case 'hours':
+      return Number(value) * 60
+    case 'days':
+      return Number(value) * 60 * 24
+    default:
+      return 0
+  }
 }
 
 export function calculateMaxStake(
@@ -412,15 +410,53 @@ export function calculateMaxStakers(validator: Validator, constraints?: Constrai
   return maxStakers
 }
 
+export function findQualifiedCreatorAsset(
+  assets: AssetCreatorHolding[],
+  creator: string,
+  minBalance: number,
+) {
+  return assets.find((asset) => asset.creator === creator && asset.amount >= minBalance)
+}
+
 export function isStakingDisabled(
   activeAddress: string | null,
   validator: Validator,
+  heldAssets: AssetCreatorHolding[],
   constraints?: Constraints,
 ): boolean {
   if (!activeAddress) {
     return true
   }
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
+  const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = validator.config
+
+  if (entryGatingType > 0) {
+    if (entryGatingType === 1) {
+      const creatorAddress = algosdk.encodeAddress(entryGatingValue)
+      if (!algosdk.isValidAddress(creatorAddress)) {
+        return true
+      }
+      const qualifiedAsset = findQualifiedCreatorAsset(
+        heldAssets,
+        creatorAddress,
+        Number(gatingAssetMinBalance),
+      )
+      if (!qualifiedAsset) {
+        return true
+      }
+    } else {
+      const assetId = decodeUint8ArrayToBigint(entryGatingValue)
+      const heldAsset = heldAssets.find((asset) => asset['asset-id'] === Number(assetId))
+      if (!heldAsset) {
+        return true
+      }
+      const hasMinimumBalance = (heldAsset?.amount || 0) >= Number(gatingAssetMinBalance)
+      if (!hasMinimumBalance) {
+        return true
+      }
+    }
+  }
+
   let { maxAlgoPerPool } = validator.config
 
   if (maxAlgoPerPool === 0n && !!constraints) {

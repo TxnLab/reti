@@ -1,52 +1,32 @@
 import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu'
-import { cn } from '@/utils/ui'
+import { FlaskConical } from 'lucide-react'
 
-interface NavigationProps {
-  showHome?: boolean
-  orientation?: 'horizontal' | 'vertical'
-}
-
-export function Navigation({ showHome = false, orientation = 'horizontal' }: NavigationProps) {
+export function Navigation() {
   const { activeAddress } = useWallet()
+  const isDevelopment = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
 
   return (
-    <NavigationMenu orientation={orientation}>
-      <NavigationMenuList
-        className={cn(orientation === 'vertical' ? 'flex-col items-start space-x-0 gap-y-1' : '')}
-      >
-        {showHome && (
-          <NavigationMenuItem>
-            <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-              <Link to="/" className="[&.active]:font-bold">
-                Home
-              </Link>
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-        )}
-
-        {!!activeAddress && (
-          <>
-            <NavigationMenuItem>
-              <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                <Link
-                  to="/add"
-                  className="[&.active]:font-bold [&.active]:bg-accent/50 [&.active]:hover:bg-accent"
-                >
-                  Add Validator
-                </Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          </>
-        )}
-      </NavigationMenuList>
-    </NavigationMenu>
+    <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
+      {activeAddress && (
+        <>
+          <Link
+            to="/add"
+            className="text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground"
+          >
+            Add Validator
+          </Link>
+          {isDevelopment && (
+            <Link
+              to="/token"
+              className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground"
+            >
+              <FlaskConical className="h-4 w-4 mr-1.5 opacity-75" />
+              Create Token
+            </Link>
+          )}
+        </>
+      )}
+    </nav>
   )
 }

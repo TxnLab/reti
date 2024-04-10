@@ -10,7 +10,11 @@ interface AlgoDisplayAmountProps {
   maxLength?: number
   compactPrecision?: number
   mutedRemainder?: boolean
+  verticalOffset?: number
+  characterOffset?: number
+  sizePercent?: number
   className?: string
+  symbolClassName?: string
 }
 
 export function AlgoDisplayAmount({
@@ -20,7 +24,11 @@ export function AlgoDisplayAmount({
   maxLength,
   compactPrecision = 1,
   mutedRemainder = false,
+  verticalOffset,
+  characterOffset,
+  sizePercent,
   className = '',
+  symbolClassName = '',
 }: AlgoDisplayAmountProps) {
   const classes = cn('whitespace-nowrap', className)
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
@@ -38,8 +46,13 @@ export function AlgoDisplayAmount({
   if (maxLength && parts.join('.').length > maxLength) {
     return (
       <span className={classes}>
-        <AlgoSymbol />
-        &nbsp;{formatWithPrecision(parseFloat(formatted), compactPrecision)}
+        <AlgoSymbol
+          className={symbolClassName}
+          verticalOffset={verticalOffset}
+          characterOffset={characterOffset}
+          sizePercent={sizePercent}
+        />
+        {formatWithPrecision(parseFloat(formatted), compactPrecision)}
       </span>
     )
   }
@@ -48,8 +61,13 @@ export function AlgoDisplayAmount({
 
   return (
     <span className={classes}>
-      <AlgoSymbol />
-      &nbsp;{parts[0]}
+      <AlgoSymbol
+        className={symbolClassName}
+        verticalOffset={verticalOffset}
+        characterOffset={characterOffset}
+        sizePercent={sizePercent}
+      />
+      {parts[0]}
       <span
         className={cn(
           parts[1] === '' ? 'hidden' : mutedRemainder ? 'text-muted-foreground/50' : '',

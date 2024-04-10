@@ -1,49 +1,42 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
-import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
-import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import algosdk from 'algosdk'
 import { isAxiosError } from 'axios'
-import { Check, MonitorCheck } from 'lucide-react'
+import { ArrowUpRight, Check, Monitor, MonitorCheck, WalletMinimal } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
-import { makeSimulateValidatorClient, makeValidatorClient } from '@/api/contracts'
+import { addValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
+import { AlgoSymbol } from '@/components/AlgoSymbol'
+import { InfoPopover } from '@/components/InfoPopover'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Constraints, ValidatorConfig } from '@/interfaces/validator'
-import { getAddValidatorFormSchema } from '@/utils/contracts'
-import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Constraints } from '@/interfaces/validator'
+import { getAddValidatorFormSchema, getEpochLengthMinutes } from '@/utils/contracts'
+// import { validatorAutoFill } from '@/utils/development'
+import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
+import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
 
-const algodConfig = getAlgodConfigFromViteEnvironment()
-const algodClient = algokit.getAlgoClient({
-  server: algodConfig.server,
-  port: algodConfig.port,
-  token: algodConfig.token,
-})
+const nfdAppUrl = getNfdAppFromViteEnvironment()
 
 interface AddValidatorFormProps {
   constraints: Constraints
@@ -52,6 +45,7 @@ interface AddValidatorFormProps {
 export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [nfdAppId, setNfdAppId] = React.useState<number>(0)
   const [isFetchingAppId, setIsFetchingAppId] = React.useState(false)
+  const [epochTimeframe, setEpochTimeframe] = React.useState('minutes')
   const [isSigning, setIsSigning] = React.useState(false)
 
   const { transactionSigner, activeAddress } = useWallet()
@@ -67,7 +61,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       owner: '',
       manager: '',
       nfdForInfo: '',
-      entryGatingType: '',
+      entryGatingType: '0',
       entryGatingValue: '',
       gatingAssetMinBalance: '',
       rewardTokenId: '',
@@ -76,18 +70,13 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       percentToValidator: '',
       validatorCommissionAddress: '',
       minEntryStake: '',
-      maxAlgoPerPool: '',
-      poolsPerNode: '',
-      sunsettingOn: '',
-      sunsettingTo: '',
+      poolsPerNode: '1',
     },
   })
 
   const { errors, isValid } = form.formState
 
   const fetchNfdForInfo = async (value: string) => {
-    setIsFetchingAppId(true)
-
     try {
       const nfd = await fetchNfd(value, { view: 'brief' })
 
@@ -103,18 +92,65 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         // Handle non-HTTP errors
         console.error(error)
       }
-      form.setError('nfdForInfo', { type: 'manual', message: 'NFD app id not found' })
+      form.setError('nfdForInfo', { type: 'manual', message: 'NFD app ID not found' })
     } finally {
       setIsFetchingAppId(false)
     }
   }
 
-  const debouncedCheck = useDebouncedCallback(async (value) => {
+  const debouncedNfdCheck = useDebouncedCallback(async (value) => {
     const isValid = await form.trigger('nfdForInfo')
     if (isValid) {
       await fetchNfdForInfo(value)
+    } else {
+      setIsFetchingAppId(false)
     }
   }, 500)
+
+  const nfdForInfo = form.watch('nfdForInfo')
+
+  const showPrimaryMintButton = !isFetchingAppId && nfdAppId === 0 && isValidName(nfdForInfo)
+
+  const mintNfdUrl = showPrimaryMintButton
+    ? `${nfdAppUrl}/mint?q=${trimExtension(nfdForInfo)}`
+    : `${nfdAppUrl}/mint`
+
+  const selectedGatingType = form.watch('entryGatingType')
+
+  const isEntryGatingEnabled = ['1', '2', '3', '4'].includes(String(selectedGatingType))
+  const isGatingAssetMinBalanceEnabled = ['1', '2', '3'].includes(String(selectedGatingType))
+
+  const gatingValueInfo = React.useMemo(() => {
+    switch (String(selectedGatingType)) {
+      case '1':
+        return {
+          label: 'Asset creator account',
+          description: 'Must hold asset created by this account to enter pool',
+        }
+      case '2':
+        return {
+          label: 'Asset ID',
+          description: 'Must hold asset with this ID to enter pool',
+        }
+      case '3':
+        return {
+          label: 'Asset creator NFD',
+          description: 'Must hold asset created by an account linked to this NFD to enter pool',
+        }
+      case '4':
+        return {
+          label: 'Root/parent NFD',
+          description: 'Must hold a segment of this root/parent NFD to enter pool',
+        }
+      default:
+        return {
+          label: 'Unknown',
+          description: 'Unknown',
+        }
+    }
+  }, [selectedGatingType])
+
+  const infoPopoverClassName = 'mx-1.5 relative top-0.5 sm:mx-1 sm:top-0'
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
@@ -129,138 +165,16 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         throw new Error('No active address')
       }
 
-      const validatorClient = makeValidatorClient(transactionSigner, activeAddress)
-
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
-      const validatorAppRef = await validatorClient.appClient.getAppReference()
+      const payoutEveryXMins = getEpochLengthMinutes(values.payoutEveryXMins, epochTimeframe)
 
-      const [validatorMbr] = (
-        await validatorClient
-          .compose()
-          .getMbrAmounts(
-            {},
-            {
-              sender: {
-                addr: activeAddress as string,
-                signer: algosdk.makeEmptyTransactionSigner(),
-              },
-            },
-          )
-          .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
-      ).returns![0]
-
-      const suggestedParams = await algodClient.getTransactionParams().do()
-
-      const payValidatorMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        from: activeAddress,
-        to: validatorAppRef.appAddress,
-        amount: Number(validatorMbr),
-        suggestedParams,
-      })
-
-      const validatorConfig: ValidatorConfig = {
-        id: 0, // id not known yet
-        owner: values.owner,
-        manager: values.manager,
-        nfdForInfo: nfdAppId,
-        entryGatingType: 0,
-        entryGatingValue: new Uint8Array(32),
-        gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
-        rewardTokenId: Number(values.rewardTokenId || 0),
-        rewardPerPayout: BigInt(values.rewardPerPayout || 0),
-        payoutEveryXMins: Number(values.payoutEveryXMins),
-        percentToValidator: Number(values.percentToValidator) * 10000,
-        validatorCommissionAddress: values.validatorCommissionAddress,
-        minEntryStake: BigInt(AlgoAmount.Algos(Number(values.minEntryStake)).microAlgos),
-        maxAlgoPerPool: BigInt(AlgoAmount.Algos(Number(values.maxAlgoPerPool)).microAlgos),
-        poolsPerNode: Number(values.poolsPerNode),
-        sunsettingOn: Number(values.sunsettingOn || 0),
-        sunsettingTo: Number(values.sunsettingTo || 0),
+      const newValues = {
+        ...values,
+        payoutEveryXMins: String(payoutEveryXMins),
       }
 
-      const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
-
-      const simulateResult = await simulateValidatorClient
-        .compose()
-        .addValidator(
-          {
-            mbrPayment: {
-              transaction: payValidatorMbr,
-              signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
-            },
-            nfdName: values.nfdForInfo || '',
-            config: [
-              validatorConfig.id,
-              validatorConfig.owner,
-              validatorConfig.manager,
-              validatorConfig.nfdForInfo,
-              validatorConfig.entryGatingType,
-              validatorConfig.entryGatingValue,
-              validatorConfig.gatingAssetMinBalance,
-              validatorConfig.rewardTokenId,
-              validatorConfig.rewardPerPayout,
-              validatorConfig.payoutEveryXMins,
-              validatorConfig.percentToValidator,
-              validatorConfig.validatorCommissionAddress,
-              validatorConfig.minEntryStake,
-              validatorConfig.maxAlgoPerPool,
-              validatorConfig.poolsPerNode,
-              validatorConfig.sunsettingOn,
-              validatorConfig.sunsettingTo,
-            ],
-          },
-          { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
-        )
-        .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
-
-      payValidatorMbr.group = undefined
-
-      // @todo: switch to Joe's new method(s)
-      const feesAmount = AlgoAmount.MicroAlgos(
-        1000 *
-          Math.floor(
-            ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
-          ),
-      )
-
-      const result = await validatorClient
-        .compose()
-        .addValidator(
-          {
-            mbrPayment: {
-              transaction: payValidatorMbr,
-              signer: {
-                signer: transactionSigner,
-                addr: activeAddress,
-              } as TransactionSignerAccount,
-            },
-            nfdName: values.nfdForInfo || '',
-            config: [
-              validatorConfig.id,
-              validatorConfig.owner,
-              validatorConfig.manager,
-              validatorConfig.nfdForInfo,
-              validatorConfig.entryGatingType,
-              validatorConfig.entryGatingValue,
-              validatorConfig.gatingAssetMinBalance,
-              validatorConfig.rewardTokenId,
-              validatorConfig.rewardPerPayout,
-              validatorConfig.payoutEveryXMins,
-              validatorConfig.percentToValidator,
-              validatorConfig.validatorCommissionAddress,
-              validatorConfig.minEntryStake,
-              validatorConfig.maxAlgoPerPool,
-              validatorConfig.poolsPerNode,
-              validatorConfig.sunsettingOn,
-              validatorConfig.sunsettingTo,
-            ],
-          },
-          { sendParams: { fee: feesAmount } },
-        )
-        .execute({ populateAppCallResources: true })
-
-      const validatorId = Number(result.returns![0])
+      const validatorId = await addValidator(newValues, nfdAppId, transactionSigner, activeAddress)
 
       toast.success(
         <div className="flex items-center gap-x-2">
@@ -281,31 +195,50 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card className="w-full max-w-[600px]">
-          <CardHeader>
-            <CardTitle>New validator configuration</CardTitle>
-            <CardDescription>
-              Fields marked with <span className="text-red-500">*</span> are required
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid w-full items-center gap-8">
+    <div className="mb-12">
+      <p className="text-sm text-muted-foreground">
+        Fields marked with <span className="text-primary">*</span> are required
+      </p>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6">
+          <div className="grid gap-y-8">
+            <fieldset className="grid gap-6 rounded-lg border p-6 max-w-3xl">
+              <legend className="-ml-1 px-1 text-lg font-medium">Accounts</legend>
+
               <FormField
                 control={form.control}
                 name="owner"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Owner address <span className="text-red-500">*</span>
+                      Owner account
+                      <InfoPopover className={infoPopoverClassName}>
+                        Account that controls config (cold wallet recommended)
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
                     </FormLabel>
-                    <FormControl>
-                      <Input className="font-mono dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Account that controls config (cold wallet recommended)
-                    </FormDescription>
+                    <div className="flex items-center gap-x-3">
+                      <FormControl>
+                        <Input
+                          className="font-mono"
+                          placeholder=""
+                          autoComplete="new-password"
+                          spellCheck="false"
+                          {...field}
+                        />
+                      </FormControl>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          form.setValue('owner', activeAddress!, { shouldValidate: true })
+                        }}
+                      >
+                        <WalletMinimal className="hidden mr-2 h-4 w-4 opacity-75 sm:inline" />
+                        Autofill
+                      </Button>
+                    </div>
                     <FormMessage>{errors.owner?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -317,14 +250,35 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Manager address <span className="text-red-500">*</span>
+                      Manager account
+                      <InfoPopover className={infoPopoverClassName}>
+                        Account that triggers payouts and keyreg transactions (must sign
+                        transactions)
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
                     </FormLabel>
-                    <FormControl>
-                      <Input className="font-mono dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Account that triggers payouts and keyreg transactions (must sign transactions)
-                    </FormDescription>
+                    <div className="flex items-center gap-x-3">
+                      <FormControl>
+                        <Input
+                          className="font-mono"
+                          placeholder=""
+                          autoComplete="new-password"
+                          spellCheck="false"
+                          {...field}
+                        />
+                      </FormControl>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          form.setValue('manager', activeAddress!, { shouldValidate: true })
+                        }}
+                      >
+                        <WalletMinimal className="hidden mr-2 h-4 w-4 opacity-75 sm:inline" />
+                        Autofill
+                      </Button>
+                    </div>
                     <FormMessage>{errors.manager?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -332,105 +286,69 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="nfdForInfo"
+                name="validatorCommissionAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Associated NFD</FormLabel>
-                    <div className="relative">
+                    <FormLabel>
+                      Commission account
+                      <InfoPopover className={infoPopoverClassName}>
+                        Account that receives validator commission payments
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
+                    </FormLabel>
+                    <div className="flex items-center gap-x-3">
                       <FormControl>
                         <Input
-                          className={cn(
-                            'dark:bg-black/10',
-                            isFetchingAppId || nfdAppId > 0 ? 'pr-10' : '',
-                          )}
+                          className="font-mono"
                           placeholder=""
                           autoComplete="new-password"
                           spellCheck="false"
                           {...field}
-                          onChange={(e) => {
-                            field.onChange(e) // Inform react-hook-form of the change
-                            setNfdAppId(0) // Reset NFD app id
-                            debouncedCheck(e.target.value) // Perform debounced validation
-                          }}
                         />
                       </FormControl>
-                      <div
-                        className={cn(
-                          isFetchingAppId || nfdAppId > 0 ? 'opacity-100' : 'opacity-0',
-                          'pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3',
-                        )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          form.setValue('validatorCommissionAddress', activeAddress!, {
+                            shouldValidate: true,
+                          })
+                        }}
                       >
-                        {isFetchingAppId ? (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-5 w-5 animate-spin opacity-25"
-                            aria-hidden="true"
-                          >
-                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                          </svg>
-                        ) : nfdAppId ? (
-                          <Check className="h-5 w-5 text-green-500" />
-                        ) : null}
-                      </div>
+                        <WalletMinimal className="hidden mr-2 h-4 w-4 opacity-75 sm:inline" />
+                        Autofill
+                      </Button>
                     </div>
-
-                    <FormDescription>
-                      NFD which the validator uses to describe their validator pool (optional)
-                    </FormDescription>
-                    <FormMessage>{errors.nfdForInfo?.message}</FormMessage>
+                    <FormMessage>{errors.validatorCommissionAddress?.message}</FormMessage>
                   </FormItem>
                 )}
               />
+            </fieldset>
 
+            <fieldset className="grid gap-6 rounded-lg border p-6 max-w-3xl sm:grid-cols-2 md:grid-cols-3">
+              <legend className="-ml-1 px-1 text-lg font-medium">Validator Settings</legend>
               <FormField
                 control={form.control}
-                name="gatingAssetMinBalance"
+                name="minEntryStake"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Creator NFT Minimum Balance</FormLabel>
+                    <FormLabel>
+                      Minimum entry stake
+                      <InfoPopover className={infoPopoverClassName}>
+                        Minimum stake required to enter a pool
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <AlgoSymbol verticalOffset={1} className="text-muted-foreground" />
+                        </div>
+                        <Input className="pl-7" placeholder="1000" {...field} />
+                      </div>
                     </FormControl>
-                    <FormDescription>
-                      Minimum required balance of the asset described above
-                    </FormDescription>
-                    <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="rewardTokenId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reward Token ID</FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage>{errors.rewardTokenId?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="rewardPerPayout"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reward Token Amount Per Payout</FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
+                    <FormMessage>{errors.minEntryStake?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -441,12 +359,33 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Epoch length <span className="text-red-500">*</span>
+                      Epoch length
+                      <InfoPopover className={infoPopoverClassName}>
+                        Frequency of rewards payouts
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                      <div className="flex items-center">
+                        <Input
+                          className="rounded-r-none rounded-l-md focus:z-[2]"
+                          placeholder=""
+                          {...field}
+                        />
+                        <Select value={epochTimeframe} onValueChange={setEpochTimeframe}>
+                          <FormControl>
+                            <SelectTrigger className="w-[11rem] rounded-r-md rounded-l-none -ml-px">
+                              <SelectValue placeholder="Select timeframe" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="minutes">Minutes</SelectItem>
+                            <SelectItem value="hours">Hours</SelectItem>
+                            <SelectItem value="days">Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </FormControl>
-                    <FormDescription>Frequency of rewards payouts (in minutes)</FormDescription>
                     <FormMessage>{errors.payoutEveryXMins?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -458,68 +397,16 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Validator commission percent <span className="text-red-500">*</span>
+                      Commission percent
+                      <InfoPopover className={infoPopoverClassName}>
+                        Payout percentage w/ up to four decimals (e.g., 5.0001)
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                      <Input placeholder="5.0000" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Payout percentage w/ up to four decimals (e.g., 5.0001)
-                    </FormDescription>
                     <FormMessage>{errors.percentToValidator?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="validatorCommissionAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Commission address <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input className="font-mono dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Account that receives validator commission payments
-                    </FormDescription>
-                    <FormMessage>{errors.validatorCommissionAddress?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="minEntryStake"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Minimum entry stake <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>Minimum stake required to enter a pool</FormDescription>
-                    <FormMessage>{errors.minEntryStake?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="maxAlgoPerPool"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Maximum total stake</FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Maximum stake allowed per pool (to keep under incentive limits)
-                    </FormDescription>
-                    <FormMessage>{errors.maxAlgoPerPool?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -530,14 +417,30 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Pools per node <span className="text-red-500">*</span>
+                      Pools per node
+                      <InfoPopover className={infoPopoverClassName}>
+                        Number of pools to allow per node (max of 3 is recommended)
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select number of pools" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.from({ length: constraints.maxPoolsPerNode }, (_, i) => i + 1).map(
+                            (number) => (
+                              <SelectItem key={number} value={String(number)}>
+                                {number}
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
-                    <FormDescription>
-                      Number of pools to allow per node (max of 3 is recommended)
-                    </FormDescription>
                     <FormMessage>{errors.poolsPerNode?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -545,14 +448,261 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
+                name="nfdForInfo"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>
+                      Associated NFD
+                      <InfoPopover className={infoPopoverClassName}>
+                        NFD which the validator uses to describe their validator pool (optional)
+                      </InfoPopover>
+                    </FormLabel>
+                    <div className="flex items-center gap-x-3">
+                      <div className="flex-1 relative">
+                        <FormControl>
+                          <Input
+                            className={cn('', isFetchingAppId || nfdAppId > 0 ? 'pr-10' : '')}
+                            placeholder=""
+                            autoComplete="new-password"
+                            spellCheck="false"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e) // Inform react-hook-form of the change
+                              setNfdAppId(0) // Reset NFD app ID
+                              setIsFetchingAppId(true) // Set fetching state
+                              debouncedNfdCheck(e.target.value) // Perform debounced validation
+                            }}
+                          />
+                        </FormControl>
+                        <div
+                          className={cn(
+                            isFetchingAppId || nfdAppId > 0 ? 'opacity-100' : 'opacity-0',
+                            'pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3',
+                          )}
+                        >
+                          {isFetchingAppId ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-5 w-5 animate-spin opacity-25"
+                              aria-hidden="true"
+                            >
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                            </svg>
+                          ) : nfdAppId ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : null}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={showPrimaryMintButton ? 'default' : 'outline'}
+                        asChild
+                      >
+                        <a href={mintNfdUrl} target="_blank" rel="noopener noreferrer">
+                          <ArrowUpRight className="hidden mr-1 h-5 w-5 opacity-75 sm:inline" />
+                          Mint NFD
+                        </a>
+                      </Button>
+                    </div>
+                    <FormMessage>{errors.nfdForInfo?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+            </fieldset>
+
+            <fieldset className="grid gap-6 rounded-lg border p-6 max-w-3xl sm:grid-cols-2">
+              <legend className="-ml-1 px-1 text-lg font-medium">Reward Token</legend>
+              <p className="sm:col-span-2 text-sm text-muted-foreground">
+                Reward token to be paid out to stakers (optional)
+              </p>
+              <FormField
+                control={form.control}
+                name="rewardTokenId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Asset ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="" autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.rewardTokenId?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="rewardPerPayout"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount per payout</FormLabel>
+                    <FormControl>
+                      <Input placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+            </fieldset>
+
+            <fieldset className="grid gap-6 rounded-lg border p-6 max-w-3xl sm:grid-cols-2">
+              <legend className="-ml-1 px-1 text-lg font-medium">Entry Gating</legend>
+              <p className="sm:col-span-2 text-sm text-muted-foreground">
+                Require stakers to hold a qualified asset to enter pool (optional)
+              </p>
+              <FormField
+                control={form.control}
+                name="entryGatingType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Gating type
+                      <InfoPopover className={infoPopoverClassName}>
+                        Require stakers to hold a qualified asset to enter pool (optional)
+                      </InfoPopover>
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={(gatingType) => {
+                          field.onChange(gatingType) // Inform react-hook-form of the change
+
+                          form.setValue('entryGatingValue', '') // Reset gating value
+                          form.clearErrors('entryGatingValue') // Clear any errors for gating value
+
+                          const isNfdSegmentGating = gatingType === '4'
+                          const gatingMinBalance = isNfdSegmentGating ? '1' : ''
+
+                          form.setValue('gatingAssetMinBalance', gatingMinBalance) // Set/reset min balance
+                          form.clearErrors('gatingAssetMinBalance') // Clear any errors for gating min balance
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select asset gating type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="0">None</SelectItem>
+                          <SelectItem value="1">Asset by Creator Account</SelectItem>
+                          <SelectItem value="2">Asset ID</SelectItem>
+                          <SelectItem value="3">Asset Created by NFD</SelectItem>
+                          <SelectItem value="4">NFD Segment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage>{errors.entryGatingType?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="entryGatingValue"
+                render={({ field }) => (
+                  <FormItem className={cn({ hidden: !isEntryGatingEnabled })}>
+                    <FormLabel>
+                      {gatingValueInfo.label}
+                      <InfoPopover className={infoPopoverClassName}>
+                        {gatingValueInfo.description}
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.entryGatingValue?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gatingAssetMinBalance"
+                render={({ field }) => (
+                  <FormItem className={cn({ hidden: !isGatingAssetMinBalanceEnabled })}>
+                    <FormLabel>
+                      Minimum balance
+                      <InfoPopover className={infoPopoverClassName}>
+                        Minimum required balance of the entry gating asset
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="" {...field} />
+                    </FormControl>
+                    <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+            </fieldset>
+
+            {/* <fieldset className="grid gap-6 rounded-lg border p-6 max-w-3xl sm:grid-cols-2">
+              <legend className="-ml-1 px-1 text-lg font-medium">Sunsetting</legend>
+              <p className="sm:col-span-2 text-sm text-muted-foreground">
+                Set a sunset date for the validator (optional)
+              </p>
+              <FormField
+                control={form.control}
                 name="sunsettingOn"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sunset Time</FormLabel>
-                    <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
-                    </FormControl>
-                    <FormDescription>Timestamp when validator will sunset</FormDescription>
+                    <FormLabel>
+                      Sunset date
+                      <InfoPopover className={infoPopoverClassName}>Date when validator will sunset</InfoPopover>
+                    </FormLabel>
+                    <div className="flex items-center gap-x-3">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                'w-[240px] h-9 pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground',
+                              )}
+                            >
+                              {field.value ? (
+                                dayjs.unix(Number(field.value)).format('LL')
+                              ) : (
+                                <span>Select a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              field.value !== ''
+                                ? dayjs.unix(Number(field.value)).toDate()
+                                : undefined
+                            }
+                            onSelect={(date) => field.onChange(dayjs(date).unix().toString())}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          form.setValue('sunsettingOn', '', { shouldValidate: true })
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </div>
                     <FormMessage>{errors.sunsettingOn?.message}</FormMessage>
                   </FormItem>
                 )}
@@ -563,45 +713,43 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="sunsettingTo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sunset To (Validator ID)</FormLabel>
+                    <FormLabel>
+                      Sunset to (validator ID)
+                      <InfoPopover className={infoPopoverClassName}>
+                        Validator ID that the validator is moving to (if known)
+                      </InfoPopover>
+                    </FormLabel>
                     <FormControl>
-                      <Input className="dark:bg-black/10" placeholder="" {...field} />
+                      <Input placeholder="" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Validator ID that the validator is moving to (if known)
-                    </FormDescription>
                     <FormMessage>{errors.sunsettingTo?.message}</FormMessage>
                   </FormItem>
                 )}
               />
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
+            </fieldset> */}
+          </div>
+          <div className="flex justify-between mt-12">
             {/* <Button
               variant="outline"
               onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                 event.preventDefault()
-                form.reset({
-                  owner: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
-                  manager: 'DWKDZLYPN2W5WWISQG76RS3DGQPJ67IFKNIEGGXKWVQTDTTYCT5GBG2DYE',
-                  payoutEveryXMins: '1',
-                  percentToValidator: '5',
-                  validatorCommissionAddress:
-                    'Q5MNRF52SRS4MBXWAQKCTQG6U53JJEUAKYGQXZIXNUIGZKJE7FO72GRZBU',
-                  minEntryStake: '1000',
-                  maxAlgoPerPool: '20000000',
-                  poolsPerNode: '3',
-                })
+                form.reset(validatorAutoFill(activeAddress as string))
               }}
             >
               Autofill
             </Button> */}
-            <Button type="submit" disabled={isSigning || !isValid}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full text-base sm:w-auto"
+              disabled={isSigning || !isValid}
+            >
+              <Monitor className="mr-2 h-5 w-5" />
               Add Validator
             </Button>
-          </CardFooter>
-        </Card>
-      </form>
-    </Form>
+          </div>
+        </form>
+      </Form>
+    </div>
   )
 }

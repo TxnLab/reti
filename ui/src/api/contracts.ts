@@ -17,15 +17,18 @@ import {
   RawValidatorConfig,
   RawValidatorState,
   Validator,
+  ValidatorConfig,
+  ValidatorConfigInput,
   ValidatorPoolKey,
 } from '@/interfaces/validator'
+import { gatingValueFromBigint } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
   transformValidatorConfig,
   transformValidatorData,
 } from '@/utils/contracts'
-import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
+import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -204,6 +207,153 @@ export async function fetchValidators(client?: ValidatorRegistryClient) {
 }
 
 export class ValidatorNotFoundError extends Error {}
+
+export async function addValidator(
+  values: ValidatorConfigInput,
+  nfdAppId: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  const validatorAppRef = await validatorClient.appClient.getAppReference()
+
+  const [validatorMbr] = (
+    await validatorClient
+      .compose()
+      .getMbrAmounts(
+        {},
+        {
+          sender: {
+            addr: activeAddress as string,
+            signer: algosdk.makeEmptyTransactionSigner(),
+          },
+        },
+      )
+      .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  ).returns![0]
+
+  const suggestedParams = await algodClient.getTransactionParams().do()
+
+  const payValidatorMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    to: validatorAppRef.appAddress,
+    amount: Number(validatorMbr),
+    suggestedParams,
+  })
+
+  const entryGatingType = Number(values.entryGatingType || 0)
+
+  const entryGatingValue =
+    entryGatingType == 1
+      ? algosdk.decodeAddress(values.entryGatingValue!).publicKey // relying on form validation
+      : gatingValueFromBigint(BigInt(values.entryGatingValue!))
+
+  const validatorConfig: ValidatorConfig = {
+    id: 0, // id not known yet
+    owner: values.owner,
+    manager: values.manager,
+    nfdForInfo: nfdAppId,
+    entryGatingType,
+    entryGatingValue,
+    gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
+    rewardTokenId: Number(values.rewardTokenId || 0),
+    rewardPerPayout: BigInt(values.rewardPerPayout || 0),
+    payoutEveryXMins: Number(values.payoutEveryXMins),
+    percentToValidator: Number(values.percentToValidator) * 10000,
+    validatorCommissionAddress: values.validatorCommissionAddress,
+    minEntryStake: BigInt(AlgoAmount.Algos(Number(values.minEntryStake)).microAlgos),
+    maxAlgoPerPool: BigInt(0),
+    poolsPerNode: Number(values.poolsPerNode),
+    sunsettingOn: Number(0),
+    sunsettingTo: Number(0),
+  }
+
+  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
+
+  const simulateResult = await simulateValidatorClient
+    .compose()
+    .addValidator(
+      {
+        mbrPayment: {
+          transaction: payValidatorMbr,
+          signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
+        },
+        nfdName: values.nfdForInfo || '',
+        config: [
+          validatorConfig.id,
+          validatorConfig.owner,
+          validatorConfig.manager,
+          validatorConfig.nfdForInfo,
+          validatorConfig.entryGatingType,
+          validatorConfig.entryGatingValue,
+          validatorConfig.gatingAssetMinBalance,
+          validatorConfig.rewardTokenId,
+          validatorConfig.rewardPerPayout,
+          validatorConfig.payoutEveryXMins,
+          validatorConfig.percentToValidator,
+          validatorConfig.validatorCommissionAddress,
+          validatorConfig.minEntryStake,
+          validatorConfig.maxAlgoPerPool,
+          validatorConfig.poolsPerNode,
+          validatorConfig.sunsettingOn,
+          validatorConfig.sunsettingTo,
+        ],
+      },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
+    )
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  payValidatorMbr.group = undefined
+
+  // @todo: switch to Joe's new method(s)
+  const feesAmount = AlgoAmount.MicroAlgos(
+    1000 *
+      Math.floor(
+        ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
+      ),
+  )
+
+  const result = await validatorClient
+    .compose()
+    .addValidator(
+      {
+        mbrPayment: {
+          transaction: payValidatorMbr,
+          signer: {
+            signer,
+            addr: activeAddress,
+          } as TransactionSignerAccount,
+        },
+        nfdName: values.nfdForInfo || '',
+        config: [
+          validatorConfig.id,
+          validatorConfig.owner,
+          validatorConfig.manager,
+          validatorConfig.nfdForInfo,
+          validatorConfig.entryGatingType,
+          validatorConfig.entryGatingValue,
+          validatorConfig.gatingAssetMinBalance,
+          validatorConfig.rewardTokenId,
+          validatorConfig.rewardPerPayout,
+          validatorConfig.payoutEveryXMins,
+          validatorConfig.percentToValidator,
+          validatorConfig.validatorCommissionAddress,
+          validatorConfig.minEntryStake,
+          validatorConfig.maxAlgoPerPool,
+          validatorConfig.poolsPerNode,
+          validatorConfig.sunsettingOn,
+          validatorConfig.sunsettingTo,
+        ],
+      },
+      { sendParams: { fee: feesAmount } },
+    )
+    .execute({ populateAppCallResources: true })
+
+  const validatorId = Number(result.returns![0])
+
+  return validatorId
+}
 
 export function callGetNodePoolAssignments(
   validatorId: number | bigint,
@@ -396,6 +546,7 @@ export async function doesStakerNeedToPayMbr(
 export async function addStake(
   validatorId: number,
   stakeAmount: number, // microalgos
+  valueToVerify: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
@@ -423,7 +574,7 @@ export async function addStake(
           signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
         },
         validatorId,
-        valueToVerify: 0,
+        valueToVerify,
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
@@ -446,7 +597,7 @@ export async function addStake(
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
         validatorId,
-        valueToVerify: 0,
+        valueToVerify,
       },
       { sendParams: { fee: feesAmount } },
     )
