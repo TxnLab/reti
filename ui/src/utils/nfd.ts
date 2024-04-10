@@ -14,6 +14,41 @@ export function isValidName(name: string, suffixOptional = false): boolean {
   return /^([a-z0-9]{1,27}\.){0,1}(?<basename>[a-z0-9]{1,27})\.algo$/g.test(name)
 }
 
+/**
+ * @description Checks if name is a valid NFD root
+ * @param name string to validate
+ * @param suffixOptional if true, '.algo' suffix is optional (default: false)
+ * @returns true if valid
+ */
+export const isValidRoot = (name: string, suffixOptional = false): boolean => {
+  if (suffixOptional) {
+    return /^[a-z0-9]{1,27}(\.algo)?$/g.test(name)
+  }
+  return /^[a-z0-9]{1,27}\.algo$/g.test(name)
+}
+
+/**
+ * @description Checks if name is a valid NFD segment
+ * @param name string to validate
+ * @param suffixOptional if true, '.algo' suffix is optional (default: false)
+ * @returns true if valid
+ */
+export const isValidSegment = (name: string, suffixOptional = false): boolean => {
+  if (suffixOptional) {
+    return /^[a-z0-9]{1,27}\.(?<basename>[a-z0-9]{1,27})(\.algo)?$/g.test(name)
+  }
+  return /^[a-z0-9]{1,27}\.(?<basename>[a-z0-9]{1,27})\.algo?$/g.test(name)
+}
+
+/**
+ * @description Trims the '.algo' suffix from the input string, if it exists
+ * @param str string to trim
+ * @returns input string with suffix removed
+ */
+export const trimExtension = (str: string): string => {
+  return str.replace(/\.algo$/gi, '')
+}
+
 export function getNfdProfileUrl(name: string): string {
   const baseUrl = getNfdAppFromViteEnvironment()
   return `${baseUrl}/name/${name}`

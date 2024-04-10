@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as ValidatorsImport } from './routes/validators'
+import { Route as TokenImport } from './routes/token'
 import { Route as AddImport } from './routes/add'
 import { Route as IndexImport } from './routes/index'
 import { Route as ValidatorsValidatorIdImport } from './routes/validators_.$validatorId'
@@ -20,6 +21,11 @@ import { Route as ValidatorsValidatorIdImport } from './routes/validators_.$vali
 
 const ValidatorsRoute = ValidatorsImport.update({
   path: '/validators',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const TokenRoute = TokenImport.update({
+  path: '/token',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -50,6 +56,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddImport
       parentRoute: typeof rootRoute
     }
+    '/token': {
+      preLoaderRoute: typeof TokenImport
+      parentRoute: typeof rootRoute
+    }
     '/validators': {
       preLoaderRoute: typeof ValidatorsImport
       parentRoute: typeof rootRoute
@@ -66,6 +76,7 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
   AddRoute,
+  TokenRoute,
   ValidatorsRoute,
   ValidatorsValidatorIdRoute,
 ])
