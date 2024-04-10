@@ -68,7 +68,8 @@ export function Stakers({ validator }: OverviewProps) {
           // yAxisId="right"
           // orientation="right"
           stroke="#888888"
-          domain={[(dataMin) => 0, (dataMax) => 200]}
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          domain={[(dataMin: number) => 0, (dataMax: number) => 200]}
           fontSize={12}
           tickLine={true}
           axisLine={true}
