@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { fetchStakerValidatorData } from '@/api/contracts'
 import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
+import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
@@ -22,7 +23,7 @@ export const Route = createFileRoute('/')({
     queryClient.ensureQueryData(constraintsQueryOptions)
   },
   component: Dashboard,
-  pendingComponent: () => <div>Loading...</div>,
+  pendingComponent: () => <Loading size="lg" className="opacity-50" />,
   errorComponent: ({ error }) => {
     if (error instanceof Error) {
       return <div>{error?.message}</div>

@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { constraintsQueryOptions } from '@/api/queries'
+import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
@@ -17,7 +18,7 @@ export const Route = createFileRoute('/add')({
   },
   loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(constraintsQueryOptions),
   component: AddValidator,
-  pendingComponent: () => <div>Loading...</div>,
+  pendingComponent: () => <Loading size="lg" className="opacity-50" />,
   errorComponent: ({ error }) => {
     if (error instanceof Error) {
       return <div>{error?.message}</div>
