@@ -25,6 +25,7 @@
 			"matchFileNames": ["ui/**", "**/workflows/ci-ui.yaml"],
 			"extends": [
 				"config:js-app",
+				"schedule:earlyMondays",
 				":assignee(drichar)",
 				":automergeLinters",
 				":automergeTypes",
