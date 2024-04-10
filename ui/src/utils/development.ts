@@ -159,3 +159,39 @@ export function validatorAutoFill(
     ...stringParams,
   }
 }
+
+export async function createGatingToken(
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+  total: bigint,
+  decimals: number,
+  assetName?: string,
+  unitName?: string,
+) {
+  const atc = new algosdk.AtomicTransactionComposer()
+  const suggestedParams = await algodClient.getTransactionParams().do()
+
+  const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    suggestedParams,
+    total: Number(total),
+    decimals,
+    defaultFrozen: false,
+    unitName,
+    assetName,
+    manager: activeAddress,
+    reserve: activeAddress,
+    freeze: activeAddress,
+    clawback: activeAddress,
+    assetURL: 'https://github.com/TxnLab/reti',
+  })
+
+  atc.addTransaction({ txn: assetCreateTxn, signer })
+  const result = await atc.execute(algodClient, 4)
+
+  const txId = result.txIDs[0]
+  const txnInfo = await algodClient.pendingTransactionInformation(txId).do()
+  const assetId = txnInfo['asset-index']
+
+  return Number(assetId)
+}
