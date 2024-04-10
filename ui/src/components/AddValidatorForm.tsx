@@ -70,10 +70,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       percentToValidator: '',
       validatorCommissionAddress: '',
       minEntryStake: '',
-      maxAlgoPerPool: '',
       poolsPerNode: '1',
-      sunsettingOn: undefined,
-      sunsettingTo: '',
     },
   })
 

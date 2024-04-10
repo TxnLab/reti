@@ -263,10 +263,10 @@ export async function addValidator(
     percentToValidator: Number(values.percentToValidator) * 10000,
     validatorCommissionAddress: values.validatorCommissionAddress,
     minEntryStake: BigInt(AlgoAmount.Algos(Number(values.minEntryStake)).microAlgos),
-    maxAlgoPerPool: BigInt(AlgoAmount.Algos(Number(values.maxAlgoPerPool)).microAlgos),
+    maxAlgoPerPool: BigInt(0),
     poolsPerNode: Number(values.poolsPerNode),
-    sunsettingOn: Number(values.sunsettingOn || 0),
-    sunsettingTo: Number(values.sunsettingTo || 0),
+    sunsettingOn: Number(0),
+    sunsettingTo: Number(0),
   }
 
   const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)

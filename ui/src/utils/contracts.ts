@@ -274,23 +274,6 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos >= constraints.minEntryStake, {
           message: `Must be at least ${AlgoAmount.MicroAlgos(Number(constraints.minEntryStake)).algos} ALGO`,
         }),
-      maxAlgoPerPool: z
-        .string()
-        .refine(
-          (val) =>
-            val === '' ||
-            (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) >= 0),
-          {
-            message: 'Must be a positive integer',
-          },
-        )
-        .refine(
-          (val) =>
-            val === '' || AlgoAmount.Algos(Number(val)).microAlgos <= constraints.maxAlgoPerPool,
-          {
-            message: `Cannot exceed ${AlgoAmount.MicroAlgos(Number(constraints.maxAlgoPerPool)).algos} ALGO`,
-          },
-        ),
       poolsPerNode: z
         .string()
         .refine((val) => val !== '', {
@@ -302,25 +285,6 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => Number(val) <= constraints.maxPoolsPerNode, {
           message: `Cannot exceed ${constraints.maxPoolsPerNode} pools per node`,
         }),
-      sunsettingOn: z
-        .string()
-        .refine(
-          (val) =>
-            val === '' ||
-            (Number.isInteger(Number(val)) && dayjs.unix(Number(val)).isAfter(dayjs())),
-          {
-            message: 'Must be later than current time',
-          },
-        ),
-      sunsettingTo: z
-        .string()
-        .refine(
-          (val) =>
-            val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
-          {
-            message: 'Invalid Validator id',
-          },
-        ),
     })
     .superRefine((data, ctx) => {
       const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = data
