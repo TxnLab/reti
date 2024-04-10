@@ -7,6 +7,10 @@ export interface AssetHolding {
   'is-frozen': boolean
 }
 
+export interface AssetCreatorHolding extends AssetHolding {
+  creator: string
+}
+
 export interface AccountInformation {
   address: string
   amount: number

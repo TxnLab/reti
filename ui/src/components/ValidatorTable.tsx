@@ -39,7 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
-import { AssetHolding } from '@/interfaces/algod'
+import { AssetCreatorHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import {
@@ -60,7 +60,7 @@ interface ValidatorTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
   constraints: Constraints
-  heldAssets: AssetHolding[]
+  heldAssets: AssetCreatorHolding[]
 }
 
 export function ValidatorTable({
@@ -374,6 +374,7 @@ export function ValidatorTable({
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
         constraints={constraints}
+        heldAssets={heldAssets}
       />
       <UnstakeModal
         validator={unstakeValidator}
