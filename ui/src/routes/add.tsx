@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { constraintsQueryOptions } from '@/api/queries'
+import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
@@ -17,7 +18,7 @@ export const Route = createFileRoute('/add')({
   },
   loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(constraintsQueryOptions),
   component: AddValidator,
-  pendingComponent: () => <div>Loading...</div>,
+  pendingComponent: () => <Loading size="lg" className="opacity-50" />,
   errorComponent: ({ error }) => {
     if (error instanceof Error) {
       return <div>{error?.message}</div>
@@ -39,11 +40,12 @@ function AddValidator() {
   return (
     <>
       <Meta title="Add Validator" />
-      <PageHeader title="Add a Validator" />
+      <PageHeader
+        title="Add a Validator"
+        description="Create a new validator with the specified configuration."
+      />
       <PageMain>
-        <div className="py-8">
-          <AddValidatorForm constraints={constraints} />
-        </div>
+        <AddValidatorForm constraints={constraints} />
       </PageMain>
     </>
   )

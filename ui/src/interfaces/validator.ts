@@ -1,3 +1,5 @@
+import { ToStringTypes } from '@/interfaces/utils'
+
 export type RawValidatorConfig = [
   bigint,
   string,
@@ -37,6 +39,8 @@ export interface ValidatorConfig {
   sunsettingOn: number // timestamp when validator will sunset (if != 0)
   sunsettingTo: number // validator id that validator is 'moving' to (if known)
 }
+
+export type ValidatorConfigInput = Omit<ToStringTypes<ValidatorConfig>, 'id'>
 
 export type RawValidatorState = [number | bigint, bigint, bigint, bigint]
 

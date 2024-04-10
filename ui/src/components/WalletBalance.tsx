@@ -18,10 +18,15 @@ export function WalletBalance({ activeAddress }: WalletBalanceProps) {
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <p className="text-sm font-medium leading-none">Account Balance</p>
-      <p className="text-sm text-muted-foreground font-mono">
-        <AlgoDisplayAmount amount={balance.available.algos} mutedRemainder />
+      <p className="text-base font-mono">
+        <AlgoDisplayAmount
+          amount={balance.available.algos}
+          mutedRemainder
+          symbolClassName="text-muted-foreground"
+          sizePercent={75}
+        />
       </p>
     </div>
   )

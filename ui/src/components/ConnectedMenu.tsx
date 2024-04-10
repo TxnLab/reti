@@ -10,7 +10,9 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Separator } from '@/components/ui/separator'
 import { WalletBalance } from '@/components/WalletBalance'
+import { WalletMetadata } from '@/components/WalletMetadata'
 import { copyToClipboard } from '@/utils/copyToClipboard'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 
@@ -29,7 +31,7 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       {activeWallet && activeAccount && (
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="min-w-[16rem]">
           <div className="flex items-center justify-between gap-x-2 px-2 py-1.5 text-sm font-semibold">
             {!!activeWallet && activeWallet.accounts.length > 1 ? (
               <SelectAccount
@@ -51,8 +53,10 @@ export function ConnectedMenu({ activeAddress }: ConnectedMenuProps) {
             </Button>
           </div>
           <DropdownMenuSeparator />
-          <div className="px-2 py-2">
+          <div className="px-2 py-3">
             <WalletBalance activeAddress={activeAddress} />
+            <Separator className="my-2.5" />
+            <WalletMetadata icon={activeWallet.metadata.icon} name={activeWallet.metadata.name} />
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => activeWallet?.disconnect()}>

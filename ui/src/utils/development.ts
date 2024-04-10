@@ -7,7 +7,9 @@ import { toast } from 'sonner'
 import { getAccountInformation, getAsset } from '@/api/algod'
 import { epochBalanceUpdate } from '@/api/contracts'
 import { StakerPoolData } from '@/interfaces/staking'
-import { Validator } from '@/interfaces/validator'
+import { ToStringTypes } from '@/interfaces/utils'
+import { Validator, ValidatorConfig } from '@/interfaces/validator'
+import { convertToStringTypes } from '@/utils/convert'
 import { convertToBaseUnits, formatAssetAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
@@ -139,4 +141,57 @@ export async function sendRewardTokensToPool(
     console.error(error)
     throw error
   }
+}
+
+export function validatorAutoFill(
+  address: string,
+  params: Partial<ValidatorConfig> = {},
+): Partial<ToStringTypes<ValidatorConfig>> {
+  const stringParams = convertToStringTypes(params)
+  return {
+    owner: address,
+    manager: address,
+    payoutEveryXMins: '60',
+    percentToValidator: '5',
+    validatorCommissionAddress: address,
+    minEntryStake: '1000',
+    poolsPerNode: '3',
+    ...stringParams,
+  }
+}
+
+export async function createGatingToken(
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+  total: bigint,
+  decimals: number,
+  assetName?: string,
+  unitName?: string,
+) {
+  const atc = new algosdk.AtomicTransactionComposer()
+  const suggestedParams = await algodClient.getTransactionParams().do()
+
+  const assetCreateTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    suggestedParams,
+    total: Number(total),
+    decimals,
+    defaultFrozen: false,
+    unitName,
+    assetName,
+    manager: activeAddress,
+    reserve: activeAddress,
+    freeze: activeAddress,
+    clawback: activeAddress,
+    assetURL: 'https://github.com/TxnLab/reti',
+  })
+
+  atc.addTransaction({ txn: assetCreateTxn, signer })
+  const result = await atc.execute(algodClient, 4)
+
+  const txId = result.txIDs[0]
+  const txnInfo = await algodClient.pendingTransactionInformation(txId).do()
+  const assetId = txnInfo['asset-index']
+
+  return Number(assetId)
 }
