@@ -157,20 +157,16 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         .refine((val) => algosdk.isValidAddress(val), {
           message: 'Invalid Algorand address',
         }),
-      nfdForInfo: z
-        .string()
-        .refine((val) => val === '' || isValidName(val), {
-          message: 'NFD name is invalid',
-        })
-        .optional(),
-      entryGatingType: z.string().optional(),
-      entryGatingValue: z.string().optional(),
+      nfdForInfo: z.string().refine((val) => val === '' || isValidName(val), {
+        message: 'NFD name is invalid',
+      }),
+      entryGatingType: z.string(),
+      entryGatingValue: z.string(),
       gatingAssetMinBalance: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid minimum balance',
-        })
-        .optional(),
+        }),
       rewardTokenId: z
         .string()
         .refine(
@@ -179,14 +175,12 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           {
             message: 'Invalid reward token id',
           },
-        )
-        .optional(),
+        ),
       rewardPerPayout: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
           message: 'Invalid reward amount per payout',
-        })
-        .optional(),
+        }),
       payoutEveryXMins: z
         .string()
         .refine((val) => val !== '', {
@@ -296,8 +290,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           {
             message: `Cannot exceed ${AlgoAmount.MicroAlgos(Number(constraints.maxAlgoPerPool)).algos} ALGO`,
           },
-        )
-        .optional(),
+        ),
       poolsPerNode: z
         .string()
         .refine((val) => val !== '', {
@@ -316,10 +309,9 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
             val === '' ||
             (Number.isInteger(Number(val)) && dayjs.unix(Number(val)).isAfter(dayjs())),
           {
-            message: 'Must be a valid UNIX timestamp and later than current time',
+            message: 'Must be later than current time',
           },
-        )
-        .optional(),
+        ),
       sunsettingTo: z
         .string()
         .refine(
@@ -328,8 +320,7 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           {
             message: 'Invalid Validator id',
           },
-        )
-        .optional(),
+        ),
     })
     .superRefine((data, ctx) => {
       const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = data
@@ -405,6 +396,19 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         }
       }
     })
+}
+
+export function getEpochLengthMinutes(value: string, epochTimeframe: string): number {
+  switch (epochTimeframe) {
+    case 'minutes':
+      return Number(value)
+    case 'hours':
+      return Number(value) * 60
+    case 'days':
+      return Number(value) * 60 * 24
+    default:
+      return 0
+  }
 }
 
 export function calculateMaxStake(

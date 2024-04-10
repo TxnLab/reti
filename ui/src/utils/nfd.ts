@@ -40,6 +40,15 @@ export const isValidSegment = (name: string, suffixOptional = false): boolean =>
   return /^[a-z0-9]{1,27}\.(?<basename>[a-z0-9]{1,27})\.algo?$/g.test(name)
 }
 
+/**
+ * @description Trims the '.algo' suffix from the input string, if it exists
+ * @param str string to trim
+ * @returns input string with suffix removed
+ */
+export const trimExtension = (str: string): string => {
+  return str.replace(/\.algo$/gi, '')
+}
+
 export function getNfdProfileUrl(name: string): string {
   const baseUrl = getNfdAppFromViteEnvironment()
   return `${baseUrl}/name/${name}`
