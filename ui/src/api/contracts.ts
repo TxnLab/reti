@@ -263,10 +263,10 @@ export async function addValidator(
     percentToValidator: Number(values.percentToValidator) * 10000,
     validatorCommissionAddress: values.validatorCommissionAddress,
     minEntryStake: BigInt(AlgoAmount.Algos(Number(values.minEntryStake)).microAlgos),
-    maxAlgoPerPool: BigInt(AlgoAmount.Algos(Number(values.maxAlgoPerPool)).microAlgos),
+    maxAlgoPerPool: BigInt(0),
     poolsPerNode: Number(values.poolsPerNode),
-    sunsettingOn: Number(values.sunsettingOn || 0),
-    sunsettingTo: Number(values.sunsettingTo || 0),
+    sunsettingOn: Number(0),
+    sunsettingTo: Number(0),
   }
 
   const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
@@ -546,6 +546,7 @@ export async function doesStakerNeedToPayMbr(
 export async function addStake(
   validatorId: number,
   stakeAmount: number, // microalgos
+  valueToVerify: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
@@ -573,7 +574,7 @@ export async function addStake(
           signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
         },
         validatorId,
-        valueToVerify: 0,
+        valueToVerify,
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
@@ -596,7 +597,7 @@ export async function addStake(
           signer: { signer, addr: activeAddress } as TransactionSignerAccount,
         },
         validatorId,
-        valueToVerify: 0,
+        valueToVerify,
       },
       { sendParams: { fee: feesAmount } },
     )

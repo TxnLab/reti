@@ -1,6 +1,12 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { AccountBalance, AccountInformation, Asset, Exclude } from '@/interfaces/algod'
+import {
+  AccountBalance,
+  AccountInformation,
+  Asset,
+  AssetHolding,
+  Exclude,
+} from '@/interfaces/algod'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -47,4 +53,13 @@ export async function fetchBalance(address: string | null): Promise<AccountBalan
     available: AlgoAmount.MicroAlgos(available),
     minimum: AlgoAmount.MicroAlgos(minimum),
   }
+}
+
+export async function fetchAssetHoldings(address: string | null): Promise<AssetHolding[]> {
+  if (!address) {
+    throw new Error('No address provided')
+  }
+  const accountInfo = await getAccountInformation(address)
+  const assets = accountInfo.assets || []
+  return assets
 }
