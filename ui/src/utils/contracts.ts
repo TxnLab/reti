@@ -1,7 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
-import { AssetHolding } from '@/interfaces/algod'
+import { AssetCreatorHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -410,10 +410,18 @@ export function calculateMaxStakers(validator: Validator, constraints?: Constrai
   return maxStakers
 }
 
+export function findQualifiedCreatorAsset(
+  assets: AssetCreatorHolding[],
+  creator: string,
+  minBalance: number,
+) {
+  return assets.find((asset) => asset.creator === creator && asset.amount >= minBalance)
+}
+
 export function isStakingDisabled(
   activeAddress: string | null,
   validator: Validator,
-  heldAssets: AssetHolding[],
+  heldAssets: AssetCreatorHolding[],
   constraints?: Constraints,
 ): boolean {
   if (!activeAddress) {
@@ -424,7 +432,18 @@ export function isStakingDisabled(
 
   if (entryGatingType > 0) {
     if (entryGatingType === 1) {
-      // @todo: handle assets by to creator address
+      const creatorAddress = algosdk.encodeAddress(entryGatingValue)
+      if (!algosdk.isValidAddress(creatorAddress)) {
+        return true
+      }
+      const qualifiedAsset = findQualifiedCreatorAsset(
+        heldAssets,
+        creatorAddress,
+        Number(gatingAssetMinBalance),
+      )
+      if (!qualifiedAsset) {
+        return true
+      }
     } else {
       const assetId = decodeUint8ArrayToBigint(entryGatingValue)
       const heldAsset = heldAssets.find((asset) => asset['asset-id'] === Number(assetId))

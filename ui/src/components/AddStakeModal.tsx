@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
 import { ArrowUpRight } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
@@ -35,19 +36,27 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { AssetCreatorHolding } from '@/interfaces/algod'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { decodeUint8ArrayToBigint } from '@/utils/bytes'
 import { dayjs } from '@/utils/dayjs'
 import { formatAlgoAmount } from '@/utils/format'
+import { findQualifiedCreatorAsset } from '@/utils/contracts'
 
 interface AddStakeModalProps {
   validator: Validator | null
   setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
+  heldAssets: AssetCreatorHolding[]
   constraints?: Constraints
 }
 
-export function AddStakeModal({ validator, setValidator, constraints }: AddStakeModalProps) {
+export function AddStakeModal({
+  validator,
+  setValidator,
+  heldAssets,
+  constraints,
+}: AddStakeModalProps) {
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()
@@ -193,13 +202,17 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         Number(validator.config.minEntryStake),
       )
 
-      const { entryGatingType, entryGatingValue } = validator.config
+      const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = validator.config
 
       const valueToVerify =
         entryGatingType === 0
           ? 0
           : entryGatingType === 1
-            ? 0 // @todo: handle assets by creator address
+            ? findQualifiedCreatorAsset(
+                heldAssets,
+                algosdk.encodeAddress(entryGatingValue),
+                Number(gatingAssetMinBalance),
+              )?.['asset-id'] || 0
             : Number(decodeUint8ArrayToBigint(entryGatingValue))
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
