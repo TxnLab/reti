@@ -37,9 +37,14 @@ export async function fetchBalance(address: string | null): Promise<AccountBalan
     throw new Error('No address provided')
   }
   const accountInfo = await getAccountInformation(address, 'all')
+
+  const amount = accountInfo.amount
+  const minimum = accountInfo['min-balance']
+  const available = Math.max(0, amount - minimum)
+
   return {
-    amount: AlgoAmount.MicroAlgos(accountInfo.amount),
-    available: AlgoAmount.MicroAlgos(accountInfo.amount - accountInfo['min-balance']),
-    minimum: AlgoAmount.MicroAlgos(accountInfo['min-balance']),
+    amount: AlgoAmount.MicroAlgos(amount),
+    available: AlgoAmount.MicroAlgos(available),
+    minimum: AlgoAmount.MicroAlgos(minimum),
   }
 }
