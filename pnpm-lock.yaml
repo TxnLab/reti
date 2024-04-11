@@ -169,8 +169,8 @@ importers:
         specifier: 1.26.19
         version: 1.26.19(csstype@3.1.3)(react-dom@18.2.0)(react@18.2.0)
       '@txnlab/use-wallet-react':
-        specifier: 3.0.0-beta.4
-        version: 3.0.0-beta.4(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(algosdk@2.7.0)(lute-connect@1.1.3)(react-dom@18.2.0)(react@18.2.0)
+        specifier: 3.0.0-beta.5
+        version: 3.0.0-beta.5(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(algosdk@2.7.0)(lute-connect@1.1.3)(react-dom@18.2.0)(react@18.2.0)
       '@walletconnect/modal-sign-html':
         specifier: 2.6.2
         version: 2.6.2(@types/react@18.2.75)(react@18.2.0)
@@ -3039,8 +3039,8 @@ packages:
     resolution: {integrity: sha512-5xxU8vVs9/FNcvm3gE07fPbn9tl6tqGGWA9tSlwsUEkBxtRnTsNmwrV8gasZ9F/EobaSv9+nu8AxUKccw77JpQ==}
     dev: true
 
-  /@txnlab/use-wallet-react@3.0.0-beta.4(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(algosdk@2.7.0)(lute-connect@1.1.3)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-HHvqMqIY6dYztBamGYXJ3XJyolMMcAw6pwzIrM3Wkr9+dws2aAHCdBbCk7TDphfIKaIoUukXagx6vg8UxO6kzA==}
+  /@txnlab/use-wallet-react@3.0.0-beta.5(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(algosdk@2.7.0)(lute-connect@1.1.3)(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-OLqapqt5OH1ASsuDwgmTqxLVEcz1StmFF2IDFJFoXCXc/hyy9Z7UIyn4bcI0OYDkPYoe+T2HKTnfBz80mKKDMA==}
     peerDependencies:
       '@blockshake/defly-connect': ^1.1.6
       '@perawallet/connect': ^1.3.3
@@ -3065,15 +3065,15 @@ packages:
       '@blockshake/defly-connect': 1.1.6(algosdk@2.7.0)
       '@perawallet/connect': 1.3.4(algosdk@2.7.0)
       '@tanstack/react-store': 0.3.1(react-dom@18.2.0)(react@18.2.0)
-      '@txnlab/use-wallet': 3.0.0-beta.4(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(lute-connect@1.1.3)
+      '@txnlab/use-wallet': 3.0.0-beta.5(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(lute-connect@1.1.3)
       algosdk: 2.7.0
       lute-connect: 1.1.3
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
     dev: false
 
-  /@txnlab/use-wallet@3.0.0-beta.4(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(lute-connect@1.1.3):
-    resolution: {integrity: sha512-IBH0qvaQe53Zg9gbIaITsC4cQNMwLYXxA4JlgRTU7xW1KUHkOXAmov+L1ptvFsF/98HpI12n25skkWF+KpPvVg==}
+  /@txnlab/use-wallet@3.0.0-beta.5(@blockshake/defly-connect@1.1.6)(@perawallet/connect@1.3.4)(lute-connect@1.1.3):
+    resolution: {integrity: sha512-YV88ePCYsknFOjj3FeU7pQLuLly2Xe64pEAXVt42lvJ5haEgDXwBGFyHQQlILSnmmmQdgvgHdhhBcGreJ8ca7Q==}
     peerDependencies:
       '@blockshake/defly-connect': ^1.1.6
       '@perawallet/connect': ^1.3.3
