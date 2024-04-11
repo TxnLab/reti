@@ -1,4 +1,5 @@
 FROM golang:1.21-alpine as builder
+ARG REL_VER
 # Install git and certificates
 RUN apk --no-cache add tzdata zip ca-certificates git
 # Make repository path
@@ -11,7 +12,7 @@ RUN cd nodemgr && go mod download && cd ..
 
 # Copy all project files (.env's are skipped due to .dockerignore)
 COPY . ./
-RUN --mount=type=cache,target=/root/.cache/go-build env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -C nodemgr -v -o /out/ .
+RUN --mount=type=cache,target=/root/.cache/go-build env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -C nodemgr -v -ldflags "-X main.Version=${REL_VER}" -o /out/ .
 
 FROM scratch
 
