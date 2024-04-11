@@ -57,7 +57,7 @@
     "@tanstack/react-query-devtools": "5.28.14",
     "@tanstack/react-router": "1.26.19",
     "@tanstack/react-table": "8.15.3",
-    "@tanstack/router-devtools": "1.26.4",
+    "@tanstack/router-devtools": "1.26.19",
     "@txnlab/use-wallet-react": "3.0.0-beta.3",
     "@walletconnect/modal-sign-html": "2.6.2",
     "algosdk": "2.7.0",
