@@ -1,7 +1,7 @@
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Menu, FlaskConical, Home, Monitor, ArrowUpRight } from 'lucide-react'
+import { Menu, Home, Monitor, ArrowUpRight } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -9,7 +9,6 @@ import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/s
 
 export function MobileMenu() {
   const { activeAddress } = useWallet()
-  const isDevelopment = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
   const isTestnet = import.meta.env.VITE_ALGOD_NETWORK === 'testnet'
 
   return (
@@ -39,29 +38,15 @@ export function MobileMenu() {
           </SheetClose>
 
           {activeAddress && (
-            <>
-              <SheetClose asChild>
-                <Link
-                  to="/add"
-                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground [&.active]:text-foreground"
-                >
-                  <Monitor className="h-5 w-5" />
-                  Add Validator
-                </Link>
-              </SheetClose>
-
-              {isDevelopment && (
-                <SheetClose asChild>
-                  <Link
-                    to="/token"
-                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground [&.active]:text-foreground"
-                  >
-                    <FlaskConical className="h-5 w-5" />
-                    Create Token
-                  </Link>
-                </SheetClose>
-              )}
-            </>
+            <SheetClose asChild>
+              <Link
+                to="/add"
+                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground [&.active]:text-foreground"
+              >
+                <Monitor className="h-5 w-5" />
+                Add Validator
+              </Link>
+            </SheetClose>
           )}
 
           {isTestnet && (
