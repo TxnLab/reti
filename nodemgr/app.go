@@ -7,6 +7,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -59,7 +61,7 @@ func initApp() *RetiApp {
 	appConfig.cliCmd = &cli.Command{
 		Name:    "réti node manager",
 		Usage:   "Configuration tool and background daemon for Algorand validator pools",
-		Version: misc.GetVersionInfo(),
+		Version: getVersionInfo(),
 		Before: func(ctx context.Context, cmd *cli.Command) error {
 			// This is further bootstrap of the 'app' but within context of 'cli' helper as it will
 			// have access to flags and options (network to use for eg) already set.
@@ -239,4 +241,23 @@ func checkConfigured(ctx context.Context, command *cli.Command) error {
 func loadNamedEnvFile(ctx context.Context, envFile string) error {
 	misc.Infof(App.logger, "loading env file:%s", envFile)
 	return godotenv.Load(envFile)
+}
+
+// Version is replaced at build time during docker builds w/ 'release' version
+// If not defined, we just return the git rev.
+var Version string
+
+func getVersionInfo() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "The version information could not be determined"
+	}
+	var vcsRev = "(unknown)"
+	if fnd := slices.IndexFunc(info.Settings, func(v debug.BuildSetting) bool { return v.Key == "vcs.revision" }); fnd != -1 {
+		vcsRev = info.Settings[fnd].Value[0:7]
+	}
+	if Version != "" {
+		return fmt.Sprintf("%s [%s]", Version, vcsRev)
+	}
+	return vcsRev
 }

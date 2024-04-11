@@ -50,7 +50,7 @@ func newDaemon() *Daemon {
 }
 
 func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, listenPort int) {
-	d.logger.Info("Réti daemon started")
+	misc.Infof(d.logger, "Réti daemon, version:%s started", getVersionInfo())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
