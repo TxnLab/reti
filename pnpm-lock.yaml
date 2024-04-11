@@ -163,8 +163,8 @@ importers:
         specifier: 5.28.14
         version: 5.28.14(@tanstack/react-query@5.28.14)(react@18.2.0)
       '@tanstack/react-router':
-        specifier: 1.26.4
-        version: 1.26.4(react-dom@18.2.0)(react@18.2.0)
+        specifier: 1.26.19
+        version: 1.26.19(react-dom@18.2.0)(react@18.2.0)
       '@tanstack/react-table':
         specifier: 8.15.3
         version: 8.15.3(react-dom@18.2.0)(react@18.2.0)
@@ -2887,6 +2887,11 @@ packages:
       tslib: 2.6.2
     dev: false
 
+  /@tanstack/history@1.26.10:
+    resolution: {integrity: sha512-fHx8RQ3liEDhueIemUggBGmqYnK6vOxtxCduolW7r6ExBEQVwKdLEcaUobxp6BxcXLQ7z/qhXAptlOlYi4FFXg==}
+    engines: {node: '>=12'}
+    dev: false
+
   /@tanstack/history@1.26.3:
     resolution: {integrity: sha512-NhRgiyTdNy7lw2iL1gggj6Znz5wWi8c2yFE1zCfn0G6CPRDZZ//Stgd7bPOs6XIp24YeCFrIq4J3HAhbo8jyZg==}
     engines: {node: '>=12'}
@@ -2918,6 +2923,21 @@ packages:
     dependencies:
       '@tanstack/query-core': 5.28.13
       react: 18.2.0
+    dev: false
+
+  /@tanstack/react-router@1.26.19(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-dMesjJ+TYP/QmM8o1u64nNMrGcIzmyv2qk9+Iqa7Ndso0bQMKGz2oTHCOVPU04fglpBV2EqxzLZVxdkFIQ8ppA==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16.8'
+      react-dom: '>=16.8'
+    dependencies:
+      '@tanstack/history': 1.26.10
+      '@tanstack/react-store': 0.2.1(react-dom@18.2.0)(react@18.2.0)
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      tiny-invariant: 1.3.3
+      tiny-warning: 1.0.3
     dev: false
 
   /@tanstack/react-router@1.26.4(react-dom@18.2.0)(react@18.2.0):
