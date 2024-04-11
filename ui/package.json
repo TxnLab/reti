@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.42.1",
-    "@tanstack/router-vite-plugin": "1.26.6",
+    "@tanstack/router-vite-plugin": "1.26.16",
     "@types/big.js": "6.2.2",
     "@types/node": "18.19.31",
     "@types/react": "18.2.75",
