@@ -20,4 +20,16 @@ export default defineConfig({
       provider: 'v8',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          algorand: ['algosdk', '@algorandfoundation/algokit-utils'],
+          icons: ['lucide-react', '@radix-ui/react-icons'],
+          recharts: ['recharts'],
+          useWallet: ['@txnlab/use-wallet-react'],
+        },
+      },
+    },
+  },
 })
