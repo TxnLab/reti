@@ -8,6 +8,13 @@ export function Navigation() {
 
   return (
     <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
+      <Link
+        to="/"
+        className="text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground"
+      >
+        Dashboard
+      </Link>
+
       {activeAddress && (
         <Link
           to="/add"
