@@ -25,7 +25,7 @@ export function NfdThumbnail({ nameOrId, link = false }: NfdThumbnailProps) {
         href={getNfdProfileUrl(nfd.name)}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-x-1.5 text-sm font-semibold text-stone-300 hover:text-white hover:underline underline-offset-4"
+        className="inline-flex items-center gap-x-1.5 text-sm font-semibold text-foreground/75 hover:text-foreground hover:underline underline-offset-4"
       >
         <NfdAvatar nfd={nfd} className="h-6 w-6" />
         {nfd.name}
