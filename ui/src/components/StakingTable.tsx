@@ -37,7 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
-import { AssetCreatorHolding } from '@/interfaces/algod'
+import { AssetHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
@@ -50,7 +50,7 @@ interface StakingTableProps {
   stakesByValidator: StakerValidatorData[]
   isLoading: boolean
   constraints: Constraints
-  heldAssets: AssetCreatorHolding[]
+  heldAssets: AssetHolding[]
 }
 
 export function StakingTable({

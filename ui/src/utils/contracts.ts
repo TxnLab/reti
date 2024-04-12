@@ -1,7 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
-import { AssetCreatorHolding } from '@/interfaces/algod'
+import { AssetHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -18,7 +18,6 @@ import {
   PoolInfo,
   RawPoolsInfo,
 } from '@/interfaces/validator'
-import { decodeUint8ArrayToBigint } from '@/utils/bytes'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
@@ -410,50 +409,47 @@ export function calculateMaxStakers(validator: Validator, constraints?: Constrai
   return maxStakers
 }
 
-export function findQualifiedCreatorAsset(
-  assets: AssetCreatorHolding[],
-  creator: string,
+export function hasQualifiedGatingAsset(
+  heldAssets: AssetHolding[],
+  gatingAssets: number[],
   minBalance: number,
-) {
-  return assets.find((asset) => asset.creator === creator && asset.amount >= minBalance)
+): boolean {
+  return heldAssets.some(
+    (asset) => gatingAssets.includes(asset['asset-id']) && asset.amount >= minBalance,
+  )
+}
+
+export function findQualifiedGatingAssetId(
+  heldAssets: AssetHolding[],
+  gatingAssets: number[],
+  minBalance: number,
+): number {
+  const asset = heldAssets.find(
+    (asset) => gatingAssets.includes(asset['asset-id']) && asset.amount >= minBalance,
+  )
+  return asset?.['asset-id'] || 0
 }
 
 export function isStakingDisabled(
   activeAddress: string | null,
   validator: Validator,
-  heldAssets: AssetCreatorHolding[],
+  heldAssets: AssetHolding[],
   constraints?: Constraints,
 ): boolean {
   if (!activeAddress) {
     return true
   }
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
-  const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = validator.config
+  const { entryGatingType, gatingAssetMinBalance } = validator.config
 
   if (entryGatingType > 0) {
-    if (entryGatingType === 1) {
-      const creatorAddress = algosdk.encodeAddress(entryGatingValue)
-      if (!algosdk.isValidAddress(creatorAddress)) {
-        return true
-      }
-      const qualifiedAsset = findQualifiedCreatorAsset(
-        heldAssets,
-        creatorAddress,
-        Number(gatingAssetMinBalance),
-      )
-      if (!qualifiedAsset) {
-        return true
-      }
-    } else {
-      const assetId = decodeUint8ArrayToBigint(entryGatingValue)
-      const heldAsset = heldAssets.find((asset) => asset['asset-id'] === Number(assetId))
-      if (!heldAsset) {
-        return true
-      }
-      const hasMinimumBalance = (heldAsset?.amount || 0) >= Number(gatingAssetMinBalance)
-      if (!hasMinimumBalance) {
-        return true
-      }
+    const hasQualifiedAsset = hasQualifiedGatingAsset(
+      heldAssets,
+      validator.gatingAssets || [],
+      Number(gatingAssetMinBalance),
+    )
+    if (!hasQualifiedAsset) {
+      return true
     }
   }
 

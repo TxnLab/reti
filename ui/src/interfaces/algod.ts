@@ -17,6 +17,7 @@ export interface AccountInformation {
   'min-balance': number
   assets?: AssetHolding[]
   'auth-addr'?: string
+  'created-assets'?: Asset[]
   // add more fields as needed
 }
 

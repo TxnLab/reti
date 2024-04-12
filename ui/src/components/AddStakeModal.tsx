@@ -36,18 +36,18 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { AssetCreatorHolding } from '@/interfaces/algod'
+import { AssetHolding } from '@/interfaces/algod'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { decodeUint8ArrayToBigint } from '@/utils/bytes'
+import { findQualifiedGatingAssetId } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { formatAlgoAmount } from '@/utils/format'
-import { findQualifiedCreatorAsset } from '@/utils/contracts'
 
 interface AddStakeModalProps {
   validator: Validator | null
   setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
-  heldAssets: AssetCreatorHolding[]
+  heldAssets: AssetHolding[]
   constraints?: Constraints
 }
 
@@ -202,18 +202,17 @@ export function AddStakeModal({
         Number(validator.config.minEntryStake),
       )
 
-      const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = validator.config
+      const { entryGatingType, gatingAssetMinBalance } = validator.config
 
-      const valueToVerify =
-        entryGatingType === 0
-          ? 0
-          : entryGatingType === 1
-            ? findQualifiedCreatorAsset(
-                heldAssets,
-                algosdk.encodeAddress(entryGatingValue),
-                Number(gatingAssetMinBalance),
-              )?.['asset-id'] || 0
-            : Number(decodeUint8ArrayToBigint(entryGatingValue))
+      const valueToVerify = findQualifiedGatingAssetId(
+        heldAssets,
+        validator.gatingAssets || [],
+        Number(gatingAssetMinBalance),
+      )
+
+      if (entryGatingType > 0 && !valueToVerify) {
+        throw new Error('Staker does not meet gating asset requirements')
+      }
 
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
