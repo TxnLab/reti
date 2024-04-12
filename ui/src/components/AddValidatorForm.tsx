@@ -56,7 +56,6 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    mode: 'onBlur',
     defaultValues: {
       owner: '',
       manager: '',
@@ -74,25 +73,35 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     },
   })
 
-  const { errors, isValid } = form.formState
+  const { errors } = form.formState
 
   const fetchNfdForInfo = async (value: string) => {
     try {
       const nfd = await fetchNfd(value, { view: 'brief' })
 
+      if (nfd.owner !== activeAddress) {
+        throw new Error('NFD not owned by active address')
+      }
+
       // If we have an app id, clear error if it exists
       form.clearErrors('nfdForInfo')
       setNfdAppId(nfd.appID!)
-    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      let message: string
       if (isAxiosError(error) && error.response) {
-        if (error.response.status !== 404) {
-          console.error(error.message)
+        if (error.response.status === 404) {
+          message = 'NFD app ID not found'
+        } else {
+          console.error(error)
+          message = 'Failed to fetch NFD'
         }
       } else {
         // Handle non-HTTP errors
         console.error(error)
+        message = error.message
       }
-      form.setError('nfdForInfo', { type: 'manual', message: 'NFD app ID not found' })
+      form.setError('nfdForInfo', { type: 'manual', message })
     } finally {
       setIsFetchingAppId(false)
     }
@@ -109,7 +118,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const nfdForInfo = form.watch('nfdForInfo')
 
-  const showPrimaryMintButton = !isFetchingAppId && nfdAppId === 0 && isValidName(nfdForInfo)
+  const showPrimaryMintButton =
+    !isFetchingAppId &&
+    nfdAppId === 0 &&
+    errors.nfdForInfo?.message === 'NFD app ID not found' &&
+    isValidName(nfdForInfo)
 
   const mintNfdUrl = showPrimaryMintButton
     ? `${nfdAppUrl}/mint?q=${trimExtension(nfdForInfo)}`
@@ -742,7 +755,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               type="submit"
               size="lg"
               className="w-full text-base sm:w-auto"
-              disabled={isSigning || !isValid}
+              disabled={isSigning || isFetchingAppId}
             >
               <Monitor className="mr-2 h-5 w-5" />
               Add Validator
