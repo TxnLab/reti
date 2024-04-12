@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -18,6 +18,7 @@ import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { simulateEpoch } from '@/utils/development'
+import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -73,10 +75,33 @@ export function StakingTable({
 
   const columns: ColumnDef<StakerValidatorData>[] = [
     {
-      accessorKey: 'validatorId',
+      id: 'validator',
+      accessorFn: (row) => row.validatorId,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
-      cell: ({ row }) => row.original.validatorId,
-      size: 100,
+      cell: ({ row }) => {
+        const validator = validators.find((v) => v.id === row.original.validatorId)
+
+        if (!validator) {
+          return 'Unknown Validator'
+        }
+
+        const nfdAppId = validator.config.nfdForInfo
+        return (
+          <Link
+            to="/validators/$validatorId"
+            params={{
+              validatorId: String(row.original.validatorId),
+            }}
+            className="hover:underline underline-offset-4"
+          >
+            {nfdAppId > 0 ? (
+              <NfdThumbnail nameOrId={nfdAppId} />
+            ) : (
+              ellipseAddress(validator.config.owner)
+            )}
+          </Link>
+        )
+      },
     },
     {
       accessorKey: 'balance',
