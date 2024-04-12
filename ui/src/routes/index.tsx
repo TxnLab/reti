@@ -63,6 +63,7 @@ function Dashboard() {
       <PageHeader
         title="Staking Dashboard"
         description="Browse validators in the protocol and manage your staking activity."
+        separator
       />
       <PageMain>
         <div className="space-y-8">

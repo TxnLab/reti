@@ -1,6 +1,6 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Coins, PackagePlus, Pencil, Percent, Users, Waves } from 'lucide-react'
+import { Coins, PackagePlus, Percent, Users, Waves } from 'lucide-react'
 import * as React from 'react'
 import { constraintsQueryOptions, poolAssignmentQueryOptions } from '@/api/queries'
 import { Staked, Stakers } from '@/components/_Overview'
@@ -8,7 +8,6 @@ import { AddPoolModal } from '@/components/AddPoolModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Validator } from '@/interfaces/validator'
 import { calculateMaxStakers, validatorHasAvailableSlots } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
@@ -146,20 +145,6 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                       </dt>
                       <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
                         {ellipseAddress(validator.config.manager)}
-                        {canEdit && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="-my-2">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Edit manager</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
                       </dd>
                     </div>
                     <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
@@ -168,20 +153,6 @@ export function ValidatorDetails({ validator }: ValidatorDetailsProps) {
                       </dt>
                       <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
                         {ellipseAddress(validator.config.validatorCommissionAddress)}
-                        {canEdit && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="-my-2">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Edit commission account</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
                       </dd>
                     </div>
                     <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">

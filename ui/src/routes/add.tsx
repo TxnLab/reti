@@ -43,6 +43,7 @@ function AddValidator() {
       <PageHeader
         title="Add a Validator"
         description="Create a new validator with the specified configuration."
+        separator
       />
       <PageMain>
         <AddValidatorForm constraints={constraints} />

@@ -338,7 +338,7 @@ export function ValidatorTable({
   return (
     <>
       <div>
-        <div className="lg:flex items-center lg:gap-x-2 py-4">
+        <div className="lg:flex items-center lg:gap-x-2 py-3">
           <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
           <div className="flex items-center gap-x-3">
             <Input
