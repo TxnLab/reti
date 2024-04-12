@@ -1,3 +1,4 @@
+import { Nfd } from '@/interfaces/nfd'
 import { ToStringTypes } from '@/interfaces/utils'
 
 export type RawValidatorConfig = [
@@ -85,6 +86,7 @@ export type Validator = {
   pools: PoolInfo[]
   tokenPayoutRatio: number[]
   nodePoolAssignment: NodePoolAssignmentConfig
+  nfd?: Nfd
 }
 
 export interface ValidatorPoolKey {
