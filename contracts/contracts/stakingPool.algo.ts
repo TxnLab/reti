@@ -619,13 +619,32 @@ export class StakingPool extends Contract {
             algoRewardAvail -= validatorCommissionPaidOut;
 
             // ---
-            // pay the validator their cut...
+            // pay the validator their cut !
+            // if the manager accounts spendable balance is < 1 ALGO then up to 1 ALGO of the reward will be sent
+            // there as well to ensure it stays funded.
+            // ---
             if (validatorCommissionPaidOut > 0) {
-                sendPayment({
-                    amount: validatorCommissionPaidOut,
-                    receiver: validatorConfig.validatorCommissionAddress,
-                    note: 'validator reward',
-                });
+                // Just to make sure the manager account (which triggers the epochBalanceUpdate calls!) doesn't
+                // run out of funds - we'll take up to 1 ALGO off our commission to keep it running.
+                let managerTopOff = 0;
+                if (
+                    validatorConfig.manager !== validatorConfig.validatorCommissionAddress &&
+                    validatorConfig.manager.balance - validatorConfig.manager.minBalance < 1_000_000
+                ) {
+                    managerTopOff = validatorCommissionPaidOut < 1_000_000 ? validatorCommissionPaidOut : 1_000_000;
+                    sendPayment({
+                        amount: managerTopOff,
+                        receiver: validatorConfig.manager,
+                        note: 'validator reward to manager for funding epoch updates',
+                    });
+                }
+                if (validatorCommissionPaidOut - managerTopOff > 0) {
+                    sendPayment({
+                        amount: validatorCommissionPaidOut - managerTopOff,
+                        receiver: validatorConfig.validatorCommissionAddress,
+                        note: 'validator reward',
+                    });
+                }
             }
         }
 
