@@ -3,8 +3,8 @@ import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Menu, Home, Monitor, ArrowUpRight } from 'lucide-react'
 import { Logo } from '@/components/Logo'
+import { ModeToggleMobile } from '@/components/ModeToggleMobile'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 export function MobileMenu() {
@@ -63,8 +63,6 @@ export function MobileMenu() {
             </SheetClose>
           )}
 
-          <Separator className="my-2" />
-
           <SheetClose asChild>
             <a
               href="https://github.com/TxnLab/reti"
@@ -76,6 +74,8 @@ export function MobileMenu() {
               GitHub
             </a>
           </SheetClose>
+
+          <ModeToggleMobile />
         </nav>
       </SheetContent>
     </Sheet>
