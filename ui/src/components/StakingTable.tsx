@@ -72,30 +72,6 @@ export function StakingTable({
   const queryClient = useQueryClient()
 
   const columns: ColumnDef<StakerValidatorData>[] = [
-    // {
-    //   id: 'select',
-    //   header: ({ table }) => (
-    //     <Checkbox
-    //       checked={
-    //         table.getIsAllPageRowsSelected() ||
-    //         (table.getIsSomePageRowsSelected() && 'indeterminate')
-    //       }
-    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-    //       className={cn(isLoading ? 'invisible' : 'mr-2')}
-    //       aria-label="Select all"
-    //     />
-    //   ),
-    //   cell: ({ row }) => (
-    //     <Checkbox
-    //       checked={row.getIsSelected()}
-    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
-    //       aria-label="Select row"
-    //       className="mr-2"
-    //     />
-    //   ),
-    //   enableSorting: false,
-    //   enableHiding: false,
-    // },
     {
       accessorKey: 'validatorId',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
@@ -104,7 +80,7 @@ export function StakingTable({
     },
     {
       accessorKey: 'balance',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="balance" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
       cell: ({ row }) => (
         <AlgoDisplayAmount amount={row.original.balance} microalgos mutedRemainder />
       ),
@@ -119,7 +95,7 @@ export function StakingTable({
     {
       accessorKey: 'rewardTokenBalance',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Reward Token balance" />
+        <DataTableColumnHeader column={column} title="Reward Token Balance" />
       ),
       cell: ({ row }) => {
         const validator = validators.find((v) => v.id === row.original.validatorId)
