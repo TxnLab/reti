@@ -56,7 +56,6 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    mode: 'onBlur',
     defaultValues: {
       owner: '',
       manager: '',
@@ -74,7 +73,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     },
   })
 
-  const { errors, isValid } = form.formState
+  const { errors } = form.formState
 
   const fetchNfdForInfo = async (value: string) => {
     try {
@@ -742,7 +741,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               type="submit"
               size="lg"
               className="w-full text-base sm:w-auto"
-              disabled={isSigning || !isValid}
+              disabled={isSigning || isFetchingAppId}
             >
               <Monitor className="mr-2 h-5 w-5" />
               Add Validator
