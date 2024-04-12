@@ -84,27 +84,29 @@ export function ValidatorTable({
   const columns: ColumnDef<Validator>[] = [
     {
       id: 'validator',
-      accessorFn: (row) => row.config.owner,
+      accessorFn: (row) => row.nfd?.name || row.config.owner.toLowerCase(),
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
         const validator = row.original
-        const nfdAppId = validator.config.nfdForInfo
+        const nfd = validator.nfd
 
         return (
-          <Link
-            to="/validators/$validatorId"
-            params={{
-              validatorId: String(validator.id),
-            }}
-            className="hover:underline underline-offset-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {nfdAppId > 0 ? (
-              <NfdThumbnail nameOrId={nfdAppId} />
-            ) : (
-              ellipseAddress(validator.config.owner)
-            )}
-          </Link>
+          <div className="flex min-w-0 max-w-[9rem]">
+            <Link
+              to="/validators/$validatorId"
+              params={{
+                validatorId: String(validator.id),
+              }}
+              className="truncate hover:underline underline-offset-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {nfd ? (
+                <NfdThumbnail nfd={nfd} truncate tooltip />
+              ) : (
+                ellipseAddress(validator.config.owner)
+              )}
+            </Link>
+          </div>
         )
       },
     },
