@@ -83,11 +83,6 @@ export function ValidatorTable({
 
   const columns: ColumnDef<Validator>[] = [
     {
-      accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="ID" />,
-      size: 70,
-    },
-    {
       id: 'validator',
       accessorFn: (row) => row.config.owner,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
