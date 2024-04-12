@@ -5,9 +5,10 @@ import { NfdAvatar } from '@/components/NfdAvatar'
 
 export interface NfdThumbnailProps {
   nameOrId: string | number
+  link?: boolean
 }
 
-export function NfdThumbnail({ nameOrId }: NfdThumbnailProps) {
+export function NfdThumbnail({ nameOrId, link = false }: NfdThumbnailProps) {
   const { data: nfd, isLoading, error } = useQuery(nfdQueryOptions(nameOrId))
 
   if (isLoading) {
@@ -18,15 +19,24 @@ export function NfdThumbnail({ nameOrId }: NfdThumbnailProps) {
     return <span className="text-sm text-red-500">Error fetching balance</span>
   }
 
+  if (link) {
+    return (
+      <a
+        href={getNfdProfileUrl(nfd.name)}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-x-1.5 text-sm font-semibold text-stone-300 hover:text-white hover:underline underline-offset-4"
+      >
+        <NfdAvatar nfd={nfd} className="h-6 w-6" />
+        {nfd.name}
+      </a>
+    )
+  }
+
   return (
-    <a
-      href={getNfdProfileUrl(nfd.name)}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-x-1.5 text-sm font-semibold text-stone-300 hover:text-white hover:underline underline-offset-4"
-    >
+    <div className="flex items-center gap-x-1.5 text-sm font-semibold text-foreground">
       <NfdAvatar nfd={nfd} className="h-6 w-6" />
       {nfd.name}
-    </a>
+    </div>
   )
 }

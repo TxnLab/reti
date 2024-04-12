@@ -1,5 +1,5 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -79,6 +79,7 @@ export function ValidatorTable({
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
   const { transactionSigner, activeAddress } = useWallet()
+  const navigate = useNavigate()
 
   const columns: ColumnDef<Validator>[] = [
     {
@@ -220,14 +221,21 @@ export function ValidatorTable({
           <div className="flex items-center justify-end gap-x-2">
             <Button
               size="sm"
-              onClick={() => setAddStakeValidator(validator)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setAddStakeValidator(validator)
+              }}
               disabled={stakingDisabled}
             >
               Stake
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -350,9 +358,18 @@ export function ValidatorTable({
             <TableBody>
               {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    onClick={async () =>
+                      await navigate({
+                        to: `/validators/$validatorId`,
+                        params: { validatorId: row.original.id.toString() },
+                      })
+                    }
+                  >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={cn('first:px-4')}>
+                      <TableCell key={cell.id} className={cn('cursor-pointer first:px-4')}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
