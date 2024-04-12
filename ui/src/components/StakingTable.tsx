@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -18,6 +18,7 @@ import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { simulateEpoch } from '@/utils/development'
+import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -72,39 +74,38 @@ export function StakingTable({
   const queryClient = useQueryClient()
 
   const columns: ColumnDef<StakerValidatorData>[] = [
-    // {
-    //   id: 'select',
-    //   header: ({ table }) => (
-    //     <Checkbox
-    //       checked={
-    //         table.getIsAllPageRowsSelected() ||
-    //         (table.getIsSomePageRowsSelected() && 'indeterminate')
-    //       }
-    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-    //       className={cn(isLoading ? 'invisible' : 'mr-2')}
-    //       aria-label="Select all"
-    //     />
-    //   ),
-    //   cell: ({ row }) => (
-    //     <Checkbox
-    //       checked={row.getIsSelected()}
-    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
-    //       aria-label="Select row"
-    //       className="mr-2"
-    //     />
-    //   ),
-    //   enableSorting: false,
-    //   enableHiding: false,
-    // },
     {
-      accessorKey: 'validatorId',
+      id: 'validator',
+      accessorFn: (row) => row.validatorId,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
-      cell: ({ row }) => row.original.validatorId,
-      size: 100,
+      cell: ({ row }) => {
+        const validator = validators.find((v) => v.id === row.original.validatorId)
+
+        if (!validator) {
+          return 'Unknown Validator'
+        }
+
+        const nfdAppId = validator.config.nfdForInfo
+        return (
+          <Link
+            to="/validators/$validatorId"
+            params={{
+              validatorId: String(row.original.validatorId),
+            }}
+            className="hover:underline underline-offset-4"
+          >
+            {nfdAppId > 0 ? (
+              <NfdThumbnail nameOrId={nfdAppId} />
+            ) : (
+              ellipseAddress(validator.config.owner)
+            )}
+          </Link>
+        )
+      },
     },
     {
       accessorKey: 'balance',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="balance" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
       cell: ({ row }) => (
         <AlgoDisplayAmount amount={row.original.balance} microalgos mutedRemainder />
       ),
@@ -119,7 +120,7 @@ export function StakingTable({
     {
       accessorKey: 'rewardTokenBalance',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Reward Token balance" />
+        <DataTableColumnHeader column={column} title="Reward Token Balance" />
       ),
       cell: ({ row }) => {
         const validator = validators.find((v) => v.id === row.original.validatorId)
@@ -241,7 +242,7 @@ export function StakingTable({
   return (
     <>
       <div>
-        <div className="lg:flex items-center gap-x-2 py-4">
+        <div className="lg:flex items-center gap-x-2 py-3">
           <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">My Stakes</h2>
         </div>
         <div className="rounded-md border">
