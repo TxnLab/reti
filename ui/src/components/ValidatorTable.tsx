@@ -93,12 +93,24 @@ export function ValidatorTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
         const validator = row.original
-
         const nfdAppId = validator.config.nfdForInfo
-        if (nfdAppId > 0) {
-          return <NfdThumbnail nameOrId={nfdAppId} />
-        }
-        return ellipseAddress(validator.config.owner)
+
+        return (
+          <Link
+            to="/validators/$validatorId"
+            params={{
+              validatorId: String(validator.id),
+            }}
+            className="hover:underline underline-offset-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {nfdAppId > 0 ? (
+              <NfdThumbnail nameOrId={nfdAppId} />
+            ) : (
+              ellipseAddress(validator.config.owner)
+            )}
+          </Link>
+        )
       },
     },
     {
