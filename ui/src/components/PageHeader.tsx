@@ -3,9 +3,10 @@ import { Separator } from '@/components/ui/separator'
 interface PageHeaderProps {
   title?: string | null
   description?: string
+  separator?: boolean
 }
 
-export function PageHeader({ title, description }: PageHeaderProps) {
+export function PageHeader({ title, description, separator = false }: PageHeaderProps) {
   if (!title) return null
   return (
     <header>
@@ -14,7 +15,7 @@ export function PageHeader({ title, description }: PageHeaderProps) {
           {title}
         </h1>
         {description && <p className="mt-2 text-lg text-muted-foreground">{description}</p>}
-        <Separator className="my-8" />
+        {separator && <Separator className="my-8" />}
       </div>
     </header>
   )
