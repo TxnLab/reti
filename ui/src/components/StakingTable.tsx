@@ -242,7 +242,7 @@ export function StakingTable({
   return (
     <>
       <div>
-        <div className="lg:flex items-center gap-x-2 py-4">
+        <div className="lg:flex items-center gap-x-2 py-3">
           <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">My Stakes</h2>
         </div>
         <div className="rounded-md border">
