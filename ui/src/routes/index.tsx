@@ -2,11 +2,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { fetchStakerValidatorData } from '@/api/contracts'
-import {
-  assetHoldingQueryOptions,
-  constraintsQueryOptions,
-  validatorsQueryOptions,
-} from '@/api/queries'
+import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
 import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
