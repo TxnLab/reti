@@ -87,7 +87,6 @@ export type Validator = {
   tokenPayoutRatio: number[]
   nodePoolAssignment: NodePoolAssignmentConfig
   nfd?: Nfd
-  gatingAssets?: number[]
 }
 
 export interface ValidatorPoolKey {

@@ -1,14 +1,14 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { ArrowUpRight } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { getAccountBalance } from '@/api/algod'
+import { getAccountInformation } from '@/api/algod'
 import {
   addStake,
   doesStakerNeedToPayMbr,
@@ -17,11 +17,13 @@ import {
 } from '@/api/contracts'
 import { mbrQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { Loading } from '@/components/Loading'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -35,40 +37,64 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { AssetHolding } from '@/interfaces/algod'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
-import { findQualifiedGatingAssetId } from '@/utils/contracts'
+import {
+  fetchGatingAssets,
+  findQualifiedGatingAssetId,
+  hasQualifiedGatingAsset,
+} from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { formatAlgoAmount } from '@/utils/format'
 
 interface AddStakeModalProps {
   validator: Validator | null
   setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
-  heldAssets: AssetHolding[]
   constraints?: Constraints
 }
 
-export function AddStakeModal({
-  validator,
-  setValidator,
-  heldAssets,
-  constraints,
-}: AddStakeModalProps) {
+export function AddStakeModal({ validator, setValidator, constraints }: AddStakeModalProps) {
+  const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
+
+  React.useEffect(() => {
+    if (validator) {
+      setIsOpen(true)
+    }
+  }, [validator])
 
   const queryClient = useQueryClient()
   const router = useRouter()
   const { transactionSigner, activeAddress } = useWallet()
 
-  // @todo: this will be available globally from wallet menu
-  const availableBalanceQuery = useQuery({
-    queryKey: ['available-balance', activeAddress],
-    queryFn: () => getAccountBalance(activeAddress!, true),
-    enabled: !!activeAddress,
-    refetchInterval: 30000,
+  const accountInfoQuery = useQuery({
+    queryKey: ['account-info', activeAddress],
+    queryFn: () => getAccountInformation(activeAddress!),
+    enabled: !!activeAddress && !!validator, // wait until modal is open
   })
-  const availableBalance = availableBalanceQuery.data || 0
+
+  const {
+    amount = 0,
+    'min-balance': minBalance = 0,
+    assets: heldAssets = [],
+  } = accountInfoQuery.data || {}
+
+  const availableBalance = Math.max(0, amount - minBalance)
+
+  const gatingAssetsQuery = useQuery({
+    queryKey: ['gating-assets', validator?.id],
+    queryFn: () => fetchGatingAssets(validator),
+    enabled: !!validator,
+  })
+  const gatingAssets = gatingAssetsQuery.data || []
+
+  const isLoading = accountInfoQuery.isLoading || gatingAssetsQuery.isLoading
+
+  const hasGatingAccess = hasQualifiedGatingAsset(
+    heldAssets,
+    gatingAssets,
+    Number(validator?.config.gatingAssetMinBalance),
+  )
 
   // @todo: make this a custom hook, call from higher up and pass down as prop
   const mbrQuery = useQuery(mbrQueryOptions)
@@ -161,8 +187,11 @@ export function AddStakeModal({
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setValidator(null)
-      form.reset()
+      setIsOpen(false)
+      setTimeout(() => {
+        setValidator(null)
+        form.reset()
+      }, 500)
     }
   }
 
@@ -204,7 +233,7 @@ export function AddStakeModal({
 
       const valueToVerify = findQualifiedGatingAssetId(
         heldAssets,
-        validator.gatingAssets || [],
+        gatingAssets,
         Number(gatingAssetMinBalance),
       )
 
@@ -364,13 +393,70 @@ export function AddStakeModal({
     }
   }
 
-  return (
-    <Dialog open={!!validator} onOpenChange={handleOpenChange}>
+  const renderDialogContent = () => {
+    if (isLoading) {
+      return (
+        <DialogContent>
+          <div className="flex items-center justify-center my-8">
+            <Loading size="lg" className="opacity-50" />
+          </div>
+        </DialogContent>
+      )
+    }
+
+    if (accountInfoQuery.error) {
+      return (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-left">Error</DialogTitle>
+            <DialogDescription className="text-left">
+              {accountInfoQuery.error.message || 'Failed to fetch account information'}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      )
+    }
+
+    if (gatingAssetsQuery.error) {
+      return (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-left">Error</DialogTitle>
+            <DialogDescription className="text-left">
+              {gatingAssetsQuery.error.message || 'Failed to fetch gating assets'}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      )
+    }
+
+    // @todo: Show gating type and required asset or creator address
+    if (!hasGatingAccess) {
+      return (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-left">Gating Asset Required</DialogTitle>
+            <DialogDescription className="text-left">
+              You do not hold a qualified gating asset to stake with this validator
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button size="sm" asChild>
+              <Link to="/validators/$validatorId" params={{ validatorId: String(validator?.id) }}>
+                Validator details
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      )
+    }
+
+    return (
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Stake to Validator {validator?.id}</DialogTitle>
-          <DialogDescription>
-            This will send your ALGO to the validator and stake it in one of their pools.
+          <DialogTitle className="text-left">Add Stake to Validator {validator?.id}</DialogTitle>
+          <DialogDescription className="text-left">
+            This will send your ALGO to the validator and stake it in one of its pools.
           </DialogDescription>
         </DialogHeader>
         <div>
@@ -417,6 +503,12 @@ export function AddStakeModal({
           </Form>
         </div>
       </DialogContent>
+    )
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {renderDialogContent()}
     </Dialog>
   )
 }

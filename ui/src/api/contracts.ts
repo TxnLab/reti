@@ -2,7 +2,6 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
-import { getAccountInformation } from '@/api/algod'
 import { fetchNfd } from '@/api/nfd'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
@@ -23,7 +22,7 @@ import {
   ValidatorConfigInput,
   ValidatorPoolKey,
 } from '@/interfaces/validator'
-import { decodeUint8ArrayToBigint, gatingValueFromBigint } from '@/utils/bytes'
+import { gatingValueFromBigint } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
   transformValidatorConfig,
@@ -166,25 +165,6 @@ export async function fetchValidator(
       const nfd = await fetchNfd(validator.config.nfdForInfo)
       validator.nfd = nfd
     }
-
-    if (validator.config.entryGatingType === 0) {
-      return validator
-    }
-
-    if (validator.config.entryGatingType === 1) {
-      const creatorAddress = algosdk.encodeAddress(validator.config.entryGatingValue)
-      const accountInfo = await getAccountInformation(creatorAddress)
-
-      if (accountInfo['created-assets']) {
-        const assetIds = accountInfo['created-assets'].map((asset) => asset.index)
-        validator.gatingAssets = assetIds
-      }
-
-      return validator
-    }
-
-    const assetId = decodeUint8ArrayToBigint(validator.config.entryGatingValue)
-    validator.gatingAssets = [Number(assetId)]
 
     return validator
   } catch (error) {

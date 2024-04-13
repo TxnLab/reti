@@ -37,7 +37,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
-import { AssetHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
@@ -50,7 +49,6 @@ interface StakingTableProps {
   stakesByValidator: StakerValidatorData[]
   isLoading: boolean
   constraints: Constraints
-  heldAssets: AssetHolding[]
 }
 
 export function StakingTable({
@@ -58,7 +56,6 @@ export function StakingTable({
   stakesByValidator,
   isLoading,
   constraints,
-  heldAssets,
 }: StakingTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -146,7 +143,7 @@ export function StakingTable({
 
         if (!validator || !activeAddress) return null
 
-        const stakingDisabled = isStakingDisabled(activeAddress, validator, heldAssets, constraints)
+        const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
         const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
         const canManage = canManageValidator(activeAddress, validator)
 
@@ -298,7 +295,6 @@ export function StakingTable({
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
         constraints={constraints}
-        heldAssets={heldAssets}
       />
       <UnstakeModal
         validator={unstakeValidator}
