@@ -23,7 +23,7 @@ type StakedInfo struct {
 	EntryTime          uint64
 }
 
-func (r *Reti) GetLedgerforPool(poolAppID uint64) ([]StakedInfo, error) {
+func (r *Reti) GetLedgerForPool(poolAppID uint64) ([]StakedInfo, error) {
 	var retLedger []StakedInfo
 	boxData, err := r.algoClient.GetApplicationBoxByName(poolAppID, GetStakerLedgerBoxName()).Do(context.Background())
 	if err != nil {
@@ -172,9 +172,13 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			return atc, err
 		}
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
-			AppID:           poolAppID,
-			Method:          gasMethod,
-			ForeignApps:     extraApps,
+			AppID:       poolAppID,
+			Method:      gasMethod,
+			ForeignApps: extraApps,
+			ForeignAccounts: []string{
+				info.Config.ValidatorCommissionAddress,
+				r.info.Config.Manager,
+			},
 			SuggestedParams: newParams,
 			OnComplete:      types.NoOpOC,
 			Sender:          caller,
@@ -189,9 +193,8 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		}
 		newParams.Fee = types.MicroAlgos(feesToUse)
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
-			AppID:           poolAppID,
-			Method:          epochUpdateMethod,
-			ForeignAccounts: []string{info.Config.ValidatorCommissionAddress},
+			AppID:  poolAppID,
+			Method: epochUpdateMethod,
 			BoxReferences: []types.AppBoxReference{
 				{AppID: 0, Name: nil}, // extra i/o
 				{AppID: 0, Name: nil}, // extra i/o
