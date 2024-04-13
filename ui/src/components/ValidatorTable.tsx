@@ -252,13 +252,19 @@ export function ValidatorTable({
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuGroup>
                   <DropdownMenuItem
-                    onClick={() => setAddStakeValidator(validator)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setAddStakeValidator(validator)
+                    }}
                     disabled={stakingDisabled}
                   >
                     Stake
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setUnstakeValidator(validator)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setUnstakeValidator(validator)
+                    }}
                     disabled={unstakingDisabled}
                   >
                     Unstake
@@ -270,13 +276,17 @@ export function ValidatorTable({
                     <Link
                       to="/validators/$validatorId"
                       params={{ validatorId: validator.id.toString() }}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {canManage ? 'Manage' : 'View'}
                     </Link>
                   </DropdownMenuItem>
                   {canManage && (
                     <DropdownMenuItem
-                      onClick={() => setAddPoolValidator(validator)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setAddPoolValidator(validator)
+                      }}
                       disabled={addingPoolDisabled}
                     >
                       Add Staking Pool
@@ -288,14 +298,15 @@ export function ValidatorTable({
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
                         <DropdownMenuItem
-                          onClick={async () =>
+                          onClick={async (e) => {
+                            e.stopPropagation()
                             await sendRewardTokensToPool(
                               validator,
                               5000,
                               transactionSigner,
                               activeAddress!,
                             )
-                          }
+                          }}
                           disabled={sendRewardTokensDisabled}
                         >
                           <FlaskConical className="h-4 w-4 mr-2 text-muted-foreground" />
