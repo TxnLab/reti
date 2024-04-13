@@ -2,6 +2,7 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
+import { fetchNfd } from '@/api/nfd'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
@@ -159,6 +160,12 @@ export async function fetchValidator(
       rawPoolTokenPayoutRatios,
       rawNodePoolAssignment,
     )
+
+    if (validator.config.nfdForInfo > 0) {
+      const nfd = await fetchNfd(validator.config.nfdForInfo)
+      validator.nfd = nfd
+    }
+
     return validator
   } catch (error) {
     console.error(error)

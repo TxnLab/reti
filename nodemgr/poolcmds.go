@@ -297,6 +297,8 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		nextPayTime = time.Now()
 	}
 	if nextPayTime.Before(time.Now()) {
+		// there haven't been payouts for a while (no rewards) - so treat 'now' as the next pay time
+		// so 'time in epoch' is valid
 		nextPayTime = time.Now()
 	}
 	pctTimeInEpoch := func(stakerEntryTime uint64) int {
@@ -312,9 +314,9 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch)
 	}
 
-	ledger, err := App.retiClient.GetLedgerforPool(info.Pools[poolId-1].PoolAppId)
+	ledger, err := App.retiClient.GetLedgerForPool(info.Pools[poolId-1].PoolAppId)
 	if err != nil {
-		return fmt.Errorf("unable to GetLedgerforPool: %w", err)
+		return fmt.Errorf("unable to GetLedgerForPool: %w", err)
 	}
 
 	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolId-1].PoolAppId, info.Pools[poolId-1].TotalAlgoStaked)
@@ -330,9 +332,9 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryTime), time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
 	}
 	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
+	fmt.Fprintf(tw, "Last Payout: %s\t\n", time.Unix(int64(lastPayout), 0).UTC().Format(time.RFC3339))
 	tw.Flush()
 	slog.Info(out.String())
-	//fmt.Print(out.String())
 	return nil
 }
 

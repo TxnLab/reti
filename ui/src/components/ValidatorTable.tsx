@@ -39,7 +39,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
-import { AssetCreatorHolding } from '@/interfaces/algod'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import {
@@ -60,14 +59,12 @@ interface ValidatorTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
   constraints: Constraints
-  heldAssets: AssetCreatorHolding[]
 }
 
 export function ValidatorTable({
   validators,
   stakesByValidator,
   constraints,
-  heldAssets,
 }: ValidatorTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -83,33 +80,30 @@ export function ValidatorTable({
 
   const columns: ColumnDef<Validator>[] = [
     {
-      accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="ID" />,
-      size: 70,
-    },
-    {
       id: 'validator',
-      accessorFn: (row) => row.config.owner,
+      accessorFn: (row) => row.nfd?.name || row.config.owner.toLowerCase(),
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
         const validator = row.original
-        const nfdAppId = validator.config.nfdForInfo
+        const nfd = validator.nfd
 
         return (
-          <Link
-            to="/validators/$validatorId"
-            params={{
-              validatorId: String(validator.id),
-            }}
-            className="hover:underline underline-offset-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {nfdAppId > 0 ? (
-              <NfdThumbnail nameOrId={nfdAppId} />
-            ) : (
-              ellipseAddress(validator.config.owner)
-            )}
-          </Link>
+          <div className="flex min-w-0 max-w-[9rem]">
+            <Link
+              to="/validators/$validatorId"
+              params={{
+                validatorId: String(validator.id),
+              }}
+              className="truncate hover:underline underline-offset-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {nfd ? (
+                <NfdThumbnail nfd={nfd} truncate tooltip />
+              ) : (
+                ellipseAddress(validator.config.owner)
+              )}
+            </Link>
+          </div>
         )
       },
     },
@@ -219,7 +213,7 @@ export function ValidatorTable({
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
-        const stakingDisabled = isStakingDisabled(activeAddress, validator, heldAssets, constraints)
+        const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
         const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
         const addingPoolDisabled = isAddingPoolDisabled(activeAddress, validator, constraints)
         const canManage = canManageValidator(activeAddress, validator)
@@ -255,13 +249,19 @@ export function ValidatorTable({
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuGroup>
                   <DropdownMenuItem
-                    onClick={() => setAddStakeValidator(validator)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setAddStakeValidator(validator)
+                    }}
                     disabled={stakingDisabled}
                   >
                     Stake
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => setUnstakeValidator(validator)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setUnstakeValidator(validator)
+                    }}
                     disabled={unstakingDisabled}
                   >
                     Unstake
@@ -273,13 +273,17 @@ export function ValidatorTable({
                     <Link
                       to="/validators/$validatorId"
                       params={{ validatorId: validator.id.toString() }}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {canManage ? 'Manage' : 'View'}
                     </Link>
                   </DropdownMenuItem>
                   {canManage && (
                     <DropdownMenuItem
-                      onClick={() => setAddPoolValidator(validator)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setAddPoolValidator(validator)
+                      }}
                       disabled={addingPoolDisabled}
                     >
                       Add Staking Pool
@@ -291,14 +295,15 @@ export function ValidatorTable({
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
                         <DropdownMenuItem
-                          onClick={async () =>
+                          onClick={async (e) => {
+                            e.stopPropagation()
                             await sendRewardTokensToPool(
                               validator,
                               5000,
                               transactionSigner,
                               activeAddress!,
                             )
-                          }
+                          }}
                           disabled={sendRewardTokensDisabled}
                         >
                           <FlaskConical className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -403,7 +408,6 @@ export function ValidatorTable({
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
         constraints={constraints}
-        heldAssets={heldAssets}
       />
       <UnstakeModal
         validator={unstakeValidator}

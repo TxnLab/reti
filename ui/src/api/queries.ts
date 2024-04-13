@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
-import { fetchAssetCreatorHoldings, fetchBalance } from '@/api/algod'
+import { fetchAssetHoldings, fetchBalance } from '@/api/algod'
 import {
   fetchMbrAmounts,
   fetchNodePoolAssignments,
@@ -55,9 +55,9 @@ export const balanceQueryOptions = (address: string | null) =>
 export const assetHoldingQueryOptions = (address: string | null) =>
   queryOptions({
     queryKey: ['asset-holdings', address],
-    queryFn: () => fetchAssetCreatorHoldings(address),
+    queryFn: () => fetchAssetHoldings(address),
     enabled: !!address,
-    refetchInterval: 1000 * 30,
+    refetchInterval: 1000 * 60 * 2, // every 2 mins
   })
 
 export const nfdQueryOptions = (
