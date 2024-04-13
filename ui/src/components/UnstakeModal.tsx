@@ -46,8 +46,15 @@ interface UnstakeModalProps {
 }
 
 export function UnstakeModal({ validator, setValidator, stakesByValidator }: UnstakeModalProps) {
+  const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
   const [selectedPoolId, setSelectedPoolId] = React.useState<string>('')
+
+  React.useEffect(() => {
+    if (validator) {
+      setIsOpen(true)
+    }
+  }, [validator])
 
   const stakerPoolsData = React.useMemo<StakerPoolData[]>(
     () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
@@ -122,9 +129,12 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setValidator(null)
-      setSelectedPoolId('')
-      form.reset()
+      setIsOpen(false)
+      setTimeout(() => {
+        setValidator(null)
+        setSelectedPoolId('')
+        form.reset()
+      }, 500)
     }
   }
 
@@ -298,7 +308,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
   }
 
   return (
-    <Dialog open={!!validator} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Remove Stake from Validator {validator?.id}</DialogTitle>
