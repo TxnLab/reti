@@ -535,32 +535,65 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 			signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 			epochTimer.Reset(durationToNextEpoch(time.Now(), epochMinutes))
 			var (
-				eg   syncutil.WaitGroup
+				wg   syncutil.WaitGroup
 				info = App.retiClient.Info()
 			)
 			for i, pool := range info.Pools {
-				// usual go hack so we don't reference pointers of the iterators
 				i := i
 				appid := pool.PoolAppId
 				if _, found := info.LocalPools[uint64(i+1)]; !found {
 					continue
 				}
-				eg.Run(func(val any) error {
-					err := App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
-					if err != nil {
-						if !errors.Is(err, reti.ErrNotEnoughRewardAvailable) {
-							return fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err)
-						}
+				wg.Run(func(val any) error {
+					if !accountHasAtLeast(ctx, App.algoClient, info.Config.Manager, 1e6) {
+						return errors.New("manager account should have at least 1 ALGO spendable.  Aborting epochUpdate call")
 					}
-					return nil
+
+					// Retry up to 5 times - waiting 5 seconds between each try
+					err := repeat.Repeat(
+						repeat.Fn(func() error {
+							err := App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
+							if err != nil {
+								if errors.Is(err, reti.ErrNotEnoughRewardAvailable) {
+									return nil
+								}
+								// Assume epoch update failed because it's just 'slightly' too early?
+								return repeat.HintTemporary(fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err))
+							}
+							return nil
+						}),
+						repeat.StopOnSuccess(),
+						repeat.LimitMaxTries(5),
+						repeat.FnOnError(func(err error) error {
+							misc.Warnf(d.logger, "retrying epoch update of validator, error:%v", err.Error())
+							return err
+						}),
+						repeat.WithDelay(
+							repeat.SetContextHintStop(),
+							(&repeat.FixedBackoffBuilder{
+								Delay: 5 * time.Second,
+							}).Set(),
+						),
+					)
+					return err
 				}, nil)
 			}
-			errs := eg.Wait()
+			errs := wg.Wait()
 			for _, err := range errs {
 				d.logger.Error("error returned from EpochUpdater", "error", err)
 			}
 		}
 	}
+}
+
+// accountHasAtLeast checks if an account has at least a certain amount of microAlgos (spendable)
+// Errors are just treated as failures
+func accountHasAtLeast(ctx context.Context, algoClient *algod.Client, accountAddr string, microAlgos uint64) bool {
+	acctInfo, err := algo.GetBareAccount(ctx, algoClient, accountAddr)
+	if err != nil {
+		return false
+	}
+	return acctInfo.Amount-acctInfo.MinBalance >= microAlgos
 }
 
 func durationToNextEpoch(curTime time.Time, epochMinutes int) time.Duration {
