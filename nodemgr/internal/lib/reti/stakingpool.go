@@ -288,6 +288,44 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, s
 	return nil
 }
 
+func (r *Reti) GoOffline(poolAppID uint64, caller types.Address) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	atc := transaction.AtomicTransactionComposer{}
+	goOfflineMethod, _ := r.poolContract.GetMethodByName("goOffline")
+
+	params.FlatFee = true
+	params.Fee = transaction.MinTxnFee * 3
+
+	err = atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:       poolAppID,
+		Method:      goOfflineMethod,
+		ForeignApps: []uint64{r.RetiAppId},
+		BoxReferences: []types.AppBoxReference{
+			{AppID: r.RetiAppId, Name: GetValidatorListBoxName(r.ValidatorId)},
+			{AppID: 0, Name: nil}, // extra i/o
+		},
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          caller,
+		Signer:          algo.SignWithAccountForATC(r.signer, caller.String()),
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // PoolBalance just returns the currently available (minus MBR) balance for basic 'is this usable' check.
 func (r *Reti) PoolBalance(poolAppID uint64) uint64 {
 	return r.PoolAvailableRewards(poolAppID, 0)

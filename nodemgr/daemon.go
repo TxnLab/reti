@@ -73,7 +73,7 @@ func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, listenPort int) 
 		srv := &http.Server{Addr: host}
 		go func() {
 			misc.Infof(d.logger, "HTTP server listening on %q", host)
-			srv.ListenAndServe()
+			_ = srv.ListenAndServe()
 		}()
 
 		<-ctx.Done()
@@ -130,7 +130,7 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 			d.updatePoolVersions(ctx)
 			d.checkPools(ctx)
 		case <-blockTimeUpdate.C:
-			d.setAverageBlockTime(ctx)
+			_ = d.setAverageBlockTime(ctx)
 		}
 	}
 }
@@ -146,7 +146,7 @@ func (d *Daemon) checkPools(ctx context.Context) {
 	// get online status and partkey info for all our accounts (ignoring any that don't have balances yet)
 	var poolAccounts = map[string]onlineInfo{}
 	for poolId, poolAppId := range App.retiClient.Info().LocalPools {
-		acctInfo, err := algo.GetBareAccount(context.Background(), d.algoClient, crypto.GetApplicationAddress(poolAppId).String())
+		acctInfo, err := algo.GetBareAccount(ctx, d.algoClient, crypto.GetApplicationAddress(poolAppId).String())
 		if err != nil {
 			d.logger.Warn("account fetch error", "account", crypto.GetApplicationAddress(poolAppId).String(), "error", err)
 			return
@@ -213,6 +213,8 @@ func (d *Daemon) updatePoolVersions(ctx context.Context) {
 		misc.Errorf(d.logger, "unable to fetch version string from algod instance, err:%v", err)
 		return
 	}
+	versString = fmt.Sprintf("%s : %s", versString, getVersionInfo())
+
 	for _, poolAppId := range App.retiClient.Info().LocalPools {
 		algodVer, err := App.retiClient.GetAlgodVer(poolAppId)
 		if err != nil && !errors.Is(err, algo.ErrStateKeyNotFound) {
@@ -331,7 +333,8 @@ func (d *Daemon) removeExpiredKeys(ctx context.Context, partKeys algo.PartKeysBy
 func (d *Daemon) ensureParticipation(ctx context.Context, poolAccounts map[string]onlineInfo, partKeys algo.PartKeysByAddress) error {
 	/** conditions to cover for participation keys / accounts
 	1) account has NO local participation key (online or offline) (ie: they could've moved to new node)
-		Create brand new 1-month key - will go online as part of subsequent checks once part key becomes visible
+		Create brand new 'GeneratedKeyLengthInDays' length key - will go online as part of subsequent checks once part.
+		key reaches first valid.
 	2) account is NOT online but has one or more part keys
 		Go online against newest part key - done
 	3) account has ONE local part key AND IS ONLINE
@@ -489,7 +492,15 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 			}
 		}
 		if activeKey.Id == "" {
-			return fmt.Errorf("unable to find the participation key that is online against account:%s", account)
+			// user apparently did something stupid or data has been lost, because the account is 'online' yet
+			// the key it's online against isn't present - so have the account go offline and then we can start over with
+			// the keys we have or don't have on next pass.
+			misc.Errorf(d.logger, "account:%s is online but its part. key isn't present locally! - offlining account", account)
+			err = App.retiClient.GoOffline(info.poolAppId, managerAddr)
+			if err != nil {
+				return fmt.Errorf("unable to go offline for account:%s [pool app id:%d], err: %w", account, info.poolAppId, err)
+			}
+			return nil
 		}
 		// sort the part keys by whichever has highest firstValid
 		sort.Slice(keysForAccount, func(i, j int) bool {
