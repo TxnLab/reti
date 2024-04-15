@@ -26,12 +26,12 @@
 			"matchFileNames": ["ui/**", "**/workflows/ci-ui.yaml"],
 			"extends": [
 				"config:js-app",
+				"group:allNonMajor",
 				"schedule:earlyMondays",
 				":assignee(drichar)",
 				":automergeLinters",
 				":automergeTypes",
 				":combinePatchMinorReleases",
-				":groupMinorPatch",
 				":maintainLockFilesWeekly",
 				":rebaseStalePrs",
 				":renovatePrefix",
