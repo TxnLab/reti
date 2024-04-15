@@ -21,8 +21,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
       '@algorandfoundation/tealscript':
-        specifier: '=0.90.1'
-        version: 0.90.1
+        specifier: '=0.90.2'
+        version: 0.90.2
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -86,7 +86,7 @@ importers:
         version: 18.2.4
       '@types/node':
         specifier: ^20.12.2
-        version: 20.12.2
+        version: 20.12.7
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
@@ -95,7 +95,7 @@ importers:
         version: 17.0.32
       typescript:
         specifier: ^5.4.3
-        version: 5.4.3
+        version: 5.4.5
 
   ui:
     dependencies:
@@ -343,12 +343,12 @@ packages:
       algosdk: 2.7.0
       buffer: 6.0.3
 
-  /@algorandfoundation/tealscript@0.90.1:
-    resolution: {integrity: sha512-PgvLwXC+RFT7fzeCYTcCDNBJEGgkCIllF7QFYKXBbbdTCLDpcrtRfp67kiCpEFnJB4P3C8K0GaqEGx4zSbpbaA==}
+  /@algorandfoundation/tealscript@0.90.2:
+    resolution: {integrity: sha512-9RnLJYF83yAq3DamMbb7pmEoyYGtCGHRwP+npOO4ne4mR2BoilfrYd2ndK6EPYqOugJswNer1KjVWvY0nQU1tg==}
     hasBin: true
     dependencies:
       '@microsoft/tsdoc': 0.14.2
-      '@playwright/test': 1.42.1
+      '@playwright/test': 1.43.1
       argparse: 2.0.1
       dotenv: 16.4.5
       glob: 10.3.12
@@ -1686,14 +1686,6 @@ packages:
   /@pkgr/core@0.1.1:
     resolution: {integrity: sha512-cq8o4cWH0ibXh9VGi5P20Tu9XF/0fFXl9EUinr9QfTM7a7p0oTA4iJRCQWppXR1Pg8dSM0UCItCkPwsk9qWWYA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
-    dev: true
-
-  /@playwright/test@1.42.1:
-    resolution: {integrity: sha512-Gq9rmS54mjBL/7/MvBaNOBwbfnh7beHvS6oS4srqXFcQHpQCV1+c8JXWE8VLPyRDhgS3H8x8A7hztqI9VnwrAQ==}
-    engines: {node: '>=16'}
-    hasBin: true
-    dependencies:
-      playwright: 1.42.1
     dev: true
 
   /@playwright/test@1.43.1:
@@ -3139,12 +3131,6 @@ packages:
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
     dev: true
 
-  /@types/node@20.12.2:
-    resolution: {integrity: sha512-zQ0NYO87hyN6Xrclcqp7f8ZbXNbRfoGWNcMvHTPQp9UUrwI0mI7XBz+cu7/W6/VClYo2g63B0cjull/srU7LgQ==}
-    dependencies:
-      undici-types: 5.26.5
-    dev: true
-
   /@types/node@20.12.7:
     resolution: {integrity: sha512-wq0cICSkRLVaf3UGLMGItu/PtdY7oaXaI/RVU+xliKVOtRna3PRY57ZDfztpDL0n11vfymMUnXv8QwYCO7L1wg==}
     dependencies:
@@ -3153,7 +3139,7 @@ packages:
   /@types/prompts@2.4.9:
     resolution: {integrity: sha512-qTxFi6Buiu8+50/+3DGIWLHM6QuWsEKugJnnP6iv2Mc4ncxE4A/OJkjuVOA+5X0X1S/nq5VJRa8Lu+nwcvbrKA==}
     dependencies:
-      '@types/node': 20.12.2
+      '@types/node': 20.12.7
       kleur: 3.0.3
     dev: true
 
@@ -7488,26 +7474,10 @@ packages:
       mlly: 1.6.1
       pathe: 1.1.2
 
-  /playwright-core@1.42.1:
-    resolution: {integrity: sha512-mxz6zclokgrke9p1vtdy/COWBH+eOZgYUVVU34C73M+4j4HLlQJHtfcqiqqxpP0o8HhMkflvfbquLX5dg6wlfA==}
-    engines: {node: '>=16'}
-    hasBin: true
-    dev: true
-
   /playwright-core@1.43.1:
     resolution: {integrity: sha512-EI36Mto2Vrx6VF7rm708qSnesVQKbxEWvPrfA1IPY6HgczBplDx7ENtx+K2n4kJ41sLLkuGfmb0ZLSSXlDhqPg==}
     engines: {node: '>=16'}
     hasBin: true
-    dev: true
-
-  /playwright@1.42.1:
-    resolution: {integrity: sha512-PgwB03s2DZBcNRoW+1w9E+VkLBxweib6KTXM0M3tkiT4jVxKSi6PmVJ591J+0u10LUrgxB7dLRbiJqO5s2QPMg==}
-    engines: {node: '>=16'}
-    hasBin: true
-    dependencies:
-      playwright-core: 1.42.1
-    optionalDependencies:
-      fsevents: 2.3.2
     dev: true
 
   /playwright@1.43.1:
@@ -8668,12 +8638,6 @@ packages:
   /typescript@4.9.5:
     resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
     engines: {node: '>=4.2.0'}
-    hasBin: true
-    dev: true
-
-  /typescript@5.4.3:
-    resolution: {integrity: sha512-KrPd3PKaCLr78MalgiwJnA25Nm8HAmdwN3mYUYZgG/wizIo9EainNVQI9/yDavtVFRN2h3k8uf3GLHuhDMgEHg==}
-    engines: {node: '>=14.17'}
     hasBin: true
     dev: true
 
