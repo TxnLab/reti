@@ -3,13 +3,10 @@ import { Contract } from '@algorandfoundation/tealscript';
 import { PoolTokenPayoutRatio, ValidatorPoolKey, ValidatorRegistry } from './validatorRegistry.algo';
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
-    APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
     MAX_STAKERS_PER_POOL,
     MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
-    SSC_VALUE_BYTES,
-    SSC_VALUE_UINT,
 } from './constants.algo';
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320; // # of blocks until algorand sees online balance changes in staking
@@ -65,7 +62,7 @@ export class StakingPool extends Contract {
     // Epoch number this staking pool is on, with epoch 1 being the 'first' payout
     epochNumber = GlobalStateKey<uint64>({ key: 'epochNumber' });
 
-    // Version of algod this pool is connected to - should be updated regularly
+    // Version of algod and reti node daemon this pool is connected to - updated automatically by node daemon
     algodVer = GlobalStateKey<bytes>({ key: 'algodVer' });
 
     // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
@@ -106,26 +103,6 @@ export class StakingPool extends Contract {
      * gas is a dummy no-op call that can be used to pool-up resource references and opcode cost
      */
     gas(): void {}
-
-    private minBalanceForAccount(
-        contracts: uint64,
-        extraPages: uint64,
-        assets: uint64,
-        localInts: uint64,
-        localBytes: uint64,
-        globalInts: uint64,
-        globalBytes: uint64
-    ): uint64 {
-        let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
-        minBal += contracts * APPLICATION_BASE_FEE;
-        minBal += extraPages * APPLICATION_BASE_FEE;
-        minBal += assets * ASSET_HOLDING_FEE;
-        minBal += localInts * SSC_VALUE_UINT;
-        minBal += globalInts * SSC_VALUE_UINT;
-        minBal += localBytes * SSC_VALUE_BYTES;
-        minBal += globalBytes * SSC_VALUE_BYTES;
-        return minBal;
-    }
 
     private costForBoxStorage(totalNumBytes: uint64): uint64 {
         const SCBOX_PERBOX = 2500;
@@ -497,7 +474,7 @@ export class StakingPool extends Contract {
             // We've had one payout - so we need to be at least one epoch past the last payout.
             assert(secsSinceLastPayout >= epochInSecs, "Can't payout earlier than last payout + epoch time");
         }
-        // Update our payout time - required to match
+        // Update our payout time and epoch number - required to match
         this.lastPayout.value = curTime;
         this.epochNumber.value += 1;
 
@@ -591,7 +568,12 @@ export class StakingPool extends Contract {
         if (tokenRewardAvail === 0) {
             // no token reward - then algo MUST be paid out as we have to do 'something' !
             // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
-            assert(algoRewardAvail > 1_000_000, 'Reward needs to be at least 1 ALGO');
+            // So - we don't ERROR out but we do exit early.  We still want the 'last payout time and epoch number'
+            // to be updated.
+            if (algoRewardAvail < 1_000_000) {
+                log('no token rewards or algo to pay out');
+                return;
+            }
         }
 
         if (isPoolSaturated) {
@@ -631,6 +613,7 @@ export class StakingPool extends Contract {
                     validatorConfig.manager !== validatorConfig.validatorCommissionAddress &&
                     validatorConfig.manager.balance - validatorConfig.manager.minBalance < 1_000_000
                 ) {
+                    log('top off manager from validator payout w/ 1 algo');
                     managerTopOff = validatorCommissionPaidOut < 1_000_000 ? validatorCommissionPaidOut : 1_000_000;
                     sendPayment({
                         amount: managerTopOff,

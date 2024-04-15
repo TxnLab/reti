@@ -865,12 +865,16 @@ describe('StakeWRewards', () => {
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
         consoleLogger.info(`pool stakers:${poolInfo.totalStakers}, staked:${poolInfo.totalAlgoStaked}`);
 
+        const payoutBefore = BigInt((await firstPoolClient.appClient.getGlobalState()).lastPayout.value as bigint);
         const epochBefore = BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint);
 
         // Perform epoch payout calculation  - we also get back how much it cost to issue the txn
         const fees = await epochBalanceUpdate(firstPoolClient);
         const expectedValidatorReward = reward.microAlgos * (PctToValidator / 100);
 
+        expect(BigInt((await firstPoolClient.appClient.getGlobalState()).lastPayout.value as bigint)).toBeGreaterThan(
+            payoutBefore
+        );
         expect(BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint)).toEqual(
             epochBefore + 1n
         );
@@ -924,9 +928,17 @@ describe('StakeWRewards', () => {
         expect(poolBalance).toEqual(newValidatorState.totalAlgoStaked);
     });
 
-    test('testFailNotEnoughRewards', async () => {
+    test('testNotEnoughRewards', async () => {
         // Do epoch payout immediately with no new funds - should fail because not enough to pay out to validator, etc.
-        await expect(epochBalanceUpdate(firstPoolClient)).rejects.toThrowError();
+        const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do();
+        const epochBefore = BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint);
+        const fees = await epochBalanceUpdate(firstPoolClient);
+
+        expect(BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint)).toEqual(
+            epochBefore + 1n
+        );
+        const newOwnerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do();
+        expect(newOwnerBalance.amount).toEqual(ownerBalance.amount - fees.microAlgos);
     });
 
     test('testTooEarlyEpoch', async () => {
