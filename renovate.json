@@ -8,6 +8,7 @@
 			"matchFileNames": ["nodemgr/**", "Dockerfile-nodemgr"],
 			"extends": [
 				"config:recommended",
+				"group:allNonMajor",
 				":assignee(pbennett)",
 				":semanticCommitScope(nodemgr)",
 				":semanticPrefixChore"
