@@ -21,8 +21,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
       '@algorandfoundation/tealscript':
-        specifier: '=0.90.1'
-        version: 0.90.1
+        specifier: '=0.90.2'
+        version: 0.90.2
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -343,12 +343,12 @@ packages:
       algosdk: 2.7.0
       buffer: 6.0.3
 
-  /@algorandfoundation/tealscript@0.90.1:
-    resolution: {integrity: sha512-PgvLwXC+RFT7fzeCYTcCDNBJEGgkCIllF7QFYKXBbbdTCLDpcrtRfp67kiCpEFnJB4P3C8K0GaqEGx4zSbpbaA==}
+  /@algorandfoundation/tealscript@0.90.2:
+    resolution: {integrity: sha512-9RnLJYF83yAq3DamMbb7pmEoyYGtCGHRwP+npOO4ne4mR2BoilfrYd2ndK6EPYqOugJswNer1KjVWvY0nQU1tg==}
     hasBin: true
     dependencies:
       '@microsoft/tsdoc': 0.14.2
-      '@playwright/test': 1.42.1
+      '@playwright/test': 1.43.1
       argparse: 2.0.1
       dotenv: 16.4.5
       glob: 10.3.12
@@ -1686,14 +1686,6 @@ packages:
   /@pkgr/core@0.1.1:
     resolution: {integrity: sha512-cq8o4cWH0ibXh9VGi5P20Tu9XF/0fFXl9EUinr9QfTM7a7p0oTA4iJRCQWppXR1Pg8dSM0UCItCkPwsk9qWWYA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
-    dev: true
-
-  /@playwright/test@1.42.1:
-    resolution: {integrity: sha512-Gq9rmS54mjBL/7/MvBaNOBwbfnh7beHvS6oS4srqXFcQHpQCV1+c8JXWE8VLPyRDhgS3H8x8A7hztqI9VnwrAQ==}
-    engines: {node: '>=16'}
-    hasBin: true
-    dependencies:
-      playwright: 1.42.1
     dev: true
 
   /@playwright/test@1.43.1:
@@ -7494,26 +7486,10 @@ packages:
       mlly: 1.6.1
       pathe: 1.1.2
 
-  /playwright-core@1.42.1:
-    resolution: {integrity: sha512-mxz6zclokgrke9p1vtdy/COWBH+eOZgYUVVU34C73M+4j4HLlQJHtfcqiqqxpP0o8HhMkflvfbquLX5dg6wlfA==}
-    engines: {node: '>=16'}
-    hasBin: true
-    dev: true
-
   /playwright-core@1.43.1:
     resolution: {integrity: sha512-EI36Mto2Vrx6VF7rm708qSnesVQKbxEWvPrfA1IPY6HgczBplDx7ENtx+K2n4kJ41sLLkuGfmb0ZLSSXlDhqPg==}
     engines: {node: '>=16'}
     hasBin: true
-    dev: true
-
-  /playwright@1.42.1:
-    resolution: {integrity: sha512-PgwB03s2DZBcNRoW+1w9E+VkLBxweib6KTXM0M3tkiT4jVxKSi6PmVJ591J+0u10LUrgxB7dLRbiJqO5s2QPMg==}
-    engines: {node: '>=16'}
-    hasBin: true
-    dependencies:
-      playwright-core: 1.42.1
-    optionalDependencies:
-      fsevents: 2.3.2
     dev: true
 
   /playwright@1.43.1:
