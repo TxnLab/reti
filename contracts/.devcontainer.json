@@ -2,13 +2,13 @@
     "forwardPorts": [4001, 4002, 8980],
     "portsAttributes": {
         "4001": {
-          "label": "algod"
+            "label": "algod"
         },
         "4002": {
-          "label": "kmd"
+            "label": "kmd"
         },
         "8980": {
-          "label": "indexer"
+            "label": "indexer"
         }
     },
     "postCreateCommand": "pipx install algokit-cli",
