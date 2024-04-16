@@ -6,7 +6,8 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/bootstrap/index.js",
-        "bootstrap": "pnpm run build && pnpm run start"
+        "bootstrap": "pnpm run build && pnpm run start",
+        "typecheck": "tsc --noEmit"
     },
     "license": "MIT",
     "dependencies": {
