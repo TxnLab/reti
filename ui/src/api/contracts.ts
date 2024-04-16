@@ -162,7 +162,7 @@ export async function fetchValidator(
     )
 
     if (validator.config.nfdForInfo > 0) {
-      const nfd = await fetchNfd(validator.config.nfdForInfo)
+      const nfd = await fetchNfd(validator.config.nfdForInfo, { view: 'full' })
       validator.nfd = nfd
     }
 
