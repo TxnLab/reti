@@ -1,0 +1,65 @@
+name: CI Workflow (Contracts)
+
+on:
+  push:
+    branches: [ dev, main ]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/ci-contracts.yaml'
+
+  pull_request:
+    branches: [ dev, main ]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/ci-contracts.yaml'
+
+jobs:
+  run-ci:
+    if: "!contains(github.event.head_commit.message, 'chore: release v')"
+    name: Lint, Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm --filter ./contracts install
+
+      - name: Install dependencies (bootstrap)
+        run: pnpm --filter ./contracts/bootstrap install
+
+      - name: Lint
+        run: pnpm --filter ./contracts run lint
+
+      - name: Prettier
+        run: pnpm --filter ./contracts run prettier
+
+      - name: Typecheck (bootstrap)
+        run: pnpm --filter ./contracts/bootstrap run typecheck

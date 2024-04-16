@@ -422,14 +422,14 @@ export function getValidatorListBoxName(validatorId: number) {
     return concatUint8Arrays(prefix, encodeUint64(validatorId));
 }
 
-function getStakerPoolSetBoxName(stakerAccount: Account) {
-    const prefix = new TextEncoder().encode('sps');
-    return concatUint8Arrays(prefix, decodeAddress(stakerAccount.addr).publicKey);
-}
+// function getStakerPoolSetBoxName(stakerAccount: Account) {
+//     const prefix = new TextEncoder().encode('sps');
+//     return concatUint8Arrays(prefix, decodeAddress(stakerAccount.addr).publicKey);
+// }
 
-function getStakersBoxName() {
-    return new TextEncoder().encode('stakers');
-}
+// function getStakersBoxName() {
+//     return new TextEncoder().encode('stakers');
+// }
 
 export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
     return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0];
@@ -518,6 +518,7 @@ export async function addStakingPool(
         suggestedParams,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let addPoolResults: any;
     // Before validator can add pools it needs to be funded
     try {
