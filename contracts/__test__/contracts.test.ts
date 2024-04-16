@@ -16,7 +16,6 @@ import {
     epochBalanceUpdate,
     GATING_TYPE_ASSET_ID,
     GATING_TYPE_ASSETS_CREATED_BY,
-    gatingValueFromBigint,
     getCurMaxStatePerPool,
     getMbrAmountsFromValidatorClient,
     getPoolAvailBalance,
@@ -2330,7 +2329,7 @@ describe('TokenGatingByCreator', () => {
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
             // stakers must possess any token created by tokenCreatorAccount
             EntryGatingType: GATING_TYPE_ASSETS_CREATED_BY,
-            EntryGatingValue: decodeAddress(tokenCreatorAccount.addr).publicKey,
+            EntryGatingAddress: tokenCreatorAccount.addr,
             GatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails us
         });
         validatorId = await addValidator(
@@ -2522,7 +2521,7 @@ describe('TokenGatingByAsset', () => {
         gatingToken1Id = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
-            'Gating Token 1',
+            'Gating Token 1 [Other by same]',
             'GATETK1',
             10,
             0
@@ -2530,7 +2529,7 @@ describe('TokenGatingByAsset', () => {
         gatingToken2Id = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
-            'Gating Token 2',
+            'Gating Token 2 [Required]',
             'GATETK2',
             10,
             0
@@ -2553,7 +2552,7 @@ describe('TokenGatingByAsset', () => {
             ValidatorCommissionAddress: validatorOwnerAccount.addr,
             // stakers must possess ONLY the second gating token - explicit id !
             EntryGatingType: GATING_TYPE_ASSET_ID,
-            EntryGatingValue: gatingValueFromBigint(gatingToken2Id),
+            EntryGatingAssets: [gatingToken2Id, 0n, 0n, 0n],
             GatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails us
         });
         validatorId = await addValidator(
@@ -2707,6 +2706,220 @@ describe('TokenGatingByAsset', () => {
                     stakerAccount,
                     AlgoAmount.MicroAlgos(AlgoAmount.Algos(1000).microAlgos),
                     gatingToken2Id
+                )
+            ).rejects.toThrowError();
+        });
+    });
+});
+
+describe('TokenGatingMultAssets', () => {
+    beforeEach(fixture.beforeEach);
+    beforeEach(logs.beforeEach);
+    afterEach(logs.afterEach);
+
+    let validatorId: number;
+
+    let tokenCreatorAccount: Account;
+    let validatorOwnerAccount: Account;
+    let validatorConfig: ValidatorConfig;
+    let firstPoolKey: ValidatorPoolKey;
+
+    const gatingTokens: bigint[] = [];
+
+    // add validator and 1 pool for subsequent stake tests
+    beforeAll(async () => {
+        // Create a token that will be required for stakers to possess in order to stake
+        tokenCreatorAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
+        );
+        // create 4 dummy assets
+        for (let i = 0; i < 4; i += 1) {
+            gatingTokens.push(
+                await createAsset(fixture.context.algod, tokenCreatorAccount, `Gating Token ${i}`, `GATETK${i}`, 10, 0)
+            );
+        }
+
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
+        );
+        consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`);
+
+        validatorConfig = createValidatorConfig({
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
+            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            PercentToValidator: 5 * 10000,
+            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            // stakers must possess ONLY the second gating token - explicit id !
+            EntryGatingType: GATING_TYPE_ASSET_ID,
+            EntryGatingAssets: [gatingTokens[0], gatingTokens[1], gatingTokens[2], gatingTokens[3]],
+            GatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails
+        });
+        validatorId = await addValidator(
+            fixture.context,
+            validatorMasterClient,
+            validatorOwnerAccount,
+            validatorConfig,
+            validatorMbr
+        );
+
+        firstPoolKey = await addStakingPool(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            1,
+            validatorOwnerAccount,
+            poolMbr,
+            poolInitMbr
+        );
+    });
+
+    describe('stakeTest', () => {
+        beforeEach(fixture.beforeEach);
+        beforeEach(logs.beforeEach);
+        afterEach(logs.afterEach);
+
+        let stakerAccount: Account;
+        let stakerCreatedTokenId: bigint;
+        beforeAll(async () => {
+            // Fund a 'staker account' that will be the new 'staker'
+            stakerAccount = await getTestAccount(
+                { initialFunds: AlgoAmount.Algos(8000), suppressLog: true },
+                fixture.context.algod,
+                fixture.context.kmd
+            );
+
+            for (let i = 0; i < 4; i += 1) {
+                await assetOptIn({ account: stakerAccount, assetId: Number(gatingTokens[i]) }, fixture.context.algod);
+                await transferAsset(
+                    {
+                        from: tokenCreatorAccount,
+                        to: stakerAccount,
+                        assetId: Number(gatingTokens[i]),
+                        amount: 2,
+                    },
+                    fixture.context.algod
+                );
+            }
+            stakerCreatedTokenId = await createAsset(
+                fixture.context.algod,
+                stakerAccount,
+                'Dummy Token',
+                'DUMMY',
+                10,
+                0
+            );
+        });
+
+        test('stakeNoTokenOffered', async () => {
+            const stakeAmount1 = AlgoAmount.MicroAlgos(
+                AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
+            );
+            await expect(
+                addStake(fixture.context, validatorMasterClient, validatorId, stakerAccount, stakeAmount1, 0n)
+            ).rejects.toThrowError();
+        });
+
+        test('stakeWrongTokenOffered', async () => {
+            const stakeAmount1 = AlgoAmount.MicroAlgos(
+                AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
+            );
+            await expect(
+                addStake(
+                    fixture.context,
+                    validatorMasterClient,
+                    validatorId,
+                    stakerAccount,
+                    stakeAmount1,
+                    stakerCreatedTokenId
+                )
+            ).rejects.toThrowError();
+        });
+
+        test('stakeWGatingTokens', async () => {
+            const stakeAmount1 = AlgoAmount.MicroAlgos(
+                AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
+            );
+            const [stakedPoolKey] = await addStake(
+                fixture.context,
+                validatorMasterClient,
+                validatorId,
+                stakerAccount,
+                stakeAmount1,
+                gatingTokens[0]
+            );
+            expect(stakedPoolKey.id).toEqual(firstPoolKey.id);
+            expect(stakedPoolKey.poolId).toEqual(firstPoolKey.poolId);
+            expect(stakedPoolKey.poolAppId).toEqual(firstPoolKey.poolAppId);
+
+            let poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
+            expect(poolInfo.totalStakers).toEqual(1);
+            expect(poolInfo.totalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos - Number(stakerMbr)));
+
+            expect((await getValidatorState(validatorMasterClient, validatorId)).totalStakers).toEqual(1n);
+
+            // Now try w/ the rest of the tokens - all should succeed and should only add more stake
+            for (let i = 1; i < 4; i += 1) {
+                await addStake(
+                    fixture.context,
+                    validatorMasterClient,
+                    validatorId,
+                    stakerAccount,
+                    AlgoAmount.Algos(1000),
+                    gatingTokens[i]
+                );
+            }
+            poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
+            expect(poolInfo.totalStakers).toEqual(1);
+            expect(poolInfo.totalAlgoStaked).toEqual(BigInt(AlgoAmount.Algos(1000).microAlgos * 4));
+            expect((await getValidatorState(validatorMasterClient, validatorId)).totalStakers).toEqual(1n);
+        });
+
+        test('stakeWGatingToken2ShouldPass', async () => {
+            const stakeAmount1 = AlgoAmount.Algos(1000);
+            const [stakedPoolKey] = await addStake(
+                fixture.context,
+                validatorMasterClient,
+                validatorId,
+                stakerAccount,
+                stakeAmount1,
+                gatingTokens[1]
+            );
+            expect(stakedPoolKey.id).toEqual(firstPoolKey.id);
+            expect(stakedPoolKey.poolId).toEqual(firstPoolKey.poolId);
+            expect(stakedPoolKey.poolAppId).toEqual(firstPoolKey.poolAppId);
+
+            const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey);
+            expect(poolInfo.totalStakers).toEqual(1);
+            expect(poolInfo.totalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos * 5));
+            expect((await getValidatorState(validatorMasterClient, validatorId)).totalStakers).toEqual(1n);
+        });
+
+        test('stakeWGatingToken2NotMeetingBalReq', async () => {
+            // send 1 of a token back to creator - we should now fail to add more stake because we don't meet the token minimum
+            await transferAsset(
+                {
+                    from: stakerAccount,
+                    to: tokenCreatorAccount,
+                    assetId: Number(gatingTokens[1]),
+                    amount: 1,
+                },
+                fixture.context.algod
+            );
+
+            await expect(
+                addStake(
+                    fixture.context,
+                    validatorMasterClient,
+                    validatorId,
+                    stakerAccount,
+                    AlgoAmount.MicroAlgos(AlgoAmount.Algos(1000).microAlgos),
+                    gatingTokens[1]
                 )
             ).rejects.toThrowError();
         });

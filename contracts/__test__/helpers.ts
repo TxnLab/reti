@@ -39,7 +39,9 @@ export class ValidatorConfig {
 
     EntryGatingType: number;
 
-    EntryGatingValue: Uint8Array;
+    EntryGatingAddress: string;
+
+    EntryGatingAssets: [bigint, bigint, bigint, bigint];
 
     GatingAssetMinBalance: bigint;
 
@@ -71,7 +73,8 @@ export class ValidatorConfig {
         Manager,
         NFDForInfo,
         EntryGatingType,
-        EntryGatingValue,
+        EntryGatingAddress,
+        EntryGatingAssets,
         GatingAssetMinBalance,
         RewardTokenID,
         RewardPerPayout,
@@ -89,7 +92,8 @@ export class ValidatorConfig {
         string,
         bigint,
         number,
-        Uint8Array,
+        string,
+        [bigint, bigint, bigint, bigint],
         bigint,
         bigint,
         bigint,
@@ -107,7 +111,8 @@ export class ValidatorConfig {
         this.Manager = Manager;
         this.NFDForInfo = NFDForInfo;
         this.EntryGatingType = Number(EntryGatingType);
-        this.EntryGatingValue = EntryGatingValue;
+        this.EntryGatingAddress = EntryGatingAddress;
+        this.EntryGatingAssets = EntryGatingAssets;
         this.GatingAssetMinBalance = GatingAssetMinBalance;
         this.RewardTokenID = RewardTokenID;
         this.RewardPerPayout = RewardPerPayout;
@@ -126,20 +131,21 @@ const DefaultValidatorConfig: ValidatorConfig = {
     ID: BigInt(0),
     Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    NFDForInfo: BigInt(0),
+    NFDForInfo: 0n,
     EntryGatingType: GATING_TYPE_NONE,
-    EntryGatingValue: new Uint8Array(32),
-    GatingAssetMinBalance: BigInt(0),
-    RewardTokenID: BigInt(0),
-    RewardPerPayout: BigInt(0),
+    EntryGatingAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    EntryGatingAssets: [0n, 0n, 0n, 0n],
+    GatingAssetMinBalance: 0n,
+    RewardTokenID: 0n,
+    RewardPerPayout: 0n,
     PayoutEveryXMins: 60 * 24, // daily payout
     PercentToValidator: 10000, // 1.0000%
     ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
     MaxAlgoPerPool: 0n, // float w/ online caps
     PoolsPerNode: 3,
-    SunsettingOn: BigInt(0),
-    SunsettingTo: BigInt(0),
+    SunsettingOn: 0n,
+    SunsettingTo: 0n,
 };
 
 export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): ValidatorConfig {
@@ -154,7 +160,8 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
         configObj.Manager,
         configObj.NFDForInfo,
         configObj.EntryGatingType,
-        configObj.EntryGatingValue,
+        configObj.EntryGatingAddress,
+        configObj.EntryGatingAssets,
         configObj.GatingAssetMinBalance,
         configObj.RewardTokenID,
         configObj.RewardPerPayout,
@@ -177,7 +184,8 @@ function validatorConfigAsArray(
     string,
     bigint,
     number,
-    Uint8Array,
+    string,
+    [bigint, bigint, bigint, bigint],
     bigint,
     bigint,
     bigint,
@@ -196,7 +204,8 @@ function validatorConfigAsArray(
         config.Manager,
         config.NFDForInfo,
         config.EntryGatingType,
-        config.EntryGatingValue,
+        config.EntryGatingAddress,
+        config.EntryGatingAssets,
         config.GatingAssetMinBalance,
         config.RewardTokenID,
         config.RewardPerPayout,
@@ -404,12 +413,6 @@ function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
     result.set(a);
     result.set(b, a.length);
     return result;
-}
-
-export function gatingValueFromBigint(val: bigint): Uint8Array {
-    // construct and return 32-byte long Uint8Array instance but set first 8 bytes to the 64-bit big-endian value
-    // contained in 'val'... so we just concat 24 empty bytes to result of encodeUint64
-    return concatUint8Arrays(encodeUint64(val), new Uint8Array(24));
 }
 
 export async function getStakeInfoFromBoxValue(stakeClient: StakingPoolClient) {

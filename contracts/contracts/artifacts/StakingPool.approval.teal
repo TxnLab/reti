@@ -227,7 +227,7 @@ initStorage:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:126
@@ -254,12 +254,12 @@ initStorage:
 	-
 	itxnas Logs
 	extract 4 0
-	frame_bury 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_bury 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 
 	// contracts/stakingPool.algo.ts:129
 	// isTokenEligible = validatorConfig.rewardTokenId !== 0
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 121 8
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 153 8
 	btoi
 	int 0
 	!=
@@ -344,8 +344,8 @@ initStorage:
 
 	// contracts/stakingPool.algo.ts:143
 	// xferAsset: AssetID.fromUint64(validatorConfig.rewardTokenId)
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 121 8
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 153 8
 	btoi
 	itxn_field XferAsset
 
@@ -901,7 +901,7 @@ removeStake:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:259
@@ -928,7 +928,7 @@ removeStake:
 	-
 	itxnas Logs
 	extract 4 0
-	frame_bury 4 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_bury 4 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 
 	// contracts/stakingPool.algo.ts:266
 	// sendAssetTransfer({
@@ -942,8 +942,8 @@ removeStake:
 
 	// contracts/stakingPool.algo.ts:267
 	// xferAsset: AssetID.fromUint64(validatorConfig.rewardTokenId)
-	frame_dig 4 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 121 8
+	frame_dig 4 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 153 8
 	btoi
 	itxn_field XferAsset
 
@@ -1324,7 +1324,7 @@ claimTokens:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:351
@@ -1351,7 +1351,7 @@ claimTokens:
 	-
 	itxnas Logs
 	extract 4 0
-	frame_bury 4 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_bury 4 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 
 	// contracts/stakingPool.algo.ts:357
 	// sendAssetTransfer({
@@ -1365,8 +1365,8 @@ claimTokens:
 
 	// contracts/stakingPool.algo.ts:358
 	// xferAsset: AssetID.fromUint64(validatorConfig.rewardTokenId)
-	frame_dig 4 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 121 8
+	frame_dig 4 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 153 8
 	btoi
 	itxn_field XferAsset
 
@@ -1790,7 +1790,7 @@ epochBalanceUpdate:
 	itxn_begin
 	int appl
 	itxn_field TypeEnum
-	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+	method "getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
 	itxn_field ApplicationArgs
 
 	// contracts/stakingPool.algo.ts:460
@@ -1817,7 +1817,7 @@ epochBalanceUpdate:
 	-
 	itxnas Logs
 	extract 4 0
-	frame_bury 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_bury 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 
 	// contracts/stakingPool.algo.ts:469
 	// curTime = globals.latestTimestamp
@@ -1826,8 +1826,8 @@ epochBalanceUpdate:
 
 	// contracts/stakingPool.algo.ts:471
 	// epochInSecs = (validatorConfig.payoutEveryXMins as uint64) * 60
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 137 2
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 169 2
 	btoi
 	int 60
 	*
@@ -1880,8 +1880,8 @@ epochBalanceUpdate:
 
 	// contracts/stakingPool.algo.ts:484
 	// isTokenEligible = validatorConfig.rewardTokenId !== 0
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 121 8
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 153 8
 	btoi
 	int 0
 	!=
@@ -2173,8 +2173,8 @@ epochBalanceUpdate:
 	// tokenRewardBal =
 	//                 poolOneAddress.assetBalance(AssetID.fromUint64(validatorConfig.rewardTokenId)) - rewardTokenHeldBack
 	frame_dig 6 // poolOneAddress: address
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 121 8
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 153 8
 	btoi
 	asset_holding_get AssetBalance
 	pop
@@ -2186,8 +2186,8 @@ epochBalanceUpdate:
 	// contracts/stakingPool.algo.ts:556
 	// tokenRewardBal >= validatorConfig.rewardPerPayout
 	frame_dig 17 // tokenRewardBal: uint64
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 129 8
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 161 8
 	btoi
 	>=
 	bz *if25_end
@@ -2211,8 +2211,8 @@ epochBalanceUpdate:
 
 	// contracts/stakingPool.algo.ts:565
 	// tokenRewardAvail = wideRatio([validatorConfig.rewardPerPayout, ourPoolPctOfWhole], [1_000_000])
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 129 8
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 161 8
 	btoi
 	frame_dig 18 // ourPoolPctOfWhole: uint64
 	mulw
@@ -2331,8 +2331,8 @@ epochBalanceUpdate:
 *if28_elseif1_condition:
 	// contracts/stakingPool.algo.ts:592
 	// validatorConfig.percentToValidator !== 0
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 139 4
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 171 4
 	btoi
 	int 0
 	!=
@@ -2345,8 +2345,8 @@ epochBalanceUpdate:
 	//                 [1_000_000]
 	//             )
 	frame_dig 10 // algoRewardAvail: uint64
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 139 4
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 171 4
 	btoi
 	mulw
 	int 0
@@ -2384,18 +2384,18 @@ epochBalanceUpdate:
 	// contracts/stakingPool.algo.ts:613
 	// validatorConfig.manager !== validatorConfig.validatorCommissionAddress &&
 	//                     validatorConfig.manager.balance - validatorConfig.manager.minBalance < 1_000_000
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 	extract 40 32
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 143 32
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 175 32
 	!=
 	dup
 	bz *skip_and3
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 	extract 40 32
 	acct_params_get AcctBalance
 	pop
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 	extract 40 32
 	acct_params_get AcctMinBalance
 	pop
@@ -2445,7 +2445,7 @@ epochBalanceUpdate:
 
 	// contracts/stakingPool.algo.ts:620
 	// receiver: validatorConfig.manager
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
 	extract 40 32
 	itxn_field Receiver
 
@@ -2492,8 +2492,8 @@ epochBalanceUpdate:
 
 	// contracts/stakingPool.algo.ts:627
 	// receiver: validatorConfig.validatorCommissionAddress
-	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
-	extract 143 32
+	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)
+	extract 175 32
 	itxn_field Receiver
 
 	// contracts/stakingPool.algo.ts:628

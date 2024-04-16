@@ -5,20 +5,20 @@ import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
-    GATING_TYPE_NONE,
-    GATING_TYPE_ASSETS_CREATED_BY,
     GATING_TYPE_ASSET_ID,
-    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-    GATING_TYPE_SEGMENT_OF_NFD,
+    GATING_TYPE_ASSETS_CREATED_BY,
     GATING_TYPE_CONST_MAX,
+    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+    GATING_TYPE_NONE,
+    GATING_TYPE_SEGMENT_OF_NFD,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
+    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
+    MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
     MIN_PCT_TO_VALIDATOR,
     SSC_VALUE_BYTES,
     SSC_VALUE_UINT,
-    MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
-    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
 } from './constants.algo';
 
 const MAX_NODES = 8; // more just as a reasonable limit and cap on contract storage
@@ -55,12 +55,13 @@ export type ValidatorConfig = {
     // It will be the responsibility of the staker (txn composer really) to pick the right thing to check (as argument
     // to adding stake) that meets the criteria if this is set.
     // Allowed types:
-    // 1: assets created by address X (val is address of creator)
-    // 2: specific asset id (val is asset id)
-    // 3: asset in nfd linked addresses (value is nfd appid)
-    // 4: segment of a particular NFD (value is root appid)
+    // 1) GATING_TYPE_ASSETS_CREATED_BY: assets created by address X (val is address of creator)
+    // 2) GATING_TYPE_ASSET_ID: specific asset id (val is asset id)
+    // 3) GATING_TYPE_CREATED_BY_NFD_ADDRESSES: asset in nfd linked addresses (value is nfd appid)
+    // 4) GATING_TYPE_SEGMENT_OF_NFD: segment of a particular NFD (value is root appid)
     entryGatingType: uint8;
-    entryGatingValue: bytes32;
+    entryGatingAddress: Address; // for GATING_TYPE_ASSETS_CREATED_BY
+    entryGatingAssets: StaticArray<uint64, 4>; // all checked for GATING_TYPE_ASSET_ID, only first used for GATING_TYPE_CREATED_BY_NFD_ADDRESSES, and GATING_TYPE_SEGMENT_OF_NFD
 
     // [CHANGEABLE] gatingAssetMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
     // creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
@@ -424,14 +425,15 @@ export class ValidatorRegistry extends Contract {
                 'If specifying NFD, account adding validator must be owner'
             );
         }
-        if (config.entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
-            // we require the NFD we compare against to be the one set in nfdForInfo
-            assert(config.nfdForInfo !== 0, 'an NFD must be specified for the validator when gating by NFD addresses');
-        }
-        if (config.entryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
+        if (
+            config.entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES ||
+            config.entryGatingType === GATING_TYPE_SEGMENT_OF_NFD
+        ) {
             // verify gating NFD is at least 'real' - since we just have app id - fetch its name then do is valid call
-            const nfdRootAppID = extractUint64(config.entryGatingValue, 0);
-            assert(this.isNFDAppIDValid(nfdRootAppID), 'provided NFD App id for gating must be valid NFD');
+            assert(
+                this.isNFDAppIDValid(config.entryGatingAssets[0]),
+                'provided NFD App id for gating must be valid NFD'
+            );
         }
         // this.retiOP_addedValidator.log({ id: validatorId, owner: config.owner, manager: config.manager });
         return validatorId;
@@ -508,14 +510,16 @@ export class ValidatorRegistry extends Contract {
     changeValidatorRewardInfo(
         validatorId: ValidatorIdType,
         EntryGatingType: uint8,
-        EntryGatingValue: bytes32,
+        EntryGatingAddress: Address,
+        EntryGatingAssets: StaticArray<uint64, 4>,
         GatingAssetMinBalance: uint64,
         RewardPerPayout: uint64
     ): void {
         assert(this.txn.sender === this.validatorList(validatorId).value.config.owner);
 
         this.validatorList(validatorId).value.config.entryGatingType = EntryGatingType;
-        this.validatorList(validatorId).value.config.entryGatingValue = EntryGatingValue;
+        this.validatorList(validatorId).value.config.entryGatingAddress = EntryGatingAddress;
+        this.validatorList(validatorId).value.config.entryGatingAssets = EntryGatingAssets;
         this.validatorList(validatorId).value.config.gatingAssetMinBalance = GatingAssetMinBalance;
         this.validatorList(validatorId).value.config.rewardPerPayout = RewardPerPayout;
     }
@@ -1250,7 +1254,7 @@ export class ValidatorRegistry extends Contract {
             return;
         }
         const staker = this.txn.sender;
-        const gateReq = clone(this.validatorList(validatorId).value.config.entryGatingValue);
+        const config = clone(this.validatorList(validatorId).value.config);
 
         // If an asset gating - check the balance requirement - can handle whether right asset afterward
         if (
@@ -1270,24 +1274,26 @@ export class ValidatorRegistry extends Contract {
         }
         if (type === GATING_TYPE_ASSETS_CREATED_BY) {
             assert(
-                AssetID.fromUint64(valueToVerify).creator === Address.fromBytes(gateReq),
+                AssetID.fromUint64(valueToVerify).creator === config.entryGatingAddress,
                 'specified asset must be created by creator that the validator defined as a requirement to stake'
             );
         }
         if (type === GATING_TYPE_ASSET_ID) {
-            const requiredAsset = extractUint64(gateReq, 0);
-            assert(requiredAsset !== 0);
-            assert(
-                valueToVerify === requiredAsset,
-                'specified asset must be identical to the asset id defined as a requirement to stake'
-            );
+            assert(valueToVerify !== 0);
+            let found = false;
+            for (const assetId of config.entryGatingAssets) {
+                if (valueToVerify === assetId) {
+                    found = true;
+                    break;
+                }
+            }
+            assert(found, 'specified asset must be identical to the asset id defined as a requirement to stake');
         }
         if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
-            const nfdForInfo = this.validatorList(validatorId).value.config.nfdForInfo;
-            // Walk all the linked addresses defined by this NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
+            // Walk all the linked addresses defined by the gating NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
             // if any are the creator of the specified asset then we pass.
             assert(
-                this.isAddressInNFDCAAlgoList(nfdForInfo, AssetID.fromUint64(valueToVerify).creator),
+                this.isAddressInNFDCAAlgoList(config.entryGatingAssets[0], AssetID.fromUint64(valueToVerify).creator),
                 'specified asset must be created by creator that is one of the linked addresses in an nfd'
             );
         }
@@ -1304,10 +1310,9 @@ export class ValidatorRegistry extends Contract {
             );
 
             // We at least know it's a real NFD - now.. is it a segment of the root NFD the validator defined ?
-            const requiredParentAppID = extractUint64(gateReq, 0);
-
             assert(
-                (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) === requiredParentAppID,
+                (AppID.fromUint64(config.entryGatingAssets[0]).globalState('i.parentAppID') as uint64) ===
+                    config.entryGatingAssets[0],
                 'specified nfd must be a segment of the nfd the validator specified as a requirement'
             );
         }

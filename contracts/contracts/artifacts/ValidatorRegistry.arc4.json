@@ -55,7 +55,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+        "type": "(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
       }
     },
     {
@@ -214,7 +214,7 @@
         },
         {
           "name": "config",
-          "type": "(uint64,address,address,uint64,uint8,byte[32],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)",
+          "type": "(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -320,8 +320,12 @@
           "type": "uint8"
         },
         {
-          "name": "EntryGatingValue",
-          "type": "byte[32]"
+          "name": "EntryGatingAddress",
+          "type": "address"
+        },
+        {
+          "name": "EntryGatingAssets",
+          "type": "uint64[4]"
         },
         {
           "name": "GatingAssetMinBalance",
