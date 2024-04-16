@@ -48,12 +48,14 @@ module.exports = {
             files: ['*.ts'],
             rules: {
                 'no-continue': 'off',
+                'no-console': 'off',
+                'max-classes-per-file': 'off',
+                'import/no-extraneous-dependencies': 'off',
             },
         },
         {
             files: ['*.algo.ts'],
             rules: {
-                'import/no-extraneous-dependencies': 'off',
                 'object-shorthand': 'off',
                 'class-methods-use-this': 'off',
                 'no-undef': 'off',
@@ -65,6 +67,7 @@ module.exports = {
                 'no-param-reassign': 'off',
                 'no-restricted-syntax': 'off',
                 'no-continue': 'off',
+                'no-unused-vars': 'off',
                 '@typescript-eslint/ban-ts-comment': 'off',
             },
         },

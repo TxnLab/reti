@@ -449,7 +449,6 @@ describe('StakeAdds', () => {
 
         // we create 'max pools per node' new pools on new node (first pool is still there which wee added as part of beforeAll)
         for (let i = 0; i < poolsToCreate; i += 1) {
-            // eslint-disable-next-line no-await-in-loop
             const newPool = await addStakingPool(
                 fixture.context,
                 validatorMasterClient,
