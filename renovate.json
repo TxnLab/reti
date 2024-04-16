@@ -31,8 +31,6 @@
 				"group:allNonMajor",
 				"schedule:earlyMondays",
 				":assignee(drichar)",
-				":automergeLinters",
-				":automergeTypes",
 				":combinePatchMinorReleases",
 				":maintainLockFilesWeekly",
 				":rebaseStalePrs",
