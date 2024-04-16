@@ -440,8 +440,8 @@ describe('StakeAdds', () => {
     });
 
     test('addMaxPoolsAndFill', async () => {
-        const pools = [];
-        const stakers = [];
+        const pools: ValidatorPoolKey[] = [];
+        const stakers: Account[] = [];
         const poolsToCreate = MaxPoolsPerNode;
 
         // capture current 'total' state for all pools
