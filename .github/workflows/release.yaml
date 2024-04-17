@@ -3,13 +3,15 @@ on:
     types: [created]
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
   releases-matrix:
     name: Release Go Binary
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     strategy:
       matrix:
         # build and publish in parallel: linux/windows/darwin, amd64/arm64
@@ -63,3 +65,14 @@ jobs:
             REL_VER=${{ github.ref_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+  github-releases-to-discord:
+    needs: [releases-matrix, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Github Releases To Discord
+        uses: SethCohen/github-releases-to-discord@v1.15.0
+        with:
+          webhook_url: ${{ secrets.WEBHOOK_URL }}
+          username: "Reti Releases"

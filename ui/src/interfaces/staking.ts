@@ -2,9 +2,9 @@ import { ValidatorPoolKey } from './validator'
 
 export interface StakedInfo {
   account: string
-  balance: number
-  totalRewarded: number
-  rewardTokenBalance: number
+  balance: bigint
+  totalRewarded: bigint
+  rewardTokenBalance: bigint
   entryTime: number
 }
 
@@ -14,9 +14,9 @@ export interface StakerPoolData extends StakedInfo {
 
 export interface StakerValidatorData {
   validatorId: number
-  balance: number
-  totalRewarded: number
-  rewardTokenBalance: number
+  balance: bigint
+  totalRewarded: bigint
+  rewardTokenBalance: bigint
   entryTime: number
   pools: Array<StakerPoolData>
 }

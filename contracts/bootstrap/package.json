@@ -1,25 +1,26 @@
 {
-  "name": "bootstrap",
-  "version": "0.5.2",
-  "description": "",
-  "main": "index.ts",
-  "scripts": {
-    "build": "tsc",
-    "start": "node dist/bootstrap/index.js",
-    "bootstrap": "pnpm run build && pnpm run start"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "@algorandfoundation/algokit-utils": "^5.8.0",
-    "algosdk": "^2.7.0",
-    "prompts": "^2.4.2",
-    "yargs": "^17.7.2"
-  },
-  "devDependencies": {
-    "@tsconfig/node18": "^18.2.4",
-    "@types/node": "^20.12.2",
-    "@types/prompts": "^2.4.9",
-    "@types/yargs": "^17.0.32",
-    "typescript": "^5.4.3"
-  }
+    "name": "bootstrap",
+    "version": "0.6.0",
+    "description": "",
+    "main": "index.ts",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/bootstrap/index.js",
+        "bootstrap": "pnpm run build && pnpm run start",
+        "typecheck": "tsc --noEmit"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "@algorandfoundation/algokit-utils": "^5.8.0",
+        "algosdk": "^2.7.0",
+        "prompts": "^2.4.2",
+        "yargs": "^17.7.2"
+    },
+    "devDependencies": {
+        "@tsconfig/node18": "^18.2.4",
+        "@types/node": "^20.12.2",
+        "@types/prompts": "^2.4.9",
+        "@types/yargs": "^17.0.32",
+        "typescript": "^5.4.3"
+    }
 }
