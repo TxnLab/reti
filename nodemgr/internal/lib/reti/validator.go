@@ -2,7 +2,6 @@ package reti
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -49,8 +48,9 @@ type ValidatorConfig struct {
 
 	// EntryGatingType / EntryGatingValue specifies an optional gating mechanism - whose criteria
 	// the staker must meet.
-	EntryGatingType  uint8
-	EntryGatingValue []byte
+	EntryGatingType    uint8
+	EntryGatingAddress string
+	EntryGatingAssets  []uint64
 
 	// GatingAssetMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
 	// creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
@@ -84,19 +84,19 @@ type ValidatorConfig struct {
 
 func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 	if arrReturn, ok := returnVal.([]any); ok {
-		if len(arrReturn) != 17 {
-			return nil, fmt.Errorf("should be 17 elements returned in ValidatorConfig response")
+		if len(arrReturn) != 18 {
+			return nil, fmt.Errorf("should be 18 elements returned in ValidatorConfig response")
 		}
 		pkAsString := func(pk []uint8) string {
 			addr, _ := types.EncodeAddress(pk)
 			return addr
 		}
-		byte32AsSlice := func(byte32 []any) []byte {
-			ret := make([]byte, len(byte32))
-			for i, b := range byte32 {
-				ret[i] = b.(byte)
+		arrValues := func(arr []any) []uint64 {
+			values := make([]uint64, len(arr))
+			for i, v := range arr {
+				values[i] = v.(uint64)
 			}
-			return ret
+			return values
 		}
 		config := &ValidatorConfig{}
 		config.ID = arrReturn[0].(uint64)
@@ -104,18 +104,19 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.Manager = pkAsString(arrReturn[2].([]uint8))
 		config.NFDForInfo = arrReturn[3].(uint64)
 		config.EntryGatingType = arrReturn[4].(uint8)
-		config.EntryGatingValue = byte32AsSlice(arrReturn[5].([]any))
-		config.GatingAssetMinBalance = arrReturn[6].(uint64)
-		config.RewardTokenId = arrReturn[7].(uint64)
-		config.RewardPerPayout = arrReturn[8].(uint64)
-		config.PayoutEveryXMins = int(arrReturn[9].(uint16))
-		config.PercentToValidator = int(arrReturn[10].(uint32))
-		config.ValidatorCommissionAddress = pkAsString(arrReturn[11].([]uint8))
-		config.MinEntryStake = arrReturn[12].(uint64)
-		config.MaxAlgoPerPool = arrReturn[13].(uint64)
-		config.PoolsPerNode = int(arrReturn[14].(uint8))
-		config.SunsettingOn = arrReturn[15].(uint64)
-		config.SunsettingTo = arrReturn[16].(uint64)
+		config.EntryGatingAddress = pkAsString(arrReturn[5].([]uint8))
+		config.EntryGatingAssets = arrValues(arrReturn[6].([]any))
+		config.GatingAssetMinBalance = arrReturn[7].(uint64)
+		config.RewardTokenId = arrReturn[8].(uint64)
+		config.RewardPerPayout = arrReturn[9].(uint64)
+		config.PayoutEveryXMins = int(arrReturn[10].(uint16))
+		config.PercentToValidator = int(arrReturn[11].(uint32))
+		config.ValidatorCommissionAddress = pkAsString(arrReturn[12].([]uint8))
+		config.MinEntryStake = arrReturn[13].(uint64)
+		config.MaxAlgoPerPool = arrReturn[14].(uint64)
+		config.PoolsPerNode = int(arrReturn[15].(uint8))
+		config.SunsettingOn = arrReturn[16].(uint64)
+		config.SunsettingTo = arrReturn[17].(uint64)
 		return config, nil
 	}
 	return nil, fmt.Errorf("unknown value returned from abi, type:%T", returnVal)
@@ -190,21 +191,16 @@ func (v *ValidatorConfig) String() string {
 	switch v.EntryGatingType {
 	case GatingTypeNone:
 	case GatingTypeAssetsCreatedBy:
-		addr, err := types.EncodeAddress(v.EntryGatingValue)
-		if err != nil {
-			out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: {err:%v}\n", err))
-		} else {
-			out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: %s\n", addr))
-		}
+		out.WriteString(fmt.Sprintf("Reward Token Creator Reqd: %s\n", v.EntryGatingAddress))
 		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
 	case GatingTypeAssetId:
-		out.WriteString(fmt.Sprintf("Reward Token Requires ASA:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token Requires ASA:%d\n", v.EntryGatingAssets[0]))
 		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
 	case GatingTypeCreatedByNFDAddresses:
-		out.WriteString(fmt.Sprintf("Reward Token NFD Creator Addresses, NFD id:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token NFD Creator Addresses, NFD id:%d\n", v.EntryGatingAssets[0]))
 		out.WriteString(fmt.Sprintf("Reward Token Min Bal: %d\n", v.GatingAssetMinBalance))
 	case GatingTypeSegmentOfNFD:
-		out.WriteString(fmt.Sprintf("Reward Token NFD Segments of Root NFD id:%d\n", binary.BigEndian.Uint64(v.EntryGatingValue)))
+		out.WriteString(fmt.Sprintf("Reward Token NFD Segments of Root NFD id:%d\n", v.EntryGatingAssets[0]))
 	}
 	if v.EntryGatingType != GatingTypeNone {
 		out.WriteString(fmt.Sprintf("Reward Token id: %d\n", v.RewardTokenId))
@@ -373,7 +369,8 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				managerAddr,
 				info.Config.NFDForInfo,
 				0, // gating type none
-				[32]byte{},
+				types.ZeroAddress,
+				[]uint64{0, 0, 0, 0},
 				info.Config.GatingAssetMinBalance,
 				info.Config.RewardTokenId,
 				info.Config.RewardPerPayout,
