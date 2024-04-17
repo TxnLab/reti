@@ -26,7 +26,7 @@ export default defineConfig({
         manualChunks: {
           algorand: ['algosdk', '@algorandfoundation/algokit-utils'],
           icons: ['lucide-react', '@radix-ui/react-icons'],
-          recharts: ['recharts'],
+          tremor: ['@tremor/react'],
           useWallet: ['@txnlab/use-wallet-react'],
         },
       },
