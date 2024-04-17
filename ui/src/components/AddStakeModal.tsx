@@ -275,9 +275,9 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
           const poolData: StakerPoolData = {
             poolKey,
             account: activeAddress,
-            balance: amountToStake,
-            totalRewarded: 0,
-            rewardTokenBalance: 0,
+            balance: BigInt(amountToStake),
+            totalRewarded: BigInt(0),
+            rewardTokenBalance: BigInt(0),
             entryTime: dayjs().unix(),
           }
 
@@ -298,12 +298,12 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
                 if (data.validatorId === poolKey.validatorId) {
                   return {
                     ...data,
-                    balance: data.balance + amountToStake,
+                    balance: data.balance + BigInt(amountToStake),
                     pools: data.pools.map((pool) => {
                       if (pool.poolKey.poolId === poolKey.poolId) {
                         return {
                           ...pool,
-                          balance: pool.balance + amountToStake,
+                          balance: pool.balance + BigInt(amountToStake),
                         }
                       }
 
@@ -321,7 +321,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
               if (data.validatorId === poolKey.validatorId) {
                 return {
                   ...data,
-                  balance: data.balance + amountToStake,
+                  balance: data.balance + BigInt(amountToStake),
                   pools: [...data.pools, poolData],
                 }
               }
@@ -335,9 +335,9 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
             ...prevData,
             {
               validatorId: poolKey.validatorId,
-              balance: amountToStake,
-              totalRewarded: 0,
-              rewardTokenBalance: 0,
+              balance: BigInt(amountToStake),
+              totalRewarded: BigInt(0),
+              rewardTokenBalance: BigInt(0),
               entryTime: dayjs().unix(),
               pools: [poolData],
             },
@@ -390,6 +390,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
     } finally {
       setIsSigning(false)
       setValidator(null)
+      setIsOpen(false)
     }
   }
 

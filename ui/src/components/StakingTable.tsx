@@ -123,7 +123,7 @@ export function StakingTable({
         const validator = validators.find((v) => v.id === row.original.validatorId)
         const { rewardTokenId } = validator?.config || {}
         if (!rewardTokenId || Number(rewardTokenId) === 0) return '--'
-        return <span>{row.original.rewardTokenBalance || 0}</span>
+        return <span>{Number(row.original.rewardTokenBalance) || 0}</span>
       },
     },
     {
