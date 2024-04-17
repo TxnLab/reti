@@ -193,10 +193,8 @@ export class StakingPool extends Contract {
 
                 this.totalAlgoStaked.value += stakedAmountPayment.amount;
                 return entryTime;
-            }
-            if (cmpStaker.account === globals.zeroAddress) {
+            } else if (firstEmpty === 0 && cmpStaker.account === globals.zeroAddress) {
                 firstEmpty = i + 1;
-                break;
             }
         }
 

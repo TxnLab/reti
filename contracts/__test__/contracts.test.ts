@@ -10,6 +10,7 @@ import {
     addStake,
     addStakingPool,
     addValidator,
+    ALGORAND_ZERO_ADDRESS_STRING,
     claimTokens,
     createAsset,
     createValidatorConfig,
@@ -3117,6 +3118,126 @@ describe('SaturatedValidator', () => {
         const newPoolBalance = await getPoolAvailBalance(fixture.context, pools[2]);
         expect(newPoolBalance).toEqual(origPoolBalance + diminishedRewards);
         expect(newPoolBalance).toEqual(newPoolInfo.totalAlgoStaked);
+    });
+});
+
+describe('StakeAddRemoveBugVerify', () => {
+    beforeEach(fixture.beforeEach);
+    beforeEach(logs.beforeEach);
+    afterEach(logs.afterEach);
+
+    let validatorId: number;
+    let validatorOwnerAccount: Account;
+    let poolAppId: bigint;
+    let firstPoolKey: ValidatorPoolKey;
+    let firstPoolClient: StakingPoolClient;
+
+    beforeAll(async () => {
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd
+        );
+        const config = createValidatorConfig({
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
+            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            MinEntryStake: BigInt(AlgoAmount.Algos(1).microAlgos),
+            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            PercentToValidator: 50000, // 5%
+            PoolsPerNode: MaxPoolsPerNode,
+        });
+        validatorId = await addValidator(
+            fixture.context,
+            validatorMasterClient,
+            validatorOwnerAccount,
+            config,
+            validatorMbr
+        );
+        firstPoolKey = await addStakingPool(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            1,
+            validatorOwnerAccount,
+            poolMbr,
+            poolInitMbr
+        );
+        firstPoolClient = new StakingPoolClient(
+            { sender: validatorOwnerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod
+        );
+    });
+
+    test('addRemoveStakers', async () => {
+        const stakers: Account[] = [];
+        for (let i = 0; i < 3; i += 1) {
+            const stakerAccount = await getTestAccount(
+                {
+                    initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
+                    suppressLog: true,
+                },
+                fixture.context.algod,
+                fixture.context.kmd
+            );
+            stakers.push(stakerAccount);
+        }
+        // we have 3 stakers, now stake 0, 2, 1.  Remove 2 - add stake for 1
+        // with 1.0 bug it'll add entry for staker 1 twice
+        const stakeAmt = AlgoAmount.MicroAlgos(
+            AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos
+        );
+        let [poolKey] = await addStake(fixture.context, validatorMasterClient, validatorId, stakers[0], stakeAmt, 0n);
+        expect(poolKey.id).toEqual(firstPoolKey.id);
+        [poolKey] = await addStake(fixture.context, validatorMasterClient, validatorId, stakers[2], stakeAmt, 0n);
+        expect(poolKey.id).toEqual(firstPoolKey.id);
+        [poolKey] = await addStake(fixture.context, validatorMasterClient, validatorId, stakers[1], stakeAmt, 0n);
+        expect(poolKey.id).toEqual(firstPoolKey.id);
+
+        // ledger should be staker 0, 2, 1, {empty}
+        let stakerData = await getStakeInfoFromBoxValue(firstPoolClient);
+        expect(encodeAddress(stakerData[0].staker.publicKey)).toEqual(stakers[0].addr);
+        expect(encodeAddress(stakerData[1].staker.publicKey)).toEqual(stakers[2].addr);
+        expect(encodeAddress(stakerData[2].staker.publicKey)).toEqual(stakers[1].addr);
+        expect(encodeAddress(stakerData[3].staker.publicKey)).toEqual(ALGORAND_ZERO_ADDRESS_STRING);
+        expect(stakerData[0].balance).toEqual(1000n * 1000000n);
+        expect(stakerData[1].balance).toEqual(1000n * 1000000n);
+        expect(stakerData[2].balance).toEqual(1000n * 1000000n);
+        expect(stakerData[3].balance).toEqual(0n);
+
+        // now remove staker 2's stake - and we should end up with ledger of 0, {empty}, 1, {empty}
+        await removeStake(firstPoolClient, stakers[2], AlgoAmount.Algos(1000));
+        stakerData = await getStakeInfoFromBoxValue(firstPoolClient);
+        expect(encodeAddress(stakerData[0].staker.publicKey)).toEqual(stakers[0].addr);
+        expect(encodeAddress(stakerData[1].staker.publicKey)).toEqual(ALGORAND_ZERO_ADDRESS_STRING);
+        expect(encodeAddress(stakerData[2].staker.publicKey)).toEqual(stakers[1].addr);
+        expect(encodeAddress(stakerData[3].staker.publicKey)).toEqual(ALGORAND_ZERO_ADDRESS_STRING);
+        expect(stakerData[0].balance).toEqual(1000n * 1000000n);
+        expect(stakerData[1].balance).toEqual(0n);
+        expect(stakerData[2].balance).toEqual(1000n * 1000000n);
+        expect(stakerData[3].balance).toEqual(0n);
+
+        // now try to add more stake for staker 1... prior bug means it'd re-add in the first empty slot !
+        // verify it just adds to existing stake in later slot
+        [poolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakers[1],
+            AlgoAmount.Algos(500),
+            0n
+        );
+        expect(poolKey.id).toEqual(firstPoolKey.id);
+
+        stakerData = await getStakeInfoFromBoxValue(firstPoolClient);
+        expect(encodeAddress(stakerData[0].staker.publicKey)).toEqual(stakers[0].addr);
+        expect(encodeAddress(stakerData[1].staker.publicKey)).toEqual(ALGORAND_ZERO_ADDRESS_STRING);
+        expect(encodeAddress(stakerData[2].staker.publicKey)).toEqual(stakers[1].addr);
+        expect(encodeAddress(stakerData[3].staker.publicKey)).toEqual(ALGORAND_ZERO_ADDRESS_STRING);
+        expect(stakerData[0].balance).toEqual(1000n * 1000000n);
+        expect(stakerData[1].balance).toEqual(0n);
+        expect(stakerData[2].balance).toEqual(1500n * 1000000n);
+        expect(stakerData[3].balance).toEqual(0n);
     });
 });
 
