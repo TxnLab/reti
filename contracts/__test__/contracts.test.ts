@@ -61,7 +61,7 @@ let stakerMbr: bigint;
 // First construct the 'template' pool and then the master validator contract that everything will use
 beforeAll(async () => {
     await fixture.beforeEach();
-    // testAccount here is the account that creates the Validator master contracts themselves - but basically one-time thing to be ignored..
+    // testAccount here is the account that creates the Validator master contracts themselves - but basically one-time thing to be ignored
     const { algod, testAccount } = fixture.context;
 
     // First we have to create dummy instance of a pool that we can use as template contract for validator
@@ -116,7 +116,7 @@ describe('MultValidatorAddCheck', () => {
     beforeEach(logs.beforeEach);
     afterEach(logs.afterEach);
 
-    // Just verify adding new validators and their ids incrementing and mbrs being covered, etc,
+    // Just verify adding new validators and their ids incrementing and mbrs being covered, etc.,
     test('validatorAddTests', async () => {
         const validatorOwnerAccount = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
@@ -250,7 +250,7 @@ describe('StakeAdds', () => {
     // tries to remove 200 algo (checks failure) because it would go below 1000 algo min.
     // adds 1000 algo more - should end at exactly 2000 algo staked
     test('firstStaker', async () => {
-        // get current balance of staker pool (should already include needed MBR in balance - but subtract it out so it's seen as the '0' amount)
+        // get current balance of staker pool (should already include needed MBR in balance - but subtract it out, so it's seen as the '0' amount)
         const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do();
 
         // Fund a 'staker account' that will be the new 'staker'
@@ -371,7 +371,7 @@ describe('StakeAdds', () => {
             BigInt(stakeAmount1.microAlgos + stakeAmount2.microAlgos - Number(stakerMbr))
         );
         expect(stateData.totalStakers).toEqual(1n);
-        // and.. globally
+        // and. globally
         validatorGlobalState = await validatorMasterClient.appClient.getGlobalState();
         expect(validatorGlobalState.staked.value).toEqual(
             stakeAmount1.microAlgos + stakeAmount2.microAlgos - Number(stakerMbr)
@@ -392,7 +392,7 @@ describe('StakeAdds', () => {
             fixture.context.algod,
             fixture.context.kmd
         );
-        // add 2000 stake by random staker - should go to NEW slot - but this is still their first add so they have to pay more mbr
+        // add 2000 stake by random staker - should go to NEW slot - but this is still their first add, so they have to pay more mbr
         // this time - since it's over minimum... don't pay 'extra' - so we should ensure that the MBR is NOT part of what we stake
         const stakeAmount1 = AlgoAmount.Algos(2000);
         const [stakedPoolKey, fees] = await addStake(
@@ -483,9 +483,9 @@ describe('StakeAdds', () => {
             stakers.push(stakerAccount);
         }
         // have the first max-1 of the max new stakers - add such that each pool is basically completely full but just
-        // short so we can still add a small amount later in a test.
+        // short, so we can still add a small amount later in a test.
         // add stake for each - each time should work and go to new pool (starting with first pool we added - the one
-        // that's already there shouldn't have room).  Then next add of same size should fail.. then next add of something
+        // that's already there shouldn't have room).  Then next add of same size should fail. then next add of something
         // small should go to first pool again
         const stakeAmount = AlgoAmount.MicroAlgos(MaxAlgoPerPool - AlgoAmount.Algos(1000).microAlgos);
         for (let i = 0; i < poolsToCreate - 1; i += 1) {
@@ -603,7 +603,7 @@ describe('StakeAdds', () => {
         expect(addStake1.poolId).toEqual(firstPoolKey.poolId);
         expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId);
 
-        // add again.. should go to same place
+        // add again. should go to same place
         const [addStake2, fees2] = await addStake(
             fixture.context,
             validatorMasterClient,
@@ -954,7 +954,7 @@ describe('StakeWRewards', () => {
             fixture.context.algod
         );
 
-        // this payout should work... between prior tests and just now - it's been a day..
+        // this payout should work... between prior tests and just now - it's been a day.
         // validator will have received 5 algo (on the 100 we just put in the pool) - we account for that later...
         await epochBalanceUpdate(firstPoolClient);
 
@@ -1163,7 +1163,7 @@ describe('StakeW0Commission', () => {
         expect(firstPoolKey.poolAppId).toEqual(poolAppId);
     });
 
-    // boilerplate at this point.. just dd some stake - testing different commissions is all we care about
+    // boilerplate at this point. just dd some stake - testing different commissions is all we care about
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
         const stakerAccount = await getTestAccount(
@@ -1346,7 +1346,7 @@ describe('StakeW100Commission', () => {
         expect(firstPoolKey.poolAppId).toEqual(poolAppId);
     });
 
-    // boilerplate at this point.. just dd some stake - testing different commissions is all we care about
+    // boilerplate at this point. just dd some stake - testing different commissions is all we care about
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
         const stakerAccount = await getTestAccount(
@@ -2114,7 +2114,7 @@ describe('DoublePoolWTokens', () => {
         expect(poolInfo.totalStakers).toEqual(0);
         expect(poolInfo.totalAlgoStaked).toEqual(0n);
 
-        // ok - all in working order.. add second pool as well - no need to do
+        // ok - all in working order. add second pool as well - no need to do
         poolKeys.push(
             await addStakingPool(
                 fixture.context,
@@ -3128,7 +3128,6 @@ describe('StakeAddRemoveBugVerify', () => {
 
     let validatorId: number;
     let validatorOwnerAccount: Account;
-    let poolAppId: bigint;
     let firstPoolKey: ValidatorPoolKey;
     let firstPoolClient: StakingPoolClient;
 
@@ -3249,7 +3248,6 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
 
     let validatorId: number;
     let validatorOwnerAccount: Account;
-    const stakerAccounts: Account[] = [];
     let poolAppId: bigint;
     let firstPoolKey: ValidatorPoolKey;
     let firstPoolClient: StakingPoolClient;
@@ -3334,7 +3332,6 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
                     fixture.context.algod,
                     fixture.context.kmd
                 );
-                stakerAccounts.push(stakerAccount);
 
                 // now stake 1000(+mbr), min for this pool - for the first time - which means actual stake amount will be reduced
                 // by 'first time staker' fee to cover MBR (which goes to VALIDATOR contract account, not staker contract account!)
