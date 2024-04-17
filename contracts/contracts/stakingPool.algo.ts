@@ -24,7 +24,7 @@ export type StakedInfo = {
 /**
  * StakingPool contract has a new instance deployed per staking pool added by any validator.  A single instance
  * is initially immutably deployed, and the id of that instance is used as a construction parameter in the immutable
- * instance of the master ValidatoryRegistry contract.  It then uses that StakingPool instance as a 'factory template'
+ * instance of the master ValidatorRegistry contract.  It then uses that StakingPool instance as a 'factory template'
  * for subsequent pool creations - using the on-chain bytecode of that deployed instance to create a new identical
  * instance.
  *
@@ -112,7 +112,7 @@ export class StakingPool extends Contract {
     }
 
     /**
-     * Called after we're created and then funded so we can create our large stakers ledger storage
+     * Called after we're created and then funded, so we can create our large stakers ledger storage
      * Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost
      * If this is pool 1 AND the validator has specified a reward token, opt-in to that token
      * so that the validator can seed the pool with future rewards of that token.
@@ -193,7 +193,8 @@ export class StakingPool extends Contract {
 
                 this.totalAlgoStaked.value += stakedAmountPayment.amount;
                 return entryTime;
-            } else if (firstEmpty === 0 && cmpStaker.account === globals.zeroAddress) {
+            }
+            if (firstEmpty === 0 && cmpStaker.account === globals.zeroAddress) {
                 firstEmpty = i + 1;
             }
         }
@@ -539,7 +540,7 @@ export class StakingPool extends Contract {
         }
 
         // if tokens are rewarded by this validator and determine how much we have to hand out
-        // we'll track amount we actually assign out and let our validator know so it can mark that amount
+        // we'll track amount we actually assign out and let our validator know, so it can mark that amount
         // as being held back (for tracking what has been assigned for payout)
         let tokenRewardAvail = 0;
         let tokenRewardPaidOut = 0;
@@ -554,19 +555,19 @@ export class StakingPool extends Contract {
             if (tokenRewardBal >= validatorConfig.rewardPerPayout) {
                 // Now - adjust the token rewards to be relative based on this pools stake as % of 'total validator stake'
                 // using our prior snapshotted data
-                // ignore is because ts thinks tokenPayoutRatio might not be set prior to this call but it has to be,
+                // ignore is because ts thinks tokenPayoutRatio might not be set prior to this call, but it has to be,
                 // based on isTokenEligible
                 // @ts-ignore typescript
                 const ourPoolPctOfWhole = tokenPayoutRatio.poolPctOfWhole[this.poolId.value - 1];
 
-                // now adjust the total reward to hand out for this pool based on this pools % of the whole
+                // now adjust the total reward to hand out for this pool based on the pools % of the whole
                 tokenRewardAvail = wideRatio([validatorConfig.rewardPerPayout, ourPoolPctOfWhole], [1_000_000]);
             }
         }
         if (tokenRewardAvail === 0) {
             // no token reward - then algo MUST be paid out as we have to do 'something' !
             // Reward available needs to be at lest 1 algo if an algo reward HAS to be paid out (no token reward)
-            // So - we don't ERROR out but we do exit early.  We still want the 'last payout time and epoch number'
+            // So - we don't ERROR out, but we do exit early.  We still want the 'last payout time and epoch number'
             // to be updated.
             if (algoRewardAvail < 1_000_000) {
                 log('no token rewards or algo to pay out');
