@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/manifoldco/promptui"
@@ -54,6 +56,11 @@ func GetValidatorCmdOpts() *cli.Command {
 						Action: ChangeCommission,
 					},
 				},
+			},
+			{
+				Name:   "dumpAllStakers",
+				Usage:  "Display info about the validator's current state from the chain",
+				Action: DumpAllStakers,
 			},
 		},
 	}
@@ -202,6 +209,62 @@ func DefineValidator() error {
 	info.Config.ID = validatorId
 	slog.Info("New Validator added, your Validator id is:", "id", info.Config.ID)
 	return App.retiClient.LoadState(context.Background())
+}
+
+func DumpAllStakers(ctx context.Context, command *cli.Command) error {
+	if App.retiClient.RetiAppId == 0 {
+		return fmt.Errorf("validator not configured")
+	}
+	numVs, err := App.retiClient.GetNumValidators()
+	if err != nil {
+		return err
+	}
+	type StakerInfo struct {
+		Account  string  `json:"account"`
+		Stake    float64 `json:"stake"`
+		NumPools uint64  `json:"numPools"`
+	}
+	var stakers = map[string]StakerInfo{}
+
+	for valID := 1; valID <= int(numVs); valID++ {
+		pools, err := App.retiClient.GetValidatorPools(uint64(valID))
+		if err != nil {
+			return fmt.Errorf("error getting validator pools %d: %w", valID, err)
+		}
+		for _, pool := range pools {
+			ledger, err := App.retiClient.GetLedgerForPool(pool.PoolAppId)
+			if err != nil {
+				if strings.Contains(err.Error(), "box not found") {
+					// probably didn't finish initializing pool
+					continue
+				}
+				return fmt.Errorf("error getting ledger for pool %d: %w", pool.PoolAppId, err)
+			}
+			for _, stakerData := range ledger {
+				if stakerData.Account == types.ZeroAddress {
+					continue
+				}
+				existingData, found := stakers[stakerData.Account.String()]
+				if found {
+					existingData.Stake += float64(stakerData.Balance) / 1e6
+					existingData.NumPools++
+					stakers[stakerData.Account.String()] = existingData
+				} else {
+					stakers[stakerData.Account.String()] = StakerInfo{
+						Account:  stakerData.Account.String(),
+						Stake:    float64(stakerData.Balance) / 1e6,
+						NumPools: 1,
+					}
+				}
+			}
+		}
+	}
+	// output the stakers data as a csv file
+	csvData := "Account,Stake,NumPools\n"
+	for _, staker := range stakers {
+		csvData += fmt.Sprintf("%s,%f,%d\n", staker.Account, staker.Stake, staker.NumPools)
+	}
+	return os.WriteFile("stakers.csv", []byte(csvData), 0644)
 }
 
 func getInt(prompt string, defVal int, minVal int, maxVal int) (int, error) {

@@ -342,7 +342,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	}
 	// We need to set all the box references ourselves still in go, so we need the id of the 'next' validator
 	// We'll do the next two just to be safe (for race condition of someone else adding validator before us)
-	curValidatorId, err := r.getNumValidators()
+	curValidatorId, err := r.GetNumValidators()
 	if err != nil {
 		return 0, err
 	}
@@ -1322,7 +1322,7 @@ func (r *Reti) doesStakerNeedToPayMBR(staker types.Address) (bool, error) {
 	return false, errors.New("unknown return value from doesStakerNeedToPayMBR")
 }
 
-func (r *Reti) getNumValidators() (uint64, error) {
+func (r *Reti) GetNumValidators() (uint64, error) {
 	appInfo, err := r.algoClient.GetApplicationByID(r.RetiAppId).Do(context.Background())
 	if err != nil {
 		return 0, err
