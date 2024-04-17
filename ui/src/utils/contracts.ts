@@ -3,7 +3,7 @@ import algosdk from 'algosdk'
 import { z } from 'zod'
 import { getAccountInformation } from '@/api/algod'
 import { AssetHolding } from '@/interfaces/algod'
-import { StakerValidatorData } from '@/interfaces/staking'
+import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
   NodeInfo,
@@ -98,6 +98,16 @@ export function transformValidatorData(
     pools,
     tokenPayoutRatio,
     nodePoolAssignment,
+  }
+}
+
+export function transformStakedInfo(data: Uint8Array): StakedInfo {
+  return {
+    account: algosdk.encodeAddress(data.slice(0, 32)),
+    balance: algosdk.bytesToBigInt(data.slice(32, 40)),
+    totalRewarded: algosdk.bytesToBigInt(data.slice(40, 48)),
+    rewardTokenBalance: algosdk.bytesToBigInt(data.slice(48, 56)),
+    entryTime: Number(algosdk.bytesToBigInt(data.slice(56, 64))),
   }
 }
 

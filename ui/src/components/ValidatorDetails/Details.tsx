@@ -2,7 +2,8 @@ import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Validator } from '@/interfaces/validator'
 import { formatDuration } from '@/utils/dayjs'
-import { ellipseAddress } from '@/utils/ellipseAddress'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
+import { ExplorerLink } from '@/utils/explorer'
 
 interface DetailsProps {
   validator: Validator
@@ -20,22 +21,43 @@ export function Details({ validator }: DetailsProps) {
             <dl className="divide-y divide-foreground-muted">
               <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Owner</dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                  {ellipseAddress(validator.config.owner)}
+                <dd className="flex items-center gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
+                  <a
+                    href={ExplorerLink.account(validator.config.owner)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:underline"
+                  >
+                    {ellipseAddressJsx(validator.config.owner)}
+                  </a>
                 </dd>
               </div>
               <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Manager</dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                  {ellipseAddress(validator.config.manager)}
+                <dd className="flex items-center gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
+                  <a
+                    href={ExplorerLink.account(validator.config.manager)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:underline"
+                  >
+                    {ellipseAddressJsx(validator.config.manager)}
+                  </a>
                 </dd>
               </div>
               <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">
                   Commission Account
                 </dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                  {ellipseAddress(validator.config.validatorCommissionAddress)}
+                <dd className="flex items-center gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
+                  <a
+                    href={ExplorerLink.account(validator.config.validatorCommissionAddress)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:underline"
+                  >
+                    {ellipseAddressJsx(validator.config.validatorCommissionAddress)}
+                  </a>
                 </dd>
               </div>
               <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">

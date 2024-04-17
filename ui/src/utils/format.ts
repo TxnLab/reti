@@ -80,3 +80,17 @@ export function formatAlgoAmount(
 ): string {
   return formatAssetAmount(amount, microalgos, 6, trim, maxLength)
 }
+
+export function roundToFirstNonZeroDecimal(num: number) {
+  if (num === 0) return 0
+
+  // Convert the number to exponential format to easily find the exponent
+  const expForm = num.toExponential().split('e')
+  const exponent = parseInt(expForm[1])
+
+  // Calculate the number of decimal places needed
+  const decimalPlaces = Math.abs(exponent)
+
+  // Use toFixed to round to the first significant decimal place
+  return Number(num.toFixed(decimalPlaces))
+}

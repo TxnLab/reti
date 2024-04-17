@@ -1,4 +1,4 @@
-import { useWallet } from '@txnlab/use-wallet-react'
+// import { useWallet } from '@txnlab/use-wallet-react'
 import { NfdAvatar } from '@/components/NfdAvatar'
 import { Validator } from '@/interfaces/validator'
 
@@ -7,15 +7,15 @@ interface DetailsHeaderProps {
 }
 
 export function DetailsHeader({ validator }: DetailsHeaderProps) {
-  const { activeAddress } = useWallet()
+  // const { activeAddress } = useWallet()
 
-  const isManager = validator.config.manager === activeAddress
-  const isOwner = validator.config.owner === activeAddress
-  const canEdit = isManager || isOwner
+  // const isManager = validator.config.manager === activeAddress
+  // const isOwner = validator.config.owner === activeAddress
+  // const canEdit = isManager || isOwner
 
   return (
     <header className="mx-auto flex flex-col items-center gap-2 py-8 md:py-12 md:pb-8 max-w-3xl">
-      {canEdit && (
+      {/* {canEdit && (
         <a
           className="inline-flex items-center rounded-lg bg-muted px-3 py-1 text-sm font-medium"
           href="/docs/changelog"
@@ -57,7 +57,7 @@ export function DetailsHeader({ validator }: DetailsHeaderProps) {
             ></path>
           </svg>
         </a>
-      )}
+      )} */}
       <h1 className="flex items-center gap-3 sm:gap-4 text-center text-3xl font-bold leading-tight tracking-tighter md:text-6xl lg:leading-[1.1] text-balance">
         {validator.nfd ? (
           <NfdAvatar nfd={validator.nfd} className="h-8 w-8 sm:h-16 sm:w-16" />
@@ -77,21 +77,21 @@ export function DetailsHeader({ validator }: DetailsHeaderProps) {
           {validator.nfd.properties.userDefined.bio}
         </span>
       )}
-      <div className="flex w-full items-center justify-center space-x-4 py-4 md:pb-10">
+      {/* <div className="flex w-full items-center justify-center space-x-4 py-4 md:pb-10">
         <a
-          href="#blocks"
+          href="#"
           className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
         >
           Add Stake
         </a>
         <a
-          href="https://github.com/shadcn-ui/ui/discussions/new?category=blocks-request"
+          href="#"
           target="_blank"
           className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
         >
           Unstake
         </a>
-      </div>
+      </div> */}
     </header>
   )
 }

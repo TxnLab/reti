@@ -1,7 +1,6 @@
 import { Details } from '@/components/ValidatorDetails/Details'
 import { Highlights } from '@/components/ValidatorDetails/Highlights'
-import { StakeChart } from '@/components/ValidatorDetails/StakeChart'
-import { StakersChart } from '@/components/ValidatorDetails/StakersChart'
+import { StakingDetails } from '@/components/ValidatorDetails/StakingDetails'
 import { Constraints, Validator } from '@/interfaces/validator'
 
 interface ValidatorDetailsProps {
@@ -18,8 +17,7 @@ export function ValidatorDetails({ validator, constraints }: ValidatorDetailsPro
           <Details validator={validator} />
         </div>
         <div className="space-y-4 lg:col-span-2">
-          <StakeChart validator={validator} />
-          <StakersChart validator={validator} />
+          <StakingDetails validator={validator} constraints={constraints} />
         </div>
       </div>
     </div>

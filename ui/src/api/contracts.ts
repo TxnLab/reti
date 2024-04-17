@@ -22,9 +22,10 @@ import {
   ValidatorConfigInput,
   ValidatorPoolKey,
 } from '@/interfaces/validator'
-import { gatingValueFromBigint } from '@/utils/bytes'
+import { chunkBytes, gatingValueFromBigint } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
+  transformStakedInfo,
   transformValidatorConfig,
   transformValidatorData,
 } from '@/utils/contracts'
@@ -41,6 +42,7 @@ const algodClient = algokit.getAlgoClient({
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 
 const FEE_SINK = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
+const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ'
 
 export const makeSimulateValidatorClient = (senderAddr: string = FEE_SINK) => {
   return new ValidatorRegistryClient(
@@ -692,9 +694,9 @@ export async function fetchStakerPoolData(
 
     const stakedInfo: StakedInfo = {
       account,
-      balance: Number(balance),
-      totalRewarded: Number(totalRewarded),
-      rewardTokenBalance: Number(rewardTokenBalance),
+      balance,
+      totalRewarded,
+      rewardTokenBalance,
       entryTime: Number(entryTime),
     }
 
@@ -914,10 +916,15 @@ export async function fetchPoolInfo(
 
     const [poolAppId, totalStakers, totalAlgoStaked] = result.returns![0]
 
+    const stakingPoolClient = makeSimulateStakingPoolClient(poolAppId)
+    const poolAppRef = await stakingPoolClient.appClient.getAppReference()
+    const poolAddress = poolAppRef.appAddress
+
     return {
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
       totalAlgoStaked,
+      poolAddress,
     }
   } catch (error) {
     console.error(error)
@@ -946,10 +953,20 @@ export async function fetchValidatorPools(
 
     const poolsInfo = result.returns![0]
 
-    return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked]) => ({
+    const poolAddresses: string[] = []
+
+    for (const poolInfo of poolsInfo) {
+      const stakingPoolClient = makeSimulateStakingPoolClient(poolInfo[0])
+      const poolAppRef = await stakingPoolClient.appClient.getAppReference()
+      const poolAddress = poolAppRef.appAddress
+      poolAddresses.push(poolAddress)
+    }
+
+    return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked], i) => ({
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
       totalAlgoStaked,
+      poolAddress: poolAddresses[i],
     }))
   } catch (error) {
     console.error(error)
@@ -1025,4 +1042,20 @@ export async function claimTokens(
     { atc: atc2, sendParams: { populateAppCallResources: true } },
     algodClient,
   )
+}
+
+export async function fetchStakedInfoForPool(poolAppId: number): Promise<StakedInfo[]> {
+  try {
+    const stakingPoolClient = makeSimulateStakingPoolClient(poolAppId)
+    const boxValue = await stakingPoolClient.appClient.getBoxValue('stakers')
+
+    const stakersInfo = chunkBytes(boxValue)
+      .map((stakerData) => transformStakedInfo(stakerData))
+      .filter((staker) => staker.account !== ALGORAND_ZERO_ADDRESS_STRING)
+
+    return stakersInfo
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
 }
