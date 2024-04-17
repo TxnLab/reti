@@ -304,6 +304,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
     } finally {
       setIsSigning(false)
       setValidator(null)
+      setIsOpen(false)
     }
   }
 

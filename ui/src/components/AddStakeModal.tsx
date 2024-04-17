@@ -390,6 +390,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
     } finally {
       setIsSigning(false)
       setValidator(null)
+      setIsOpen(false)
     }
   }
 
