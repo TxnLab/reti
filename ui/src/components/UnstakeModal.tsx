@@ -88,7 +88,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         )
 
         if (stakerPoolData && validator) {
-          const currentBalance = stakerPoolData.balance
+          const currentBalance = Number(stakerPoolData.balance)
           const minimumStake = Number(validator.config.minEntryStake)
 
           if (amountToUnstake > currentBalance) {
@@ -152,7 +152,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       return
     }
 
-    form.setValue('amountToUnstake', AlgoAmount.MicroAlgos(pool.balance).algos.toString(), {
+    form.setValue('amountToUnstake', AlgoAmount.MicroAlgos(Number(pool.balance)).algos.toString(), {
       shouldValidate: true,
     })
   }
@@ -211,10 +211,10 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         )
 
         if (updatedPool) {
-          const newBalance = updatedPool.balance - amountToUnstake
+          const newBalance = updatedPool.balance - BigInt(amountToUnstake)
 
           const newPools =
-            newBalance === 0
+            newBalance === BigInt(0)
               ? stakerValidatorData.pools.filter((p) => p.poolKey.poolId !== pool.poolKey.poolId)
               : stakerValidatorData.pools.map((p) => {
                   if (p.poolKey.poolId === pool.poolKey.poolId) {
@@ -244,7 +244,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                 if (data.validatorId === pool.poolKey.validatorId) {
                   return {
                     ...data,
-                    balance: data.balance - amountToUnstake,
+                    balance: data.balance - BigInt(amountToUnstake),
                     pools: newPools,
                   }
                 }
@@ -304,6 +304,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
     } finally {
       setIsSigning(false)
       setValidator(null)
+      setIsOpen(false)
     }
   }
 

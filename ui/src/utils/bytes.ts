@@ -38,3 +38,17 @@ export function decodeUint8ArrayToBigint(data: Uint8Array): bigint {
 
   return result
 }
+
+/**
+ * Splits a Uint8Array into chunks of a given size.
+ * @param {Uint8Array} data - The Uint8Array to split into chunks
+ * @param {number} chunkSize - The size of each chunk
+ * @returns {Uint8Array[]} - An array of Uint8Array chunks
+ */
+export function chunkBytes(data: Uint8Array, chunkSize: number = 64): Uint8Array[] {
+  const chunks: Uint8Array[] = []
+  for (let i = 0; i < data.length; i += chunkSize) {
+    chunks.push(data.slice(i, i + chunkSize))
+  }
+  return chunks
+}

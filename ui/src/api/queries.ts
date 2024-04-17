@@ -4,7 +4,9 @@ import {
   fetchMbrAmounts,
   fetchNodePoolAssignments,
   fetchProtocolConstraints,
+  fetchStakedInfoForPool,
   fetchValidator,
+  fetchValidatorPools,
   fetchValidators,
 } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
@@ -68,4 +70,18 @@ export const nfdQueryOptions = (
     queryKey: ['nfd', String(nameOrId), params],
     queryFn: () => fetchNfd(String(nameOrId), params),
     enabled: !!nameOrId,
+  })
+
+export const validatorPoolsQueryOptions = (validatorId: number) =>
+  queryOptions({
+    queryKey: ['validator-pools', validatorId],
+    queryFn: () => fetchValidatorPools(validatorId),
+    enabled: !!validatorId,
+  })
+
+export const stakedInfoQueryOptions = (poolAppId: number) =>
+  queryOptions({
+    queryKey: ['staked-info', poolAppId],
+    queryFn: () => fetchStakedInfoForPool(poolAppId),
+    enabled: !!poolAppId,
   })
