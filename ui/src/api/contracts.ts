@@ -3,11 +3,13 @@ import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/type
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { fetchNfd } from '@/api/nfd'
+import { ALGORAND_ZERO_ADDRESS_STRING, FEE_SINK } from '@/constants/accounts'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
+  EntryGatingAssets,
   MbrAmounts,
   NodePoolAssignmentConfig,
   PoolInfo,
@@ -22,7 +24,7 @@ import {
   ValidatorConfigInput,
   ValidatorPoolKey,
 } from '@/interfaces/validator'
-import { chunkBytes, gatingValueFromBigint } from '@/utils/bytes'
+import { chunkBytes } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
   transformStakedInfo,
@@ -40,9 +42,6 @@ const algodClient = algokit.getAlgoClient({
 })
 
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
-
-const FEE_SINK = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
-const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ'
 
 export const makeSimulateValidatorClient = (senderAddr: string = FEE_SINK) => {
   return new ValidatorRegistryClient(
@@ -252,11 +251,12 @@ export async function addValidator(
   })
 
   const entryGatingType = Number(values.entryGatingType || 0)
+  const entryGatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
+  const entryGatingAssets = new Array(4).fill(0) as EntryGatingAssets
 
-  const entryGatingValue =
-    entryGatingType == 1
-      ? algosdk.decodeAddress(values.entryGatingValue!).publicKey // relying on form validation
-      : gatingValueFromBigint(BigInt(values.entryGatingValue!))
+  for (let i = 0; i < values.entryGatingAssets.length && i < 4; i++) {
+    entryGatingAssets[i] = Number(values.entryGatingAssets[i] || 0)
+  }
 
   const validatorConfig: ValidatorConfig = {
     id: 0, // id not known yet
@@ -264,7 +264,8 @@ export async function addValidator(
     manager: values.manager,
     nfdForInfo: nfdAppId,
     entryGatingType,
-    entryGatingValue,
+    entryGatingAddress,
+    entryGatingAssets,
     gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
     rewardTokenId: Number(values.rewardTokenId || 0),
     rewardPerPayout: BigInt(values.rewardPerPayout || 0),
@@ -295,7 +296,8 @@ export async function addValidator(
           validatorConfig.manager,
           validatorConfig.nfdForInfo,
           validatorConfig.entryGatingType,
-          validatorConfig.entryGatingValue,
+          validatorConfig.entryGatingAddress,
+          validatorConfig.entryGatingAssets,
           validatorConfig.gatingAssetMinBalance,
           validatorConfig.rewardTokenId,
           validatorConfig.rewardPerPayout,
@@ -341,7 +343,8 @@ export async function addValidator(
           validatorConfig.manager,
           validatorConfig.nfdForInfo,
           validatorConfig.entryGatingType,
-          validatorConfig.entryGatingValue,
+          validatorConfig.entryGatingAddress,
+          validatorConfig.entryGatingAssets,
           validatorConfig.gatingAssetMinBalance,
           validatorConfig.rewardTokenId,
           validatorConfig.rewardPerPayout,
