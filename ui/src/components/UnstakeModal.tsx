@@ -196,6 +196,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         },
       )
 
+      // Manually update ['validators'] query to avoid refetching
       const allStakerData = queryClient.getQueryData<StakerValidatorData[]>([
         'stakes',
         { staker: activeAddress },
@@ -229,51 +230,6 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
           const allStakeRemoved = newPools.length === 0
 
-          queryClient.setQueryData<StakerValidatorData[]>(
-            ['stakes', { staker: activeAddress }],
-            (prevData) => {
-              if (!prevData) {
-                return prevData
-              }
-
-              if (allStakeRemoved) {
-                return prevData.filter((d) => d.validatorId !== pool.poolKey.validatorId)
-              }
-
-              return prevData.map((data) => {
-                if (data.validatorId === pool.poolKey.validatorId) {
-                  return {
-                    ...data,
-                    balance: data.balance - BigInt(amountToUnstake),
-                    pools: newPools,
-                  }
-                }
-
-                return data
-              })
-            },
-          )
-
-          queryClient.setQueryData<Validator>(
-            ['validator', String(pool.poolKey.validatorId)],
-            (prevData) => {
-              if (!prevData) {
-                return prevData
-              }
-
-              return {
-                ...prevData,
-                state: {
-                  ...prevData.state,
-                  totalStakers: allStakeRemoved
-                    ? prevData.state.totalStakers - 1
-                    : prevData.state.totalStakers,
-                  totalAlgoStaked: prevData.state.totalAlgoStaked - BigInt(amountToUnstake),
-                },
-              }
-            },
-          )
-
           queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
             if (!prevData) {
               return prevData
@@ -297,6 +253,9 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         }
       }
 
+      // Invalidate other queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
+      queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to remove stake from pool', { id: toastId })

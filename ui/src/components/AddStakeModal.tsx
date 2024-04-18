@@ -37,14 +37,12 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import {
   fetchGatingAssets,
   findQualifiedGatingAssetId,
   hasQualifiedGatingAsset,
 } from '@/utils/contracts'
-import { dayjs } from '@/utils/dayjs'
 import { formatAlgoAmount } from '@/utils/format'
 
 interface AddStakeModalProps {
@@ -265,103 +263,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         },
       )
 
-      queryClient.setQueryData<StakerValidatorData[]>(
-        ['stakes', { staker: activeAddress }],
-        (prevData) => {
-          if (!prevData) {
-            return prevData
-          }
-
-          const poolData: StakerPoolData = {
-            poolKey,
-            account: activeAddress,
-            balance: BigInt(amountToStake),
-            totalRewarded: BigInt(0),
-            rewardTokenBalance: BigInt(0),
-            entryTime: dayjs().unix(),
-          }
-
-          // Check if the staker already has a stake with the validator
-          const existingValidatorData = prevData.find(
-            (data) => data.validatorId === poolKey.validatorId,
-          )
-
-          if (existingValidatorData) {
-            // Check if the staker already has a stake in the pool
-            const existingPool = existingValidatorData.pools.find(
-              (pool) => pool.poolKey.poolId === poolKey.poolId,
-            )
-
-            if (existingPool) {
-              // Update the existing pool
-              return prevData.map((data) => {
-                if (data.validatorId === poolKey.validatorId) {
-                  return {
-                    ...data,
-                    balance: data.balance + BigInt(amountToStake),
-                    pools: data.pools.map((pool) => {
-                      if (pool.poolKey.poolId === poolKey.poolId) {
-                        return {
-                          ...pool,
-                          balance: pool.balance + BigInt(amountToStake),
-                        }
-                      }
-
-                      return pool
-                    }),
-                  }
-                }
-
-                return data
-              })
-            }
-
-            // Add the new pool to the existing validator stake data
-            return prevData.map((data) => {
-              if (data.validatorId === poolKey.validatorId) {
-                return {
-                  ...data,
-                  balance: data.balance + BigInt(amountToStake),
-                  pools: [...data.pools, poolData],
-                }
-              }
-
-              return data
-            })
-          }
-
-          // Add a new validator stake entry
-          return [
-            ...prevData,
-            {
-              validatorId: poolKey.validatorId,
-              balance: BigInt(amountToStake),
-              totalRewarded: BigInt(0),
-              rewardTokenBalance: BigInt(0),
-              entryTime: dayjs().unix(),
-              pools: [poolData],
-            },
-          ]
-        },
-      )
-
-      queryClient.setQueryData<Validator>(['validator', String(validator!.id)], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
-
-        return {
-          ...prevData,
-          state: {
-            ...prevData.state,
-            totalStakers: isNewStaker
-              ? prevData.state.totalStakers + 1
-              : prevData.state.totalStakers,
-            totalAlgoStaked: prevData.state.totalAlgoStaked + BigInt(amountToStake),
-          },
-        }
-      })
-
+      // Manually update ['validators'] query to avoid refetching
       queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
         if (!prevData) {
           return prevData
@@ -383,6 +285,9 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         })
       })
 
+      // Invalidate other queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
+      queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to add stake to pool', { id: toastId })
