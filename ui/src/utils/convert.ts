@@ -4,9 +4,14 @@ export function convertToStringTypes<T>(obj: T): ToStringTypes<T> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: any = {}
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      result[key] = String(obj[key])
+    const value = obj[key]
+    if (Array.isArray(value)) {
+      // For arrays and tuples convert each element to a string
+      result[key] = value.map(String)
+    } else {
+      // Convert non-array values to strings
+      result[key] = String(value)
     }
   }
-  return result
+  return result as ToStringTypes<T>
 }

@@ -2,7 +2,16 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
 import { getAccountInformation } from '@/api/algod'
+import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
+import {
+  GATING_TYPE_ASSETS_CREATED_BY,
+  GATING_TYPE_ASSET_ID,
+  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+  GATING_TYPE_NONE,
+  GATING_TYPE_SEGMENT_OF_NFD,
+} from '@/constants/gating'
 import { AssetHolding } from '@/interfaces/algod'
+import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -18,8 +27,8 @@ import {
   RawValidatorState,
   PoolInfo,
   RawPoolsInfo,
+  EntryGatingAssets,
 } from '@/interfaces/validator'
-import { decodeUint8ArrayToBigint } from '@/utils/bytes'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
@@ -29,18 +38,19 @@ export function transformValidatorConfig(rawConfig: RawValidatorConfig): Validat
     manager: rawConfig[2],
     nfdForInfo: Number(rawConfig[3]),
     entryGatingType: Number(rawConfig[4]),
-    entryGatingValue: rawConfig[5],
-    gatingAssetMinBalance: rawConfig[6],
-    rewardTokenId: Number(rawConfig[7]),
-    rewardPerPayout: rawConfig[8],
-    payoutEveryXMins: Number(rawConfig[9]),
-    percentToValidator: Number(rawConfig[10]),
-    validatorCommissionAddress: rawConfig[11],
-    minEntryStake: rawConfig[12],
-    maxAlgoPerPool: rawConfig[13],
-    poolsPerNode: Number(rawConfig[14]),
-    sunsettingOn: Number(rawConfig[15]),
-    sunsettingTo: Number(rawConfig[16]),
+    entryGatingAddress: rawConfig[5],
+    entryGatingAssets: rawConfig[6].map((asset) => Number(asset)) as EntryGatingAssets,
+    gatingAssetMinBalance: rawConfig[7],
+    rewardTokenId: Number(rawConfig[8]),
+    rewardPerPayout: rawConfig[9],
+    payoutEveryXMins: Number(rawConfig[10]),
+    percentToValidator: Number(rawConfig[11]),
+    validatorCommissionAddress: rawConfig[12],
+    minEntryStake: rawConfig[13],
+    maxAlgoPerPool: rawConfig[14],
+    poolsPerNode: Number(rawConfig[15]),
+    sunsettingOn: Number(rawConfig[16]),
+    sunsettingTo: Number(rawConfig[17]),
   }
 }
 
@@ -173,7 +183,27 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         message: 'NFD name is invalid',
       }),
       entryGatingType: z.string(),
-      entryGatingValue: z.string(),
+      entryGatingAddress: z.string(),
+      entryGatingAssets: z.array(
+        z.object({
+          value: z
+            .string()
+            .refine(
+              (val) =>
+                val === '' ||
+                (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
+              {
+                message: 'Invalid asset ID',
+              },
+            ),
+        }),
+      ),
+      entryGatingNfdCreator: z.string().refine((val) => val === '' || isValidName(val), {
+        message: 'NFD name is invalid',
+      }),
+      entryGatingNfdParent: z.string().refine((val) => val === '' || isValidRoot(val), {
+        message: 'Root/parent NFD name is invalid',
+      }),
       gatingAssetMinBalance: z
         .string()
         .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
@@ -299,57 +329,151 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
         }),
     })
     .superRefine((data, ctx) => {
-      const { entryGatingType, entryGatingValue, gatingAssetMinBalance } = data
+      const {
+        entryGatingType,
+        entryGatingAddress,
+        entryGatingAssets,
+        entryGatingNfdCreator,
+        entryGatingNfdParent,
+        gatingAssetMinBalance,
+      } = data
 
       switch (entryGatingType) {
-        case '0':
-          if (entryGatingValue !== '') {
+        case String(GATING_TYPE_NONE):
+          if (entryGatingAddress !== '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['entryGatingValue'],
-              message: 'entryGatingValue must be empty when entryGatingType is 0',
+              path: ['entryGatingAddress'],
+              message: 'entryGatingAddress should not be set when entry gating is disabled',
+            })
+          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAssets'],
+              message: 'entryGatingAssets should not be set when entry gating is disabled',
+            })
+          } else if (entryGatingNfdCreator !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdCreator'],
+              message: 'entryGatingNfdCreator should not be set when entry gating is disabled',
+            })
+          } else if (entryGatingNfdParent !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdParent'],
+              message: 'entryGatingNfdParent should not be set when entry gating is disabled',
             })
           }
           break
-        case '1':
-          if (typeof entryGatingValue !== 'string' || !algosdk.isValidAddress(entryGatingValue)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingValue'],
-              message: 'Invalid Algorand address',
-            })
-          }
-          break
-        case '2':
+        case String(GATING_TYPE_ASSETS_CREATED_BY):
           if (
-            !(
-              !isNaN(Number(entryGatingValue)) &&
-              Number.isInteger(Number(entryGatingValue)) &&
-              Number(entryGatingValue) > 0
-            )
+            typeof entryGatingAddress !== 'string' ||
+            !algosdk.isValidAddress(entryGatingAddress)
           ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['entryGatingValue'],
-              message: 'Invalid asset ID',
+              path: ['entryGatingAddress'],
+              message: 'Invalid Algorand address',
+            })
+          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAssets'],
+              message: 'entryGatingAssets should not be set when entryGatingType is 1',
+            })
+          } else if (entryGatingNfdCreator !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdCreator'],
+              message: 'entryGatingNfdCreator should not be set when entryGatingType is 1',
+            })
+          } else if (entryGatingNfdParent !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdParent'],
+              message: 'entryGatingNfdParent should not be set when entryGatingType is 1',
             })
           }
           break
-        case '3':
-          if (typeof entryGatingValue !== 'string' || !isValidName(entryGatingValue)) {
+        case String(GATING_TYPE_ASSET_ID):
+          if (entryGatingAssets.length === 0) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['entryGatingValue'],
-              message: 'NFD name is invalid',
+              path: ['entryGatingAssets'],
+              message: 'No gating asset(s) provided',
+            })
+          } else if (entryGatingAssets.length > 4) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAssets'],
+              message: 'Cannot have more than 4 gating assets',
+            })
+          } else if (!entryGatingAssets.some((asset) => asset.value !== '')) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAssets'],
+              message: 'Must provide at least one gating asset',
+            })
+          } else if (entryGatingAddress !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAddress'],
+              message: 'entryGatingAddress should not be set when entryGatingType is 2',
+            })
+          } else if (entryGatingNfdCreator !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdCreator'],
+              message: 'entryGatingNfdCreator should not be set when entryGatingType is 2',
+            })
+          } else if (entryGatingNfdParent !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdParent'],
+              message: 'entryGatingNfdParent should not be set when entryGatingType is 2',
             })
           }
           break
-        case '4':
-          if (typeof entryGatingValue !== 'string' || !isValidRoot(entryGatingValue)) {
+        case String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES):
+          if (entryGatingAddress !== '') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              path: ['entryGatingValue'],
-              message: 'Root/Parent NFD name is invalid',
+              path: ['entryGatingAddress'],
+              message: 'entryGatingAddress should not be set when entryGatingType is 3',
+            })
+          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAssets'],
+              message: 'entryGatingAssets should not be set when entryGatingType is 3',
+            })
+          } else if (entryGatingNfdParent !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdParent'],
+              message: 'entryGatingNfdParent should not be set when entryGatingType is 3',
+            })
+          }
+          break
+        case String(GATING_TYPE_SEGMENT_OF_NFD):
+          if (entryGatingAddress !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAddress'],
+              message: 'entryGatingAddress should not be set when entryGatingType is 4',
+            })
+          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingAssets'],
+              message: 'entryGatingAssets should not be set when entryGatingType is 4',
+            })
+          } else if (entryGatingNfdCreator !== '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['entryGatingNfdCreator'],
+              message: 'entryGatingNfdCreator should not be set when entryGatingType is 4',
             })
           }
           break
@@ -357,9 +481,15 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           break
       }
 
-      if (['1', '2', '3', '4'].includes(String(entryGatingType))) {
+      const isGatingEnabled = [
+        String(GATING_TYPE_ASSETS_CREATED_BY),
+        String(GATING_TYPE_ASSET_ID),
+        String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
+        String(GATING_TYPE_SEGMENT_OF_NFD),
+      ].includes(String(entryGatingType))
+
+      if (isGatingEnabled) {
         if (
-          !gatingAssetMinBalance ||
           isNaN(Number(gatingAssetMinBalance)) ||
           !Number.isInteger(Number(gatingAssetMinBalance)) ||
           Number(gatingAssetMinBalance) <= 0
@@ -367,9 +497,15 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['gatingAssetMinBalance'],
-            message: 'Must be a positive integer',
+            message: 'Invalid minimum balance',
           })
         }
+      } else if (gatingAssetMinBalance !== '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['gatingAssetMinBalance'],
+          message: 'gatingAssetMinBalance should not be set when entry gating is disabled',
+        })
       }
     })
 }
@@ -384,6 +520,29 @@ export function getEpochLengthMinutes(value: string, epochTimeframe: string): nu
       return Number(value) * 60 * 24
     default:
       return 0
+  }
+}
+
+export function transformEntryGatingAssets(
+  type: string,
+  assets: Array<{ value: string }>,
+  nfdCreatorAppId: number,
+  nfdParentAppId: number,
+): string[] {
+  const fixedLengthArray: string[] = new Array(4).fill('0')
+
+  switch (type) {
+    case String(GATING_TYPE_ASSET_ID):
+      for (let i = 0; i < assets.length && i < 4; i++) {
+        fixedLengthArray[i] = assets[i].value !== '' ? assets[i].value : '0'
+      }
+      return fixedLengthArray.sort((a, b) => Number(b) - Number(a))
+    case String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES):
+      return [nfdCreatorAppId.toString(), '0', '0', '0']
+    case String(GATING_TYPE_SEGMENT_OF_NFD):
+      return [nfdParentAppId.toString(), '0', '0', '0']
+    default:
+      return fixedLengthArray
   }
 }
 
@@ -488,17 +647,18 @@ export function canManageValidator(activeAddress: string | null, validator: Vali
   return owner === activeAddress || manager === activeAddress
 }
 
-export async function fetchGatingAssets(validator: Validator | null): Promise<number[]> {
-  if (!validator) {
+export async function fetchGatingAssets(
+  validator: Validator | null,
+  activeAddress: string | null,
+): Promise<number[]> {
+  if (!validator || !activeAddress) {
     return []
   }
 
-  if (validator.config.entryGatingType === 0) {
-    return []
-  }
+  const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
-  if (validator.config.entryGatingType === 1) {
-    const creatorAddress = algosdk.encodeAddress(validator.config.entryGatingValue)
+  if (entryGatingType === GATING_TYPE_ASSETS_CREATED_BY) {
+    const creatorAddress = entryGatingAddress
     const accountInfo = await getAccountInformation(creatorAddress)
 
     if (accountInfo['created-assets']) {
@@ -507,8 +667,65 @@ export async function fetchGatingAssets(validator: Validator | null): Promise<nu
     }
   }
 
-  const assetId = decodeUint8ArrayToBigint(validator.config.entryGatingValue)
-  return [Number(assetId)]
+  if (entryGatingType === GATING_TYPE_ASSET_ID) {
+    return entryGatingAssets.filter((asset) => asset !== 0)
+  }
+
+  if (entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+    const nfdAppId = entryGatingAssets[0]
+    const nfd = await fetchNfd(nfdAppId, { view: 'tiny' })
+    const addresses = nfd.caAlgo || []
+
+    const promises = addresses.map((address) => getAccountInformation(address))
+    const accountsInfo = await Promise.all(promises)
+    const assetIds = accountsInfo
+      .map((accountInfo) => accountInfo['created-assets'])
+      .flat()
+      .filter((asset) => !!asset)
+      .map((asset) => asset!.index)
+
+    return assetIds
+  }
+
+  if (entryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
+    const parentAppID = entryGatingAssets[0]
+
+    let offset = 0
+    const limit = 20
+    let hasMoreRecords = true
+
+    const assetIds: number[] = []
+
+    while (hasMoreRecords) {
+      const params: NfdSearchV2Params = {
+        parentAppID,
+        owner: activeAddress,
+        view: 'brief',
+        limit: limit,
+        offset: offset,
+      }
+
+      try {
+        const result = await fetchNfdSearch(params)
+
+        const ids = result.nfds.map((nfd) => nfd.asaID!)
+        assetIds.push(...ids)
+
+        if (result.nfds.length < limit) {
+          hasMoreRecords = false
+        } else {
+          offset += limit
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        throw error
+      }
+    }
+
+    return assetIds
+  }
+
+  return []
 }
 
 export function hasQualifiedGatingAsset(

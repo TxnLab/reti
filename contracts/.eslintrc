@@ -15,7 +15,7 @@
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
-    "plugins": ["@typescript-eslint"],
+    "plugins": ["@typescript-eslint", "prettier"],
     "rules": {
         "@typescript-eslint/no-explicit-any": "error",
         "@typescript-eslint/ban-ts-comment": "warn",
