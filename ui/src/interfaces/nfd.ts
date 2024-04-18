@@ -74,3 +74,204 @@ export type NfdGetNFDParams = {
    */
   nocache?: boolean
 }
+
+export type NfdSearchV2View = (typeof NfdSearchV2View)[keyof typeof NfdSearchV2View]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2View = {
+  tiny: 'tiny',
+  thumbnail: 'thumbnail',
+  brief: 'brief',
+  full: 'full',
+} as const
+
+export type NfdSearchV2Sort = (typeof NfdSearchV2Sort)[keyof typeof NfdSearchV2Sort]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2Sort = {
+  createdDesc: 'createdDesc',
+  timeChangedDesc: 'timeChangedDesc',
+  soldDesc: 'soldDesc',
+  priceAsc: 'priceAsc',
+  priceDesc: 'priceDesc',
+  highestSaleDesc: 'highestSaleDesc',
+  saleTypeAsc: 'saleTypeAsc',
+  nameAsc: 'nameAsc',
+} as const
+
+export type NfdSearchV2Vproperty = (typeof NfdSearchV2Vproperty)[keyof typeof NfdSearchV2Vproperty]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2Vproperty = {
+  discord: 'discord',
+  telegram: 'telegram',
+  twitter: 'twitter',
+  github: 'github',
+  email: 'email',
+  domain: 'domain',
+  nostrpubkey: 'nostrpubkey',
+} as const
+
+export type NfdSearchV2TraitsItem =
+  (typeof NfdSearchV2TraitsItem)[keyof typeof NfdSearchV2TraitsItem]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2TraitsItem = {
+  emoji: 'emoji',
+  pristine: 'pristine',
+  segment: 'segment',
+} as const
+
+export type NfdSearchV2LengthItem =
+  (typeof NfdSearchV2LengthItem)[keyof typeof NfdSearchV2LengthItem]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2LengthItem = {
+  '1_letters': '1_letters',
+  '2_letters': '2_letters',
+  '3_letters': '3_letters',
+  '4_letters': '4_letters',
+  '5_letters': '5_letters',
+  '6_letters': '6_letters',
+  '7_letters': '7_letters',
+  '8_letters': '8_letters',
+  '9_letters': '9_letters',
+  '10+_letters': '10+_letters',
+} as const
+
+/**
+ * State of NFD
+ */
+export type NfdSearchV2StateItem = (typeof NfdSearchV2StateItem)[keyof typeof NfdSearchV2StateItem]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2StateItem = {
+  reserved: 'reserved',
+  forSale: 'forSale',
+  owned: 'owned',
+} as const
+
+/**
+ * Sale type of NFD
+ */
+export type NfdSearchV2SaleTypeItem =
+  (typeof NfdSearchV2SaleTypeItem)[keyof typeof NfdSearchV2SaleTypeItem]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2SaleTypeItem = {
+  auction: 'auction',
+  buyItNow: 'buyItNow',
+} as const
+
+/**
+ * Category of NFD
+ */
+export type NfdSearchV2CategoryItem =
+  (typeof NfdSearchV2CategoryItem)[keyof typeof NfdSearchV2CategoryItem]
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NfdSearchV2CategoryItem = {
+  curated: 'curated',
+  premium: 'premium',
+  common: 'common',
+} as const
+
+export type NfdSearchV2Params = {
+  /**
+   * name or partial match of NFD name to filter on
+   */
+  name?: string
+  category?: NfdSearchV2CategoryItem[]
+  saleType?: NfdSearchV2SaleTypeItem[]
+  state?: NfdSearchV2StateItem[]
+  /**
+   * The parent NFD Application ID to find. Used for fetching segments of an NFD
+   */
+  parentAppID?: number
+  /**
+   * Length of NFD
+   */
+  length?: NfdSearchV2LengthItem[]
+  /**
+   * Traits of NFD
+   */
+  traits?: NfdSearchV2TraitsItem[]
+  /**
+   * An Algorand account address to find all NFDs owned by that address
+   */
+  owner?: string
+  /**
+   * An Algorand account address to find all NFDs reserved for that address
+   */
+  reservedFor?: string
+  /**
+   * Should NFDs reserved for an account (transfers for example or unclaimed winning auctions) be excluded
+   */
+  excludeUserReserved?: boolean
+  /**
+   * The start of an NFD name, fetching multiple NFDs that have that prefix
+   */
+  prefix?: string
+  /**
+   * Part of an NFD name, fetching multiple NFDs that have that substring (minimum 3 characters)
+   */
+  substring?: string
+  /**
+   * Verified property name to search on - specify value with vvalue
+   */
+  vproperty?: NfdSearchV2Vproperty
+  /**
+   * Value to find in the vproperty field specified with the vproperty parameter
+   */
+  vvalue?: string
+  /**
+   * Whether to explicitly filter on segments being locked or unlocked.  Typically only valuable when filtering on unlocked
+   */
+  segmentLocked?: boolean
+  /**
+   * Whether to explicitly filter on NFD roots or segments.  True to only see roots, False to only see segments.
+   */
+  segmentRoot?: boolean
+  /**
+   * Minimum price of NFD
+   */
+  minPrice?: number
+  /**
+   * Maximum price of NFD
+   */
+  maxPrice?: number
+  /**
+   * Minimum price of NFD Segment in USD (cents)
+   */
+  minPriceUsd?: number
+  /**
+   * Maximum price of NFD Segment in USD (cents)
+   */
+  maxPriceUsd?: number
+  /**
+   * Fetch NFDs that changed after the specified timestamp
+   */
+  changedAfter?: string
+  /**
+   * Limit the number of results returned - max 200
+   */
+  limit?: number
+  /**
+   * Starting document in large list.  Fetch 1-100 [limit 100], pass offset 100 to fetch 100-200
+   */
+  offset?: number
+  /**
+   * What to sort on
+   */
+  sort?: NfdSearchV2Sort
+  /**
+   * View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only), brief (default), or full
+   */
+  view?: NfdSearchV2View
+}
+
+export interface NfdV2SearchRecords {
+  nfds: Nfd[]
+  /** total number of results, with data containing paged amount based on offset/limit */
+  total: number
+}

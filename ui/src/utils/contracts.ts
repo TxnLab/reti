@@ -2,6 +2,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { z } from 'zod'
 import { getAccountInformation } from '@/api/algod'
+import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
 import {
   GATING_TYPE_ASSETS_CREATED_BY,
   GATING_TYPE_ASSET_ID,
@@ -10,6 +11,7 @@ import {
   GATING_TYPE_SEGMENT_OF_NFD,
 } from '@/constants/gating'
 import { AssetHolding } from '@/interfaces/algod'
+import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -652,10 +654,6 @@ export async function fetchGatingAssets(validator: Validator | null): Promise<nu
 
   const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
-  if (entryGatingType === GATING_TYPE_NONE) {
-    return []
-  }
-
   if (entryGatingType === GATING_TYPE_ASSETS_CREATED_BY) {
     const creatorAddress = entryGatingAddress
     const accountInfo = await getAccountInformation(creatorAddress)
@@ -666,7 +664,64 @@ export async function fetchGatingAssets(validator: Validator | null): Promise<nu
     }
   }
 
-  return entryGatingAssets.filter((asset) => asset !== 0)
+  if (entryGatingType === GATING_TYPE_ASSET_ID) {
+    return entryGatingAssets.filter((asset) => asset !== 0)
+  }
+
+  if (entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+    const nfdAppId = entryGatingAssets[0]
+    const nfd = await fetchNfd(nfdAppId, { view: 'tiny' })
+    const addresses = nfd.caAlgo || []
+
+    const promises = addresses.map((address) => getAccountInformation(address))
+    const accountsInfo = await Promise.all(promises)
+    const assetIds = accountsInfo
+      .map((accountInfo) => accountInfo['created-assets'])
+      .flat()
+      .filter((asset) => !!asset)
+      .map((asset) => asset!.index)
+
+    return assetIds
+  }
+
+  if (entryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
+    const parentAppID = entryGatingAssets[0]
+
+    let offset = 0
+    const limit = 20
+    let hasMoreRecords = true
+
+    const assetIds: number[] = []
+
+    while (hasMoreRecords) {
+      const params: NfdSearchV2Params = {
+        parentAppID,
+        view: 'brief',
+        limit: limit,
+        offset: offset,
+      }
+
+      try {
+        const result = await fetchNfdSearch(params)
+
+        const ids = result.nfds.map((nfd) => nfd.asaID!)
+        assetIds.push(...ids)
+
+        if (result.nfds.length < limit) {
+          hasMoreRecords = false
+        } else {
+          offset += limit
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        throw error
+      }
+    }
+
+    return assetIds
+  }
+
+  return []
 }
 
 export function hasQualifiedGatingAsset(
