@@ -77,7 +77,6 @@ export type NfdGetNFDParams = {
 
 export type NfdSearchV2View = (typeof NfdSearchV2View)[keyof typeof NfdSearchV2View]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2View = {
   tiny: 'tiny',
   thumbnail: 'thumbnail',
@@ -87,7 +86,6 @@ export const NfdSearchV2View = {
 
 export type NfdSearchV2Sort = (typeof NfdSearchV2Sort)[keyof typeof NfdSearchV2Sort]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2Sort = {
   createdDesc: 'createdDesc',
   timeChangedDesc: 'timeChangedDesc',
@@ -101,7 +99,6 @@ export const NfdSearchV2Sort = {
 
 export type NfdSearchV2Vproperty = (typeof NfdSearchV2Vproperty)[keyof typeof NfdSearchV2Vproperty]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2Vproperty = {
   discord: 'discord',
   telegram: 'telegram',
@@ -115,7 +112,6 @@ export const NfdSearchV2Vproperty = {
 export type NfdSearchV2TraitsItem =
   (typeof NfdSearchV2TraitsItem)[keyof typeof NfdSearchV2TraitsItem]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2TraitsItem = {
   emoji: 'emoji',
   pristine: 'pristine',
@@ -125,7 +121,6 @@ export const NfdSearchV2TraitsItem = {
 export type NfdSearchV2LengthItem =
   (typeof NfdSearchV2LengthItem)[keyof typeof NfdSearchV2LengthItem]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2LengthItem = {
   '1_letters': '1_letters',
   '2_letters': '2_letters',
@@ -144,7 +139,6 @@ export const NfdSearchV2LengthItem = {
  */
 export type NfdSearchV2StateItem = (typeof NfdSearchV2StateItem)[keyof typeof NfdSearchV2StateItem]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2StateItem = {
   reserved: 'reserved',
   forSale: 'forSale',
@@ -157,7 +151,6 @@ export const NfdSearchV2StateItem = {
 export type NfdSearchV2SaleTypeItem =
   (typeof NfdSearchV2SaleTypeItem)[keyof typeof NfdSearchV2SaleTypeItem]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2SaleTypeItem = {
   auction: 'auction',
   buyItNow: 'buyItNow',
@@ -169,7 +162,6 @@ export const NfdSearchV2SaleTypeItem = {
 export type NfdSearchV2CategoryItem =
   (typeof NfdSearchV2CategoryItem)[keyof typeof NfdSearchV2CategoryItem]
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const NfdSearchV2CategoryItem = {
   curated: 'curated',
   premium: 'premium',
