@@ -255,6 +255,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     } catch (error) {
       toast.error('Failed to create validator', { id: toastId })
       console.error(error)
+    } finally {
+      setIsSigning(false)
     }
   }
 
