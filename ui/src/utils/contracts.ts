@@ -647,8 +647,11 @@ export function canManageValidator(activeAddress: string | null, validator: Vali
   return owner === activeAddress || manager === activeAddress
 }
 
-export async function fetchGatingAssets(validator: Validator | null): Promise<number[]> {
-  if (!validator) {
+export async function fetchGatingAssets(
+  validator: Validator | null,
+  activeAddress: string | null,
+): Promise<number[]> {
+  if (!validator || !activeAddress) {
     return []
   }
 
@@ -696,6 +699,7 @@ export async function fetchGatingAssets(validator: Validator | null): Promise<nu
     while (hasMoreRecords) {
       const params: NfdSearchV2Params = {
         parentAppID,
+        owner: activeAddress,
         view: 'brief',
         limit: limit,
         offset: offset,
