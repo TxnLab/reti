@@ -83,7 +83,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
 
   const gatingAssetsQuery = useQuery({
     queryKey: ['gating-assets', validator?.id],
-    queryFn: () => fetchGatingAssets(validator),
+    queryFn: () => fetchGatingAssets(validator, activeAddress),
     enabled: !!validator,
   })
   const gatingAssets = gatingAssetsQuery.data || []

@@ -41,7 +41,7 @@
     },
     {
       "name": "initStorage",
-      "desc": "Called after we're created and then funded so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.",
+      "desc": "Called after we're created and then funded, so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.",
       "args": [
         {
           "name": "mbrPayment",

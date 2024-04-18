@@ -1,156 +1,157 @@
-import { Contract } from '@algorandfoundation/tealscript';
+import { Contract } from '@algorandfoundation/tealscript'
 // eslint-disable-next-line import/no-cycle
-import { StakedInfo, StakingPool } from './stakingPool.algo';
+import { StakedInfo, StakingPool } from './stakingPool.algo'
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     APPLICATION_BASE_FEE,
     ASSET_HOLDING_FEE,
-    GATING_TYPE_NONE,
-    GATING_TYPE_ASSETS_CREATED_BY,
     GATING_TYPE_ASSET_ID,
-    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-    GATING_TYPE_SEGMENT_OF_NFD,
+    GATING_TYPE_ASSETS_CREATED_BY,
     GATING_TYPE_CONST_MAX,
+    GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+    GATING_TYPE_NONE,
+    GATING_TYPE_SEGMENT_OF_NFD,
     MAX_PCT_TO_VALIDATOR,
     MAX_STAKERS_PER_POOL,
+    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
+    MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
     MIN_PCT_TO_VALIDATOR,
     SSC_VALUE_BYTES,
     SSC_VALUE_UINT,
-    MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
-    MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL,
-} from './constants.algo';
+} from './constants.algo'
 
-const MAX_NODES = 8; // more just as a reasonable limit and cap on contract storage
-const MAX_POOLS_PER_NODE = 3; // max number of pools per node
+const MAX_NODES = 8 // more just as a reasonable limit and cap on contract storage
+const MAX_POOLS_PER_NODE = 3 // max number of pools per node
 // This MAX_POOLS constant has to be explicitly specified in ValidatorInfo.pools[ xxx ] StaticArray!
 // if this constant is changed, the calculated value must be put in manually into the StaticArray definition.
-const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE;
+const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE
 
-const MIN_PAYOUT_MINS = 1;
-const MAX_PAYOUT_MINS = 10080; // 7 days in minutes
-const MAX_POOLS_PER_STAKER = 6;
+const MIN_PAYOUT_MINS = 1
+const MAX_PAYOUT_MINS = 10080 // 7 days in minutes
+const MAX_POOLS_PER_STAKER = 6
 
-type ValidatorIdType = uint64;
+type ValidatorIdType = uint64
 export type ValidatorPoolKey = {
-    id: ValidatorIdType; // 0 is invalid - should start at 1 (but is direct key in box)
-    poolId: uint64; // 0 means INVALID ! - so 1 is index, technically of [0]
-    poolAppId: uint64;
-};
+    id: ValidatorIdType // 0 is invalid - should start at 1 (but is direct key in box)
+    poolId: uint64 // 0 means INVALID ! - so 1 is index, technically of [0]
+    poolAppId: uint64
+}
 
 export type ValidatorConfig = {
-    id: ValidatorIdType; // id of this validator (sequentially assigned)
-    owner: Address; // account that controls config - presumably cold-wallet
+    id: ValidatorIdType // id of this validator (sequentially assigned)
+    owner: Address // account that controls config - presumably cold-wallet
 
     // [CHANGEABLE] account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign
     // for the transactions
-    manager: Address;
+    manager: Address
 
     // [CHANGEABLE] Optional NFD AppID which the validator uses to describe their validator pool
     // NFD must be currently OWNED by address that adds the validator
-    nfdForInfo: uint64;
+    nfdForInfo: uint64
 
     // [CHANGEABLE] entryGatingType / entryGatingValue specifies an optional gating mechanism - whose criteria
     // the staker must meet.
     // It will be the responsibility of the staker (txn composer really) to pick the right thing to check (as argument
     // to adding stake) that meets the criteria if this is set.
     // Allowed types:
-    // 1: assets created by address X (val is address of creator)
-    // 2: specific asset id (val is asset id)
-    // 3: asset in nfd linked addresses (value is nfd appid)
-    // 4: segment of a particular NFD (value is root appid)
-    entryGatingType: uint8;
-    entryGatingValue: bytes32;
+    // 1) GATING_TYPE_ASSETS_CREATED_BY: assets created by address X (val is address of creator)
+    // 2) GATING_TYPE_ASSET_ID: specific asset id (val is asset id)
+    // 3) GATING_TYPE_CREATED_BY_NFD_ADDRESSES: asset in nfd linked addresses (value is nfd appid)
+    // 4) GATING_TYPE_SEGMENT_OF_NFD: segment of a particular NFD (value is root appid)
+    entryGatingType: uint8
+    entryGatingAddress: Address // for GATING_TYPE_ASSETS_CREATED_BY
+    entryGatingAssets: StaticArray<uint64, 4> // all checked for GATING_TYPE_ASSET_ID, only first used for GATING_TYPE_CREATED_BY_NFD_ADDRESSES, and GATING_TYPE_SEGMENT_OF_NFD
 
     // [CHANGEABLE] gatingAssetMinBalance specifies a minimum token base units amount needed of an asset owned by the specified
     // creator (if defined).  If 0, then they need to hold at lest 1 unit, but its assumed this is for tokens, ie: hold
     // 10000[.000000] of token
-    gatingAssetMinBalance: uint64;
+    gatingAssetMinBalance: uint64
 
     // Optional reward token info
     // Reward token ASA id: A validator can define a token that users are awarded in addition to
     // the ALGO they receive for being in the pool. This will allow projects to allow rewarding members their own
     // token.  Hold at least 5000 VEST to enter a Vestige staking pool, they have 1 day epochs and all
     // stakers get X amount of VEST as daily rewards (added to stakers ‘available’ balance) for removal at any time.
-    rewardTokenId: uint64;
+    rewardTokenId: uint64
     // [CHANGEABLE] Reward rate : Defines the amount of rewardTokenId that is rewarded per epoch across all pools
     // (by their % stake of the validators total)
-    rewardPerPayout: uint64;
+    rewardPerPayout: uint64
 
-    payoutEveryXMins: uint16; // Payout frequency in minutes (can be no shorter than this)
-    percentToValidator: uint32; // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
+    payoutEveryXMins: uint16 // Payout frequency in minutes (can be no shorter than this)
+    percentToValidator: uint32 // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 
-    validatorCommissionAddress: Address; // [CHANGEABLE] account that receives the validation commission each epoch payout (can be ZeroAddress)
-    minEntryStake: uint64; // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
-    maxAlgoPerPool: uint64; // maximum stake allowed per pool - if validator wants to restrict it.  0 means to use 'current' limits.
-    poolsPerNode: uint8; // Number of pools to allow per node (max of 3 is recommended)
+    validatorCommissionAddress: Address // [CHANGEABLE] account that receives the validation commission each epoch payout (can be ZeroAddress)
+    minEntryStake: uint64 // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)
+    maxAlgoPerPool: uint64 // maximum stake allowed per pool - if validator wants to restrict it.  0 means to use 'current' limits.
+    poolsPerNode: uint8 // Number of pools to allow per node (max of 3 is recommended)
 
-    sunsettingOn: uint64; // [CHANGEABLE] timestamp when validator will sunset (if != 0)
-    sunsettingTo: ValidatorIdType; // [CHANGEABLE] validator id that validator is 'moving' to (if known)
-};
+    sunsettingOn: uint64 // [CHANGEABLE] timestamp when validator will sunset (if != 0)
+    sunsettingTo: ValidatorIdType // [CHANGEABLE] validator id that validator is 'moving' to (if known)
+}
 
 type ValidatorCurState = {
-    numPools: uint16; // current number of pools this validator has - capped at MaxPools
-    totalStakers: uint64; // total number of stakers across all pools of THIS validator
-    totalAlgoStaked: uint64; // total amount staked to this validator across ALL of its pools
+    numPools: uint16 // current number of pools this validator has - capped at MaxPools
+    totalStakers: uint64 // total number of stakers across all pools of THIS validator
+    totalAlgoStaked: uint64 // total amount staked to this validator across ALL of its pools
     // amount of the reward token held back in pool 1 for paying out stakers their rewards.
     // as reward tokens are assigned to stakers - the amount as part of each epoch will be updated
     // in this value and this amount has to be assumed 'spent' - only reducing this number as the token
     // is actually sent out by request of the validator itself
-    rewardTokenHeldBack: uint64;
-};
+    rewardTokenHeldBack: uint64
+}
 
 type PoolInfo = {
-    poolAppId: uint64; // The App id of this staking pool contract instance
-    totalStakers: uint16;
-    totalAlgoStaked: uint64;
-};
+    poolAppId: uint64 // The App id of this staking pool contract instance
+    totalStakers: uint16
+    totalAlgoStaked: uint64
+}
 
 type NodeConfig = {
-    poolAppIds: StaticArray<uint64, typeof MAX_POOLS_PER_NODE>;
-};
+    poolAppIds: StaticArray<uint64, typeof MAX_POOLS_PER_NODE>
+}
 
 type NodePoolAssignmentConfig = {
-    nodes: StaticArray<NodeConfig, typeof MAX_NODES>;
-};
+    nodes: StaticArray<NodeConfig, typeof MAX_NODES>
+}
 
 export type PoolTokenPayoutRatio = {
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
-    poolPctOfWhole: StaticArray<uint64, 24>;
+    poolPctOfWhole: StaticArray<uint64, 24>
     // epoch timestmap when set - only pool 1 caller can trigger/calculate this and only once per epoch
     // set and compared against pool 1's lastPayout property.
-    updatedForPayout: uint64;
-};
+    updatedForPayout: uint64
+}
 
 type ValidatorInfo = {
-    config: ValidatorConfig;
-    state: ValidatorCurState;
+    config: ValidatorConfig
+    state: ValidatorCurState
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
-    pools: StaticArray<PoolInfo, 24>;
-    tokenPayoutRatio: PoolTokenPayoutRatio;
-    nodePoolAssignments: NodePoolAssignmentConfig;
-};
+    pools: StaticArray<PoolInfo, 24>
+    tokenPayoutRatio: PoolTokenPayoutRatio
+    nodePoolAssignments: NodePoolAssignmentConfig
+}
 
 type MbrAmounts = {
-    addValidatorMbr: uint64;
-    addPoolMbr: uint64;
-    poolInitMbr: uint64;
-    addStakerMbr: uint64;
-};
+    addValidatorMbr: uint64
+    addPoolMbr: uint64
+    poolInitMbr: uint64
+    addStakerMbr: uint64
+}
 
 type Constraints = {
-    epochPayoutMinsMin: uint64;
-    epochPayoutMinsMax: uint64;
-    minPctToValidatorWFourDecimals: uint64;
-    maxPctToValidatorWFourDecimals: uint64;
-    minEntryStake: uint64; // in microAlgo
-    maxAlgoPerPool: uint64; // in microAlgo
-    maxAlgoPerValidator: uint64; // in microAlgo
-    amtConsideredSaturated: uint64; // soft stake - when saturation starts - in microAlgo
-    maxNodes: uint64;
-    maxPoolsPerNode: uint64;
-    maxStakersPerPool: uint64;
-};
+    epochPayoutMinsMin: uint64
+    epochPayoutMinsMax: uint64
+    minPctToValidatorWFourDecimals: uint64
+    maxPctToValidatorWFourDecimals: uint64
+    minEntryStake: uint64 // in microAlgo
+    maxAlgoPerPool: uint64 // in microAlgo
+    maxAlgoPerValidator: uint64 // in microAlgo
+    amtConsideredSaturated: uint64 // soft stake - when saturation starts - in microAlgo
+    maxNodes: uint64
+    maxPoolsPerNode: uint64
+    maxStakersPerPool: uint64
+}
 
 // eslint-disable-next-line no-unused-vars
 /**
@@ -161,40 +162,40 @@ type Constraints = {
  * See the StakingPool contract comments for details on how this contract creates new instances of them.
  */
 export class ValidatorRegistry extends Contract {
-    programVersion = 10;
+    programVersion = 10
 
     // ======
     // GLOBAL STATE AND TEMPLATES
     // ======
-    numValidators = GlobalStateKey<uint64>({ key: 'numV' });
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' })
 
     // The app id of a staking pool contract instance to use as template for newly created pools
-    stakingPoolTemplateAppId = GlobalStateKey<uint64>({ key: 'poolTemplateAppId' });
+    stakingPoolTemplateAppId = GlobalStateKey<uint64>({ key: 'poolTemplateAppId' })
 
     // Track the 'global' protocol number of stakers
-    numStakers = GlobalStateKey<uint64>({ key: 'numStakers' });
+    numStakers = GlobalStateKey<uint64>({ key: 'numStakers' })
 
     // Track the 'global' protocol amount of stake
-    totalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' });
+    totalAlgoStaked = GlobalStateKey<uint64>({ key: 'staked' })
 
     // Validator list - simply incremental id - direct access to info for validator
     // and also contains all pool information (but not user-account ledger per pool)
-    validatorList = BoxMap<ValidatorIdType, ValidatorInfo>({ prefix: 'v' });
+    validatorList = BoxMap<ValidatorIdType, ValidatorInfo>({ prefix: 'v' })
 
     // For given user staker address, which of up to MAX_POOLS_PER_STAKER validator/pools are they in
     // We use this to find a particular addresses deposits (in up to X independent pools w/ any validators)
-    stakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, typeof MAX_POOLS_PER_STAKER>>({ prefix: 'sps' });
+    stakerPoolSet = BoxMap<Address, StaticArray<ValidatorPoolKey, typeof MAX_POOLS_PER_STAKER>>({ prefix: 'sps' })
 
-    nfdRegistryAppId = TemplateVar<uint64>();
+    nfdRegistryAppId = TemplateVar<uint64>()
 
     // ======
     // PUBLIC CONTRACT METHODS
     // ======
     createApplication(poolTemplateAppId: uint64): void {
-        this.numValidators.value = 0;
-        this.stakingPoolTemplateAppId.value = poolTemplateAppId;
-        this.numStakers.value = 0;
-        this.totalAlgoStaked.value = 0;
+        this.numValidators.value = 0
+        this.stakingPoolTemplateAppId.value = poolTemplateAppId
+        this.numStakers.value = 0
+        this.totalAlgoStaked.value = 0
     }
 
     /**
@@ -223,7 +224,7 @@ export class ValidatorRegistry extends Contract {
                 0,
                 0,
                 StakingPool.schema.global.numUint,
-                StakingPool.schema.global.numByteSlice
+                StakingPool.schema.global.numByteSlice,
             ),
             poolInitMbr:
                 ALGORAND_ACCOUNT_MIN_BALANCE +
@@ -231,9 +232,9 @@ export class ValidatorRegistry extends Contract {
             addStakerMbr:
                 // how much to charge for first time a staker adds stake - since we add a tracking box per staker
                 this.costForBoxStorage(
-                    3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER
+                    3 /* 'sps' prefix */ + len<Address>() + len<ValidatorPoolKey>() * MAX_POOLS_PER_STAKER,
                 ), // size of key + all values
-        };
+        }
     }
 
     /**
@@ -252,7 +253,7 @@ export class ValidatorRegistry extends Contract {
             maxNodes: MAX_NODES,
             maxPoolsPerNode: MAX_POOLS_PER_NODE,
             maxStakersPerPool: MAX_STAKERS_PER_POOL,
-        };
+        }
     }
 
     /**
@@ -260,17 +261,17 @@ export class ValidatorRegistry extends Contract {
      */
     // @abi.readonly
     getNumValidators(): uint64 {
-        return this.numValidators.value;
+        return this.numValidators.value
     }
 
     // @abi.readonly
     getValidatorConfig(validatorId: ValidatorIdType): ValidatorConfig {
-        return this.validatorList(validatorId).value.config;
+        return this.validatorList(validatorId).value.config
     }
 
     // @abi.readonly
     getValidatorState(validatorId: ValidatorIdType): ValidatorCurState {
-        return this.validatorList(validatorId).value.state;
+        return this.validatorList(validatorId).value.state
     }
 
     // @abi.readonly
@@ -278,7 +279,7 @@ export class ValidatorRegistry extends Contract {
         return [
             this.validatorList(validatorId).value.config.owner,
             this.validatorList(validatorId).value.config.manager,
-        ];
+        ]
     }
 
     // @abi.readonly
@@ -289,16 +290,16 @@ export class ValidatorRegistry extends Contract {
      * Not callable from other contracts because >1K return but can be called w/ simulate which bumps log returns
      */
     getPools(validatorId: ValidatorIdType): PoolInfo[] {
-        const retData: PoolInfo[] = [];
-        const poolSet = clone(this.validatorList(validatorId).value.pools);
+        const retData: PoolInfo[] = []
+        const poolSet = clone(this.validatorList(validatorId).value.pools)
         for (let i = 0; i < poolSet.length; i += 1) {
             if (poolSet[i].poolAppId === 0) {
                 // reached end of list...  we don't replace values here because pools can't be removed
-                break;
+                break
             }
-            retData.push(poolSet[i]);
+            retData.push(poolSet[i])
         }
-        return retData;
+        return retData
     }
 
     // @abi.readonly
@@ -306,13 +307,13 @@ export class ValidatorRegistry extends Contract {
     // want to get staker list for an account.  The staking pool also uses it to get the app id of staking pool 1
     // (which contains reward tokens if being used) so that the amount available can be determined.
     getPoolAppId(validatorId: uint64, poolId: uint64): uint64 {
-        assert(poolId !== 0 && poolId <= this.validatorList(validatorId).value.pools.length);
-        return this.validatorList(validatorId).value.pools[poolId - 1].poolAppId;
+        assert(poolId !== 0 && poolId <= this.validatorList(validatorId).value.pools.length)
+        return this.validatorList(validatorId).value.pools[poolId - 1].poolAppId
     }
 
     // @abi.readonly
     getPoolInfo(poolKey: ValidatorPoolKey): PoolInfo {
-        return this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1];
+        return this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1]
     }
 
     /**
@@ -323,16 +324,16 @@ export class ValidatorRegistry extends Contract {
      * @param {ValidatorIdType} validatorId - The id of the validator.
      */
     getCurMaxStakePerPool(validatorId: ValidatorIdType): uint64 {
-        const numPools = this.validatorList(validatorId).value.state.numPools as uint64;
-        const hardMaxDividedBetweenPools = this.maxAllowedStake() / numPools;
-        let maxPerPool: uint64 = this.validatorList(validatorId).value.config.maxAlgoPerPool;
+        const numPools = this.validatorList(validatorId).value.state.numPools as uint64
+        const hardMaxDividedBetweenPools = this.maxAllowedStake() / numPools
+        let maxPerPool: uint64 = this.validatorList(validatorId).value.config.maxAlgoPerPool
         if (maxPerPool === 0) {
-            maxPerPool = this.maxAlgoAllowedPerPool();
+            maxPerPool = this.maxAlgoAllowedPerPool()
         }
         if (hardMaxDividedBetweenPools < maxPerPool) {
-            maxPerPool = hardMaxDividedBetweenPools;
+            maxPerPool = hardMaxDividedBetweenPools
         }
-        return maxPerPool;
+        return maxPerPool
     }
 
     // @abi.readonly
@@ -341,7 +342,7 @@ export class ValidatorRegistry extends Contract {
      * @param staker
      */
     doesStakerNeedToPayMBR(staker: Address): boolean {
-        return !this.stakerPoolSet(staker).exists;
+        return !this.stakerPoolSet(staker).exists
     }
 
     /**
@@ -352,16 +353,16 @@ export class ValidatorRegistry extends Contract {
      */
     getStakedPoolsForAccount(staker: Address): ValidatorPoolKey[] {
         if (!this.stakerPoolSet(staker).exists) {
-            return [];
+            return []
         }
-        const retData: ValidatorPoolKey[] = [];
-        const poolSet = clone(this.stakerPoolSet(staker).value);
+        const retData: ValidatorPoolKey[] = []
+        const poolSet = clone(this.stakerPoolSet(staker).value)
         for (let i = 0; i < poolSet.length; i += 1) {
             if (poolSet[i].id !== 0) {
-                retData.push(poolSet[i]);
+                retData.push(poolSet[i])
             }
         }
-        return retData;
+        return retData
     }
 
     // @abi.readonly
@@ -373,18 +374,18 @@ export class ValidatorRegistry extends Contract {
      * @return {PoolTokenPayoutRatio} - The token payout ratio for the validator.
      */
     getTokenPayoutRatio(validatorId: ValidatorIdType): PoolTokenPayoutRatio {
-        return this.validatorList(validatorId).value.tokenPayoutRatio;
+        return this.validatorList(validatorId).value.tokenPayoutRatio
     }
 
     // @abi.readonly
     getNodePoolAssignments(validatorId: uint64): NodePoolAssignmentConfig {
-        assert(this.validatorList(validatorId).exists);
+        assert(this.validatorList(validatorId).exists)
 
-        return this.validatorList(validatorId).value.nodePoolAssignments;
+        return this.validatorList(validatorId).value.nodePoolAssignments
     }
 
     getNFDRegistryID(): uint64 {
-        return this.nfdRegistryAppId;
+        return this.nfdRegistryAppId
     }
 
     /** Adds a new validator
@@ -394,20 +395,20 @@ export class ValidatorRegistry extends Contract {
      * @returns validator id
      */
     addValidator(mbrPayment: PayTxn, nfdName: string, config: ValidatorConfig): uint64 {
-        this.validateConfig(config);
-        assert(config.owner !== Address.zeroAddress);
-        assert(config.manager !== Address.zeroAddress);
-        assert(this.txn.sender === config.owner, 'sender must be owner to add new validator');
+        this.validateConfig(config)
+        assert(config.owner !== Address.zeroAddress)
+        assert(config.manager !== Address.zeroAddress)
+        assert(this.txn.sender === config.owner, 'sender must be owner to add new validator')
 
-        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addValidatorMbr });
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addValidatorMbr })
 
         // We're adding a new validator - same owner might have multiple - we don't care.
-        const validatorId = this.numValidators.value + 1;
-        this.numValidators.value = validatorId;
+        const validatorId = this.numValidators.value + 1
+        this.numValidators.value = validatorId
 
-        this.validatorList(validatorId).create();
-        this.validatorList(validatorId).value.config = config;
-        this.validatorList(validatorId).value.config.id = validatorId;
+        this.validatorList(validatorId).create()
+        this.validatorList(validatorId).value.config = config
+        this.validatorList(validatorId).value.config.id = validatorId
         // all other values being 0 is correct (for 'state' for eg)
 
         if (config.nfdForInfo !== 0) {
@@ -416,25 +417,26 @@ export class ValidatorRegistry extends Contract {
                 applicationID: AppID.fromUint64(this.nfdRegistryAppId),
                 applicationArgs: ['is_valid_nfd_appid', nfdName, itob(config.nfdForInfo)],
                 applications: [AppID.fromUint64(config.nfdForInfo)],
-            });
-            assert(btoi(this.itxn.lastLog) === 1, "provided NFD isn't valid");
+            })
+            assert(btoi(this.itxn.lastLog) === 1, "provided NFD isn't valid")
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
             assert(
                 this.txn.sender === (AppID.fromUint64(config.nfdForInfo).globalState('i.owner.a') as Address),
-                'If specifying NFD, account adding validator must be owner'
-            );
+                'If specifying NFD, account adding validator must be owner',
+            )
         }
-        if (config.entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
-            // we require the NFD we compare against to be the one set in nfdForInfo
-            assert(config.nfdForInfo !== 0, 'an NFD must be specified for the validator when gating by NFD addresses');
-        }
-        if (config.entryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
+        if (
+            config.entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES ||
+            config.entryGatingType === GATING_TYPE_SEGMENT_OF_NFD
+        ) {
             // verify gating NFD is at least 'real' - since we just have app id - fetch its name then do is valid call
-            const nfdRootAppID = extractUint64(config.entryGatingValue, 0);
-            assert(this.isNFDAppIDValid(nfdRootAppID), 'provided NFD App id for gating must be valid NFD');
+            assert(
+                this.isNFDAppIDValid(config.entryGatingAssets[0]),
+                'provided NFD App id for gating must be valid NFD',
+            )
         }
         // this.retiOP_addedValidator.log({ id: validatorId, owner: config.owner, manager: config.manager });
-        return validatorId;
+        return validatorId
     }
 
     /**
@@ -445,8 +447,8 @@ export class ValidatorRegistry extends Contract {
      * @param {Address} manager - The new manager address.
      */
     changeValidatorManager(validatorId: ValidatorIdType, manager: Address): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner);
-        this.validatorList(validatorId).value.config.manager = manager;
+        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        this.validatorList(validatorId).value.config.manager = manager
     }
 
     /**
@@ -458,9 +460,9 @@ export class ValidatorRegistry extends Contract {
      * @param {uint64} sunsettingTo - The new sunset to validator id.
      */
     changeValidatorSunsetInfo(validatorId: ValidatorIdType, sunsettingOn: uint64, sunsettingTo: ValidatorIdType): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner);
-        this.validatorList(validatorId).value.config.sunsettingOn = sunsettingOn;
-        this.validatorList(validatorId).value.config.sunsettingTo = sunsettingTo;
+        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        this.validatorList(validatorId).value.config.sunsettingOn = sunsettingOn
+        this.validatorList(validatorId).value.config.sunsettingTo = sunsettingTo
     }
 
     /**
@@ -475,20 +477,20 @@ export class ValidatorRegistry extends Contract {
         // Must be called by the owner or manager of the validator.
         assert(
             this.txn.sender === this.validatorList(validatorId).value.config.owner ||
-                this.txn.sender === this.validatorList(validatorId).value.config.manager
-        );
+                this.txn.sender === this.validatorList(validatorId).value.config.manager,
+        )
         // verify nfd is real, and owned by owner or manager
         sendAppCall({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
             applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
             applications: [AppID.fromUint64(nfdAppID)],
-        });
+        })
         // we know sender is owner or manager - so if sender is owner of nfd - we're fine.
         assert(
             this.txn.sender === (AppID.fromUint64(nfdAppID).globalState('i.owner.a') as Address),
-            'If specifying NFD, account adding validator must be owner'
-        );
-        this.validatorList(validatorId).value.config.nfdForInfo = nfdAppID;
+            'If specifying NFD, account adding validator must be owner',
+        )
+        this.validatorList(validatorId).value.config.nfdForInfo = nfdAppID
     }
 
     /**
@@ -496,9 +498,9 @@ export class ValidatorRegistry extends Contract {
      [ ONLY OWNER CAN CHANGE ]
      */
     changeValidatorCommissionAddress(validatorId: ValidatorIdType, commissionAddress: Address): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner);
-        assert(commissionAddress !== Address.zeroAddress);
-        this.validatorList(validatorId).value.config.validatorCommissionAddress = commissionAddress;
+        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        assert(commissionAddress !== Address.zeroAddress)
+        this.validatorList(validatorId).value.config.validatorCommissionAddress = commissionAddress
     }
 
     /**
@@ -508,16 +510,18 @@ export class ValidatorRegistry extends Contract {
     changeValidatorRewardInfo(
         validatorId: ValidatorIdType,
         EntryGatingType: uint8,
-        EntryGatingValue: bytes32,
+        EntryGatingAddress: Address,
+        EntryGatingAssets: StaticArray<uint64, 4>,
         GatingAssetMinBalance: uint64,
-        RewardPerPayout: uint64
+        RewardPerPayout: uint64,
     ): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner);
+        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
 
-        this.validatorList(validatorId).value.config.entryGatingType = EntryGatingType;
-        this.validatorList(validatorId).value.config.entryGatingValue = EntryGatingValue;
-        this.validatorList(validatorId).value.config.gatingAssetMinBalance = GatingAssetMinBalance;
-        this.validatorList(validatorId).value.config.rewardPerPayout = RewardPerPayout;
+        this.validatorList(validatorId).value.config.entryGatingType = EntryGatingType
+        this.validatorList(validatorId).value.config.entryGatingAddress = EntryGatingAddress
+        this.validatorList(validatorId).value.config.entryGatingAssets = EntryGatingAssets
+        this.validatorList(validatorId).value.config.gatingAssetMinBalance = GatingAssetMinBalance
+        this.validatorList(validatorId).value.config.rewardPerPayout = RewardPerPayout
     }
 
     /**
@@ -535,19 +539,19 @@ export class ValidatorRegistry extends Contract {
         // Must be called by the owner or manager of the validator.
         assert(
             this.txn.sender === this.validatorList(validatorId).value.config.owner ||
-                this.txn.sender === this.validatorList(validatorId).value.config.manager
-        );
+                this.txn.sender === this.validatorList(validatorId).value.config.manager,
+        )
 
         // must match MBR exactly
-        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addPoolMbr, receiver: this.app.address });
+        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addPoolMbr, receiver: this.app.address })
 
-        assert(this.validatorList(validatorId).exists);
+        assert(this.validatorList(validatorId).exists)
 
-        let numPools: uint64 = this.validatorList(validatorId).value.state.numPools as uint64;
+        let numPools: uint64 = this.validatorList(validatorId).value.state.numPools as uint64
         if ((numPools as uint64) >= MAX_POOLS) {
-            throw Error('already at max pool size');
+            throw Error('already at max pool size')
         }
-        numPools += 1;
+        numPools += 1
 
         // Create the actual staker pool contract instance
         sendAppCall({
@@ -565,14 +569,14 @@ export class ValidatorRegistry extends Contract {
                 itob(numPools as uint64),
                 itob(this.validatorList(validatorId).value.config.minEntryStake),
             ],
-        });
+        })
 
-        this.validatorList(validatorId).value.state.numPools = numPools as uint16;
+        this.validatorList(validatorId).value.state.numPools = numPools as uint16
         // We don't need to manipulate anything in the pools array as the '0' values are all correct for PoolInfo
         // No stakers, no algo staked
-        const poolAppId = this.itxn.createdApplicationID.id;
-        this.validatorList(validatorId).value.pools[numPools - 1].poolAppId = poolAppId;
-        this.addPoolToNode(validatorId, poolAppId, nodeNum);
+        const poolAppId = this.itxn.createdApplicationID.id
+        this.validatorList(validatorId).value.pools[numPools - 1].poolAppId = poolAppId
+        this.addPoolToNode(validatorId, poolAppId, nodeNum)
 
         // this.retiOP_validatorAddedPool.log({
         //     id: validatorId,
@@ -580,7 +584,7 @@ export class ValidatorRegistry extends Contract {
         //     poolAppId: AppID.fromUint64(poolAppId),
         // });
         // PoolID is 1-based, 0 is invalid id
-        return { id: validatorId, poolId: numPools as uint64, poolAppId: this.itxn!.createdApplicationID.id };
+        return { id: validatorId, poolId: numPools as uint64, poolAppId: this.itxn!.createdApplicationID.id }
     }
 
     /**
@@ -593,50 +597,50 @@ export class ValidatorRegistry extends Contract {
      * * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
     addStake(stakedAmountPayment: PayTxn, validatorId: ValidatorIdType, valueToVerify: uint64): ValidatorPoolKey {
-        assert(this.validatorList(validatorId).exists);
+        assert(this.validatorList(validatorId).exists)
 
-        const staker = this.txn.sender;
+        const staker = this.txn.sender
         // The prior transaction should be a payment to this pool for the amount specified.  If this is stakers
         // first time staking, then we subtract the required MBR from their payment as that MBR amount needs to stay
         // behind in this contract to cover the MBR needed for creating the 'stakerPoolSet' storage.
         verifyPayTxn(stakedAmountPayment, {
             sender: staker,
             receiver: this.app.address,
-        });
+        })
 
         // Ensure we're not over our protocol maximum for combined stake in all pools using the
         // MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL percentage
         assert(
             this.validatorList(validatorId).value.state.totalAlgoStaked < this.maxAllowedStake(),
-            'total staked for all of a validators pools may not exceed hard cap'
-        );
+            'total staked for all of a validators pools may not exceed hard cap',
+        )
         // If the validator specified that a specific token creator is required to stake, verify that the required
         // balance is held by the staker, and that the asset they offered up to validate was created by the account
         // the validator defined as its creator requirement.
-        this.doesStakerMeetGating(validatorId, valueToVerify);
+        this.doesStakerMeetGating(validatorId, valueToVerify)
 
-        let realAmount = stakedAmountPayment.amount;
-        let mbrAmtLeftBehind: uint64 = 0;
+        let realAmount = stakedAmountPayment.amount
+        let mbrAmtLeftBehind: uint64 = 0
         // determine if this is FIRST time this user has ever staked - they need to pay MBR
         if (!this.stakerPoolSet(staker).exists) {
             // We'll deduct the required MBR from what the user is depositing by telling callPoolAddState to leave
             // that amount behind and subtract from their depositing stake.
-            mbrAmtLeftBehind = this.getMbrAmounts().addStakerMbr;
-            realAmount -= mbrAmtLeftBehind;
-            this.stakerPoolSet(staker).create();
+            mbrAmtLeftBehind = this.getMbrAmounts().addStakerMbr
+            realAmount -= mbrAmtLeftBehind
+            this.stakerPoolSet(staker).create()
         }
         // find existing slot where staker is already in a pool w/ this validator, or if none found, then ensure they're
         // putting in minimum amount for this validator.
-        const findRet = this.findPoolForStaker(validatorId, staker, realAmount);
-        const poolKey = findRet[0];
-        const isNewStakerToValidator = findRet[1];
-        const isNewStakerToProtocol = findRet[2];
+        const findRet = this.findPoolForStaker(validatorId, staker, realAmount)
+        const poolKey = findRet[0]
+        const isNewStakerToValidator = findRet[1]
+        const isNewStakerToProtocol = findRet[2]
         if (poolKey.poolId === 0) {
-            throw Error('No pool available with free stake.  Validator needs to add another pool');
+            throw Error('No pool available with free stake.  Validator needs to add another pool')
         }
 
         // Update StakerPoolList for this found pool (new or existing)
-        this.updateStakerPoolSet(staker, poolKey);
+        this.updateStakerPoolSet(staker, poolKey)
         // Send the callers algo amount (- mbrAmtLeftBehind) to the specified staking pool, and it then updates
         // the staker data.
         this.callPoolAddStake(
@@ -644,8 +648,8 @@ export class ValidatorRegistry extends Contract {
             poolKey,
             mbrAmtLeftBehind,
             isNewStakerToValidator,
-            isNewStakerToProtocol
-        );
+            isNewStakerToProtocol,
+        )
         // this.retiOP_stakeAdded.log({
         //     id: validatorId,
         //     poolNum: poolKey.poolId as uint16,
@@ -654,7 +658,7 @@ export class ValidatorRegistry extends Contract {
         //     staker: staker,
         // });
 
-        return poolKey;
+        return poolKey
     }
 
     /**
@@ -674,33 +678,33 @@ export class ValidatorRegistry extends Contract {
      */
     setTokenPayoutRatio(validatorId: ValidatorIdType): PoolTokenPayoutRatio {
         // Get pool 1 for this validator - caller MUST MATCH!
-        const pool1AppID = this.validatorList(validatorId).value.pools[0].poolAppId;
-        assert(pool1AppID !== 0);
+        const pool1AppID = this.validatorList(validatorId).value.pools[0].poolAppId
+        assert(pool1AppID !== 0)
         // Sender has to match the pool app id passed in - so we ensure only pool 1 can call us.
         if (this.txn.sender !== AppID.fromUint64(pool1AppID).address) {
-            return this.validatorList(validatorId).value.tokenPayoutRatio;
+            return this.validatorList(validatorId).value.tokenPayoutRatio
         }
 
         // They can only call us if the epoch update time doesn't match what pool 1 already has - and it has to be at least
         // a full epoch since last update (unless not set).  Same check as pools themselves perform.
-        const curTime = globals.latestTimestamp;
-        const lastPayoutUpdate = this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout;
+        const curTime = globals.latestTimestamp
+        const lastPayoutUpdate = this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout
         if (lastPayoutUpdate !== 0) {
             // We've already done the calcs - return what we already have.
             if ((AppID.fromUint64(pool1AppID).globalState('lastPayout') as uint64) === lastPayoutUpdate) {
-                return this.validatorList(validatorId).value.tokenPayoutRatio;
+                return this.validatorList(validatorId).value.tokenPayoutRatio
             }
-            const secsSinceLastPayout = curTime - lastPayoutUpdate;
-            const epochInSecs = (this.validatorList(validatorId).value.config.payoutEveryXMins as uint64) * 60;
+            const secsSinceLastPayout = curTime - lastPayoutUpdate
+            const epochInSecs = (this.validatorList(validatorId).value.config.payoutEveryXMins as uint64) * 60
             // We've had one payout - so we need to be at least one epoch past the last payout.
             if (secsSinceLastPayout < epochInSecs) {
-                return this.validatorList(validatorId).value.tokenPayoutRatio;
+                return this.validatorList(validatorId).value.tokenPayoutRatio
             }
         }
-        this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout = curTime;
+        this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout = curTime
 
-        const curNumPools = this.validatorList(validatorId).value.state.numPools as uint64;
-        const totalStakeForValidator = this.validatorList(validatorId).value.state.totalAlgoStaked;
+        const curNumPools = this.validatorList(validatorId).value.state.numPools as uint64
+        const totalStakeForValidator = this.validatorList(validatorId).value.state.totalAlgoStaked
         for (let i = 0; i < curNumPools; i += 1) {
             // ie: this pool 2 has 1000 algo staked and the validator has 10,000 staked total (9000 pool 1, 1000 pool 2)
             // so this pool is 10% of the total and thus it gets 10% of the avail community token reward.
@@ -708,11 +712,11 @@ export class ValidatorRegistry extends Contract {
             // ie, based on prior eg  - (1000 * 1e6) / 10000 = 100,000 (or 10%)
             const ourPoolPctOfWhole = wideRatio(
                 [this.validatorList(validatorId).value.pools[i].totalAlgoStaked, 1_000_000],
-                [totalStakeForValidator]
-            );
-            this.validatorList(validatorId).value.tokenPayoutRatio.poolPctOfWhole[i] = ourPoolPctOfWhole;
+                [totalStakeForValidator],
+            )
+            this.validatorList(validatorId).value.tokenPayoutRatio.poolPctOfWhole[i] = ourPoolPctOfWhole
         }
-        return this.validatorList(validatorId).value.tokenPayoutRatio;
+        return this.validatorList(validatorId).value.tokenPayoutRatio
     }
 
     /**
@@ -731,19 +735,19 @@ export class ValidatorRegistry extends Contract {
         algoToAdd: uint64,
         rewardTokenAmountReserved: uint64,
         validatorCommission: uint64,
-        saturatedBurnToFeeSink: uint64
+        saturatedBurnToFeeSink: uint64,
     ): void {
-        this.verifyPoolKeyCaller(poolKey);
+        this.verifyPoolKeyCaller(poolKey)
 
         // Update the specified amount of stake (+reward tokens reserved) - update pool stats, then total validator stats
-        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked += algoToAdd;
-        this.validatorList(poolKey.id).value.state.totalAlgoStaked += algoToAdd;
-        this.validatorList(poolKey.id).value.state.rewardTokenHeldBack += rewardTokenAmountReserved;
+        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked += algoToAdd
+        this.validatorList(poolKey.id).value.state.totalAlgoStaked += algoToAdd
+        this.validatorList(poolKey.id).value.state.rewardTokenHeldBack += rewardTokenAmountReserved
 
-        this.totalAlgoStaked.value += algoToAdd;
+        this.totalAlgoStaked.value += algoToAdd
 
         // Re-validate the NFD as well while we're here, removing as associated nfd if no longer owner
-        this.reverifyNFDOwnership(poolKey.id);
+        this.reverifyNFDOwnership(poolKey.id)
 
         // this.retiOP_epochRewardUpdate.log({
         //     id: poolKey.id,
@@ -773,32 +777,32 @@ export class ValidatorRegistry extends Contract {
         staker: Address,
         amountRemoved: uint64,
         rewardRemoved: uint64,
-        stakerRemoved: boolean
+        stakerRemoved: boolean,
     ): void {
         if (globals.opcodeBudget < 300) {
-            increaseOpcodeBudget();
+            increaseOpcodeBudget()
         }
-        this.verifyPoolKeyCaller(poolKey);
+        this.verifyPoolKeyCaller(poolKey)
 
         // Yup - we've been called by an official staking pool telling us about stake that was removed from it,
         // so we can update our validator's staking stats.
-        assert(amountRemoved > 0 || rewardRemoved > 0);
+        assert(amountRemoved > 0 || rewardRemoved > 0)
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
-        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked -= amountRemoved;
-        this.validatorList(poolKey.id).value.state.totalAlgoStaked -= amountRemoved;
-        this.totalAlgoStaked.value -= amountRemoved;
+        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked -= amountRemoved
+        this.validatorList(poolKey.id).value.state.totalAlgoStaked -= amountRemoved
+        this.totalAlgoStaked.value -= amountRemoved
 
         if (rewardRemoved > 0) {
-            const rewardTokenID = this.validatorList(poolKey.id).value.config.rewardTokenId;
-            assert(rewardTokenID !== 0, "rewardRemoved can't be set if validator doesn't have reward token!");
+            const rewardTokenID = this.validatorList(poolKey.id).value.config.rewardTokenId
+            assert(rewardTokenID !== 0, "rewardRemoved can't be set if validator doesn't have reward token!")
             assert(
                 this.validatorList(poolKey.id).value.state.rewardTokenHeldBack >= rewardRemoved,
-                'reward being removed must be covered by hold back amount'
-            );
+                'reward being removed must be covered by hold back amount',
+            )
             // If pool 1 is calling us, then they already sent the reward token to the staker and we just need to
             // update the rewardTokenHeldBack value and that's it.
-            this.validatorList(poolKey.id).value.state.rewardTokenHeldBack -= rewardRemoved;
+            this.validatorList(poolKey.id).value.state.rewardTokenHeldBack -= rewardRemoved
 
             // If a different pool called us, then they CAN'T send the token - we've already updated the
             // rewardTokenHeldBack value and then call method in the pool that can only be called by us (the
@@ -807,7 +811,7 @@ export class ValidatorRegistry extends Contract {
                 sendMethodCall<typeof StakingPool.prototype.payTokenReward>({
                     applicationID: AppID.fromUint64(this.validatorList(poolKey.id).value.pools[0].poolAppId),
                     methodArgs: [staker, rewardTokenID, rewardRemoved],
-                });
+                })
             }
             // this.retiOP_stakeRemoved.log({
             //     id: poolKey.id,
@@ -833,22 +837,22 @@ export class ValidatorRegistry extends Contract {
 
         if (stakerRemoved) {
             // remove from that pool
-            this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalStakers -= 1;
+            this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalStakers -= 1
             // then update the staker set.
             const removeRet = this.removeFromStakerPoolSet(staker, <ValidatorPoolKey>{
                 id: poolKey.id,
                 poolId: poolKey.poolId,
                 poolAppId: poolKey.poolAppId,
-            });
-            const stakerOutOfThisValidator = removeRet[0];
-            const stakerOutOfProtocol = removeRet[1];
+            })
+            const stakerOutOfThisValidator = removeRet[0]
+            const stakerOutOfProtocol = removeRet[1]
             // then remove as a staker from validator stats if they're 'out' of that validators pools
             if (stakerOutOfThisValidator) {
-                this.validatorList(poolKey.id).value.state.totalStakers -= 1;
+                this.validatorList(poolKey.id).value.state.totalStakers -= 1
             }
             // and remove from count of stakers in 'protocol' stats if they're out of ALL pools
             if (stakerOutOfProtocol) {
-                this.numStakers.value -= 1;
+                this.numStakers.value -= 1
             }
         }
     }
@@ -867,10 +871,10 @@ export class ValidatorRegistry extends Contract {
     findPoolForStaker(
         validatorId: ValidatorIdType,
         staker: Address,
-        amountToStake: uint64
+        amountToStake: uint64,
     ): [ValidatorPoolKey, boolean, boolean] {
-        let isNewStakerToValidator = true;
-        let isNewStakerToProtocol = true;
+        let isNewStakerToValidator = true
+        let isNewStakerToProtocol = true
         // We have max per pool per validator - this value is stored in the pools as well, and they enforce it on their
         // addStake calls but the values should be the same, and we shouldn't even try to add stake if it won't even
         // be accepted.
@@ -878,29 +882,29 @@ export class ValidatorRegistry extends Contract {
         // maxAllowedStake() (hard x % of all online stake) - taking that max / numPools.  This way as pools are added
         // to go beyond the individual pool maximum, the maximum for each pool starts to reflect the max allowed but
         // balanced across the pools.
-        const maxPerPool = this.getCurMaxStakePerPool(validatorId);
+        const maxPerPool = this.getCurMaxStakePerPool(validatorId)
         // If there's already a stake list for this account, walk that first, so if the staker is already in THIS
         // validator, then go to the stakers existing pool(s) w/ this validator first.
         if (this.stakerPoolSet(staker).exists) {
-            const poolSet = clone(this.stakerPoolSet(staker).value);
-            assert(validatorId !== 0);
+            const poolSet = clone(this.stakerPoolSet(staker).value)
+            assert(validatorId !== 0)
             for (let i = 0; i < poolSet.length; i += 1) {
                 if (globals.opcodeBudget < 300) {
-                    increaseOpcodeBudget();
+                    increaseOpcodeBudget()
                 }
                 if (poolSet[i].id === 0) {
-                    continue;
+                    continue
                 }
-                isNewStakerToProtocol = false;
+                isNewStakerToProtocol = false
                 if (poolSet[i].id === validatorId) {
                     // staker isn't new to this validator - but might still be out of room in this slot.
-                    isNewStakerToValidator = false;
+                    isNewStakerToValidator = false
                     if (
                         this.validatorList(validatorId).value.pools[poolSet[i].poolId - 1].totalAlgoStaked +
                             amountToStake <=
                         maxPerPool
                     ) {
-                        return [poolSet[i], isNewStakerToValidator, isNewStakerToProtocol];
+                        return [poolSet[i], isNewStakerToValidator, isNewStakerToProtocol]
                     }
                 }
             }
@@ -909,23 +913,23 @@ export class ValidatorRegistry extends Contract {
         // No existing stake found or that we fit in to, so ensure the stake meets the 'minimum entry' amount
         assert(
             amountToStake >= this.validatorList(validatorId).value.config.minEntryStake,
-            'must stake at least the minimum for this pool'
-        );
+            'must stake at least the minimum for this pool',
+        )
 
         // Walk their desired validators pools and find free space
-        const pools = clone(this.validatorList(validatorId).value.pools);
-        const curNumPools = this.validatorList(validatorId).value.state.numPools as uint64;
+        const pools = clone(this.validatorList(validatorId).value.pools)
+        const curNumPools = this.validatorList(validatorId).value.state.numPools as uint64
         for (let i = 0; i < curNumPools; i += 1) {
             if (pools[i].totalAlgoStaked + amountToStake <= maxPerPool) {
                 return [
                     { id: validatorId, poolId: i + 1, poolAppId: pools[i].poolAppId },
                     isNewStakerToValidator,
                     isNewStakerToProtocol,
-                ];
+                ]
             }
         }
         // Not found is poolId 0
-        return [{ id: validatorId, poolId: 0, poolAppId: 0 }, isNewStakerToValidator, isNewStakerToProtocol];
+        return [{ id: validatorId, poolId: 0, poolAppId: 0 }, isNewStakerToValidator, isNewStakerToProtocol]
     }
 
     /**
@@ -940,31 +944,31 @@ export class ValidatorRegistry extends Contract {
         // Must be called by the owner or manager of the validator.
         assert(
             this.txn.sender === this.validatorList(validatorId).value.config.owner ||
-                this.txn.sender === this.validatorList(validatorId).value.config.manager
-        );
+                this.txn.sender === this.validatorList(validatorId).value.config.manager,
+        )
 
-        const nodePoolAssignments = clone(this.validatorList(validatorId).value.nodePoolAssignments);
-        assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
+        const nodePoolAssignments = clone(this.validatorList(validatorId).value.nodePoolAssignments)
+        assert(nodeNum >= 1 && nodeNum <= MAX_NODES)
         // iterate  all the poolAppIds slots to find the specified poolAppId
         for (let srcNodeIdx = 0; srcNodeIdx < MAX_NODES; srcNodeIdx += 1) {
             for (let i = 0; i < MAX_POOLS_PER_NODE; i += 1) {
                 if (nodePoolAssignments.nodes[srcNodeIdx].poolAppIds[i] === poolAppId) {
-                    assert(nodeNum - 1 !== srcNodeIdx, "can't move to same node");
+                    assert(nodeNum - 1 !== srcNodeIdx, "can't move to same node")
                     // found it - clear this slot
-                    this.validatorList(validatorId).value.nodePoolAssignments.nodes[srcNodeIdx].poolAppIds[i] = 0;
+                    this.validatorList(validatorId).value.nodePoolAssignments.nodes[srcNodeIdx].poolAppIds[i] = 0
 
                     // Force that pool offline since it's moving nodes !
                     sendMethodCall<typeof StakingPool.prototype.goOffline>({
                         applicationID: AppID.fromUint64(poolAppId),
-                    });
+                    })
 
                     // now - add it to desired node
-                    this.addPoolToNode(validatorId, poolAppId, nodeNum);
-                    return;
+                    this.addPoolToNode(validatorId, poolAppId, nodeNum)
+                    return
                 }
             }
         }
-        throw Error("couldn't find pool app id in nodes to move");
+        throw Error("couldn't find pool app id in nodes to move")
     }
 
     // ======
@@ -1062,20 +1066,20 @@ export class ValidatorRegistry extends Contract {
      * can't fake the ids and most importantly application id(!) of the caller that has to match.
      */
     private verifyPoolKeyCaller(poolKey: ValidatorPoolKey): void {
-        assert(this.validatorList(poolKey.id).exists);
-        assert((poolKey.poolId as uint64) < 2 ** 16); // since we limit max pools but keep the interface broad
-        assert(poolKey.poolId > 0 && (poolKey.poolId as uint16) <= this.validatorList(poolKey.id).value.state.numPools);
+        assert(this.validatorList(poolKey.id).exists)
+        assert((poolKey.poolId as uint64) < 2 ** 16) // since we limit max pools but keep the interface broad
+        assert(poolKey.poolId > 0 && (poolKey.poolId as uint16) <= this.validatorList(poolKey.id).value.state.numPools)
         // validator id, pool id, pool app id might still be kind of spoofed, but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
         assert(
             poolKey.poolAppId === this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].poolAppId,
-            "The passed in app id doesn't match the passed in ids"
-        );
+            "The passed in app id doesn't match the passed in ids",
+        )
         // Sender has to match the pool app id passed in as well.
-        assert(this.txn.sender === AppID.fromUint64(poolKey.poolAppId).address);
+        assert(this.txn.sender === AppID.fromUint64(poolKey.poolAppId).address)
         // verify the state of the specified app (the staking pool itself) state matches as well !
-        assert(poolKey.id === (AppID.fromUint64(poolKey.poolAppId).globalState('validatorId') as uint64));
-        assert(poolKey.poolId === (AppID.fromUint64(poolKey.poolAppId).globalState('poolId') as uint64));
+        assert(poolKey.id === (AppID.fromUint64(poolKey.poolAppId).globalState('validatorId') as uint64))
+        assert(poolKey.poolId === (AppID.fromUint64(poolKey.poolAppId).globalState('poolId') as uint64))
     }
 
     /**
@@ -1085,33 +1089,33 @@ export class ValidatorRegistry extends Contract {
      * @param {ValidatorIdType} validatorId - The id of the validator whose data should be re-evaluated.
      */
     private reverifyNFDOwnership(validatorId: ValidatorIdType): void {
-        const validatorConfig = this.validatorList(validatorId).value.config;
+        const validatorConfig = this.validatorList(validatorId).value.config
         if (validatorConfig.nfdForInfo !== 0) {
             // We already verified the nfd id and name were correct at creation time - so we don't need to verify
             // the nfd is real anymore, just that its still owned by the validator.
-            const nfdOwner = AppID.fromUint64(validatorConfig.nfdForInfo).globalState('i.owner.a') as Address;
+            const nfdOwner = AppID.fromUint64(validatorConfig.nfdForInfo).globalState('i.owner.a') as Address
             // If they no longer own the nfd - remove it (!) from the validator config
             if (validatorConfig.owner !== nfdOwner && validatorConfig.manager !== nfdOwner) {
                 // Remove the NFD from this validator !
-                this.validatorList(validatorId).value.config.nfdForInfo = 0;
+                this.validatorList(validatorId).value.config.nfdForInfo = 0
             }
         }
     }
 
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the values in the ValidatorConfig are correct
-        assert(config.entryGatingType >= GATING_TYPE_NONE && config.entryGatingType <= GATING_TYPE_CONST_MAX);
-        assert(config.payoutEveryXMins >= MIN_PAYOUT_MINS && config.payoutEveryXMins <= MAX_PAYOUT_MINS);
-        assert(config.percentToValidator >= MIN_PCT_TO_VALIDATOR && config.percentToValidator <= MAX_PCT_TO_VALIDATOR);
+        assert(config.entryGatingType >= GATING_TYPE_NONE && config.entryGatingType <= GATING_TYPE_CONST_MAX)
+        assert(config.payoutEveryXMins >= MIN_PAYOUT_MINS && config.payoutEveryXMins <= MAX_PAYOUT_MINS)
+        assert(config.percentToValidator >= MIN_PCT_TO_VALIDATOR && config.percentToValidator <= MAX_PCT_TO_VALIDATOR)
         if (config.percentToValidator !== 0) {
             assert(
                 config.validatorCommissionAddress !== Address.zeroAddress,
-                'validatorCommissionAddress must be set if percent to validator is not 0'
-            );
+                'validatorCommissionAddress must be set if percent to validator is not 0',
+            )
         }
-        assert(config.minEntryStake >= MIN_ALGO_STAKE_PER_POOL);
+        assert(config.minEntryStake >= MIN_ALGO_STAKE_PER_POOL)
         // we don't care about maxAlgoPerPool - if set to 0 it floats w/ network incentive values: maxAlgoAllowedPerPool()
-        assert(config.poolsPerNode > 0 && config.poolsPerNode <= MAX_POOLS_PER_NODE);
+        assert(config.poolsPerNode > 0 && config.poolsPerNode <= MAX_POOLS_PER_NODE)
     }
 
     /**
@@ -1130,12 +1134,12 @@ export class ValidatorRegistry extends Contract {
         poolKey: ValidatorPoolKey,
         mbrAmtPaid: uint64,
         isNewStakerToValidator: boolean,
-        isNewStakerToProtocol: boolean
+        isNewStakerToProtocol: boolean,
     ): void {
         if (globals.opcodeBudget < 500) {
-            increaseOpcodeBudget();
+            increaseOpcodeBudget()
         }
-        const poolAppId = this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].poolAppId;
+        const poolAppId = this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].poolAppId
 
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call
@@ -1148,40 +1152,40 @@ export class ValidatorRegistry extends Contract {
                 // =======
                 stakedAmountPayment.sender,
             ],
-        });
+        })
 
         // Stake has been added to the pool - get its new totals and add to our own tracking data
-        const poolNumStakers = AppID.fromUint64(poolAppId).globalState('numStakers') as uint64;
-        const poolAlgoStaked = AppID.fromUint64(poolAppId).globalState('staked') as uint64;
-        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalStakers = poolNumStakers as uint16;
-        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked = poolAlgoStaked;
+        const poolNumStakers = AppID.fromUint64(poolAppId).globalState('numStakers') as uint64
+        const poolAlgoStaked = AppID.fromUint64(poolAppId).globalState('staked') as uint64
+        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalStakers = poolNumStakers as uint16
+        this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked = poolAlgoStaked
 
         // now update our validator and global totals
         if (isNewStakerToValidator) {
-            this.validatorList(poolKey.id).value.state.totalStakers += 1;
+            this.validatorList(poolKey.id).value.state.totalStakers += 1
         }
         if (isNewStakerToProtocol) {
-            this.numStakers.value += 1;
+            this.numStakers.value += 1
         }
-        this.validatorList(poolKey.id).value.state.totalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid;
-        this.totalAlgoStaked.value += stakedAmountPayment.amount - mbrAmtPaid;
+        this.validatorList(poolKey.id).value.state.totalAlgoStaked += stakedAmountPayment.amount - mbrAmtPaid
+        this.totalAlgoStaked.value += stakedAmountPayment.amount - mbrAmtPaid
     }
 
     private updateStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey) {
-        assert(this.stakerPoolSet(staker).exists);
+        assert(this.stakerPoolSet(staker).exists)
 
-        const poolSet = clone(this.stakerPoolSet(staker).value);
+        const poolSet = clone(this.stakerPoolSet(staker).value)
         for (let i = 0; i < this.stakerPoolSet(staker).value.length; i += 1) {
             if (poolSet[i] === poolKey) {
                 // already in pool set
-                return;
+                return
             }
             if (poolSet[i].id === 0) {
-                this.stakerPoolSet(staker).value[i] = poolKey;
-                return;
+                this.stakerPoolSet(staker).value[i] = poolKey
+                return
             }
         }
-        throw Error('No empty slot available in the staker pool set');
+        throw Error('No empty slot available in the staker pool set')
     }
 
     /**
@@ -1194,47 +1198,47 @@ export class ValidatorRegistry extends Contract {
      */
     private removeFromStakerPoolSet(staker: Address, poolKey: ValidatorPoolKey): [boolean, boolean] {
         // track how many pools staker is in, so we  can know if they remove all stake from all pools of this validator
-        let inSameValidatorPoolCount = 0;
-        let inAnyPoolCount = 0;
-        let found = false;
+        let inSameValidatorPoolCount = 0
+        let inAnyPoolCount = 0
+        let found = false
 
-        const poolSet = clone(this.stakerPoolSet(staker).value);
+        const poolSet = clone(this.stakerPoolSet(staker).value)
         for (let i = 0; i < this.stakerPoolSet(staker).value.length; i += 1) {
             if (poolSet[i].id === 0) {
-                continue;
+                continue
             }
-            inAnyPoolCount += 1;
+            inAnyPoolCount += 1
             if (poolSet[i].id === poolKey.id) {
                 if (poolSet[i] === poolKey) {
-                    found = true;
+                    found = true
                     // 'zero' it out
-                    this.stakerPoolSet(staker).value[i] = { id: 0, poolId: 0, poolAppId: 0 };
+                    this.stakerPoolSet(staker).value[i] = { id: 0, poolId: 0, poolAppId: 0 }
                 } else {
-                    inSameValidatorPoolCount += 1;
+                    inSameValidatorPoolCount += 1
                 }
             }
         }
         if (!found) {
-            throw Error('No matching slot found when told to remove a pool from the stakers set');
+            throw Error('No matching slot found when told to remove a pool from the stakers set')
         }
         // Are they completely out of the staking pool ?
-        return [inSameValidatorPoolCount === 0, inAnyPoolCount === 0];
+        return [inSameValidatorPoolCount === 0, inAnyPoolCount === 0]
     }
 
     private addPoolToNode(validatorId: ValidatorIdType, poolAppId: uint64, nodeNum: uint64) {
-        const nodePoolAssignments = clone(this.validatorList(validatorId).value.nodePoolAssignments);
-        const maxPoolsPerNodeForThisValidator = this.validatorList(validatorId).value.config.poolsPerNode as uint64;
+        const nodePoolAssignments = clone(this.validatorList(validatorId).value.nodePoolAssignments)
+        const maxPoolsPerNodeForThisValidator = this.validatorList(validatorId).value.config.poolsPerNode as uint64
         // add the new staking pool to the specified node number - if there is room
-        assert(nodeNum >= 1 && nodeNum <= MAX_NODES);
+        assert(nodeNum >= 1 && nodeNum <= MAX_NODES)
         // iterate all the poolAppIds slots to see if any are free (appid of 0)
         for (let i = 0; i < maxPoolsPerNodeForThisValidator; i += 1) {
             if (nodePoolAssignments.nodes[nodeNum - 1].poolAppIds[i] === 0) {
                 // update box data
-                this.validatorList(validatorId).value.nodePoolAssignments.nodes[nodeNum - 1].poolAppIds[i] = poolAppId;
-                return;
+                this.validatorList(validatorId).value.nodePoolAssignments.nodes[nodeNum - 1].poolAppIds[i] = poolAppId
+                return
             }
         }
-        throw Error('no available space in specified node for this pool');
+        throw Error('no available space in specified node for this pool')
     }
 
     /**
@@ -1245,12 +1249,12 @@ export class ValidatorRegistry extends Contract {
      * @returns {void} or asserts if requirements not met.
      */
     private doesStakerMeetGating(validatorId: ValidatorIdType, valueToVerify: uint64): void {
-        const type = this.validatorList(validatorId).value.config.entryGatingType;
+        const type = this.validatorList(validatorId).value.config.entryGatingType
         if (type === GATING_TYPE_NONE) {
-            return;
+            return
         }
-        const staker = this.txn.sender;
-        const gateReq = clone(this.validatorList(validatorId).value.config.entryGatingValue);
+        const staker = this.txn.sender
+        const config = clone(this.validatorList(validatorId).value.config)
 
         // If an asset gating - check the balance requirement - can handle whether right asset afterward
         if (
@@ -1258,58 +1262,59 @@ export class ValidatorRegistry extends Contract {
             type === GATING_TYPE_ASSET_ID ||
             type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES
         ) {
-            assert(valueToVerify !== 0);
-            let balRequired = this.validatorList(validatorId).value.config.gatingAssetMinBalance;
+            assert(valueToVerify !== 0)
+            let balRequired = this.validatorList(validatorId).value.config.gatingAssetMinBalance
             if (balRequired === 0) {
-                balRequired = 1;
+                balRequired = 1
             }
             assert(
                 staker.assetBalance(AssetID.fromUint64(valueToVerify)) >= balRequired,
-                'must have required minimum balance of validator defined token to add stake'
-            );
+                'must have required minimum balance of validator defined token to add stake',
+            )
         }
         if (type === GATING_TYPE_ASSETS_CREATED_BY) {
             assert(
-                AssetID.fromUint64(valueToVerify).creator === Address.fromBytes(gateReq),
-                'specified asset must be created by creator that the validator defined as a requirement to stake'
-            );
+                AssetID.fromUint64(valueToVerify).creator === config.entryGatingAddress,
+                'specified asset must be created by creator that the validator defined as a requirement to stake',
+            )
         }
         if (type === GATING_TYPE_ASSET_ID) {
-            const requiredAsset = extractUint64(gateReq, 0);
-            assert(requiredAsset !== 0);
-            assert(
-                valueToVerify === requiredAsset,
-                'specified asset must be identical to the asset id defined as a requirement to stake'
-            );
+            assert(valueToVerify !== 0)
+            let found = false
+            for (const assetId of config.entryGatingAssets) {
+                if (valueToVerify === assetId) {
+                    found = true
+                    break
+                }
+            }
+            assert(found, 'specified asset must be identical to the asset id defined as a requirement to stake')
         }
         if (type === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
-            const nfdForInfo = this.validatorList(validatorId).value.config.nfdForInfo;
-            // Walk all the linked addresses defined by this NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
+            // Walk all the linked addresses defined by the gating NFD (stored packed in v.caAlgo.0.as as a 'set' of 32-byte PKs)
             // if any are the creator of the specified asset then we pass.
             assert(
-                this.isAddressInNFDCAAlgoList(nfdForInfo, AssetID.fromUint64(valueToVerify).creator),
-                'specified asset must be created by creator that is one of the linked addresses in an nfd'
-            );
+                this.isAddressInNFDCAAlgoList(config.entryGatingAssets[0], AssetID.fromUint64(valueToVerify).creator),
+                'specified asset must be created by creator that is one of the linked addresses in an nfd',
+            )
         }
         if (type === GATING_TYPE_SEGMENT_OF_NFD) {
             // verify NFD user wants to offer up for testing is at least 'real' - since we just have app id - fetch its name then do is valid call
-            const userOfferedNFDAppID = valueToVerify;
-            assert(this.isNFDAppIDValid(userOfferedNFDAppID), 'provided NFD must be valid');
+            const userOfferedNFDAppID = valueToVerify
+            assert(this.isNFDAppIDValid(userOfferedNFDAppID), 'provided NFD must be valid')
 
             // now see if specified NFD's owner, or any of its caAlgo fields matches the staker's address
             assert(
                 rawBytes(AppID.fromUint64(userOfferedNFDAppID).globalState('i.owner.a') as Address) ===
                     rawBytes(staker) || this.isAddressInNFDCAAlgoList(userOfferedNFDAppID, staker),
-                "provided nfd for entry isn't owned or linked to the staker"
-            );
+                "provided nfd for entry isn't owned or linked to the staker",
+            )
 
             // We at least know it's a real NFD - now.. is it a segment of the root NFD the validator defined ?
-            const requiredParentAppID = extractUint64(gateReq, 0);
-
             assert(
-                (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) === requiredParentAppID,
-                'specified nfd must be a segment of the nfd the validator specified as a requirement'
-            );
+                (AppID.fromUint64(config.entryGatingAssets[0]).globalState('i.parentAppID') as uint64) ===
+                    config.entryGatingAssets[0],
+                'specified nfd must be a segment of the nfd the validator specified as a requirement',
+            )
         }
     }
 
@@ -1324,14 +1329,14 @@ export class ValidatorRegistry extends Contract {
      */
     private isNFDAppIDValid(nfdAppID: uint64): boolean {
         // verify NFD user wants to offer up for testing is at least 'real' - since we just have app id - fetch its name then do is valid call
-        const userOfferedNFDName = AppID.fromUint64(nfdAppID).globalState('i.name') as string;
+        const userOfferedNFDName = AppID.fromUint64(nfdAppID).globalState('i.name') as string
 
         sendAppCall({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
             applicationArgs: ['is_valid_nfd_appid', userOfferedNFDName, itob(nfdAppID)],
             applications: [AppID.fromUint64(nfdAppID)],
-        });
-        return btoi(this.itxn.lastLog) === 1;
+        })
+        return btoi(this.itxn.lastLog) === 1
     }
 
     /**
@@ -1346,15 +1351,15 @@ export class ValidatorRegistry extends Contract {
         sendAppCall({
             applicationID: AppID.fromUint64(nfdAppID),
             applicationArgs: ['read_property', 'v.caAlgo.0.as'],
-        });
-        const caAlgoData = this.itxn.lastLog;
+        })
+        const caAlgoData = this.itxn.lastLog
         for (let i = 0; i < caAlgoData.length; i += 32) {
-            const addr = extract3(caAlgoData, i, 32);
+            const addr = extract3(caAlgoData, i, 32)
             if (addr !== rawBytes(globals.zeroAddress) && addr === rawBytes(addrToFind)) {
-                return true;
+                return true
             }
         }
-        return false;
+        return false
     }
 
     /**
@@ -1363,9 +1368,9 @@ export class ValidatorRegistry extends Contract {
      * NOTE: this function is defined twice - here and in staking pool contract.  Both must be identical.
      */
     private algoSaturationLevel(): uint64 {
-        const online = this.getCurrentOnlineStake();
+        const online = this.getCurrentOnlineStake()
 
-        return wideRatio([online, MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL], [1000]);
+        return wideRatio([online, MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL], [1000])
     }
 
     /**
@@ -1373,9 +1378,9 @@ export class ValidatorRegistry extends Contract {
      * Adding stake is completely blocked at this amount.
      */
     private maxAllowedStake(): uint64 {
-        const online = this.getCurrentOnlineStake();
+        const online = this.getCurrentOnlineStake()
 
-        return wideRatio([online, MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL], [1000]);
+        return wideRatio([online, MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL], [1000])
     }
 
     /**
@@ -1383,12 +1388,12 @@ export class ValidatorRegistry extends Contract {
      */
     private maxAlgoAllowedPerPool(): uint64 {
         // TODO replace w/ appropriate AVM call once available
-        return 70_000_000_000_000; // 70m ALGO in microAlgo
+        return 70_000_000_000_000 // 70m ALGO in microAlgo
     }
 
     private getCurrentOnlineStake(): uint64 {
         // TODO - replace w/ appropriate AVM call once available but return fixed 2 billion for now.
-        return 2_000_000_000_000_000;
+        return 2_000_000_000_000_000
     }
 
     private minBalanceForAccount(
@@ -1398,23 +1403,23 @@ export class ValidatorRegistry extends Contract {
         localInts: uint64,
         localBytes: uint64,
         globalInts: uint64,
-        globalBytes: uint64
+        globalBytes: uint64,
     ): uint64 {
-        let minBal = ALGORAND_ACCOUNT_MIN_BALANCE;
-        minBal += contracts * APPLICATION_BASE_FEE;
-        minBal += extraPages * APPLICATION_BASE_FEE;
-        minBal += assets * ASSET_HOLDING_FEE;
-        minBal += localInts * SSC_VALUE_UINT;
-        minBal += globalInts * SSC_VALUE_UINT;
-        minBal += localBytes * SSC_VALUE_BYTES;
-        minBal += globalBytes * SSC_VALUE_BYTES;
-        return minBal;
+        let minBal = ALGORAND_ACCOUNT_MIN_BALANCE
+        minBal += contracts * APPLICATION_BASE_FEE
+        minBal += extraPages * APPLICATION_BASE_FEE
+        minBal += assets * ASSET_HOLDING_FEE
+        minBal += localInts * SSC_VALUE_UINT
+        minBal += globalInts * SSC_VALUE_UINT
+        minBal += localBytes * SSC_VALUE_BYTES
+        minBal += globalBytes * SSC_VALUE_BYTES
+        return minBal
     }
 
     private costForBoxStorage(totalNumBytes: uint64): uint64 {
-        const SCBOX_PERBOX = 2500;
-        const SCBOX_PERBYTE = 400;
+        const SCBOX_PERBOX = 2500
+        const SCBOX_PERBYTE = 400
 
-        return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE;
+        return SCBOX_PERBOX + totalNumBytes * SCBOX_PERBYTE
     }
 }

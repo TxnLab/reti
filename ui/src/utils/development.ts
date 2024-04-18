@@ -157,5 +157,5 @@ export function validatorAutoFill(
     minEntryStake: '1000',
     poolsPerNode: '3',
     ...stringParams,
-  }
+  } as Partial<ToStringTypes<ValidatorConfig>>
 }

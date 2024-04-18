@@ -3,9 +3,9 @@ import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 /**
  * @description Checks if name is a valid NFD root/segment
- * @param name string to validate
- * @param suffixOptional if true, '.algo' suffix is optional (default: false)
- * @returns true if valid
+ * @param {string} name NFD name to validate
+ * @param {boolean} suffixOptional if true, '.algo' suffix is optional (default: false)
+ * @returns {boolean} true if valid
  */
 export function isValidName(name: string, suffixOptional = false): boolean {
   if (suffixOptional) {
@@ -16,9 +16,9 @@ export function isValidName(name: string, suffixOptional = false): boolean {
 
 /**
  * @description Checks if name is a valid NFD root
- * @param name string to validate
- * @param suffixOptional if true, '.algo' suffix is optional (default: false)
- * @returns true if valid
+ * @param {string} name NFD name to validate
+ * @param {boolean} suffixOptional if true, '.algo' suffix is optional (default: false)
+ * @returns {boolean} true if valid
  */
 export const isValidRoot = (name: string, suffixOptional = false): boolean => {
   if (suffixOptional) {
@@ -29,9 +29,9 @@ export const isValidRoot = (name: string, suffixOptional = false): boolean => {
 
 /**
  * @description Checks if name is a valid NFD segment
- * @param name string to validate
- * @param suffixOptional if true, '.algo' suffix is optional (default: false)
- * @returns true if valid
+ * @param {string} name NFD name to validate
+ * @param {boolean} suffixOptional if true, '.algo' suffix is optional (default: false)
+ * @returns {boolean} true if valid
  */
 export const isValidSegment = (name: string, suffixOptional = false): boolean => {
   if (suffixOptional) {
@@ -41,12 +41,24 @@ export const isValidSegment = (name: string, suffixOptional = false): boolean =>
 }
 
 /**
- * @description Trims the '.algo' suffix from the input string, if it exists
- * @param str string to trim
- * @returns input string with suffix removed
+ * @description Trims the '.algo' suffix from the provided NFD, if it exists
+ * @param {string} str NFD name to trim
+ * @returns {string} NFD name with suffix removed
  */
 export const trimExtension = (str: string): string => {
   return str.replace(/\.algo$/gi, '')
+}
+
+/**
+ * @description Trims the segment prefix from the provided NFD, if it exists
+ * @param {string} str NFD name to trim
+ * @returns {string} NFD name with prefix removed, or original string if invalid
+ */
+export const trimSegment = (str: string): string => {
+  if (!isValidName(str)) {
+    return str
+  }
+  return str.match(/^[a-z0-9]{1,27}\.algo$/gi) ? str : `${str.split('.')[1]}.algo`
 }
 
 export function getNfdProfileUrl(name: string): string {
