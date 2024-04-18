@@ -122,10 +122,6 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 	rewardAvail := r.PoolAvailableRewards(poolAppID, pools[poolID-1].TotalAlgoStaked)
-	if rewardAvail < 1e6 {
-		misc.Infof(r.Logger, "Pool:%d epoch update - reward too small:%s", poolID, algo.FormattedAlgoAmount(rewardAvail))
-		return ErrNotEnoughRewardAvailable
-	}
 	misc.Infof(r.Logger, "Pool:%d epoch update for app id:%d, avail rewards:%s", poolID, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())

@@ -565,9 +565,6 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 						repeat.Fn(func() error {
 							err := App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
 							if err != nil {
-								if errors.Is(err, reti.ErrNotEnoughRewardAvailable) {
-									return nil
-								}
 								// Assume epoch update failed because it's just 'slightly' too early?
 								return repeat.HintTemporary(fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err))
 							}
