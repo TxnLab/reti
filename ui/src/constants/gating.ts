@@ -1,0 +1,5 @@
+export const GATING_TYPE_NONE = 0
+export const GATING_TYPE_ASSETS_CREATED_BY = 1
+export const GATING_TYPE_ASSET_ID = 2
+export const GATING_TYPE_CREATED_BY_NFD_ADDRESSES = 3
+export const GATING_TYPE_SEGMENT_OF_NFD = 4

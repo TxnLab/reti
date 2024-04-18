@@ -4,7 +4,7 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { isAxiosError } from 'axios'
 import { ArrowUpRight, Check, Monitor, MonitorCheck, WalletMinimal } from 'lucide-react'
 import * as React from 'react'
-import { useForm } from 'react-hook-form'
+import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
@@ -29,8 +29,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  GATING_TYPE_ASSETS_CREATED_BY,
+  GATING_TYPE_ASSET_ID,
+  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+  GATING_TYPE_NONE,
+  GATING_TYPE_SEGMENT_OF_NFD,
+} from '@/constants/gating'
 import { Constraints } from '@/interfaces/validator'
-import { getAddValidatorFormSchema, getEpochLengthMinutes } from '@/utils/contracts'
+import {
+  getAddValidatorFormSchema,
+  getEpochLengthMinutes,
+  transformEntryGatingAssets,
+} from '@/utils/contracts'
 // import { validatorAutoFill } from '@/utils/development'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
@@ -43,8 +54,12 @@ interface AddValidatorFormProps {
 }
 
 export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
-  const [nfdAppId, setNfdAppId] = React.useState<number>(0)
-  const [isFetchingAppId, setIsFetchingAppId] = React.useState(false)
+  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(0)
+  const [isFetchingNfdForInfo, setIsFetchingNfdForInfo] = React.useState(false)
+  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(0)
+  const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
+  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
+  const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
   const [epochTimeframe, setEpochTimeframe] = React.useState('minutes')
   const [isSigning, setIsSigning] = React.useState(false)
 
@@ -54,14 +69,19 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const formSchema = getAddValidatorFormSchema(constraints)
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  type FormValues = z.infer<typeof formSchema>
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       owner: '',
       manager: '',
       nfdForInfo: '',
       entryGatingType: '0',
-      entryGatingValue: '',
+      entryGatingAddress: '',
+      entryGatingAssets: [{ value: '' }],
+      entryGatingNfdCreator: '',
+      entryGatingNfdParent: '',
       gatingAssetMinBalance: '',
       rewardTokenId: '',
       rewardPerPayout: '',
@@ -75,17 +95,42 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const { errors } = form.formState
 
-  const fetchNfdForInfo = async (value: string) => {
+  const { fields, append, replace } = useFieldArray({
+    control: form.control,
+    name: 'entryGatingAssets',
+  })
+
+  const selectedGatingType = form.watch('entryGatingType')
+
+  const isEntryGatingAddressEnabled = selectedGatingType === String(GATING_TYPE_ASSETS_CREATED_BY)
+  const isEntryGatingAssetsEnabled = selectedGatingType === String(GATING_TYPE_ASSET_ID)
+  const isEntryGatingNfdParentEnabled = selectedGatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
+
+  const isEntryGatingNfdCreatorEnabled =
+    selectedGatingType === String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)
+
+  const isGatingAssetMinBalanceEnabled = [
+    String(GATING_TYPE_ASSETS_CREATED_BY),
+    String(GATING_TYPE_ASSET_ID),
+    String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
+  ].includes(selectedGatingType)
+
+  const fetchNfdAppId = async (
+    value: string,
+    field: keyof FormValues,
+    setValue: React.Dispatch<React.SetStateAction<number>>,
+    setFetching: React.Dispatch<React.SetStateAction<boolean>>,
+  ) => {
     try {
       const nfd = await fetchNfd(value, { view: 'brief' })
 
-      if (nfd.owner !== activeAddress) {
+      if (field === 'nfdForInfo' && nfd.owner !== activeAddress) {
         throw new Error('NFD not owned by active address')
       }
 
       // If we have an app id, clear error if it exists
-      form.clearErrors('nfdForInfo')
-      setNfdAppId(nfd.appID!)
+      form.clearErrors(field)
+      setValue(nfd.appID!)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       let message: string
@@ -101,67 +146,61 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         console.error(error)
         message = error.message
       }
-      form.setError('nfdForInfo', { type: 'manual', message })
+      form.setError(field, { type: 'manual', message })
     } finally {
-      setIsFetchingAppId(false)
+      setFetching(false)
     }
   }
 
-  const debouncedNfdCheck = useDebouncedCallback(async (value) => {
+  const debouncedNfdForInfoCheck = useDebouncedCallback(async (value) => {
     const isValid = await form.trigger('nfdForInfo')
     if (isValid) {
-      await fetchNfdForInfo(value)
+      await fetchNfdAppId(value, 'nfdForInfo', setNfdForInfoAppId, setIsFetchingNfdForInfo)
     } else {
-      setIsFetchingAppId(false)
+      setIsFetchingNfdForInfo(false)
+    }
+  }, 500)
+
+  const debouncedNfdCreatorCheck = useDebouncedCallback(async (value) => {
+    const isValid = await form.trigger('entryGatingNfdCreator')
+    if (isValid) {
+      await fetchNfdAppId(
+        value,
+        'entryGatingNfdCreator',
+        setNfdCreatorAppId,
+        setIsFetchingNfdCreator,
+      )
+    } else {
+      setIsFetchingNfdCreator(false)
+    }
+  }, 500)
+
+  const debouncedNfdParentCheck = useDebouncedCallback(async (value) => {
+    const isValid = await form.trigger('entryGatingNfdParent')
+    if (isValid) {
+      await fetchNfdAppId(value, 'entryGatingNfdParent', setNfdParentAppId, setIsFetchingNfdParent)
+    } else {
+      setIsFetchingNfdParent(false)
     }
   }, 500)
 
   const nfdForInfo = form.watch('nfdForInfo')
+  const entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
-  const showPrimaryMintButton =
-    !isFetchingAppId &&
-    nfdAppId === 0 &&
-    errors.nfdForInfo?.message === 'NFD app ID not found' &&
-    isValidName(nfdForInfo)
+  const showPrimaryMintNfd = (
+    name: string,
+    isFetching: boolean,
+    appId: number,
+    errorMessage?: string,
+  ) => {
+    return (
+      !isFetching && appId === 0 && errorMessage === 'NFD app ID not found' && isValidName(name)
+    )
+  }
 
-  const mintNfdUrl = showPrimaryMintButton
-    ? `${nfdAppUrl}/mint?q=${trimExtension(nfdForInfo)}`
-    : `${nfdAppUrl}/mint`
-
-  const selectedGatingType = form.watch('entryGatingType')
-
-  const isEntryGatingEnabled = ['1', '2', '3', '4'].includes(String(selectedGatingType))
-  const isGatingAssetMinBalanceEnabled = ['1', '2', '3'].includes(String(selectedGatingType))
-
-  const gatingValueInfo = React.useMemo(() => {
-    switch (String(selectedGatingType)) {
-      case '1':
-        return {
-          label: 'Asset creator account',
-          description: 'Must hold asset created by this account to enter pool',
-        }
-      case '2':
-        return {
-          label: 'Asset ID',
-          description: 'Must hold asset with this ID to enter pool',
-        }
-      case '3':
-        return {
-          label: 'Asset creator NFD',
-          description: 'Must hold asset created by an account linked to this NFD to enter pool',
-        }
-      case '4':
-        return {
-          label: 'Root/parent NFD',
-          description: 'Must hold a segment of this root/parent NFD to enter pool',
-        }
-      default:
-        return {
-          label: 'Unknown',
-          description: 'Unknown',
-        }
-    }
-  }, [selectedGatingType])
+  const getNfdMintUrl = (name: string, showPrimary: boolean) => {
+    return showPrimary ? `${nfdAppUrl}/mint?q=${trimExtension(name)}` : `${nfdAppUrl}/mint`
+  }
 
   const infoPopoverClassName = 'mx-1.5 relative top-0.5 sm:mx-1 sm:top-0'
 
@@ -181,13 +220,25 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
       const payoutEveryXMins = getEpochLengthMinutes(values.payoutEveryXMins, epochTimeframe)
+      const entryGatingAssets = transformEntryGatingAssets(
+        values.entryGatingType,
+        values.entryGatingAssets,
+        nfdCreatorAppId,
+        nfdParentAppId,
+      )
 
       const newValues = {
         ...values,
         payoutEveryXMins: String(payoutEveryXMins),
+        entryGatingAssets,
       }
 
-      const validatorId = await addValidator(newValues, nfdAppId, transactionSigner, activeAddress)
+      const validatorId = await addValidator(
+        newValues,
+        nfdForInfoAppId,
+        transactionSigner,
+        activeAddress,
+      )
 
       toast.success(
         <div className="flex items-center gap-x-2">
@@ -204,6 +255,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     } catch (error) {
       toast.error('Failed to create validator', { id: toastId })
       console.error(error)
+    } finally {
+      setIsSigning(false)
     }
   }
 
@@ -474,26 +527,30 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       <div className="flex-1 relative">
                         <FormControl>
                           <Input
-                            className={cn('', isFetchingAppId || nfdAppId > 0 ? 'pr-10' : '')}
+                            className={cn(
+                              isFetchingNfdForInfo || nfdForInfoAppId > 0 ? 'pr-10' : '',
+                            )}
                             placeholder=""
                             autoComplete="new-password"
                             spellCheck="false"
                             {...field}
                             onChange={(e) => {
                               field.onChange(e) // Inform react-hook-form of the change
-                              setNfdAppId(0) // Reset NFD app ID
-                              setIsFetchingAppId(true) // Set fetching state
-                              debouncedNfdCheck(e.target.value) // Perform debounced validation
+                              setNfdForInfoAppId(0) // Reset NFD app ID
+                              setIsFetchingNfdForInfo(true) // Set fetching state
+                              debouncedNfdForInfoCheck(e.target.value) // Perform debounced validation
                             }}
                           />
                         </FormControl>
                         <div
                           className={cn(
-                            isFetchingAppId || nfdAppId > 0 ? 'opacity-100' : 'opacity-0',
+                            isFetchingNfdForInfo || nfdForInfoAppId > 0
+                              ? 'opacity-100'
+                              : 'opacity-0',
                             'pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3',
                           )}
                         >
-                          {isFetchingAppId ? (
+                          {isFetchingNfdForInfo ? (
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               width="24"
@@ -509,17 +566,38 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                             >
                               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                             </svg>
-                          ) : nfdAppId ? (
+                          ) : nfdForInfoAppId ? (
                             <Check className="h-5 w-5 text-green-500" />
                           ) : null}
                         </div>
                       </div>
                       <Button
                         size="sm"
-                        variant={showPrimaryMintButton ? 'default' : 'outline'}
+                        variant={
+                          showPrimaryMintNfd(
+                            nfdForInfo,
+                            isFetchingNfdForInfo,
+                            nfdForInfoAppId,
+                            errors.nfdForInfo?.message,
+                          )
+                            ? 'default'
+                            : 'outline'
+                        }
                         asChild
                       >
-                        <a href={mintNfdUrl} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={getNfdMintUrl(
+                            nfdForInfo,
+                            showPrimaryMintNfd(
+                              nfdForInfo,
+                              isFetchingNfdForInfo,
+                              nfdForInfoAppId,
+                              errors.nfdForInfo?.message,
+                            ),
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           <ArrowUpRight className="hidden mr-1 h-5 w-5 opacity-75 sm:inline" />
                           Mint NFD
                         </a>
@@ -587,10 +665,17 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         onValueChange={(gatingType) => {
                           field.onChange(gatingType) // Inform react-hook-form of the change
 
-                          form.setValue('entryGatingValue', '') // Reset gating value
-                          form.clearErrors('entryGatingValue') // Clear any errors for gating value
+                          replace([{ value: '' }]) // Reset entryGatingAssets array
 
-                          const isNfdSegmentGating = gatingType === '4'
+                          // Clear any errors
+                          form.clearErrors('entryGatingAssets')
+                          form.clearErrors('entryGatingAddress')
+                          form.clearErrors('entryGatingNfdCreator')
+                          form.clearErrors('entryGatingNfdParent')
+
+                          const isNfdSegmentGating =
+                            gatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
+
                           const gatingMinBalance = isNfdSegmentGating ? '1' : ''
 
                           form.setValue('gatingAssetMinBalance', gatingMinBalance) // Set/reset min balance
@@ -603,11 +688,17 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="0">None</SelectItem>
-                          <SelectItem value="1">Asset by Creator Account</SelectItem>
-                          <SelectItem value="2">Asset ID</SelectItem>
-                          <SelectItem value="3">Asset Created by NFD</SelectItem>
-                          <SelectItem value="4">NFD Segment</SelectItem>
+                          <SelectItem value={String(GATING_TYPE_NONE)}>None</SelectItem>
+                          <SelectItem value={String(GATING_TYPE_ASSETS_CREATED_BY)}>
+                            Asset by Creator Account
+                          </SelectItem>
+                          <SelectItem value={String(GATING_TYPE_ASSET_ID)}>Asset ID</SelectItem>
+                          <SelectItem value={String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)}>
+                            Asset Created by NFD
+                          </SelectItem>
+                          <SelectItem value={String(GATING_TYPE_SEGMENT_OF_NFD)}>
+                            NFD Segment
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -618,20 +709,214 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="entryGatingValue"
+                name="entryGatingAddress"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingEnabled })}>
+                  <FormItem className={cn({ hidden: !isEntryGatingAddressEnabled })}>
                     <FormLabel>
-                      {gatingValueInfo.label}
+                      Asset creator account
                       <InfoPopover className={infoPopoverClassName}>
-                        {gatingValueInfo.description}
+                        Must hold asset created by this account to enter pool
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input placeholder="" {...field} />
                     </FormControl>
-                    <FormMessage>{errors.entryGatingValue?.message}</FormMessage>
+                    <FormMessage>{errors.entryGatingAddress?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <div className={cn({ hidden: !isEntryGatingAssetsEnabled })}>
+                {fields.map((field, index) => (
+                  <FormField
+                    control={form.control}
+                    key={field.id}
+                    name={`entryGatingAssets.${index}.value`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className={cn(index !== 0 && 'sr-only')}>
+                          Asset ID
+                          <InfoPopover className={infoPopoverClassName}>
+                            Must hold asset with this ID to enter pool
+                          </InfoPopover>
+                          <span className="text-primary">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+                <FormMessage className="mt-2">
+                  {errors.entryGatingAssets?.root?.message}
+                </FormMessage>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => append({ value: '' })}
+                  disabled={fields.length >= 4}
+                >
+                  Add Asset
+                </Button>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="entryGatingNfdCreator"
+                render={({ field }) => (
+                  <FormItem className={cn({ hidden: !isEntryGatingNfdCreatorEnabled })}>
+                    <FormLabel>
+                      Asset creator NFD
+                      <InfoPopover className={infoPopoverClassName}>
+                        Must hold asset created by an account linked to this NFD to enter pool
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
+                    </FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          className={cn(isFetchingNfdCreator || nfdCreatorAppId > 0 ? 'pr-10' : '')}
+                          placeholder=""
+                          autoComplete="new-password"
+                          spellCheck="false"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e) // Inform react-hook-form of the change
+                            setNfdCreatorAppId(0) // Reset NFD app ID
+                            setIsFetchingNfdCreator(true) // Set fetching state
+                            debouncedNfdCreatorCheck(e.target.value) // Perform debounced validation
+                          }}
+                        />
+                      </FormControl>
+                      <div
+                        className={cn(
+                          isFetchingNfdCreator || nfdCreatorAppId > 0 ? 'opacity-100' : 'opacity-0',
+                          'pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3',
+                        )}
+                      >
+                        {isFetchingNfdCreator ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-5 w-5 animate-spin opacity-25"
+                            aria-hidden="true"
+                          >
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                          </svg>
+                        ) : nfdCreatorAppId ? (
+                          <Check className="h-5 w-5 text-green-500" />
+                        ) : null}
+                      </div>
+                    </div>
+                    <FormMessage>{errors.entryGatingNfdCreator?.message}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="entryGatingNfdParent"
+                render={({ field }) => (
+                  <FormItem className={cn({ hidden: !isEntryGatingNfdParentEnabled })}>
+                    <FormLabel>
+                      Root/parent NFD
+                      <InfoPopover className={infoPopoverClassName}>
+                        Must hold a segment of this root/parent NFD to enter pool
+                      </InfoPopover>
+                      <span className="text-primary">*</span>
+                    </FormLabel>
+                    <div className="flex items-center gap-x-3">
+                      <div className="flex-1 relative">
+                        <FormControl>
+                          <Input
+                            className={cn(
+                              '',
+                              isFetchingNfdParent || nfdParentAppId > 0 ? 'pr-10' : '',
+                            )}
+                            placeholder=""
+                            autoComplete="new-password"
+                            spellCheck="false"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e) // Inform react-hook-form of the change
+                              setNfdParentAppId(0) // Reset NFD app ID
+                              setIsFetchingNfdParent(true) // Set fetching state
+                              debouncedNfdParentCheck(e.target.value) // Perform debounced validation
+                            }}
+                          />
+                        </FormControl>
+                        <div
+                          className={cn(
+                            isFetchingNfdParent || nfdParentAppId > 0 ? 'opacity-100' : 'opacity-0',
+                            'pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3',
+                          )}
+                        >
+                          {isFetchingNfdParent ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-5 w-5 animate-spin opacity-25"
+                              aria-hidden="true"
+                            >
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                            </svg>
+                          ) : nfdParentAppId ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : null}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={
+                          showPrimaryMintNfd(
+                            entryGatingNfdParent,
+                            isFetchingNfdParent,
+                            nfdParentAppId,
+                            errors.entryGatingNfdParent?.message,
+                          )
+                            ? 'default'
+                            : 'outline'
+                        }
+                        asChild
+                      >
+                        <a
+                          href={getNfdMintUrl(
+                            entryGatingNfdParent,
+                            showPrimaryMintNfd(
+                              entryGatingNfdParent,
+                              isFetchingNfdParent,
+                              nfdParentAppId,
+                              errors.entryGatingNfdParent?.message,
+                            ),
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ArrowUpRight className="hidden mr-1 h-5 w-5 opacity-75 sm:inline" />
+                          Mint NFD
+                        </a>
+                      </Button>
+                    </div>
+                    <FormMessage>{errors.entryGatingNfdParent?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -755,7 +1040,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               type="submit"
               size="lg"
               className="w-full text-base sm:w-auto"
-              disabled={isSigning || isFetchingAppId}
+              disabled={
+                isSigning || isFetchingNfdForInfo || isFetchingNfdCreator || isFetchingNfdParent
+              }
             >
               <Monitor className="mr-2 h-5 w-5" />
               Add Validator
