@@ -723,6 +723,172 @@ describe('StakeAdds', () => {
     })
 })
 
+describe('StakeAddWMixedRemove', () => {
+    beforeEach(fixture.beforeEach)
+    beforeEach(logs.beforeEach)
+    afterEach(logs.afterEach)
+
+    let validatorId: number
+    let validatorOwnerAccount: Account
+    let firstPoolKey: ValidatorPoolKey
+
+    beforeAll(async () => {
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        const config = createValidatorConfig({
+            Owner: validatorOwnerAccount.addr,
+            Manager: validatorOwnerAccount.addr,
+            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            MaxAlgoPerPool: BigInt(MaxAlgoPerPool),
+            PercentToValidator: 50000,
+            PoolsPerNode: MaxPoolsPerNode,
+        })
+
+        validatorId = await addValidator(
+            fixture.context,
+            validatorMasterClient,
+            validatorOwnerAccount,
+            config,
+            validatorMbr,
+        )
+        firstPoolKey = await addStakingPool(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            1,
+            validatorOwnerAccount,
+            poolMbr,
+            poolInitMbr,
+        )
+    })
+    test('addRemoveByStaker', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        let amountStaked = 0
+        const [addStake1] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            AlgoAmount.Algos(1100),
+            0n,
+        )
+        amountStaked = AlgoAmount.Algos(1100).microAlgos - Number(stakerMbr)
+        expect(addStake1.id).toEqual(firstPoolKey.id)
+        expect(addStake1.poolId).toEqual(firstPoolKey.poolId)
+        expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        const ourPoolClient = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+
+        // Get Pool info before removing stake..
+        const preRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        // then remove the stake !
+        const removeFees = await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(0))
+        const newBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        expect(newBalance.amount).toEqual(
+            stakerAcctBalance.amount + amountStaked - removeFees, // microAlgo for `removeStake fees
+        )
+
+        // stakers should have been reduced and stake amount should have been reduced by stake removed
+        const postRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        expect(postRemovePoolInfo.totalStakers).toEqual(preRemovePoolInfo.totalStakers - 1)
+        expect(postRemovePoolInfo.totalAlgoStaked).toEqual(preRemovePoolInfo.totalAlgoStaked - BigInt(amountStaked))
+    })
+
+    test('addRemoveFail', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        const [addStake1] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            AlgoAmount.Algos(1100),
+            0n,
+        )
+        expect(addStake1.id).toEqual(firstPoolKey.id)
+        expect(addStake1.poolId).toEqual(firstPoolKey.poolId)
+        expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const ourPoolClient = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+        const otherAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+
+        await expect(removeStake(ourPoolClient, otherAccount, AlgoAmount.MicroAlgos(0))).rejects.toThrowError()
+    })
+
+    test('addRemoveByValidator', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        let amountStaked = 0
+        const [addStake1] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            AlgoAmount.Algos(1100),
+            0n,
+        )
+        amountStaked = AlgoAmount.Algos(1100).microAlgos - Number(stakerMbr)
+        expect(addStake1.id).toEqual(firstPoolKey.id)
+        expect(addStake1.poolId).toEqual(firstPoolKey.poolId)
+        expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        const ourPoolClient = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+
+        const preRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        const removeFees = await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(0))
+        const newBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        expect(newBalance.amount).toEqual(
+            stakerAcctBalance.amount + amountStaked - removeFees, // microAlgo for `removeStake fees
+        )
+
+        // stakers should have been reduced and stake amount should have been reduced by stake removed
+        const postRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        expect(postRemovePoolInfo.totalStakers).toEqual(preRemovePoolInfo.totalStakers - 1)
+        expect(postRemovePoolInfo.totalAlgoStaked).toEqual(preRemovePoolInfo.totalAlgoStaked - BigInt(amountStaked))
+    })
+})
+
 describe('StakeWRewards', () => {
     beforeEach(fixture.beforeEach)
     beforeEach(logs.beforeEach)

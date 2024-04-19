@@ -225,14 +225,22 @@ export class StakingPool extends Contract {
      * Removes stake on behalf of caller (removing own stake).  If any token rewards exist, those are always sent in
      * full. Also notifies the validator contract for this pools validator of the staker / balance changes.
      *
+     * @param {Address} staker - account to remove.  normally same as sender, but the validator owner or manager can also call
+     * this to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This is
+     * so a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longer
+     * meet the gating requirements (determined by the node daemon).
      * @param {uint64} amountToUnstake - The amount of stake to be removed.  Specify 0 to remove all stake.
      * @throws {Error} If the account has insufficient balance or if the account is not found.
      */
-    removeStake(amountToUnstake: uint64): void {
-        // We want to preserve the sanctity that the ONLY account that can call us is the staking account
-        // It makes it a bit awkward this way to update the state in the validator, but it's safer
-        // account calling us has to be account removing stake
-        const staker = this.txn.sender
+    removeStake(staker: Address, amountToUnstake: uint64): void {
+        // Staker MUST be the sender
+        // UNLESS the sender is owner or manager of validator - then they can have a staker get some (or all) of their stake back
+        if (staker !== this.txn.sender) {
+            assert(
+                this.isOwnerOrManagerCaller(),
+                'If staker is not sender in removeStake call, then sender MUST be owner or manager of validator',
+            )
+        }
 
         for (let i = 0; i < this.stakers.value.length; i += 1) {
             if (globals.opcodeBudget < 300) {

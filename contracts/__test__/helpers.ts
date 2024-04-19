@@ -763,18 +763,23 @@ export async function addStake(
     }
 }
 
-export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
+export async function removeStake(
+    stakeClient: StakingPoolClient,
+    staker: Account,
+    unstakeAmount: AlgoAmount,
+    altSender?: Account,
+) {
     const simulateResults = await stakeClient
         .compose()
         .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .removeStake(
-            { amountToUnstake: unstakeAmount.microAlgos },
+            { staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos },
             {
                 sendParams: {
                     fee: AlgoAmount.MicroAlgos(240000),
                 },
-                sender: staker,
+                sender: altSender || staker,
             },
         )
         .simulate({ allowUnnamedResources: true })
@@ -790,7 +795,7 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
             .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
             .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
             .removeStake(
-                { amountToUnstake: unstakeAmount.microAlgos },
+                { staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos },
                 {
                     sendParams: {
                         // pays us back and tells validator about balance changed

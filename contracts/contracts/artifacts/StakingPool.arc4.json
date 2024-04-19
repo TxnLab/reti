@@ -78,6 +78,11 @@
       "desc": "Removes stake on behalf of caller (removing own stake).  If any token rewards exist, those are always sent infull. Also notifies the validator contract for this pools validator of the staker / balance changes.",
       "args": [
         {
+          "name": "staker",
+          "type": "address",
+          "desc": "account to remove.  normally same as sender, but the validator owner or manager can also callthis to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This isso a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longermeet the gating requirements (determined by the node daemon)."
+        },
+        {
           "name": "amountToUnstake",
           "type": "uint64",
           "desc": "The amount of stake to be removed.  Specify 0 to remove all stake."
