@@ -44,6 +44,18 @@ func GetValidatorCmdOpts() *cli.Command {
 				Usage: "Change configuration parameters of validator",
 				Commands: []*cli.Command{
 					{
+						Name:  "manager",
+						Usage: "Change the manager address",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "address",
+								Usage:    "The algorand address to be the new manager address.",
+								Required: true,
+							},
+						},
+						Action: ChangeManager,
+					},
+					{
 						Name:  "commission",
 						Usage: "Change the commission address",
 						Flags: []cli.Flag{
@@ -107,6 +119,30 @@ func DisplayValidatorState(ctx context.Context, command *cli.Command) error {
 	}
 	slog.Info(state.String())
 	return nil
+}
+
+func ChangeManager(ctx context.Context, command *cli.Command) error {
+	if !App.retiClient.IsConfigured() {
+		return fmt.Errorf("validator not configured")
+	}
+	var info = App.retiClient.Info()
+
+	signer, err := App.signer.FindFirstSigner([]string{info.Config.Owner, info.Config.Manager})
+	if err != nil {
+		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+
+	managerAddress, err := types.DecodeAddress(command.String("address"))
+	if err != nil {
+		return err
+	}
+
+	err = App.retiClient.ChangeValidatorManagerAddress(info.Config.ID, signerAddr, managerAddress)
+	if err != nil {
+		return err
+	}
+	return App.retiClient.LoadState(ctx)
 }
 
 func ChangeCommission(ctx context.Context, command *cli.Command) error {
