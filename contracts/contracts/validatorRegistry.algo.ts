@@ -389,10 +389,12 @@ export class ValidatorRegistry extends Contract {
     }
 
     /** Adds a new validator
-     * @param mbrPayment payment from caller which covers mbr increase of new validator storage
-     * @param nfdName (Optional) Name of nfd (used as double-check against id specified in config)
-     * @param config ValidatorConfig struct
-     * @returns validator id
+     * Requires at least 10 ALGO as the 'fee' for the transaction to help dissuade spammed validator adds.
+     *
+     * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of new validator storage
+     * @param {string} nfdName (Optional) Name of nfd (used as double-check against id specified in config)
+     * @param {ValidatorConfig} config ValidatorConfig struct
+     * @returns {uint64} validator id
      */
     addValidator(mbrPayment: PayTxn, nfdName: string, config: ValidatorConfig): uint64 {
         this.validateConfig(config)
@@ -401,6 +403,8 @@ export class ValidatorRegistry extends Contract {
         assert(this.txn.sender === config.owner, 'sender must be owner to add new validator')
 
         verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addValidatorMbr })
+
+        assert(mbrPayment.fee > 10 * 1000000, 'fee must be 10 ALGO or more to prevent spamming of validators')
 
         // We're adding a new validator - same owner might have multiple - we don't care.
         const validatorId = this.numValidators.value + 1

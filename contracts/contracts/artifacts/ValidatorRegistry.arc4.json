@@ -200,7 +200,7 @@
     },
     {
       "name": "addValidator",
-      "desc": "Adds a new validator",
+      "desc": "Adds a new validatorRequires at least 10 ALGO as the 'fee' for the transaction to help dissuade spammed validator adds.",
       "args": [
         {
           "name": "mbrPayment",
@@ -220,7 +220,7 @@
       ],
       "returns": {
         "type": "uint64",
-        "desc": "validator id"
+        "desc": "{uint64}validator id"
       }
     },
     {

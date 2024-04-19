@@ -458,6 +458,9 @@ export async function addValidator(
     const suggestedParams = await context.algod.getTransactionParams().do()
     const validatorsAppRef = await validatorClient.appClient.getAppReference()
 
+    suggestedParams.flatFee = true
+    suggestedParams.fee = AlgoAmount.Algos(10.001).microAlgos
+
     // Pay the additional mbr to the validator contract for the new validator mbr
     const payValidatorMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,
@@ -472,7 +475,10 @@ export async function addValidator(
             .addValidator(
                 {
                     // the required MBR payment transaction..
-                    mbrPayment: { transaction: payValidatorMbr, signer: context.testAccount },
+                    mbrPayment: {
+                        transaction: payValidatorMbr,
+                        signer: context.testAccount,
+                    },
                     // --
                     nfdName: '',
                     config: validatorConfigAsArray(config),
