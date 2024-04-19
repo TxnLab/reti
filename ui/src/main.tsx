@@ -14,14 +14,15 @@ import { HelmetProvider } from 'react-helmet-async'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/sonner'
 import { WalletShortcutHandler } from '@/components/WalletShortcutHandler'
+import { AuthAddressProvider } from '@/providers/AuthAddressProvider'
 import { ThemeProvider } from '@/providers/ThemeProvider'
+import { routeTree } from '@/routeTree.gen'
 import '@/styles/main.css'
 import {
   getAlgodConfigFromViteEnvironment,
   getAlgodNetwork,
   getKmdConfigFromViteEnvironment,
 } from '@/utils/network/getAlgoClientConfigs'
-import { routeTree } from './routeTree.gen'
 
 // use-wallet configuration
 let wallets: SupportedWallet[]
@@ -96,8 +97,10 @@ function AppProviders() {
         <QueryClientProvider client={queryClient}>
           <SnackbarProvider maxSnack={3}>
             <WalletProvider manager={walletManager}>
-              <InnerApp />
-              <WalletShortcutHandler />
+              <AuthAddressProvider>
+                <InnerApp />
+                <WalletShortcutHandler />
+              </AuthAddressProvider>
             </WalletProvider>
           </SnackbarProvider>
         </QueryClientProvider>
