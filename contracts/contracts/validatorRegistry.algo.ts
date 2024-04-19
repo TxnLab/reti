@@ -599,6 +599,14 @@ export class ValidatorRegistry extends Contract {
     addStake(stakedAmountPayment: PayTxn, validatorId: ValidatorIdType, valueToVerify: uint64): ValidatorPoolKey {
         assert(this.validatorList(validatorId).exists)
 
+        // Ensure this validator hasn't reached its sunset date
+        if (this.validatorList(validatorId).value.config.sunsettingOn > 0) {
+            assert(
+                this.validatorList(validatorId).value.config.sunsettingOn < globals.latestTimestamp,
+                "can't stake with a validator that is past its sunsetting time",
+            )
+        }
+
         const staker = this.txn.sender
         // The prior transaction should be a payment to this pool for the amount specified.  If this is stakers
         // first time staking, then we subtract the required MBR from their payment as that MBR amount needs to stay
@@ -1116,6 +1124,9 @@ export class ValidatorRegistry extends Contract {
         assert(config.minEntryStake >= MIN_ALGO_STAKE_PER_POOL)
         // we don't care about maxAlgoPerPool - if set to 0 it floats w/ network incentive values: maxAlgoAllowedPerPool()
         assert(config.poolsPerNode > 0 && config.poolsPerNode <= MAX_POOLS_PER_NODE)
+        if (config.sunsettingOn !== 0) {
+            assert(config.sunsettingOn > globals.latestTimestamp, 'sunsettingOn must be later than now if set')
+        }
     }
 
     /**
