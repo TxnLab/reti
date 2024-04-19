@@ -49,12 +49,15 @@ func newDaemon() *Daemon {
 	}
 }
 
-func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, listenPort int) {
+func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc, listenPort int) {
 	misc.Infof(d.logger, "Réti daemon, version:%s started", getVersionInfo())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		d.KeyWatcher(ctx)
+		// note that KeyWatcher is allowed to cancel the context and cause the daemon to exit
+		// this is so an exit (and presumed restart) can be triggered when the manager address is changed
+		// out from underneath the daemon
+		d.KeyWatcher(ctx, cancel)
 	}()
 
 	wg.Add(1)
@@ -95,7 +98,7 @@ func isReady() http.Handler {
 
 // KeyWatcher keeps track of both active pools for this node (updated via configuration file) as well
 // as participation keys with the algod daemon.  It creates and maintains participation keys as necessary.
-func (d *Daemon) KeyWatcher(ctx context.Context) {
+func (d *Daemon) KeyWatcher(ctx context.Context, cancel context.CancelFunc) {
 	defer d.logger.Info("Exiting KeyWatcher")
 	d.logger.Info("Starting KeyWatcher")
 
@@ -120,11 +123,16 @@ func (d *Daemon) KeyWatcher(ctx context.Context) {
 		case <-checkTime.C:
 			// Make sure our 'config' is fresh in case the user updated it
 			// they could have added new pools, moved them between nodes, etc.
+			curManager := App.retiClient.Info().Config.Manager
 			err := d.refetchConfig()
 			if err != nil {
 				misc.Warnf(d.logger, "error in fetching configuration, will retry.  err:%v", err)
-				// try later.
 				break
+			}
+			if curManager != App.retiClient.Info().Config.Manager {
+				d.logger.Warn("Manager account was changed, restarting daemon to ensure proper keys available")
+				cancel()
+				return
 			}
 
 			d.updatePoolVersions(ctx)
