@@ -50,12 +50,16 @@ func runAsDaemon(ctx context.Context, cmd *cli.Command) error {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 
-	newDaemon().start(ctx, &wg, int(cmd.Int("port")))
+	newDaemon().start(ctx, &wg, cancel, int(cmd.Int("port")))
 
-	misc.Infof(App.logger, "exiting (%v)", <-errc) // wait for termination signal
-
-	// Send cancellation signal to the goroutines.
-	cancel()
+	select {
+	case err := <-errc: // wait for termination signal
+		misc.Infof(App.logger, "exiting (%v)", err)
+		// Send cancellation signal to the goroutines.
+		cancel()
+	case <-ctx.Done():
+		misc.Infof(App.logger, "exiting - cancelled internally")
+	}
 	misc.Infof(App.logger, "waiting on backround tasks..")
 	wg.Wait()
 
