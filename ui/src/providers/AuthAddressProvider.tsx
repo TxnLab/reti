@@ -31,7 +31,7 @@ export function AuthAddressProvider({ children }: { children: React.ReactNode })
         setAuthAddress(authAddr)
       } catch (error) {
         console.error(`Error fetching active wallet's authorized address:`, error)
-        setAuthAddress(activeAddress!)
+        setAuthAddress(undefined)
       } finally {
         setIsReady(true)
       }
