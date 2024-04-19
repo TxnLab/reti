@@ -39,6 +39,7 @@ import {
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
+import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { simulateEpoch } from '@/utils/development'
 import { ellipseAddress } from '@/utils/ellipseAddress'
@@ -66,6 +67,7 @@ export function StakingTable({
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
 
   const { transactionSigner, activeAddress } = useWallet()
+  const { authAddress } = useAuthAddress()
 
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -198,6 +200,7 @@ export function StakingTable({
                             100,
                             transactionSigner,
                             activeAddress,
+                            authAddress,
                             queryClient,
                             router,
                           )
