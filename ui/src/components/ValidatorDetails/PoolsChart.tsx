@@ -8,7 +8,7 @@ type PoolData = {
 
 interface PoolsChartProps {
   data: PoolData[]
-  onValueChange: (value: React.SetStateAction<EventProps>) => void
+  onValueChange: (value: EventProps) => void
   className?: string
 }
 

@@ -1,17 +1,28 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { Copy } from 'lucide-react'
 import * as React from 'react'
 import { stakedInfoQueryOptions, validatorPoolsQueryOptions } from '@/api/queries'
+import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { UnstakeModal } from '@/components/UnstakeModal'
 import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
-import { StakedInfo } from '@/interfaces/staking'
+import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
+import { isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { copyToClipboard } from '@/utils/copyToClipboard'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
@@ -20,11 +31,19 @@ import { cn } from '@/utils/ui'
 
 interface StakingDetailsProps {
   validator: Validator
+  stakesByValidator: StakerValidatorData[]
   constraints: Constraints
 }
 
-export function StakingDetails({ validator, constraints }: StakingDetailsProps) {
-  const [selectedPool, setSelectedPool] = React.useState<EventProps>(null)
+export function StakingDetails({ validator, constraints, stakesByValidator }: StakingDetailsProps) {
+  const [selectedPool, setSelectedPool] = React.useState<string>('all')
+  const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
+  const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
+
+  const { activeAddress } = useWallet()
+
+  const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
+  const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
 
   const poolData =
     validator?.pools.map((pool, index) => ({
@@ -42,14 +61,6 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
   const isLoading = poolsInfoQuery.isLoading || allStakedInfo.some((query) => query.isLoading)
   const isError = poolsInfoQuery.isError || allStakedInfo.some((query) => query.isError)
 
-  const selectedPoolIndex = React.useMemo(() => {
-    if (!selectedPool) {
-      return 'all'
-    }
-    const selectedPoolNumber = selectedPool?.name.toString().split('Pool ')[1]
-    return selectedPoolNumber ? String(Number(selectedPoolNumber) - 1) : 'all'
-  }, [selectedPool])
-
   const chartData = React.useMemo(() => {
     if (!allStakedInfo) {
       return []
@@ -58,7 +69,7 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
     const stakedInfo = allStakedInfo
       .map((query) => query.data || [])
       .reduce((acc, stakers, i) => {
-        if (selectedPoolIndex !== 'all' && Number(selectedPoolIndex) !== i) {
+        if (selectedPool !== 'all' && Number(selectedPool) !== i) {
           return acc
         }
 
@@ -90,7 +101,7 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
       value: Number(staker.balance),
       href: ExplorerLink.account(staker.account).trim(), // trim to remove trailing whitespace
     }))
-  }, [allStakedInfo, selectedPoolIndex])
+  }, [allStakedInfo, selectedPool])
 
   const valueFormatter = (v: number) => (
     <AlgoDisplayAmount
@@ -104,6 +115,25 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
     />
   )
 
+  const getPoolIndexFromName = <T extends boolean>(
+    name: number | string,
+    asString?: T,
+  ): T extends true ? string : number => {
+    const index = Number(String(name).split('Pool ')[1]) - 1
+    return (asString ? String(index) : index) as T extends true ? string : number
+  }
+
+  const getPoolNameFromIndex = (index: number | string): string => {
+    return `Pool ${Number(index) + 1}`
+  }
+
+  const handlePoolClick = (eventProps: EventProps) => {
+    const selected = !eventProps ? 'all' : getPoolIndexFromName(eventProps.name, true)
+    setSelectedPool(selected)
+  }
+
+  const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
+
   // @todo: clean this way up
   const numPools = validator.state.numPools
   const hardMaxDividedBetweenPools =
@@ -116,11 +146,11 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
         : validator.config.maxAlgoPerPool
   const maxAlgoPerPool = Number(maxMicroalgoPerPool / BigInt(1e6))
   const selectedPoolAlgoStake =
-    selectedPoolIndex === 'all'
+    selectedPool === 'all'
       ? 0
-      : AlgoAmount.MicroAlgos(Number(poolsInfo[Number(selectedPoolIndex)].totalAlgoStaked)).algos
+      : AlgoAmount.MicroAlgos(Number(poolsInfo[Number(selectedPool)].totalAlgoStaked)).algos
   const selectedPoolPercent =
-    selectedPoolIndex === 'all'
+    selectedPool === 'all'
       ? 0
       : roundToFirstNonZeroDecimal((selectedPoolAlgoStake / maxAlgoPerPool) * 100)
   const totalPercent = roundToFirstNonZeroDecimal(
@@ -128,7 +158,7 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
   )
 
   const renderPoolInfo = () => {
-    if (!selectedPool) {
+    if (!selectedPoolInfo) {
       return (
         <div className="w-full">
           <div className="py-6 px-4 sm:px-0">
@@ -187,12 +217,12 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
       )
     }
 
-    const selectedPoolInfo = poolsInfo[Number(selectedPoolIndex)]
+    const selectedPoolName = getPoolNameFromIndex(selectedPool)
 
     return (
       <div className="w-full">
         <div className="py-6 px-4 sm:px-0">
-          <h4 className="text-xl font-semibold leading-none tracking-tight">{selectedPool.name}</h4>
+          <h4 className="text-xl font-semibold leading-none tracking-tight">{selectedPoolName}</h4>
         </div>
         <div className="border-t border-foreground-muted">
           <dl className="divide-y divide-foreground-muted">
@@ -269,39 +299,87 @@ export function StakingDetails({ validator, constraints }: StakingDetailsProps) 
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Staking Details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div className="flex items-center justify-center">
-            <PoolsChart
-              data={poolData}
-              onValueChange={setSelectedPool}
-              className="w-52 h-52 sm:w-64 sm:h-64"
-            />
-          </div>
-          <div className="flex items-center">{renderPoolInfo()}</div>
-        </div>
-        {chartData.length > 0 && (
-          <ScrollArea
-            className={cn('rounded-lg border', {
-              'h-64': chartData.length > 6,
-              'sm:h-96': chartData.length > 9,
-            })}
-          >
-            <div className="p-2 pr-6">
-              <BarList
-                data={chartData}
-                valueFormatter={valueFormatter}
-                className="font-mono"
-                showAnimation
-              />
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-start justify-between gap-x-2">
+            <span>Staking Details</span>
+            {poolsInfo.length > 0 && (
+              <Select value={selectedPool} onValueChange={setSelectedPool}>
+                <SelectTrigger className="-my-2.5 w-[120px]">
+                  <SelectValue placeholder="Select a pool" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Pools</SelectItem>
+                  {poolsInfo.map((_, index) => (
+                    <SelectItem key={index} value={String(index)}>
+                      {getPoolNameFromIndex(index)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="mt-2.5 space-y-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="flex items-center justify-center">
+              {poolData.filter((data) => data.value > 0).length > 0 ? (
+                <PoolsChart
+                  data={poolData}
+                  onValueChange={handlePoolClick}
+                  className="w-52 h-52 sm:w-64 sm:h-64"
+                />
+              ) : (
+                <div className="flex items-center justify-center w-52 h-52 sm:w-64 sm:h-64 rounded-tremor-default border border-tremor-border dark:border-dark-tremor-border">
+                  <span className="text-sm text-muted-foreground">No data</span>
+                </div>
+              )}
             </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
+            <div className="flex items-center">{renderPoolInfo()}</div>
+          </div>
+          {chartData.length > 0 && (
+            <ScrollArea
+              className={cn('rounded-lg border', {
+                'h-64': chartData.length > 6,
+                'sm:h-96': chartData.length > 9,
+              })}
+            >
+              <div className="p-2 pr-6">
+                <BarList
+                  data={chartData}
+                  valueFormatter={valueFormatter}
+                  className="font-mono"
+                  showAnimation
+                />
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+        <CardFooter className="mt-4 flex justify-end gap-x-2">
+          <Button onClick={() => setAddStakeValidator(validator)} disabled={stakingDisabled}>
+            Add Stake
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setUnstakeValidator(validator)}
+            disabled={unstakingDisabled}
+          >
+            Unstake
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <AddStakeModal
+        validator={addStakeValidator}
+        setValidator={setAddStakeValidator}
+        constraints={constraints}
+      />
+      <UnstakeModal
+        validator={unstakeValidator}
+        setValidator={setUnstakeValidator}
+        stakesByValidator={stakesByValidator}
+      />
+    </>
   )
 }

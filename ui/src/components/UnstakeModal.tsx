@@ -133,7 +133,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       setTimeout(() => {
         setValidator(null)
         setSelectedPoolId('')
-        form.reset()
+        form.setValue('amountToUnstake', '')
       }, 500)
     }
   }
@@ -256,6 +256,8 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       // Invalidate other queries to update UI
       queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
       queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
+      queryClient.invalidateQueries({ queryKey: ['staked-info'] })
+      queryClient.invalidateQueries({ queryKey: ['validator-pools', validator!.id] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to remove stake from pool', { id: toastId })
@@ -263,6 +265,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
     } finally {
       setIsSigning(false)
       setValidator(null)
+      form.setValue('amountToUnstake', '')
       setIsOpen(false)
     }
   }
@@ -294,6 +297,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                           amount={stakerPoolsData[0].balance}
                           microalgos
                           mutedRemainder
+                          className="font-mono"
                         />
                       </span>
                     </p>
