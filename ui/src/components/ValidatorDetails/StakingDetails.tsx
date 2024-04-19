@@ -365,7 +365,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         <CardContent className="mt-2.5 space-y-6">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div ref={poolsChartContainerRef} className="flex items-center justify-center">
-              {poolData.filter((data) => data.value > 0).length > 0 ? (
+              {poolData.filter((data) => data.value > 0.000001).length > 0 ? (
                 <PoolsChart
                   data={poolData}
                   onValueChange={handlePoolClick}
