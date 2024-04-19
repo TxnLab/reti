@@ -128,7 +128,7 @@ export function StakingTable({
     {
       accessorKey: 'nextEpochEligible',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Eligible % of Epoch reward" />
+        <DataTableColumnHeader column={column} title="Reward Eligibility (%)" />
       ),
       cell: ({ row }) => {
         // Determine % of reward eligible for this epoch
