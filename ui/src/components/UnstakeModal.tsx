@@ -297,6 +297,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                           amount={stakerPoolsData[0].balance}
                           microalgos
                           mutedRemainder
+                          className="font-mono"
                         />
                       </span>
                     </p>
