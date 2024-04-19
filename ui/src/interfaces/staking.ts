@@ -6,11 +6,11 @@ export interface StakedInfo {
   totalRewarded: bigint
   rewardTokenBalance: bigint
   entryTime: number
-  lastPayout: number
 }
 
 export interface StakerPoolData extends StakedInfo {
   poolKey: ValidatorPoolKey
+  lastPayout: number
 }
 
 export interface StakerValidatorData {

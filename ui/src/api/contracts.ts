@@ -15,8 +15,8 @@ import {
   PoolInfo,
   RawConstraints,
   RawNodePoolAssignmentConfig,
-  RawPoolTokenPayoutRatios,
   RawPoolsInfo,
+  RawPoolTokenPayoutRatios,
   RawValidatorConfig,
   RawValidatorState,
   Validator,
@@ -706,15 +706,13 @@ export async function fetchStakerPoolData(
       totalRewarded,
       rewardTokenBalance,
       entryTime: Number(entryTime),
-      lastPayout: lastPayoutTime.getTime() / 1000,
     }
 
-    const stakerPoolData: StakerPoolData = {
+    return {
       ...stakedInfo,
       poolKey,
+      lastPayout: lastPayoutTime.getTime() / 1000,
     }
-
-    return stakerPoolData
   } catch (error) {
     console.error(error)
     throw error
