@@ -24,6 +24,7 @@ import {
   ValidatorConfigInput,
   ValidatorPoolKey,
 } from '@/interfaces/validator'
+import { makeEmptyTransactionSigner } from '@/lib/makeEmptyTransactionSigner'
 import { chunkBytes } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
@@ -43,10 +44,10 @@ const algodClient = algokit.getAlgoClient({
 
 const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
 
-export const makeSimulateValidatorClient = (senderAddr: string = FEE_SINK) => {
+export const makeSimulateValidatorClient = (senderAddr: string = FEE_SINK, authAddr?: string) => {
   return new ValidatorRegistryClient(
     {
-      sender: { addr: senderAddr || FEE_SINK, signer: algosdk.makeEmptyTransactionSigner() },
+      sender: { addr: senderAddr, signer: makeEmptyTransactionSigner(authAddr) },
       resolveBy: 'id',
       id: RETI_APP_ID,
     },
@@ -68,10 +69,11 @@ export const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAdd
 export const makeSimulateStakingPoolClient = (
   poolAppId: number | bigint,
   senderAddr: string = FEE_SINK,
+  authAddr?: string,
 ) => {
   return new StakingPoolClient(
     {
-      sender: { addr: senderAddr, signer: algosdk.makeEmptyTransactionSigner() },
+      sender: { addr: senderAddr, signer: makeEmptyTransactionSigner(authAddr) },
       resolveBy: 'id',
       id: poolAppId,
     },
@@ -221,6 +223,7 @@ export async function addValidator(
   nfdAppId: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr?: string,
 ) {
   const validatorClient = makeValidatorClient(signer, activeAddress)
 
@@ -234,7 +237,7 @@ export async function addValidator(
         {
           sender: {
             addr: activeAddress as string,
-            signer: algosdk.makeEmptyTransactionSigner(),
+            signer: makeEmptyTransactionSigner(authAddr),
           },
         },
       )
@@ -279,7 +282,7 @@ export async function addValidator(
     sunsettingTo: Number(0),
   }
 
-  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
+  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress, authAddr)
 
   const simulateResult = await simulateValidatorClient
     .compose()
@@ -287,7 +290,7 @@ export async function addValidator(
       {
         mbrPayment: {
           transaction: payValidatorMbr,
-          signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
+          signer: { addr: activeAddress, signer: makeEmptyTransactionSigner(authAddr) },
         },
         nfdName: values.nfdForInfo || '',
         config: [
@@ -541,9 +544,10 @@ export async function initStakingPoolStorage(
 
 export async function doesStakerNeedToPayMbr(
   activeAddress: string,
+  authAddr?: string,
   client?: ValidatorRegistryClient,
 ): Promise<boolean> {
-  const validatorClient = client || makeSimulateValidatorClient(activeAddress)
+  const validatorClient = client || makeSimulateValidatorClient(activeAddress, authAddr)
 
   const result = await validatorClient
     .compose()
@@ -561,6 +565,7 @@ export async function addStake(
   valueToVerify: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr?: string,
 ): Promise<ValidatorPoolKey> {
   const validatorClient = makeValidatorClient(signer, activeAddress)
 
@@ -574,7 +579,7 @@ export async function addStake(
     suggestedParams,
   })
 
-  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress)
+  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress, authAddr)
 
   const simulateResults = await simulateValidatorClient
     .compose()
@@ -583,7 +588,7 @@ export async function addStake(
       {
         stakedAmountPayment: {
           transaction: stakeTransferPayment,
-          signer: { addr: activeAddress, signer: algosdk.makeEmptyTransactionSigner() },
+          signer: { addr: activeAddress, signer: makeEmptyTransactionSigner(authAddr) },
         },
         validatorId,
         valueToVerify,
@@ -826,8 +831,13 @@ export async function removeStake(
   amountToUnstake: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr?: string,
 ) {
-  const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
+  const stakingPoolSimulateClient = makeSimulateStakingPoolClient(
+    poolAppId,
+    activeAddress,
+    authAddr,
+  )
 
   const simulateResult = await stakingPoolSimulateClient
     .compose()
@@ -868,9 +878,14 @@ export async function epochBalanceUpdate(
   poolAppId: number | bigint,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr?: string,
 ): Promise<void> {
   try {
-    const stakingPoolSimulateClient = makeSimulateStakingPoolClient(poolAppId, activeAddress)
+    const stakingPoolSimulateClient = makeSimulateStakingPoolClient(
+      poolAppId,
+      activeAddress,
+      authAddr,
+    )
 
     const simulateResult = await stakingPoolSimulateClient
       .compose()
@@ -1005,11 +1020,12 @@ export async function claimTokens(
   pools: PoolInfo[],
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr?: string,
 ) {
   const atc1 = new algosdk.AtomicTransactionComposer()
 
   for (const pool of pools) {
-    const client = makeSimulateStakingPoolClient(pool.poolAppId, activeAddress)
+    const client = makeSimulateStakingPoolClient(pool.poolAppId, activeAddress, authAddr)
     await client.gas({}, { note: '1', sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(0) } })
     await client.gas({}, { note: '2', sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(0) } })
     await client.claimTokens({}, { sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(240_000) } })
