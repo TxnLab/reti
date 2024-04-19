@@ -556,8 +556,8 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 					continue
 				}
 				wg.Run(func(val any) error {
-					if !accountHasAtLeast(ctx, App.algoClient, info.Config.Manager, 1e6) {
-						return errors.New("manager account should have at least 1 ALGO spendable.  Aborting epochUpdate call")
+					if !accountHasAtLeast(ctx, App.algoClient, info.Config.Manager, 100_000 /* .1 spendable */) {
+						return errors.New("manager account should have at least .1 ALGO spendable.  Aborting epochUpdate call")
 					}
 
 					// Retry up to 5 times - waiting 5 seconds between each try
