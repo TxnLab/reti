@@ -45,10 +45,11 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
   const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
   const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
 
+  // If pool has no stake, set value to 1 microalgo so it appears in the donut chart (as a 1px sliver)
   const poolData =
     validator?.pools.map((pool, index) => ({
       name: `Pool ${index + 1}`,
-      value: convertFromBaseUnits(Number(pool.totalAlgoStaked), 6),
+      value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
     })) || []
 
   const poolsInfoQuery = useQuery(validatorPoolsQueryOptions(validator.id))
@@ -130,6 +131,46 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
   const handlePoolClick = (eventProps: EventProps) => {
     const selected = !eventProps ? 'all' : getPoolIndexFromName(eventProps.name, true)
     setSelectedPool(selected)
+  }
+
+  const poolsChartContainerRef = React.useRef<HTMLDivElement>(null)
+
+  // Function to simulate clicking a pool in the donut chart
+  const simulateClick = (name: string) => {
+    if (poolsChartContainerRef.current) {
+      const targetElement = poolsChartContainerRef.current.querySelector(
+        `path[name="${name}"]`,
+      ) as SVGPathElement | null
+      if (targetElement) {
+        const clickEvent = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        })
+        targetElement.dispatchEvent(clickEvent)
+      }
+    }
+  }
+
+  // Function to handle the change of the selected pool via the dropdown
+  const handleSelectValueChange = (newValue: string) => {
+    const previousValue = selectedPool
+    const previousPool = getPoolNameFromIndex(previousValue)
+    const newPool = getPoolNameFromIndex(newValue)
+
+    if (previousValue === 'all') {
+      // Switching from 'All Pools' to a specific pool, click new pool to select
+      simulateClick(newPool)
+    } else if (newValue === 'all') {
+      // Switching from a specific pool to 'All Pools', click previous pool to deselect
+      simulateClick(previousPool)
+    } else {
+      // Switching between two specific pools, click previous pool to deselect then new pool to select
+      simulateClick(previousPool)
+      simulateClick(newPool)
+    }
+
+    setSelectedPool(newValue)
   }
 
   const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
@@ -305,7 +346,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
           <CardTitle className="flex items-start justify-between gap-x-2">
             <span>Staking Details</span>
             {poolsInfo.length > 0 && (
-              <Select value={selectedPool} onValueChange={setSelectedPool}>
+              <Select value={selectedPool} onValueChange={handleSelectValueChange}>
                 <SelectTrigger className="-my-2.5 w-[120px]">
                   <SelectValue placeholder="Select a pool" />
                 </SelectTrigger>
@@ -323,8 +364,8 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         </CardHeader>
         <CardContent className="mt-2.5 space-y-6">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div className="flex items-center justify-center">
-              {poolData.filter((data) => data.value > 0).length > 0 ? (
+            <div ref={poolsChartContainerRef} className="flex items-center justify-center">
+              {poolData.filter((data) => data.value > 0.000001).length > 0 ? (
                 <PoolsChart
                   data={poolData}
                   onValueChange={handlePoolClick}

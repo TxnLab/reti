@@ -16,8 +16,8 @@ import {
   PoolInfo,
   RawConstraints,
   RawNodePoolAssignmentConfig,
-  RawPoolTokenPayoutRatios,
   RawPoolsInfo,
+  RawPoolTokenPayoutRatios,
   RawValidatorConfig,
   RawValidatorState,
   Validator,
@@ -742,6 +742,11 @@ export async function fetchStakerPoolData(
 ): Promise<StakerPoolData> {
   try {
     const stakingPoolClient = makeSimulateStakingPoolClient(poolKey.poolAppId)
+    const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
+    let lastPayoutTime: Date = new Date()
+    if (stakingPoolGS.lastPayout !== undefined) {
+      lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000)
+    }
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
 
@@ -755,12 +760,11 @@ export async function fetchStakerPoolData(
       entryTime: Number(entryTime),
     }
 
-    const stakerPoolData: StakerPoolData = {
+    return {
       ...stakedInfo,
       poolKey,
+      lastPayout: lastPayoutTime.getTime() / 1000,
     }
-
-    return stakerPoolData
   } catch (error) {
     console.error(error)
     throw error
@@ -802,6 +806,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
         existingData.totalRewarded += pool.totalRewarded
         existingData.rewardTokenBalance += pool.rewardTokenBalance
         existingData.entryTime = Math.min(existingData.entryTime, pool.entryTime)
+        existingData.lastPayout = Math.min(existingData.lastPayout, pool.lastPayout)
         existingData.pools.push(pool) // add pool to existing StakerPoolData[]
       } else {
         // First pool for this validator, add new entry
@@ -811,6 +816,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
           totalRewarded: pool.totalRewarded,
           rewardTokenBalance: pool.rewardTokenBalance,
           entryTime: pool.entryTime,
+          lastPayout: pool.lastPayout,
           pools: [pool], // add pool to new StakerPoolData[]
         })
       }
