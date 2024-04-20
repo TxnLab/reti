@@ -30,7 +30,6 @@ import { chunkBytes } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
   transformStakedInfo,
-  transformValidatorConfig,
   transformValidatorData,
 } from '@/utils/contracts'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
@@ -557,7 +556,10 @@ export async function doesStakerNeedToPayMbr(
     })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
-  return result.returns![0]
+  if (result.returns?.[0] === undefined) {
+    throw new Error('Error checking if staker needs to pay MBR')
+  }
+  return result.returns[0]
 }
 
 export async function findPoolForStaker(
@@ -1031,30 +1033,6 @@ export async function fetchValidatorPools(
       totalAlgoStaked,
       poolAddress: poolAddresses[i],
     }))
-  } catch (error) {
-    console.error(error)
-    throw error
-  }
-}
-
-export async function fetchMaxAvailableToStake(validatorId: string | number): Promise<number> {
-  try {
-    const validatorClient = makeSimulateValidatorClient()
-
-    const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
-    const rawConfig = validatorConfigResult.returns![0]
-
-    const validatorConfig = transformValidatorConfig(rawConfig)
-
-    const poolsInfo: PoolInfo[] = await fetchValidatorPools(validatorId)
-
-    // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
-    const maxAvailableToStake = poolsInfo.reduce((acc, pool) => {
-      const availableToStake = Number(validatorConfig.maxAlgoPerPool) - Number(pool.totalAlgoStaked)
-      return availableToStake > acc ? availableToStake : acc
-    }, 0)
-
-    return maxAvailableToStake
   } catch (error) {
     console.error(error)
     throw error
