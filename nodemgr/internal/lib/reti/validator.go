@@ -348,12 +348,16 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	}
 	slog.Debug("mbrs", "validatormbr", mbrs.AddValidatorMbr)
 
+	params.FlatFee = true
+	params.Fee = 10e6 + 1000
+
 	// Pay the mbr to add a validator then wrap for use in ATC.
 	paymentTxn, err := transaction.MakePaymentTxn(ownerAddr.String(), crypto.GetApplicationAddress(r.RetiAppId).String(), mbrs.AddValidatorMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, ownerAddr.String()),
 	}
+	params.Fee = 1000
 
 	err = atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppId,
