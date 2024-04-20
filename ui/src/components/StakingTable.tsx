@@ -319,6 +319,7 @@ export function StakingTable({
       <AddStakeModal
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
+        stakesByValidator={stakesByValidator}
         constraints={constraints}
       />
       <UnstakeModal

@@ -752,3 +752,22 @@ export function findQualifiedGatingAssetId(
   )
   return asset?.['asset-id'] || 0
 }
+
+export function calculateMaxAvailableToStake(validator: Validator, constraints?: Constraints) {
+  let { maxAlgoPerPool } = validator.config
+
+  if (maxAlgoPerPool === 0n) {
+    if (!constraints) {
+      return 0
+    }
+    maxAlgoPerPool = constraints.maxAlgoPerPool
+  }
+
+  // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
+  const maxAvailableToStake = validator.pools.reduce((acc, pool) => {
+    const availableToStake = Number(maxAlgoPerPool) - Number(pool.totalAlgoStaked)
+    return availableToStake > acc ? availableToStake : acc
+  }, 0)
+
+  return maxAvailableToStake
+}

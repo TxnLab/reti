@@ -3,21 +3,23 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, MessageCircleWarning } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
 import { getAccountInformation } from '@/api/algod'
 import {
   addStake,
   doesStakerNeedToPayMbr,
-  fetchMaxAvailableToStake,
+  findPoolForStaker,
   isNewStakerToValidator,
 } from '@/api/contracts'
 import { mbrQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -37,9 +39,11 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
+  calculateMaxAvailableToStake,
   fetchGatingAssets,
   findQualifiedGatingAssetId,
   hasQualifiedGatingAsset,
@@ -50,11 +54,18 @@ interface AddStakeModalProps {
   validator: Validator | null
   setValidator: React.Dispatch<React.SetStateAction<Validator | null>>
   constraints?: Constraints
+  stakesByValidator: StakerValidatorData[]
 }
 
-export function AddStakeModal({ validator, setValidator, constraints }: AddStakeModalProps) {
+export function AddStakeModal({
+  validator,
+  setValidator,
+  constraints,
+  stakesByValidator,
+}: AddStakeModalProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
+  const [targetPoolId, setTargetPoolId] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     if (validator) {
@@ -105,17 +116,17 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
     queryKey: ['mbr-required', activeAddress],
     queryFn: () => doesStakerNeedToPayMbr(activeAddress!, authAddress),
     enabled: !!activeAddress && isReady,
-    staleTime: Infinity,
   })
   const mbrRequired = mbrRequiredQuery.data || false
   const mbrAmount = mbrRequired ? stakerMbr : 0
 
-  const poolMaximumQuery = useQuery({
-    queryKey: ['pool-max', validator?.id],
-    queryFn: () => fetchMaxAvailableToStake(validator!.id),
-    enabled: !!validator,
-  })
-  const poolMaximumStake = poolMaximumQuery.data || Number(constraints?.maxAlgoPerPool)
+  const stakerPoolsData = React.useMemo<StakerPoolData[]>(
+    () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
+    [stakesByValidator, validator],
+  )
+  const minimumStake = stakerPoolsData.length === 0 ? Number(validator?.config.minEntryStake) : 0
+
+  const poolMaximumStake = validator ? calculateMaxAvailableToStake(validator, constraints) : 0
 
   const stakerMaximumStake = React.useMemo(() => {
     const estimatedFee = AlgoAmount.MicroAlgos(240_000).microAlgos
@@ -138,15 +149,13 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         const amountToStake = AlgoAmount.Algos(algoAmount).microAlgos
 
         if (validator) {
-          const minimumStake = Number(validator.config.minEntryStake)
-
           if (amountToStake < minimumStake) {
             ctx.addIssue({
               code: z.ZodIssueCode.too_small,
               minimum: minimumStake,
               type: 'number',
               inclusive: true,
-              message: `Minimum stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+              message: `Minimum entry stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
             })
           }
 
@@ -185,12 +194,52 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
 
   const { errors, isValid } = form.formState
 
+  const fetchTargetPoolId = React.useCallback(
+    async (inputAmount?: string) => {
+      try {
+        const amountToStake =
+          AlgoAmount.Algos(Number(inputAmount || '0')).microAlgos || minimumStake || 1
+
+        if (!validator || !activeAddress) {
+          throw new Error('Invalid/missing data')
+        }
+        const { poolKey } = await findPoolForStaker(
+          validator.id,
+          amountToStake,
+          activeAddress,
+          authAddress,
+        )
+        setTargetPoolId(poolKey.poolId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        console.error(`Error fetching target pool: ${error.message}`)
+      }
+    },
+    [activeAddress, authAddress, minimumStake, validator],
+  )
+
+  React.useEffect(() => {
+    if (validator?.id && isReady) {
+      fetchTargetPoolId()
+    } else {
+      setTargetPoolId(null)
+    }
+  }, [fetchTargetPoolId, isReady, validator?.id])
+
+  const debouncedFetchTargetPoolId = useDebouncedCallback(async (value) => {
+    const isValid = await form.trigger('amountToStake')
+    if (isValid) {
+      await fetchTargetPoolId(value)
+    }
+  }, 500)
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setIsOpen(false)
       setTimeout(() => {
         setValidator(null)
         form.setValue('amountToStake', '')
+        form.clearErrors()
       }, 500)
     }
   }
@@ -198,9 +247,13 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
   const handleSetMaxAmount = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
 
-    form.setValue('amountToStake', AlgoAmount.MicroAlgos(maximumStake).algos.toString(), {
+    const maxAmount = String(AlgoAmount.MicroAlgos(maximumStake).algos)
+
+    form.setValue('amountToStake', maxAmount, {
       shouldValidate: true,
     })
+
+    debouncedFetchTargetPoolId(maxAmount)
   }
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
@@ -368,21 +421,33 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         <DialogHeader>
           <DialogTitle className="text-left">Add Stake to Validator {validator?.id}</DialogTitle>
           <DialogDescription className="text-left">
-            This will send your ALGO to the validator and stake it in one of its pools.
+            This will add ALGO stake to{' '}
+            {!targetPoolId ? (
+              'one of the staking pools'
+            ) : (
+              <strong className="text-foreground font-semibold">Pool {targetPoolId}</strong>
+            )}
           </DialogDescription>
         </DialogHeader>
         <div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)}>
               <FormField
                 control={form.control}
                 name="amountToStake"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-2/3">
                     <FormLabel>Amount to Stake</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input className="pr-16" {...field} />
+                        <Input
+                          className="pr-16"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e) // Inform react-hook-form of the change
+                            debouncedFetchTargetPoolId(e.target.value) // Debounced target pool fetch
+                          }}
+                        />
                         <Button
                           size="sm"
                           variant="outline"
@@ -394,13 +459,13 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
                       </div>
                     </FormControl>
                     <FormDescription>
-                      Enter the amount you wish to stake.{' '}
-                      {mbrRequired && stakerMbr && (
-                        <span>
-                          NOTE: First time stakers will need to pay{' '}
-                          <AlgoDisplayAmount amount={stakerMbr} microalgos /> in fees.
-                        </span>
-                      )}
+                      Available to stake:{' '}
+                      <AlgoDisplayAmount
+                        amount={stakerMaximumStake}
+                        microalgos
+                        mutedRemainder
+                        className="font-mono"
+                      />
                     </FormDescription>
                     <div className="h-5">
                       <FormMessage>{errors.amountToStake?.message}</FormMessage>
@@ -408,9 +473,28 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isSigning || !isValid}>
-                Submit
-              </Button>
+
+              {mbrRequired && stakerMbr && (
+                <Alert className="mt-4">
+                  <MessageCircleWarning className="h-5 w-5 -mt-1" />
+                  <AlertTitle>Minimum balance requirement</AlertTitle>
+                  <AlertDescription className="text-muted-foreground">
+                    First time stakers must pay an additional{' '}
+                    <AlgoDisplayAmount
+                      amount={stakerMbr}
+                      microalgos
+                      className="font-mono text-foreground"
+                    />{' '}
+                    fee.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <DialogFooter className="mt-4">
+                <Button type="submit" disabled={isSigning || !isValid}>
+                  Add Stake
+                </Button>
+              </DialogFooter>
             </form>
           </Form>
         </div>

@@ -414,6 +414,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
       <AddStakeModal
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
+        stakesByValidator={stakesByValidator}
         constraints={constraints}
       />
       <UnstakeModal

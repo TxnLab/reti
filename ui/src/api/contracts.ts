@@ -10,6 +10,7 @@ import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/st
 import {
   Constraints,
   EntryGatingAssets,
+  FindPoolForStakerResponse,
   MbrAmounts,
   NodePoolAssignmentConfig,
   PoolInfo,
@@ -29,7 +30,6 @@ import { chunkBytes } from '@/utils/bytes'
 import {
   transformNodePoolAssignment,
   transformStakedInfo,
-  transformValidatorConfig,
   transformValidatorData,
 } from '@/utils/contracts'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
@@ -556,7 +556,54 @@ export async function doesStakerNeedToPayMbr(
     })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
-  return result.returns![0]
+  if (result.returns?.[0] === undefined) {
+    throw new Error('Error checking if staker needs to pay MBR')
+  }
+  return result.returns[0]
+}
+
+export async function findPoolForStaker(
+  validatorId: number,
+  amountToStake: number,
+  activeAddress: string,
+  authAddr?: string,
+  client?: ValidatorRegistryClient,
+): Promise<FindPoolForStakerResponse> {
+  const validatorClient = client || makeSimulateValidatorClient(activeAddress, authAddr)
+
+  const result = await validatorClient
+    .compose()
+    .gas({})
+    .findPoolForStaker(
+      {
+        validatorId,
+        staker: activeAddress,
+        amountToStake,
+      },
+      {
+        sendParams: {
+          fee: AlgoAmount.MicroAlgos(2000),
+        },
+      },
+    )
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  const errorMessage = result.simulateResponse.txnGroups[0].failureMessage
+
+  if (errorMessage || !result.returns[1]) {
+    throw new Error(`Error finding pool for staker: ${errorMessage || 'No pool found'}`)
+  }
+
+  const [[valId, poolId, poolAppId], isNewStakerToValidator, isNewStakerToProtocol] =
+    result.returns[1]
+
+  const poolKey: ValidatorPoolKey = {
+    validatorId: Number(valId),
+    poolId: Number(poolId),
+    poolAppId: Number(poolAppId),
+  }
+
+  return { poolKey, isNewStakerToValidator, isNewStakerToProtocol }
 }
 
 export async function addStake(
@@ -992,30 +1039,6 @@ export async function fetchValidatorPools(
       totalAlgoStaked,
       poolAddress: poolAddresses[i],
     }))
-  } catch (error) {
-    console.error(error)
-    throw error
-  }
-}
-
-export async function fetchMaxAvailableToStake(validatorId: string | number): Promise<number> {
-  try {
-    const validatorClient = makeSimulateValidatorClient()
-
-    const validatorConfigResult = await callGetValidatorConfig(Number(validatorId), validatorClient)
-    const rawConfig = validatorConfigResult.returns![0]
-
-    const validatorConfig = transformValidatorConfig(rawConfig)
-
-    const poolsInfo: PoolInfo[] = await fetchValidatorPools(validatorId)
-
-    // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
-    const maxAvailableToStake = poolsInfo.reduce((acc, pool) => {
-      const availableToStake = Number(validatorConfig.maxAlgoPerPool) - Number(pool.totalAlgoStaked)
-      return availableToStake > acc ? availableToStake : acc
-    }, 0)
-
-    return maxAvailableToStake
   } catch (error) {
     console.error(error)
     throw error

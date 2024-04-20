@@ -100,6 +100,12 @@ export interface ValidatorPoolKey {
   validatorId: number
 }
 
+export interface FindPoolForStakerResponse {
+  poolKey: ValidatorPoolKey
+  isNewStakerToValidator: boolean
+  isNewStakerToProtocol: boolean
+}
+
 export interface MbrAmounts {
   validatorMbr: number
   poolMbr: number
