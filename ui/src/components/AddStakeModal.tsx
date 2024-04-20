@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Constraints, Validator } from '@/interfaces/validator'
+import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   fetchGatingAssets,
   findQualifiedGatingAssetId,
@@ -64,6 +65,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
   const queryClient = useQueryClient()
   const router = useRouter()
   const { transactionSigner, activeAddress } = useWallet()
+  const { authAddress, isReady } = useAuthAddress()
 
   const accountInfoQuery = useQuery({
     queryKey: ['account-info', activeAddress],
@@ -101,8 +103,8 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
   // @todo: make this a custom hook, call from higher up and pass down as prop
   const mbrRequiredQuery = useQuery({
     queryKey: ['mbr-required', activeAddress],
-    queryFn: () => doesStakerNeedToPayMbr(activeAddress!),
-    enabled: !!activeAddress,
+    queryFn: () => doesStakerNeedToPayMbr(activeAddress!, authAddress),
+    enabled: !!activeAddress && isReady,
     staleTime: Infinity,
   })
   const mbrRequired = mbrRequiredQuery.data || false
@@ -247,6 +249,7 @@ export function AddStakeModal({ validator, setValidator, constraints }: AddStake
         valueToVerify,
         transactionSigner,
         activeAddress,
+        authAddress,
       )
 
       toast.success(

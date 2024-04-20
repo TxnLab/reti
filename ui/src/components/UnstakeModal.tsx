@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
+import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import { formatAlgoAmount } from '@/utils/format'
 
 interface UnstakeModalProps {
@@ -70,6 +71,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
   const queryClient = useQueryClient()
   const router = useRouter()
   const { transactionSigner, activeAddress } = useWallet()
+  const { authAddress } = useAuthAddress()
 
   const formSchema = z.object({
     amountToUnstake: z
@@ -180,7 +182,13 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
       toast.loading('Sign transactions to remove stake...', { id: toastId })
 
-      await removeStake(pool.poolKey.poolAppId, amountToUnstake, transactionSigner, activeAddress)
+      await removeStake(
+        pool.poolKey.poolAppId,
+        amountToUnstake,
+        transactionSigner,
+        activeAddress,
+        authAddress,
+      )
 
       toast.success(
         <div className="flex items-center gap-x-2">
