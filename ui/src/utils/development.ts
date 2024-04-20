@@ -26,6 +26,7 @@ export async function simulateEpoch(
   rewardAmount: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr: string | undefined,
   queryClient: QueryClient,
   router: ReturnType<typeof useRouter>,
 ) {
@@ -70,7 +71,7 @@ export async function simulateEpoch(
       const poolKey = pool.poolKey
       toast.loading(`Sign for Pool ${poolKey.poolId} epoch balance update`, { id: toastId })
 
-      await epochBalanceUpdate(poolKey.poolAppId, signer, activeAddress)
+      await epochBalanceUpdate(poolKey.poolAppId, signer, activeAddress, authAddr)
     }
 
     toast.success('Epoch balance update complete!', { id: toastId })

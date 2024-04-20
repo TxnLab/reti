@@ -126,20 +126,7 @@ export function AddPoolModal({
         duration: 5000,
       })
 
-      queryClient.setQueryData<Validator>(['validator', String(validator!.id)], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
-
-        return {
-          ...prevData,
-          state: {
-            ...prevData.state,
-            numPools: prevData.state.numPools + 1,
-          },
-        }
-      })
-
+      // Manually update ['validators'] query to avoid refetching
       queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
         if (!prevData) {
           return prevData
@@ -160,8 +147,11 @@ export function AddPoolModal({
         })
       })
 
-      router.invalidate()
+      // Invalidate other queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
       queryClient.invalidateQueries({ queryKey: ['pool-assignments', validator!.id] })
+      queryClient.invalidateQueries({ queryKey: ['validator-pools', validator!.id] })
+      router.invalidate()
     } catch (error) {
       toast.error('Failed to create staking pool', { id: toastId })
       console.error(error)

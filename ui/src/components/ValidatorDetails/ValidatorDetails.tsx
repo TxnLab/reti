@@ -1,14 +1,20 @@
 import { Details } from '@/components/ValidatorDetails/Details'
 import { Highlights } from '@/components/ValidatorDetails/Highlights'
 import { StakingDetails } from '@/components/ValidatorDetails/StakingDetails'
+import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 
 interface ValidatorDetailsProps {
   validator: Validator
+  stakesByValidator: StakerValidatorData[]
   constraints: Constraints
 }
 
-export function ValidatorDetails({ validator, constraints }: ValidatorDetailsProps) {
+export function ValidatorDetails({
+  validator,
+  constraints,
+  stakesByValidator,
+}: ValidatorDetailsProps) {
   return (
     <div className="py-10 space-y-4">
       <Highlights validator={validator} constraints={constraints} />
@@ -17,7 +23,11 @@ export function ValidatorDetails({ validator, constraints }: ValidatorDetailsPro
           <Details validator={validator} />
         </div>
         <div className="space-y-4 lg:col-span-2">
-          <StakingDetails validator={validator} constraints={constraints} />
+          <StakingDetails
+            validator={validator}
+            constraints={constraints}
+            stakesByValidator={stakesByValidator}
+          />
         </div>
       </div>
     </div>

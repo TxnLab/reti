@@ -44,7 +44,7 @@ func (r *Reti) Info() ValidatorInfo {
 	return r.info
 }
 
-func (r *Reti) SetInfo(Info ValidatorInfo) {
+func (r *Reti) setInfo(Info ValidatorInfo) {
 	r.Lock()
 	defer r.Unlock()
 	r.info = Info
@@ -178,7 +178,7 @@ func (r *Reti) LoadState(ctx context.Context) error {
 		promAmtConsideredSaturated.Set(float64(constraints.AmtConsideredSaturated) / 1e6)
 		promMaxStakeAllowed.Set(float64(constraints.MaxAlgoPerValidator) / 1e6)
 
-		r.SetInfo(newInfo)
+		r.setInfo(newInfo)
 	}
 	return nil
 }

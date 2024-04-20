@@ -20,6 +20,12 @@ export function Details({ validator }: DetailsProps) {
           <div className="border-t border-foreground-muted">
             <dl className="divide-y divide-foreground-muted">
               <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+                <dt className="text-sm font-medium leading-6 text-muted-foreground">ID</dt>
+                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                  {validator.id}
+                </dd>
+              </div>
+              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Owner</dt>
                 <dd className="flex items-center gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
                   <a
@@ -65,7 +71,11 @@ export function Details({ validator }: DetailsProps) {
                   Minimum Entry Stake
                 </dt>
                 <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
-                  <AlgoDisplayAmount amount={validator.config.minEntryStake} microalgos />
+                  <AlgoDisplayAmount
+                    amount={validator.config.minEntryStake}
+                    microalgos
+                    className="font-mono"
+                  />
                 </dd>
               </div>
               <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">

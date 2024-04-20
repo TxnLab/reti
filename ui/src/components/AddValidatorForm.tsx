@@ -37,6 +37,7 @@ import {
   GATING_TYPE_SEGMENT_OF_NFD,
 } from '@/constants/gating'
 import { Constraints } from '@/interfaces/validator'
+import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   getAddValidatorFormSchema,
   getEpochLengthMinutes,
@@ -64,6 +65,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [isSigning, setIsSigning] = React.useState(false)
 
   const { transactionSigner, activeAddress } = useWallet()
+  const { authAddress } = useAuthAddress()
 
   const navigate = useNavigate({ from: '/add' })
 
@@ -238,6 +240,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         nfdForInfoAppId,
         transactionSigner,
         activeAddress,
+        authAddress,
       )
 
       toast.success(
