@@ -3,16 +3,15 @@ import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  SortingState,
   useReactTable,
+  VisibilityState,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import dayjs from 'dayjs'
 import { FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
@@ -129,13 +128,36 @@ export function StakingTable({
       },
     },
     {
-      accessorKey: 'entryTime',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Entry Time" />,
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap">
-          {dayjs.unix(row.original.entryTime).format('lll')}
-        </span>
+      accessorKey: 'nextEpochEligible',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Reward Eligibility (%)" />
       ),
+      cell: ({ row }) => {
+        // Determine % of reward eligible for this epoch
+        const validator = validators.find((v) => v.id === row.original.validatorId)
+        const { payoutEveryXMins } = validator?.config || {}
+
+        const lastPayout = row.original.lastPayout
+        if (!lastPayout || !payoutEveryXMins || Number(payoutEveryXMins) === 0) return '--'
+
+        let nextPayTime = lastPayout + payoutEveryXMins * 60
+        if (nextPayTime < Date.now() / 1000) {
+          // there haven't been payouts for a while (no rewards) - so treat 'now' as the next pay time
+          // so 'time in epoch' is valid
+          nextPayTime = Date.now() / 1000
+        }
+
+        const entryTime = row.original.entryTime
+        let timeInEpoch = ((nextPayTime - entryTime) / (payoutEveryXMins * 60)) * 100
+        if (timeInEpoch < 0) {
+          // they're past the epoch because of entry time + 320 rounds (~16mins)
+          timeInEpoch = 0
+        }
+        if (timeInEpoch > 100) {
+          timeInEpoch = 100
+        }
+        return <span className="whitespace-nowrap">{Math.floor(timeInEpoch)}</span>
+      },
     },
     {
       id: 'actions',
@@ -297,6 +319,7 @@ export function StakingTable({
       <AddStakeModal
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
+        stakesByValidator={stakesByValidator}
         constraints={constraints}
       />
       <UnstakeModal

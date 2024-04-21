@@ -407,6 +407,7 @@ export function ValidatorTable({
       <AddStakeModal
         validator={addStakeValidator}
         setValidator={setAddStakeValidator}
+        stakesByValidator={stakesByValidator}
         constraints={constraints}
       />
       <UnstakeModal

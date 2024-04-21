@@ -136,6 +136,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         setValidator(null)
         setSelectedPoolId('')
         form.setValue('amountToUnstake', '')
+        form.clearErrors()
       }, 500)
     }
   }

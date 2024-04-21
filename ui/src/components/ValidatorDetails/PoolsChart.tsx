@@ -68,6 +68,9 @@ function customTooltip(props: CustomTooltipTypeDonut) {
   const categoryPayload = payload?.[0]
   if (!categoryPayload) return null
 
+  // Pools with no stake are set to 1 microalgo for the chart, but tooltip should show correct total (0)
+  const algoAmount = categoryPayload.value === 0.000001 ? 0 : categoryPayload.value
+
   return (
     <div className="w-56 rounded-tremor-default border border-tremor-border bg-tremor-background p-2 text-tremor-default shadow-tremor-dropdown dark:border-dark-tremor-border dark:bg-stone-950">
       <div className="flex flex-1 space-x-2.5">
@@ -79,7 +82,7 @@ function customTooltip(props: CustomTooltipTypeDonut) {
             </p>
             <p className="whitespace-nowrap text-right text-tremor-content-emphasis dark:text-dark-tremor-content-emphasis">
               <AlgoDisplayAmount
-                amount={categoryPayload.value}
+                amount={algoAmount}
                 maxLength={13}
                 compactPrecision={2}
                 mutedRemainder
