@@ -5,7 +5,7 @@
 	"dependencyDashboard": true,
 	"packageRules": [
 		{
-			"matchFileNames": ["nodemgr/**", "Dockerfile-nodemgr"],
+			"matchFileNames": ["nodemgr/go.mod", "Dockerfile-nodemgr"],
 			"extends": [
 				"config:recommended",
 				"group:allNonMajor",
