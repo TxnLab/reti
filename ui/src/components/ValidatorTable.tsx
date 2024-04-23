@@ -4,6 +4,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   SortingState,
+  Updater,
   VisibilityState,
   flexRender,
   getCoreRowModel,
@@ -39,6 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import {
@@ -66,9 +68,7 @@ export function ValidatorTable({
   stakesByValidator,
   constraints,
 }: ValidatorTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
   const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
@@ -77,6 +77,29 @@ export function ValidatorTable({
 
   const { transactionSigner, activeAddress } = useWallet()
   const navigate = useNavigate()
+
+  const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [])
+  const handleSortingChange = (updaterOrValue: Updater<SortingState>) => {
+    if (typeof updaterOrValue === 'function') {
+      const newState = updaterOrValue(sorting)
+      setSorting(newState)
+    } else {
+      setSorting(updaterOrValue)
+    }
+  }
+
+  const [columnVisibility, setColumnVisibility] = useLocalStorage<VisibilityState>(
+    'validator-columns',
+    {},
+  )
+  const handleColumnVisibilityChange = (updaterOrValue: Updater<VisibilityState>) => {
+    if (typeof updaterOrValue === 'function') {
+      const newState = updaterOrValue(columnVisibility)
+      setColumnVisibility(newState)
+    } else {
+      setColumnVisibility(updaterOrValue)
+    }
+  }
 
   const columns: ColumnDef<Validator>[] = [
     {
@@ -326,11 +349,11 @@ export function ValidatorTable({
     data: validators,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: handleColumnVisibilityChange,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
