@@ -17,6 +17,7 @@
 .env.localnet
 .env.testnet
 .env.mainnet
+!.env.test
 env/
 
 # misc
