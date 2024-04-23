@@ -49,6 +49,7 @@ function Dashboard() {
     queryFn: () => fetchStakerValidatorData(activeAddress!),
     enabled: !!activeAddress,
     retry: false,
+    refetchInterval: 1000 * 60, // every minute
   })
 
   const stakesByValidator = stakesQuery.data || []
