@@ -23,7 +23,8 @@ jobs:
       VITE_ALGOD_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       VITE_ALGOD_SERVER: http://localhost
       VITE_ALGOD_PORT: 4001
-      VITE_ALGOD_NETWORK: localnet
+      VITE_NFD_API_URL: http://localhost:80
+      VITE_NFD_APP_URL: ws://localhost:3000
 
     steps:
       - name: Checkout repository
