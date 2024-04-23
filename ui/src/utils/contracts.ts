@@ -29,6 +29,7 @@ import {
   RawPoolsInfo,
   EntryGatingAssets,
 } from '@/interfaces/validator'
+import { dayjs } from '@/utils/dayjs'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
@@ -770,4 +771,46 @@ export function calculateMaxAvailableToStake(validator: Validator, constraints?:
   }, 0)
 
   return maxAvailableToStake
+}
+
+/**
+ * Calculate rewards eligibility percentage for a staker based on their entry time and last pool payout time
+ *
+ * @param {number} epochLengthMins Validator payout frequency in minutes (payoutEveryXMins)
+ * @param {number} lastPoolPayoutTime Last pool payout time in Unix timestamp
+ * @param {number} entryTime Staker entry time in Unix timestamp (15 min postdated)
+ * @returns {number | null} Rewards eligibility percentage, or null if any input parameters are zero/undefined
+ */
+export function calculateRewardEligibility(
+  epochLengthMins = 0,
+  lastPoolPayoutTime = 0,
+  entryTime = 0,
+): number | null {
+  if (epochLengthMins == 0 || entryTime == 0 || lastPoolPayoutTime == 0) {
+    return null
+  }
+
+  const now = dayjs()
+  const entry = dayjs.unix(entryTime)
+  const lastPayout = dayjs.unix(lastPoolPayoutTime)
+
+  // Calculate the next payout time
+  let nextPayout = lastPayout.add(epochLengthMins, 'minutes')
+
+  // If the next payout time is in the past (i.e., no rewards last payout), set next payout to now
+  if (nextPayout.isBefore(now)) {
+    nextPayout = now
+  }
+
+  // Calculate rewards eligibility as a percentage of time elapsed since entry
+  const epochLengthSecs = dayjs.duration({ minutes: epochLengthMins }).asSeconds()
+  const elapsedTimeSecs = nextPayout.diff(entry, 'seconds')
+  let eligibilityPercent = (elapsedTimeSecs / epochLengthSecs) * 100
+
+  // Ensure eligibility falls within 0-100% range
+  // If eligibility is negative, it means they're past the epoch (entry time + 320 rounds, ~16 mins)
+  eligibilityPercent = Math.max(0, Math.min(eligibilityPercent, 100))
+
+  // Round down to nearest integer
+  return Math.floor(eligibilityPercent)
 }

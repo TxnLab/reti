@@ -32,6 +32,7 @@ import {
   transformStakedInfo,
   transformValidatorData,
 } from '@/utils/contracts'
+import { dayjs } from '@/utils/dayjs'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
@@ -743,9 +744,11 @@ export async function fetchStakerPoolData(
   try {
     const stakingPoolClient = makeSimulateStakingPoolClient(poolKey.poolAppId)
     const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
-    let lastPayoutTime: Date = new Date()
+
+    let lastPayoutTime = dayjs()
+
     if (stakingPoolGS.lastPayout !== undefined) {
-      lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000)
+      lastPayoutTime = dayjs.unix(Number(stakingPoolGS.lastPayout.value))
     }
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
@@ -763,7 +766,7 @@ export async function fetchStakerPoolData(
     return {
       ...stakedInfo,
       poolKey,
-      lastPayout: lastPayoutTime.getTime() / 1000,
+      lastPayout: lastPayoutTime.unix(),
     }
   } catch (error) {
     console.error(error)
@@ -805,8 +808,8 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
         existingData.balance += pool.balance
         existingData.totalRewarded += pool.totalRewarded
         existingData.rewardTokenBalance += pool.rewardTokenBalance
-        existingData.entryTime = Math.min(existingData.entryTime, pool.entryTime)
-        existingData.lastPayout = Math.min(existingData.lastPayout, pool.lastPayout)
+        existingData.entryTime = Math.max(existingData.entryTime, pool.entryTime)
+        existingData.lastPayout = Math.max(existingData.lastPayout, pool.lastPayout)
         existingData.pools.push(pool) // add pool to existing StakerPoolData[]
       } else {
         // First pool for this validator, add new entry

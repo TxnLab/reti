@@ -93,6 +93,7 @@
     "dev:mainnet": "vite --mode mainnet --port 5193",
     "build": "tsc && vite build",
     "test": "vitest",
+    "test:watch": "vitest --watch",
     "coverage": "vitest --coverage",
     "playwright:test": "playwright test",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
