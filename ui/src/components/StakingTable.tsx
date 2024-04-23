@@ -39,7 +39,12 @@ import { UnstakeModal } from '@/components/UnstakeModal'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
-import { canManageValidator, isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
+import {
+  calculateRewardEligibility,
+  canManageValidator,
+  isStakingDisabled,
+  isUnstakingDisabled,
+} from '@/utils/contracts'
 import { simulateEpoch } from '@/utils/development'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
@@ -129,34 +134,28 @@ export function StakingTable({
     },
     {
       accessorKey: 'nextEpochEligible',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Reward Eligibility (%)" />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Reward Eligibility" />,
       cell: ({ row }) => {
-        // Determine % of reward eligible for this epoch
-        const validator = validators.find((v) => v.id === row.original.validatorId)
+        const stakerValidatorData = row.original
+        const validator = validators.find((v) => v.id === stakerValidatorData.validatorId)
         const { payoutEveryXMins } = validator?.config || {}
 
-        const lastPayout = row.original.lastPayout
-        if (!lastPayout || !payoutEveryXMins || Number(payoutEveryXMins) === 0) return '--'
+        const allPoolsEligibility = stakerValidatorData.pools.map((poolData) => {
+          const eligibility = calculateRewardEligibility(
+            payoutEveryXMins,
+            poolData.lastPayout,
+            poolData.entryTime,
+          )
+          return eligibility
+        })
 
-        let nextPayTime = lastPayout + payoutEveryXMins * 60
-        if (nextPayTime < Date.now() / 1000) {
-          // there haven't been payouts for a while (no rewards) - so treat 'now' as the next pay time
-          // so 'time in epoch' is valid
-          nextPayTime = Date.now() / 1000
-        }
-
-        const entryTime = row.original.entryTime
-        let timeInEpoch = ((nextPayTime - entryTime) / (payoutEveryXMins * 60)) * 100
-        if (timeInEpoch < 0) {
-          // they're past the epoch because of entry time + 320 rounds (~16mins)
-          timeInEpoch = 0
-        }
-        if (timeInEpoch > 100) {
-          timeInEpoch = 100
-        }
-        return <span className="whitespace-nowrap">{Math.floor(timeInEpoch)}</span>
+        // Take last pool's eligibility %
+        const lastPoolEligibility = allPoolsEligibility.pop()
+        return (
+          <span className="whitespace-nowrap">
+            {lastPoolEligibility !== null ? `${lastPoolEligibility || 0}%` : '--'}
+          </span>
+        )
       },
     },
     {

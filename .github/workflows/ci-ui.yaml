@@ -19,6 +19,13 @@ jobs:
     name: Lint, Typecheck, Test, and Build
     runs-on: ubuntu-latest
 
+    env:
+      VITE_ALGOD_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      VITE_ALGOD_SERVER: http://localhost
+      VITE_ALGOD_PORT: 4001
+      VITE_NFD_API_URL: http://localhost:80
+      VITE_NFD_APP_URL: ws://localhost:3000
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
