@@ -267,6 +267,8 @@ func (d *Daemon) refetchConfig() error {
 	var err error
 	err = repeat.Repeat(
 		repeat.Fn(func() error {
+			// Load state refetches our state from the chain and also updates our
+			// in-memory copy of it that everything uses.
 			err = App.retiClient.LoadState(context.Background())
 			if err != nil {
 				return repeat.HintTemporary(err)
@@ -520,33 +522,41 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 		misc.Infof(d.logger, "participation key went online for account:%s [pool app id:%d]", account, info.poolAppId)
 	}
 	return nil
-
 }
 
 func (d *Daemon) EpochUpdater(ctx context.Context) {
 	d.logger.Info("EpochUpdater started")
 	defer d.logger.Info("EpochUpdater stopped")
 
-	epochMinutes := App.retiClient.Info().Config.EpochRoundLength
+	status, err := d.algoClient.Status().Do(context.Background())
+	if err != nil {
+		misc.Errorf(d.logger, "failed to get algod status at start: %v", err)
+		os.Exit(1)
+	}
+	curRound := status.LastRound
+	epochRoundLength := uint64(App.retiClient.Info().Config.EpochRoundLength)
+	// let's not worry about each pool and its last payout - just get next immediate block number for epoch
+	stopAtRound := nextEpoch(curRound, epochRoundLength)
 
-	dur := durationToNextEpoch(time.Now(), epochMinutes)
-	epochTimer := time.NewTimer(dur)
-	defer epochTimer.Stop()
-	misc.Infof(d.logger, "First epoch trigger in:%v", dur)
+	misc.Infof(d.logger, "at round:%d, with epoch length:%d, first epoch check at %d", curRound, epochRoundLength, stopAtRound)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-epochTimer.C:
+		case blockWaitResult := <-d.waitUntilBlock(ctx, stopAtRound):
+			if blockWaitResult.err != nil {
+				misc.Errorf(d.logger, "error waiting for block:%d, err:%v", stopAtRound, blockWaitResult.err)
+				continue
+			}
+			stopAtRound = nextEpoch(blockWaitResult.atRound, epochRoundLength)
+
 			signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
-			epochTimer.Reset(durationToNextEpoch(time.Now(), epochMinutes))
 			var (
 				wg   syncutil.WaitGroup
 				info = App.retiClient.Info()
 			)
 			for i, pool := range info.Pools {
-				i := i
 				appid := pool.PoolAppId
 				if _, found := info.LocalPools[uint64(i+1)]; !found {
 					continue
@@ -559,7 +569,15 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 					// Retry up to 5 times - waiting 5 seconds between each try
 					err := repeat.Repeat(
 						repeat.Fn(func() error {
-							err := App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
+							lastPayout, err := App.retiClient.GetLastPayout(pool.PoolAppId)
+							if err != nil {
+								return repeat.HintTemporary(fmt.Errorf("error fetching payout from pool:%d, app id:%d, err:%w", i+1, pool.PoolAppId, err))
+							}
+							if lastPayout != 0 && lastPayout-(lastPayout%epochRoundLength) == blockWaitResult.atRound-(blockWaitResult.atRound%epochRoundLength) {
+								misc.Infof(d.logger, "already ran epoch update for this epoch on pool:%d, round:%d", i+1, blockWaitResult.atRound)
+								return nil
+							}
+							err = App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
 							if err != nil {
 								// Assume epoch update failed because it's just 'slightly' too early?
 								return repeat.HintTemporary(fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err))
@@ -590,6 +608,48 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 	}
 }
 
+type BlockOrError struct {
+	atRound uint64
+	err     error
+}
+
+func (d *Daemon) waitUntilBlock(ctx context.Context, round uint64) chan BlockOrError {
+	chReturn := make(chan BlockOrError, 2)
+	go func() {
+		defer close(chReturn)
+
+		status, err := d.algoClient.Status().Do(context.Background())
+		if err != nil {
+			chReturn <- BlockOrError{err: fmt.Errorf("unable to fetch node status: %w", err)}
+			return
+		}
+		misc.Debugf(d.logger, "at round:%d, waiting until round %d", status.LastRound, round)
+		for {
+			select {
+			case <-ctx.Done():
+				chReturn <- BlockOrError{err: ctx.Err()}
+				return
+			default:
+				curRound := status.LastRound
+				if curRound >= round {
+					chReturn <- BlockOrError{atRound: curRound}
+					return
+				}
+				// Since the call is wait AFTER block X we wait until 'after' round - 1
+				// We'll wait up to 10 blocks at a time (since StatusAfterBlock has fixed 1m timeout)
+				curRound = min(round-1, curRound+10)
+				status, err = d.algoClient.StatusAfterBlock(curRound).Do(context.Background())
+				if err != nil {
+					chReturn <- BlockOrError{err: fmt.Errorf("unable to fetch node status: %w", err)}
+					return
+				}
+				// on next cycle we'll exit if round matches
+			}
+		}
+	}()
+	return chReturn
+}
+
 // accountHasAtLeast checks if an account has at least a certain amount of microAlgos (spendable)
 // Errors are just treated as failures
 func accountHasAtLeast(ctx context.Context, algoClient *algod.Client, accountAddr string, microAlgos uint64) bool {
@@ -600,13 +660,6 @@ func accountHasAtLeast(ctx context.Context, algoClient *algod.Client, accountAdd
 	return acctInfo.Amount-acctInfo.MinBalance >= microAlgos
 }
 
-func durationToNextEpoch(curTime time.Time, epochMinutes int) time.Duration {
-	dur := curTime.Round(time.Duration(epochMinutes) * time.Minute).Sub(curTime)
-	if dur <= 0 {
-		// We've rounded backwards - so go to that rounded time, and then get time from curTime to that future time.
-		// ie: 12:10:00 hourly epoch - rounds down to 12:00:00 but next epoch is 13:00:00, so duration should be 50 minutes.
-		dur = curTime.Add(dur).Add(time.Duration(epochMinutes) * time.Minute).Sub(curTime)
-	}
-	slog.Debug(fmt.Sprintf("%v epoch duration in mins:%d, dur to next epoch:%v", curTime, epochMinutes, dur))
-	return dur
+func nextEpoch(curRound uint64, epochRoundLength uint64) uint64 {
+	return curRound - (curRound % epochRoundLength) + epochRoundLength
 }

@@ -1,13 +1,12 @@
 import { calculateRewardEligibility } from '@/utils/contracts'
-import { dayjs } from '@/utils/dayjs'
 
 // TODO needs changed for rounds instead of times
 describe('calculateRewardEligibility', () => {
-  let currentTime: dayjs.Dayjs
+  // let currentTime: dayjs.Dayjs
 
-  beforeEach(() => {
-    currentTime = dayjs()
-  })
+  // beforeEach(() => {
+  //   currentTime = dayjs()
+  // })
 
   it('should return null if any of the input parameters are zero', () => {
     expect(calculateRewardEligibility(0, 1625101200, 1625097600)).toBeNull()

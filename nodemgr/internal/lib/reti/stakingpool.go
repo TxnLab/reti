@@ -122,7 +122,13 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 	rewardAvail := r.PoolAvailableRewards(poolAppID, pools[poolID-1].TotalAlgoStaked)
-	misc.Infof(r.Logger, "Pool:%d epoch update for app id:%d, avail rewards:%s", poolID, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
+
+	status, err := r.algoClient.Status().Do(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get algod status at start: %w", err)
+	}
+
+	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at round:%d for app id:%d, avail rewards:%s", poolID, status.LastRound, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
