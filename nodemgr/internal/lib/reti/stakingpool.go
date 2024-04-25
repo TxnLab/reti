@@ -20,7 +20,7 @@ type StakedInfo struct {
 	Balance            uint64
 	TotalRewarded      uint64
 	RewardTokenBalance uint64
-	EntryTime          uint64
+	EntryRound         uint64
 }
 
 func (r *Reti) GetLedgerForPool(poolAppID uint64) ([]StakedInfo, error) {
@@ -40,7 +40,7 @@ func (r *Reti) GetLedgerForPool(poolAppID uint64) ([]StakedInfo, error) {
 		stakedInfo.Balance = binary.BigEndian.Uint64(ledgerData[32:40])
 		stakedInfo.TotalRewarded = binary.BigEndian.Uint64(ledgerData[40:48])
 		stakedInfo.RewardTokenBalance = binary.BigEndian.Uint64(ledgerData[48:56])
-		stakedInfo.EntryTime = binary.BigEndian.Uint64(ledgerData[56:64])
+		stakedInfo.EntryRound = binary.BigEndian.Uint64(ledgerData[56:64])
 		retLedger = append(retLedger, stakedInfo)
 	}
 

@@ -167,3 +167,23 @@ func GetVersionString(ctx context.Context, algoClient *algod.Client) (string, er
 	}
 	return fmt.Sprintf("%d.%d.%d %s [%s]", vers.Build.Major, vers.Build.Minor, vers.Build.BuildNumber, vers.Build.Branch, vers.Build.CommitHash), nil
 }
+
+func CalcBlockTimes(ctx context.Context, algoClient *algod.Client, numRounds uint64) (time.Duration, error) {
+	status, err := algoClient.Status().Do(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("unable to fetch node status: %w", err)
+	}
+	var blockTimes []time.Time
+	for round := status.LastRound - numRounds; round < status.LastRound; round++ {
+		block, err := algoClient.Block(round).Do(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("unable to fetch block in getAverageBlockTime, err:%w", err)
+		}
+		blockTimes = append(blockTimes, time.Unix(block.TimeStamp, 0))
+	}
+	var totalBlockTime time.Duration
+	for i := 1; i < len(blockTimes); i++ {
+		totalBlockTime += blockTimes[i].Sub(blockTimes[i-1])
+	}
+	return totalBlockTime / time.Duration(len(blockTimes)-1), nil
+}

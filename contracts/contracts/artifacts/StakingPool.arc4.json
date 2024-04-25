@@ -70,7 +70,7 @@
       ],
       "returns": {
         "type": "uint64",
-        "desc": "{uint64}new 'entry time' in seconds of stake add."
+        "desc": "{uint64}new 'entry round' round number of stake add"
       }
     },
     {

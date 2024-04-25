@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
@@ -277,11 +276,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 }
 
 func PoolLedger(ctx context.Context, command *cli.Command) error {
-	var (
-		nextPayTime   time.Time
-		info          = App.retiClient.Info()
-		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
-	)
+	var info = App.retiClient.Info()
 	poolId := int(command.Uint("pool"))
 	if poolId == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
@@ -289,29 +284,29 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	if poolId > len(info.Pools) {
 		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolId)
 	}
+	params, _ := App.algoClient.SuggestedParams().Do(ctx)
 
 	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolId-1].PoolAppId)
-	if err == nil {
-		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
-	} else {
-		nextPayTime = time.Now()
+	nextEpoch := lastPayout - (lastPayout % uint64(info.Config.EpochRoundLength)) + uint64(info.Config.EpochRoundLength)
+	if nextEpoch < uint64(params.FirstRoundValid) {
+		//nextEpoch = 0
+		nextEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(info.Config.EpochRoundLength))
 	}
-	if nextPayTime.Before(time.Now()) {
-		// there haven't been payouts for a while (no rewards) - so treat 'now' as the next pay time
-		// so 'time in epoch' is valid
-		nextPayTime = time.Now()
-	}
-	pctTimeInEpoch := func(stakerEntryTime uint64) int {
-		entryTime := time.Unix(int64(stakerEntryTime), 0)
-		timeInEpoch := nextPayTime.Sub(entryTime).Seconds() / epochDuration.Seconds() * 100
+	pctTimeInEpoch := func(stakerEntry uint64) int {
+		if nextEpoch == 0 {
+			return 100
+		}
+		if nextEpoch < stakerEntry {
+			return 0
+		}
+		timeInEpoch := (nextEpoch - stakerEntry) * 1000 / uint64(info.Config.EpochRoundLength)
 		if timeInEpoch < 0 {
-			// they're past the epoch because of entry time + 320 rounds (~16mins)
 			timeInEpoch = 0
 		}
-		if timeInEpoch > 100 {
-			timeInEpoch = 100
+		if timeInEpoch > 1000 {
+			timeInEpoch = 1000
 		}
-		return int(timeInEpoch)
+		return int(timeInEpoch / 10)
 	}
 
 	ledger, err := App.retiClient.GetLedgerForPool(info.Pools[poolId-1].PoolAppId)
@@ -323,16 +318,17 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Time\t")
+	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Round\t")
 	for _, stakerData := range ledger {
 		if stakerData.Account == types.ZeroAddress {
 			continue
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%s\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
-			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryTime), time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
+			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryRound), stakerData.EntryRound)
 	}
 	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
-	fmt.Fprintf(tw, "Last Payout: %s\t\n", time.Unix(int64(lastPayout), 0).UTC().Format(time.RFC3339))
+	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(info.Config.EpochRoundLength)))
+	fmt.Fprintf(tw, "Next Payout: %d\t\n", nextEpoch)
 	tw.Flush()
 	slog.Info(out.String())
 	return nil

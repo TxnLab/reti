@@ -64,8 +64,8 @@ type ValidatorConfig struct {
 	RewardTokenId   uint64
 	RewardPerPayout uint64
 
-	// Payout frequency in minutes (can be no shorter than this)
-	PayoutEveryXMins int
+	// Number of rounds per epoch
+	EpochRoundLength int
 	// Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 	PercentToValidator int
 	// account that receives the validation commission each epoch payout (can be ZeroAddress)
@@ -109,7 +109,7 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.GatingAssetMinBalance = arrReturn[7].(uint64)
 		config.RewardTokenId = arrReturn[8].(uint64)
 		config.RewardPerPayout = arrReturn[9].(uint64)
-		config.PayoutEveryXMins = int(arrReturn[10].(uint16))
+		config.EpochRoundLength = int(arrReturn[10].(uint32))
 		config.PercentToValidator = int(arrReturn[11].(uint32))
 		config.ValidatorCommissionAddress = pkAsString(arrReturn[12].([]uint8))
 		config.MinEntryStake = arrReturn[13].(uint64)
@@ -207,7 +207,7 @@ func (v *ValidatorConfig) String() string {
 		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
 	}
 
-	out.WriteString(fmt.Sprintf("Payout Every %s\n", formattedMinutes(v.PayoutEveryXMins)))
+	out.WriteString(fmt.Sprintf("Epoch Length:%d\n", v.EpochRoundLength))
 	out.WriteString(fmt.Sprintf("Min Entry Stake: %s\n", algo.FormattedAlgoAmount(v.MinEntryStake)))
 	out.WriteString(fmt.Sprintf("Max Algo Per Pool: %s\n", algo.FormattedAlgoAmount(v.MaxAlgoPerPool)))
 	out.WriteString(fmt.Sprintf("Max pools per Node: %d\n", v.PoolsPerNode))
@@ -378,7 +378,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				info.Config.GatingAssetMinBalance,
 				info.Config.RewardTokenId,
 				info.Config.RewardPerPayout,
-				uint16(info.Config.PayoutEveryXMins),
+				uint16(info.Config.EpochRoundLength),
 				uint16(info.Config.PercentToValidator),
 				commissionAddr,
 				info.Config.MinEntryStake,

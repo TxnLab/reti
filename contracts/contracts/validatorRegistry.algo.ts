@@ -27,8 +27,8 @@ const MAX_POOLS_PER_NODE = 3 // max number of pools per node
 // if this constant is changed, the calculated value must be put in manually into the StaticArray definition.
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE
 
-const MIN_PAYOUT_MINS = 1
-const MAX_PAYOUT_MINS = 10080 // 7 days in minutes
+const MIN_EPOCH_LENGTH = 1 // 1 round is technical minimum but its absurd - 20 would be approx 1 minute
+const MAX_EPOCH_LENGTH = 1000000 // 1 million rounds or.. just over a month ?
 const MAX_POOLS_PER_STAKER = 6
 
 type ValidatorIdType = uint64
@@ -78,7 +78,7 @@ export type ValidatorConfig = {
     // (by their % stake of the validators total)
     rewardPerPayout: uint64
 
-    payoutEveryXMins: uint16 // Payout frequency in minutes (can be no shorter than this)
+    epochRoundLength: uint32 // Number of rounds per epoch - ie: 30,857 for approx 24hrs w/ 2.8s round times
     percentToValidator: uint32 // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 
     validatorCommissionAddress: Address // [CHANGEABLE] account that receives the validation commission each epoch payout (can be ZeroAddress)
@@ -242,8 +242,8 @@ export class ValidatorRegistry extends Contract {
      */
     getProtocolConstraints(): Constraints {
         return {
-            epochPayoutMinsMin: MIN_PAYOUT_MINS,
-            epochPayoutMinsMax: MAX_PAYOUT_MINS,
+            epochPayoutMinsMin: MIN_EPOCH_LENGTH,
+            epochPayoutMinsMax: MAX_EPOCH_LENGTH,
             minPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
             maxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             minEntryStake: MIN_ALGO_STAKE_PER_POOL,
@@ -676,13 +676,13 @@ export class ValidatorRegistry extends Contract {
     /**
      * setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratios
      * of stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40
-     * in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered by
+     * in pool 2)  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered by
      * pool 1 doing payout.  pools other than 1 doing payout call pool 1 to ask it do it first.
      * It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
      * their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
      * during the epoch updates across pools)
      *
-     * Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multiple
+     * Multiple pools will call us via pool 1 (pool2->pool1->validator, etc.) so don't assert on pool1 calling multiple
      * times in same epoch.  Just return.
      *
      * @param validatorId - validator id (and thus pool) calling us.  Verified so that sender MUST be pool 1 of this validator.
@@ -707,7 +707,7 @@ export class ValidatorRegistry extends Contract {
                 return this.validatorList(validatorId).value.tokenPayoutRatio
             }
             const secsSinceLastPayout = curTime - lastPayoutUpdate
-            const epochInSecs = (this.validatorList(validatorId).value.config.payoutEveryXMins as uint64) * 60
+            const epochInSecs = (this.validatorList(validatorId).value.config.epochRoundLength as uint64) * 60
             // We've had one payout - so we need to be at least one epoch past the last payout.
             if (secsSinceLastPayout < epochInSecs) {
                 return this.validatorList(validatorId).value.tokenPayoutRatio
@@ -1117,7 +1117,7 @@ export class ValidatorRegistry extends Contract {
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the values in the ValidatorConfig are correct
         assert(config.entryGatingType >= GATING_TYPE_NONE && config.entryGatingType <= GATING_TYPE_CONST_MAX)
-        assert(config.payoutEveryXMins >= MIN_PAYOUT_MINS && config.payoutEveryXMins <= MAX_PAYOUT_MINS)
+        assert(config.epochRoundLength >= MIN_EPOCH_LENGTH && config.epochRoundLength <= MAX_EPOCH_LENGTH)
         assert(config.percentToValidator >= MIN_PCT_TO_VALIDATOR && config.percentToValidator <= MAX_PCT_TO_VALIDATOR)
         if (config.percentToValidator !== 0) {
             assert(
@@ -1158,7 +1158,7 @@ export class ValidatorRegistry extends Contract {
 
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call
-        sendMethodCall<typeof StakingPool.prototype.addStake>({
+        sendMethodCall<typeof StakingPool.prototype.addStake, uint64>({
             applicationID: AppID.fromUint64(poolAppId),
             methodArgs: [
                 // =======

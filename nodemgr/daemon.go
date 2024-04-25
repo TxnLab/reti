@@ -252,24 +252,12 @@ func (d *Daemon) setAverageBlockTime(ctx context.Context) error {
 	// determining the approximate current average block time.
 	const numRounds = 10
 
-	status, err := d.algoClient.Status().Do(context.Background())
+	blockTime, err := algo.CalcBlockTimes(ctx, d.algoClient, numRounds)
 	if err != nil {
-		return fmt.Errorf("unable to fetch node status: %w", err)
-	}
-	var blockTimes []time.Time
-	for round := status.LastRound - numRounds; round < status.LastRound; round++ {
-		block, err := d.algoClient.Block(round).Do(ctx)
-		if err != nil {
-			return fmt.Errorf("unable to fetch block in getAverageBlockTime, err:%w", err)
-		}
-		blockTimes = append(blockTimes, time.Unix(block.TimeStamp, 0))
-	}
-	var totalBlockTime time.Duration
-	for i := 1; i < len(blockTimes); i++ {
-		totalBlockTime += blockTimes[i].Sub(blockTimes[i-1])
+		return err
 	}
 	d.Lock()
-	d.avgBlockTime = totalBlockTime / time.Duration(len(blockTimes)-1)
+	d.avgBlockTime = blockTime
 	d.Unlock()
 	misc.Infof(d.logger, "average block time set to:%v", d.AverageBlockTime())
 	return nil
@@ -539,7 +527,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 	d.logger.Info("EpochUpdater started")
 	defer d.logger.Info("EpochUpdater stopped")
 
-	epochMinutes := App.retiClient.Info().Config.PayoutEveryXMins
+	epochMinutes := App.retiClient.Info().Config.EpochRoundLength
 
 	dur := durationToNextEpoch(time.Now(), epochMinutes)
 	epochTimer := time.NewTimer(dur)

@@ -35,7 +35,7 @@ export interface ValidatorConfig {
   gatingAssetMinBalance: bigint
   rewardTokenId: number
   rewardPerPayout: bigint
-  payoutEveryXMins: number // Payout frequency in minutes (can be no shorter than this)
+  epochRoundLength: number // Payout frequency in minutes (can be no shorter than this)
   percentToValidator: number // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
   validatorCommissionAddress: string // account that receives the validation commission each epoch payout (can be ZeroAddress)
   minEntryStake: bigint // minimum stake required to enter pool - but must withdraw all if they want to go below this amount as well(!)

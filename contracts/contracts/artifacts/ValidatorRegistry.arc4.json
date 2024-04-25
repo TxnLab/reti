@@ -55,7 +55,7 @@
         }
       ],
       "returns": {
-        "type": "(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)"
+        "type": "(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)"
       }
     },
     {
@@ -214,7 +214,7 @@
         },
         {
           "name": "config",
-          "type": "(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint16,uint32,address,uint64,uint64,uint8,uint64,uint64)",
+          "type": "(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)",
           "desc": "ValidatorConfig struct"
         }
       ],
@@ -392,7 +392,7 @@
     },
     {
       "name": "setTokenPayoutRatio",
-      "desc": "setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratiosof stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered bypool 1 doing payout.  pools other than 1 doing payout call pool 1 to ask it do it first.It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead oftheir 'current' stake which changes as part of the payouts themselves (and people could be changing stakeduring the epoch updates across pools)Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multipletimes in same epoch.  Just return.",
+      "desc": "setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratiosof stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40in pool 2)  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered bypool 1 doing payout.  pools other than 1 doing payout call pool 1 to ask it do it first.It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead oftheir 'current' stake which changes as part of the payouts themselves (and people could be changing stakeduring the epoch updates across pools)Multiple pools will call us via pool 1 (pool2->pool1->validator, etc.) so don't assert on pool1 calling multipletimes in same epoch.  Just return.",
       "args": [
         {
           "name": "validatorId",

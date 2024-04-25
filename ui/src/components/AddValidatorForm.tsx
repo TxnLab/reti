@@ -87,7 +87,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       gatingAssetMinBalance: '',
       rewardTokenId: '',
       rewardPerPayout: '',
-      payoutEveryXMins: '',
+      epochRoundLength: '',
       percentToValidator: '',
       validatorCommissionAddress: '',
       minEntryStake: '',
@@ -221,7 +221,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
-      const payoutEveryXMins = getEpochLengthMinutes(values.payoutEveryXMins, epochTimeframe)
+      const epochRoundLength = getEpochLengthMinutes(values.epochRoundLength, epochTimeframe)
       const entryGatingAssets = transformEntryGatingAssets(
         values.entryGatingType,
         values.entryGatingAssets,
@@ -231,7 +231,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const newValues = {
         ...values,
-        payoutEveryXMins: String(payoutEveryXMins),
+        epochRoundLength: String(epochRoundLength),
         entryGatingAssets,
       }
 
@@ -424,7 +424,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="payoutEveryXMins"
+                name="epochRoundLength"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -455,7 +455,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         </Select>
                       </div>
                     </FormControl>
-                    <FormMessage>{errors.payoutEveryXMins?.message}</FormMessage>
+                    <FormMessage>{errors.epochRoundLength?.message}</FormMessage>
                   </FormItem>
                 )}
               />

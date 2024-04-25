@@ -10,14 +10,13 @@ import {
 } from './constants.algo'
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320 // # of blocks until algorand sees online balance changes in staking
-const AVG_BLOCK_TIME_SECS = 28 // in tenths - 28 = 2.8
 
 export type StakedInfo = {
     account: Address
     balance: uint64
     totalRewarded: uint64
     rewardTokenBalance: uint64
-    entryTime: uint64
+    entryRound: uint64 // round number of entry (320 added to entry round to accommodate consensus balance delay)
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -56,7 +55,7 @@ export class StakingPool extends Contract {
 
     minEntryStake = GlobalStateKey<uint64>({ key: 'minEntryStake' })
 
-    // Last timestamp of a payout - used to ensure payout call isn't cheated and called prior to agreed upon schedule
+    // Round number known at time when last epoch payout occurred (internally adjusted to (round-(round%epoch)) for 'bin' comparisons.
     lastPayout = GlobalStateKey<uint64>({ key: 'lastPayout' })
 
     // Epoch number this staking pool is on, with epoch 1 being the 'first' payout
@@ -95,7 +94,7 @@ export class StakingPool extends Contract {
         this.numStakers.value = 0
         this.totalAlgoStaked.value = 0
         this.minEntryStake.value = minEntryStake
-        this.lastPayout.value = globals.latestTimestamp // set 'last payout' to init time of pool to establish baseline
+        this.lastPayout.value = globals.round // set to init block to establish baseline
         this.epochNumber.value = 0
     }
 
@@ -155,7 +154,7 @@ export class StakingPool extends Contract {
      * @param {PayTxn} stakedAmountPayment prior payment coming from validator contract to us on behalf of staker.
      * @param {Address} staker - The account adding new stake
      * @throws {Error} - Throws an error if the staking pool is full.
-     * @returns {uint64} new 'entry time' in seconds of stake add.
+     * @returns {uint64} new 'entry round' round number of stake add
      */
     addStake(stakedAmountPayment: PayTxn, staker: Address): uint64 {
         assert(this.stakers.exists)
@@ -175,7 +174,7 @@ export class StakingPool extends Contract {
 
         // See if the account staking is already in our ledger of stakers - if so, they're just adding to their stake
         // track first empty slot as we go along as well.
-        const entryTime = this.getEntryTime()
+        const entryRound = globals.round + ALGORAND_STAKING_BLOCK_DELAY
         let firstEmpty = 0
 
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
@@ -185,14 +184,15 @@ export class StakingPool extends Contract {
             }
             const cmpStaker = clone(this.stakers.value[i])
             if (cmpStaker.account === staker) {
+                // We're just adding more stake to their existing stake within a pool
                 cmpStaker.balance += stakedAmountPayment.amount
-                cmpStaker.entryTime = entryTime
+                cmpStaker.entryRound = entryRound
 
                 // Update the box w/ the new data
                 this.stakers.value[i] = cmpStaker
 
                 this.totalAlgoStaked.value += stakedAmountPayment.amount
-                return entryTime
+                return entryRound
             }
             if (firstEmpty === 0 && cmpStaker.account === globals.zeroAddress) {
                 firstEmpty = i + 1
@@ -214,11 +214,11 @@ export class StakingPool extends Contract {
             balance: stakedAmountPayment.amount,
             totalRewarded: 0,
             rewardTokenBalance: 0,
-            entryTime: entryTime,
+            entryRound: entryRound,
         }
         this.numStakers.value += 1
         this.totalAlgoStaked.value += stakedAmountPayment.amount
-        return entryTime
+        return entryRound
     }
 
     /**
@@ -469,20 +469,23 @@ export class StakingPool extends Contract {
         })
 
         // =====
-        // Ensure full Epoch has passed before allowing a new Epoch update to occur
+        // Establish base 'epoch' info for future calcs and ensure full Epoch has passed before allowing a new
+        // Epoch update to occur.
         // =====
-        // Since we're being told to payout, we're at epoch 'end' presumably - or close enough
-        // but what if we're told to pay really early?  we need to verify that as well.
-        const curTime = globals.latestTimestamp
-        // Get configured epoch as seconds since we're block time comparisons will be in seconds
-        const epochInSecs = (validatorConfig.payoutEveryXMins as uint64) * 60
+        const epochRoundLength = validatorConfig.epochRoundLength as uint64
+        const curRound = globals.round
+        const thisEpochBegin = curRound - (curRound % epochRoundLength)
+
+        // check which epoch we're currently in and if it's outside of last payout epoch.
         if (this.lastPayout.exists) {
-            const secsSinceLastPayout = curTime - this.lastPayout.value
+            const lastPayoutEpoch = this.lastPayout.value - (this.lastPayout.value % epochRoundLength)
+            // log(concat('thisEpoch: ', thisEpochBegin.toString()))
+            // log(concat('lastpayoutEpoch: ', lastPayoutEpoch.toString()))
             // We've had one payout - so we need to be at least one epoch past the last payout.
-            assert(secsSinceLastPayout >= epochInSecs, "Can't payout earlier than last payout + epoch time")
+            assert(lastPayoutEpoch !== thisEpochBegin, "can't call epochBalanceUpdate in same epoch as prior call")
         }
-        // Update our payout time and epoch number - required to match
-        this.lastPayout.value = curTime
+        // Update our payout and epoch number - required to match
+        this.lastPayout.value = curRound
         this.epochNumber.value += 1
 
         // Determine Token rewards if applicable
@@ -638,12 +641,9 @@ export class StakingPool extends Contract {
             }
         }
 
-        // We could exit now if (algoRewardAvail === 0 && tokenRewardAvail === 0) which would be the case if validator had
-        // commission at 100% for eg, but we still want to inform the validator contract of our payouts
-        // so that it can log the appropriate events for indexers, so don't exit early.
-
         // Now we "pay" (but really just update their tracked balance) the stakers the remainder based on their % of
         // pool and time in this epoch.
+        // (assuming there is anything to even pay...)
 
         // We'll track the amount of stake we add to stakers based on payouts
         // If any dust is remaining in account it'll be considered part of reward in next epoch.
@@ -671,106 +671,111 @@ export class StakingPool extends Contract {
         // less time in pool.  We keep track of their stake and then will later reduce the effective 'total staked' amount
         // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
         // remaining participants.
-        let partialStakersTotalStake: uint64 = 0
-        for (let i = 0; i < this.stakers.value.length; i += 1) {
-            if (globals.opcodeBudget < 400) {
-                increaseOpcodeBudget()
-            }
-            const cmpStaker = clone(this.stakers.value[i])
-            if (cmpStaker.account !== globals.zeroAddress) {
-                if (cmpStaker.entryTime > curTime) {
-                    // due to 'forward dating' entry time this could be possible
-                    // in this case it definitely means they get 0%
-                    partialStakersTotalStake += cmpStaker.balance
-                } else {
-                    // Reward is % of users stake in pool,
-                    // but we deduct based on time away from our payout time
-                    const timeInPool = curTime - cmpStaker.entryTime
-                    let timePercentage: uint64
-                    // get % of time in pool (in tenths precision)
-                    // ie: 34.7% becomes 347
-                    if (timeInPool < epochInSecs) {
-                        partialStakersTotalStake += cmpStaker.balance
-                        timePercentage = (timeInPool * 1000) / epochInSecs
-
-                        if (tokenRewardAvail > 0) {
-                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
-                            const stakerTokenReward = wideRatio(
-                                [cmpStaker.balance, tokenRewardAvail, timePercentage],
-                                [this.totalAlgoStaked.value, 1000],
-                            )
-
-                            // reduce the reward available (that we're accounting for) so that the subsequent
-                            // 'full' pays are based on what's left
-                            tokenRewardAvail -= stakerTokenReward
-                            cmpStaker.rewardTokenBalance += stakerTokenReward
-                            tokenRewardPaidOut += stakerTokenReward
-                        }
-                        if (algoRewardAvail > 0) {
-                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
-                            const stakerReward = wideRatio(
-                                [cmpStaker.balance, algoRewardAvail, timePercentage],
-                                [this.totalAlgoStaked.value, 1000],
-                            )
-
-                            // reduce the reward available (that we're accounting for) so that the subsequent
-                            // 'full' pays are based on what's left
-                            algoRewardAvail -= stakerReward
-                            // instead of sending them algo now - just increase their ledger balance, so they can claim
-                            // it at any time.
-                            cmpStaker.balance += stakerReward
-                            cmpStaker.totalRewarded += stakerReward
-                            increasedStake += stakerReward
-                        }
-                        // Update the box w/ the new data
-                        this.stakers.value[i] = cmpStaker
-                    }
-                }
-            }
-        }
-
-        // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
-        // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
-        const newPoolTotalStake = this.totalAlgoStaked.value - partialStakersTotalStake
-
-        // It's technically possible for newPoolTotalStake to be 0, if EVERY staker is new then there'll be nothing to
-        // hand out this epoch because we'll have reduced the amount to 'count' towards stake by the entire stake
-        if (newPoolTotalStake > 0) {
-            // Now go back through the list AGAIN and pay out the full-timers their rewards + excess
+        if (algoRewardAvail !== 0 || tokenRewardAvail !== 0) {
+            let partialStakersTotalStake: uint64 = 0
             for (let i = 0; i < this.stakers.value.length; i += 1) {
-                if (globals.opcodeBudget < 200) {
+                if (globals.opcodeBudget < 400) {
                     increaseOpcodeBudget()
                 }
                 const cmpStaker = clone(this.stakers.value[i])
-                if (cmpStaker.account !== globals.zeroAddress && cmpStaker.entryTime < curTime) {
-                    const timeInPool = curTime - cmpStaker.entryTime
-                    // We're now only paying out people who've been in pool an entire epoch.
-                    if (timeInPool >= epochInSecs) {
-                        // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
-                        // payment
+                if (cmpStaker.account !== globals.zeroAddress) {
+                    if (cmpStaker.entryRound >= thisEpochBegin) {
+                        // due to 'forward dating' entry time this could be possible
+                        // in this case it definitely means they get 0%
+                        partialStakersTotalStake += cmpStaker.balance
+                    } else {
+                        // Reward is % of users stake in pool,
+                        // but we deduct based on time away from our payout time
+                        const timeInPool = thisEpochBegin - cmpStaker.entryRound
+                        let timePercentage: uint64
+                        // get % of time in pool (in tenths precision)
+                        // ie: 34.7% becomes 347
+                        if (timeInPool < epochRoundLength) {
+                            partialStakersTotalStake += cmpStaker.balance
+                            timePercentage = (timeInPool * 1000) / epochRoundLength
 
-                        // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
-                        if (tokenRewardAvail > 0) {
-                            const stakerTokenReward = wideRatio(
-                                [cmpStaker.balance, tokenRewardAvail],
-                                [newPoolTotalStake],
-                            )
-                            // instead of sending them algo now - just increase their ledger balance, so they can claim
-                            // it at any time.
-                            cmpStaker.rewardTokenBalance += stakerTokenReward
-                            tokenRewardPaidOut += stakerTokenReward
-                        }
-                        if (algoRewardAvail > 0) {
-                            const stakerReward = wideRatio([cmpStaker.balance, algoRewardAvail], [newPoolTotalStake])
-                            // instead of sending them algo now - just increase their ledger balance, so they can claim
-                            // it at any time.
-                            cmpStaker.balance += stakerReward
-                            cmpStaker.totalRewarded += stakerReward
-                            increasedStake += stakerReward
-                        }
+                            if (tokenRewardAvail > 0) {
+                                // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
+                                const stakerTokenReward = wideRatio(
+                                    [cmpStaker.balance, tokenRewardAvail, timePercentage],
+                                    [this.totalAlgoStaked.value, 1000],
+                                )
 
-                        // Update the box w/ the new data
-                        this.stakers.value[i] = cmpStaker
+                                // reduce the reward available (that we're accounting for) so that the subsequent
+                                // 'full' pays are based on what's left
+                                tokenRewardAvail -= stakerTokenReward
+                                cmpStaker.rewardTokenBalance += stakerTokenReward
+                                tokenRewardPaidOut += stakerTokenReward
+                            }
+                            if (algoRewardAvail > 0) {
+                                // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
+                                const stakerReward = wideRatio(
+                                    [cmpStaker.balance, algoRewardAvail, timePercentage],
+                                    [this.totalAlgoStaked.value, 1000],
+                                )
+
+                                // reduce the reward available (that we're accounting for) so that the subsequent
+                                // 'full' pays are based on what's left
+                                algoRewardAvail -= stakerReward
+                                // instead of sending them algo now - just increase their ledger balance, so they can claim
+                                // it at any time.
+                                cmpStaker.balance += stakerReward
+                                cmpStaker.totalRewarded += stakerReward
+                                increasedStake += stakerReward
+                            }
+                            // Update the box w/ the new data
+                            this.stakers.value[i] = cmpStaker
+                        }
+                    }
+                }
+            }
+
+            // Reduce the virtual 'total staked in pool' amount based on removing the totals of the stakers we just paid
+            // partial amounts.  This is so that all that remains is the stake of the 100% 'time in epoch' people.
+            const newPoolTotalStake = this.totalAlgoStaked.value - partialStakersTotalStake
+
+            // It's technically possible for newPoolTotalStake to be 0, if EVERY staker is new then there'll be nothing to
+            // hand out this epoch because we'll have reduced the amount to 'count' towards stake by the entire stake
+            if (newPoolTotalStake > 0) {
+                // Now go back through the list AGAIN and pay out the full-timers their rewards + excess
+                for (let i = 0; i < this.stakers.value.length; i += 1) {
+                    if (globals.opcodeBudget < 200) {
+                        increaseOpcodeBudget()
+                    }
+                    const cmpStaker = clone(this.stakers.value[i])
+                    if (cmpStaker.account !== globals.zeroAddress && cmpStaker.entryRound < thisEpochBegin) {
+                        const timeInPool = thisEpochBegin - cmpStaker.entryRound
+                        // We're now only paying out people who've been in pool an entire epoch.
+                        if (timeInPool >= epochRoundLength) {
+                            // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
+                            // payment
+
+                            // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
+                            if (tokenRewardAvail > 0) {
+                                const stakerTokenReward = wideRatio(
+                                    [cmpStaker.balance, tokenRewardAvail],
+                                    [newPoolTotalStake],
+                                )
+                                // instead of sending them algo now - just increase their ledger balance, so they can claim
+                                // it at any time.
+                                cmpStaker.rewardTokenBalance += stakerTokenReward
+                                tokenRewardPaidOut += stakerTokenReward
+                            }
+                            if (algoRewardAvail > 0) {
+                                const stakerReward = wideRatio(
+                                    [cmpStaker.balance, algoRewardAvail],
+                                    [newPoolTotalStake],
+                                )
+                                // instead of sending them algo now - just increase their ledger balance, so they can claim
+                                // it at any time.
+                                cmpStaker.balance += stakerReward
+                                cmpStaker.totalRewarded += stakerReward
+                                increasedStake += stakerReward
+                            }
+
+                            // Update the box w/ the new data
+                            this.stakers.value[i] = cmpStaker
+                        }
                     }
                 }
             }
@@ -885,24 +890,6 @@ export class StakingPool extends Contract {
             methodArgs: [this.validatorId.value],
         })
         return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1]
-    }
-
-    /**
-     * Calculate the entry time for counting a stake as entering the pool.
-     * Algorand won't see the balance increase for ALGORAND_STAKING_BLOCK_DELAY rounds, so we approximate it.
-     * The entry time is calculated by adding an approximate number of seconds based on current AVG block times
-     * to the original entry time.  This means users don't get payouts based on time their balance wouldn't have
-     * been seen by the network.
-     *
-     * @returns {uint64} - The updated entry time.
-     */
-    private getEntryTime(): uint64 {
-        // entry time is the time we want to count this stake as entering the pool.  Algorand won't see the balance
-        // increase for 320 rounds so approximate it as best we can
-        const entryTime = globals.latestTimestamp
-        // we add 320 blocks * AVG_BLOCK_TIME_SECS (which is in tenths, where 30 represents 3 seconds)
-        // adding that approximate number of seconds to the entry time.
-        return entryTime + (ALGORAND_STAKING_BLOCK_DELAY * AVG_BLOCK_TIME_SECS) / 10
     }
 
     private getFeeSink(): Address {

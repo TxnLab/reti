@@ -224,11 +224,11 @@ export function ValidatorTable({
     },
     {
       id: 'epoch',
-      accessorFn: (row) => row.config.payoutEveryXMins,
+      accessorFn: (row) => row.config.epochRoundLength,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Epoch" />,
       cell: ({ row }) => {
         const validator = row.original
-        const frequencyFormatted = formatDuration(validator.config.payoutEveryXMins, true)
+        const frequencyFormatted = formatDuration(validator.config.epochRoundLength, true)
         return <span className="capitalize">{frequencyFormatted}</span>
       },
     },

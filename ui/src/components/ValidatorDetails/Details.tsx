@@ -84,7 +84,7 @@ export function Details({ validator }: DetailsProps) {
                 </dt>
                 <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
                   <span className="capitalize">
-                    {formatDuration(validator.config.payoutEveryXMins)}
+                    {formatDuration(validator.config.epochRoundLength)}
                   </span>
                 </dd>
               </div>
