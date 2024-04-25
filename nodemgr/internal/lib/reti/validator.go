@@ -378,7 +378,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				info.Config.GatingAssetMinBalance,
 				info.Config.RewardTokenId,
 				info.Config.RewardPerPayout,
-				uint16(info.Config.EpochRoundLength),
+				uint32(info.Config.EpochRoundLength),
 				uint16(info.Config.PercentToValidator),
 				commissionAddr,
 				info.Config.MinEntryStake,

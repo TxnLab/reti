@@ -9,14 +9,12 @@ import {
     getApplicationAddress,
     makeAssetCreateTxnWithSuggestedParamsFromObject,
     makePaymentTxnWithSuggestedParamsFromObject,
-    Transaction,
 } from 'algosdk'
 import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { expect } from '@jest/globals'
-import * as algokit from '@algorandfoundation/algokit-utils'
 import { signTransaction, waitForConfirmation } from '@algorandfoundation/algokit-utils'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'

@@ -51,7 +51,7 @@ import {
   isStakingDisabled,
   isUnstakingDisabled,
 } from '@/utils/contracts'
-import { formatDuration } from '@/utils/dayjs'
+import { formatEpochDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
 import { ellipseAddress } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
@@ -228,7 +228,7 @@ export function ValidatorTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Epoch" />,
       cell: ({ row }) => {
         const validator = row.original
-        const frequencyFormatted = formatDuration(validator.config.epochRoundLength, true)
+        const frequencyFormatted = formatEpochDuration(validator.config.epochRoundLength)
         return <span className="capitalize">{frequencyFormatted}</span>
       },
     },

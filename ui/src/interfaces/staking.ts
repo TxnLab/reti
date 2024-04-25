@@ -5,7 +5,7 @@ export interface StakedInfo {
   balance: bigint
   totalRewarded: bigint
   rewardTokenBalance: bigint
-  entryTime: number
+  entryRound: number
 }
 
 export interface StakerPoolData extends StakedInfo {

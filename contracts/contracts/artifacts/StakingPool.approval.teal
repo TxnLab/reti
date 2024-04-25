@@ -1898,22 +1898,6 @@ epochBalanceUpdate:
 	-
 	frame_bury 4 // lastPayoutEpoch: uint64
 
-	// contracts/stakingPool.algo.ts:482
-	// log(concat('thisEpoch: ', thisEpochBegin.toString()))
-	byte 0x7468697345706f63683a20 // "thisEpoch: "
-	frame_dig 3 // thisEpochBegin: uint64
-	callsub *itoa
-	concat
-	log
-
-	// contracts/stakingPool.algo.ts:483
-	// log(concat('lastpayoutEpoch: ', lastPayoutEpoch.toString()))
-	byte 0x6c6173747061796f757445706f63683a20 // "lastpayoutEpoch: "
-	frame_dig 4 // lastPayoutEpoch: uint64
-	callsub *itoa
-	concat
-	log
-
 	// contracts/stakingPool.algo.ts:485
 	// assert(lastPayoutEpoch !== thisEpochBegin, "can't call epochBalanceUpdate in same epoch as prior call")
 	frame_dig 4 // lastPayoutEpoch: uint64
@@ -3730,45 +3714,3 @@ getCurrentOnlineStake:
 	txna ApplicationArgs 0
 	match *abi_route_gas *abi_route_initStorage *abi_route_addStake *abi_route_removeStake *abi_route_claimTokens *abi_route_getStakerInfo *abi_route_payTokenReward *abi_route_updateAlgodVer *abi_route_epochBalanceUpdate *abi_route_goOnline *abi_route_goOffline *abi_route_linkToNFD *abi_route_proxiedSetTokenPayoutRatio
 	err
-
-*intToAscii:
-	proto 1 1
-	byte 0x30313233343536373839 // "0123456789"
-	frame_dig -1 // i: uint64
-	int 1
-	extract3
-	retsub
-	
-
-*itoa:
-	proto 1 1
-	frame_dig -1 // i: uint64
-	int 0
-	==
-	bz *itoa_if_end
-	byte 0x30
-	retsub
-
-*itoa_if_end:
-	frame_dig -1 // i: uint64
-	int 10
-	/
-	int 0
-	>
-	bz *itoa_ternary_false
-	frame_dig -1 // i: uint64
-	int 10
-	/
-	callsub *itoa
-	b *itoa_ternary_end
-
-*itoa_ternary_false:
-	byte 0x // ""
-
-*itoa_ternary_end:
-	frame_dig -1 // i: uint64
-	int 10
-	%
-	callsub *intToAscii
-	concat
-	retsub

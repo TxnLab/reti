@@ -144,7 +144,7 @@ export function StakingTable({
           const eligibility = calculateRewardEligibility(
             epochRoundLength,
             poolData.lastPayout,
-            poolData.entryTime,
+            poolData.entryRound,
           )
           return eligibility
         })

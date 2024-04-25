@@ -1,7 +1,7 @@
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Validator } from '@/interfaces/validator'
-import { formatDuration } from '@/utils/dayjs'
+import { formatEpochDuration } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
 
@@ -84,7 +84,7 @@ export function Details({ validator }: DetailsProps) {
                 </dt>
                 <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
                   <span className="capitalize">
-                    {formatDuration(validator.config.epochRoundLength)}
+                    {formatEpochDuration(validator.config.epochRoundLength)}
                   </span>
                 </dd>
               </div>

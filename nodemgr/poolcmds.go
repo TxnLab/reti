@@ -289,7 +289,6 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolId-1].PoolAppId)
 	nextEpoch := lastPayout - (lastPayout % uint64(info.Config.EpochRoundLength)) + uint64(info.Config.EpochRoundLength)
 	if nextEpoch < uint64(params.FirstRoundValid) {
-		//nextEpoch = 0
 		nextEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(info.Config.EpochRoundLength))
 	}
 	pctTimeInEpoch := func(stakerEntry uint64) int {

@@ -49,6 +49,7 @@
             "rules": {
                 "no-continue": "off",
                 "no-console": "off",
+                "no-await-in-loop": "off",
                 "max-classes-per-file": "off",
                 "import/no-extraneous-dependencies": "off"
             }
@@ -69,12 +70,6 @@
                 "no-continue": "off",
                 "no-unused-vars": "off",
                 "@typescript-eslint/ban-ts-comment": "off"
-            }
-        },
-        {
-            "files": ["*.test.ts"],
-            "rules": {
-                "no-await-in-loop": "off"
             }
         }
     ]

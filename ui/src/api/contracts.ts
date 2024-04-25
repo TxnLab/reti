@@ -717,7 +717,7 @@ export async function fetchStakerPoolData(
       balance,
       totalRewarded,
       rewardTokenBalance,
-      entryTime: Number(entryTime),
+      entryRound: Number(entryTime),
     }
 
     return {
@@ -765,7 +765,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
         existingData.balance += pool.balance
         existingData.totalRewarded += pool.totalRewarded
         existingData.rewardTokenBalance += pool.rewardTokenBalance
-        existingData.entryTime = Math.max(existingData.entryTime, pool.entryTime)
+        existingData.entryTime = Math.max(existingData.entryTime, pool.entryRound)
         existingData.lastPayout = Math.max(existingData.lastPayout, pool.lastPayout)
         existingData.pools.push(pool) // add pool to existing StakerPoolData[]
       } else {
@@ -775,7 +775,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
           balance: pool.balance,
           totalRewarded: pool.totalRewarded,
           rewardTokenBalance: pool.rewardTokenBalance,
-          entryTime: pool.entryTime,
+          entryTime: pool.entryRound,
           lastPayout: pool.lastPayout,
           pools: [pool], // add pool to new StakerPoolData[]
         })
