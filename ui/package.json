@@ -20,7 +20,7 @@
     "@typescript-eslint/eslint-plugin": "7.7.1",
     "@typescript-eslint/parser": "7.7.1",
     "@vitejs/plugin-react": "4.2.1",
-    "@vitest/coverage-v8": "1.5.0",
+    "@vitest/coverage-v8": "1.5.1",
     "autoprefixer": "10.4.19",
     "eslint": "8.57.0",
     "eslint-config-prettier": "9.1.0",
@@ -31,7 +31,7 @@
     "ts-node": "10.9.2",
     "typescript": "5.4.5",
     "vite": "5.2.10",
-    "vitest": "1.5.0"
+    "vitest": "1.5.1"
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "5.8.0",
@@ -53,8 +53,8 @@
     "@radix-ui/react-slot": "1.0.2",
     "@radix-ui/react-switch": "1.0.3",
     "@radix-ui/react-tooltip": "1.0.7",
-    "@tanstack/react-query": "5.31.0",
-    "@tanstack/react-query-devtools": "5.31.0",
+    "@tanstack/react-query": "5.32.0",
+    "@tanstack/react-query-devtools": "5.32.0",
     "@tanstack/react-router": "1.29.2",
     "@tanstack/react-table": "8.16.0",
     "@tanstack/router-devtools": "1.29.2",
@@ -63,15 +63,15 @@
     "@walletconnect/modal-sign-html": "2.6.2",
     "algosdk": "2.7.0",
     "axios": "1.6.8",
-    "axios-cache-interceptor": "1.5.1",
+    "axios-cache-interceptor": "1.5.2",
     "big.js": "6.2.1",
     "class-variance-authority": "0.7.0",
-    "clsx": "2.1.0",
+    "clsx": "2.1.1",
     "copy-to-clipboard": "3.3.3",
     "date-fns": "3.6.0",
     "dayjs": "1.11.10",
-    "lucide-react": "0.372.0",
-    "lute-connect": "1.1.4",
+    "lucide-react": "0.373.0",
+    "lute-connect": "1.2.0",
     "next-themes": "0.3.0",
     "notistack": "3.0.1",
     "react": "18.2.0",
@@ -84,7 +84,7 @@
     "tailwindcss-animate": "1.0.7",
     "tslib": "2.6.2",
     "use-debounce": "10.0.0",
-    "zod": "3.23.0"
+    "zod": "3.23.4"
   },
   "scripts": {
     "dev": "vite",
