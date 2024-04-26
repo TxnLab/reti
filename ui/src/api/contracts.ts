@@ -821,8 +821,8 @@ export async function fetchProtocolConstraints(
     ] = result.returns![0] as RawConstraints
 
     return {
-      payoutMinsMin: Number(payoutMinsMin),
-      payoutMinsMax: Number(payoutMinsMax),
+      payoutRoundsMin: Number(payoutMinsMin),
+      payoutRoundsMax: Number(payoutMinsMax),
       commissionPctMin: Number(commissionPctMin),
       commissionPctMax: Number(commissionPctMax),
       minEntryStake,

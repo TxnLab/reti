@@ -321,9 +321,9 @@ export class StakedInfo {
 
 // ProtocolConstraints returns data from the contracts on minimums, maximums, etc.
 export class ProtocolConstraints {
-    EpochPayoutMinsMin: bigint
+    epochPayoutRoundsMin: bigint
 
-    EpochPayoutMinsMax: bigint
+    epochPayoutRoundsMax: bigint
 
     MinPctToValidatorWFourDecimals: bigint
 
@@ -344,8 +344,8 @@ export class ProtocolConstraints {
     MaxStakersPerPool: bigint
 
     constructor([
-        EpochPayoutMinsMin,
-        EpochPayoutMinsMax,
+        epochPayoutRoundsMin,
+        epochPayoutRoundsMax,
         MinPctToValidatorWFourDecimals,
         MaxPctToValidatorWFourDecimals,
         MinEntryStake,
@@ -356,8 +356,8 @@ export class ProtocolConstraints {
         MaxPoolsPerNode,
         MaxStakersPerPool,
     ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]) {
-        this.EpochPayoutMinsMin = EpochPayoutMinsMin
-        this.EpochPayoutMinsMax = EpochPayoutMinsMax
+        this.epochPayoutRoundsMin = epochPayoutRoundsMin
+        this.epochPayoutRoundsMax = epochPayoutRoundsMax
         this.MinPctToValidatorWFourDecimals = MinPctToValidatorWFourDecimals
         this.MaxPctToValidatorWFourDecimals = MaxPctToValidatorWFourDecimals
         this.MinEntryStake = MinEntryStake
@@ -370,8 +370,8 @@ export class ProtocolConstraints {
     }
 
     public static fromValues([
-        EpochPayoutMinsMin,
-        EpochPayoutMinsMax,
+        epochPayoutRoundsMin,
+        epochPayoutRoundsMax,
         MinPctToValidatorWFourDecimals,
         MaxPctToValidatorWFourDecimals,
         MinEntryStake,
@@ -383,8 +383,8 @@ export class ProtocolConstraints {
         MaxStakersPerPool,
     ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]): ProtocolConstraints {
         return {
-            EpochPayoutMinsMin,
-            EpochPayoutMinsMax,
+            epochPayoutRoundsMin,
+            epochPayoutRoundsMax,
             MinPctToValidatorWFourDecimals,
             MaxPctToValidatorWFourDecimals,
             MinEntryStake,

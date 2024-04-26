@@ -123,8 +123,8 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 }
 
 type ProtocolConstraints struct {
-	EpochPayoutMinsMin             uint64
-	EpochPayoutMinsMax             uint64
+	epochPayoutRoundsMin           uint64
+	epochPayoutRoundsMax           uint64
 	MinPctToValidatorWFourDecimals uint64
 	MaxPctToValidatorWFourDecimals uint64
 	MinEntryStake                  uint64 // in microAlgo
@@ -142,8 +142,8 @@ func ProtocolConstraintsFromABIReturn(returnVal any) (*ProtocolConstraints, erro
 			return nil, fmt.Errorf("should be 10 elements returned in ProtocolConstraints response")
 		}
 		constraints := &ProtocolConstraints{}
-		constraints.EpochPayoutMinsMin = arrReturn[0].(uint64)
-		constraints.EpochPayoutMinsMax = arrReturn[1].(uint64)
+		constraints.epochPayoutRoundsMin = arrReturn[0].(uint64)
+		constraints.epochPayoutRoundsMax = arrReturn[1].(uint64)
 		constraints.MinPctToValidatorWFourDecimals = arrReturn[2].(uint64)
 		constraints.MaxPctToValidatorWFourDecimals = arrReturn[3].(uint64)
 		constraints.MinEntryStake = arrReturn[4].(uint64)

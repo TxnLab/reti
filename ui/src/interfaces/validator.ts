@@ -128,8 +128,8 @@ export type RawConstraints = [
 ]
 
 export interface Constraints {
-  payoutMinsMin: number
-  payoutMinsMax: number
+  payoutRoundsMin: number
+  payoutRoundsMax: number
   commissionPctMin: number
   commissionPctMax: number
   minEntryStake: bigint

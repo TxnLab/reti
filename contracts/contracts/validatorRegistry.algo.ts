@@ -140,8 +140,8 @@ type MbrAmounts = {
 }
 
 type Constraints = {
-    epochPayoutMinsMin: uint64
-    epochPayoutMinsMax: uint64
+    epochPayoutRoundsMin: uint64
+    epochPayoutRoundsMax: uint64
     minPctToValidatorWFourDecimals: uint64
     maxPctToValidatorWFourDecimals: uint64
     minEntryStake: uint64 // in microAlgo
@@ -242,8 +242,8 @@ export class ValidatorRegistry extends Contract {
      */
     getProtocolConstraints(): Constraints {
         return {
-            epochPayoutMinsMin: MIN_EPOCH_LENGTH,
-            epochPayoutMinsMax: MAX_EPOCH_LENGTH,
+            epochPayoutRoundsMin: MIN_EPOCH_LENGTH,
+            epochPayoutRoundsMax: MAX_EPOCH_LENGTH,
             minPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
             maxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             minEntryStake: MIN_ALGO_STAKE_PER_POOL,

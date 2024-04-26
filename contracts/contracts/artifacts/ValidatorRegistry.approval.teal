@@ -163,8 +163,8 @@ getProtocolConstraints:
 
 	// contracts/validatorRegistry.algo.ts:244
 	// return {
-	//             epochPayoutMinsMin: MIN_EPOCH_LENGTH,
-	//             epochPayoutMinsMax: MAX_EPOCH_LENGTH,
+	//             epochPayoutRoundsMin: MIN_EPOCH_LENGTH,
+	//             epochPayoutRoundsMax: MAX_EPOCH_LENGTH,
 	//             minPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
 	//             maxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
 	//             minEntryStake: MIN_ALGO_STAKE_PER_POOL,
