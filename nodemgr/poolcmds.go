@@ -15,6 +15,7 @@ import (
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
+	"github.com/TxnLab/reti/internal/lib/nfdonchain"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
@@ -55,6 +56,10 @@ func GetPoolCmdOpts() *cli.Command {
 						Usage:    "Pool id (the number in 'pool list')",
 						Value:    1,
 						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:  "nfd",
+						Usage: "Whether to display NFD names instead of staker addresses",
 					},
 				},
 			},
@@ -315,6 +320,14 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolId-1].PoolAppId, info.Pools[poolId-1].TotalAlgoStaked)
 
+	var nfdLookup *nfdonchain.NfdApi
+	if command.Bool("nfd") {
+		nfdLookup, err = nfdonchain.NewNfdApi(App.algoClient, command.String("network"))
+		if err != nil {
+			misc.Warnf(App.logger, "unable to use nfd lookups: %v", err)
+		}
+	}
+
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Round\t")
@@ -322,7 +335,17 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		if stakerData.Account == types.ZeroAddress {
 			continue
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\t\n", stakerData.Account.String(), algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
+		var stakerName = stakerData.Account.String()
+		if nfdLookup != nil {
+			if nfds, err := nfdLookup.FindByAddress(context.Background(), stakerData.Account.String()); err == nil {
+				nfdInfo, err := nfdLookup.GetNFD(context.Background(), nfds[0], false)
+				if err == nil {
+					stakerName = nfdInfo.Internal["name"]
+				}
+			}
+
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\t\n", stakerName, algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
 			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryRound), stakerData.EntryRound)
 	}
 	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
