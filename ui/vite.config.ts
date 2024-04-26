@@ -16,6 +16,8 @@ export default defineConfig({
     dir: './src',
     watch: false,
     globals: true,
+    setupFiles: ['./vitest.setup.ts'],
+    environment: 'jsdom',
     coverage: {
       provider: 'v8',
     },
