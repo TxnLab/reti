@@ -135,7 +135,7 @@ type RetiApp struct {
 }
 
 // initClients initializes both an an algod client (to correct network - which it
-// also validates) and an nfd nfdApi clinet - for nfd updates or fetches if caller
+// also validates) and an nfd nfdApi client - for nfd updates or fetches if caller
 // desires
 func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	network := cmd.String("network")
