@@ -535,8 +535,9 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 	}
 	curRound := status.LastRound
 	epochRoundLength := uint64(App.retiClient.Info().Config.EpochRoundLength)
-	// let's not worry about each pool and its last payout - just get next immediate block number for epoch
-	stopAtRound := nextEpoch(curRound, epochRoundLength)
+	// First we need to see if we MISSED an epoch in ANY of our pools - across all of our pools determine which
+	// we need to stop at first (could be in past - which will be instant fallthrough in waitUntilBlock)
+	stopAtRound := d.getFirstEligibleEpochRound(curRound, epochRoundLength)
 
 	misc.Infof(d.logger, "at round:%d, with epoch length:%d, first epoch check at %d", curRound, epochRoundLength, stopAtRound)
 
@@ -557,7 +558,6 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 				info = App.retiClient.Info()
 			)
 			for i, pool := range info.Pools {
-				appid := pool.PoolAppId
 				if _, found := info.LocalPools[uint64(i+1)]; !found {
 					continue
 				}
@@ -577,7 +577,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 								misc.Infof(d.logger, "already ran epoch update for this epoch on pool:%d, round:%d", i+1, blockWaitResult.atRound)
 								return nil
 							}
-							err = App.retiClient.EpochBalanceUpdate(i+1, appid, signerAddr)
+							err = App.retiClient.EpochBalanceUpdate(i+1, pool.PoolAppId, signerAddr)
 							if err != nil {
 								// Assume epoch update failed because it's just 'slightly' too early?
 								return repeat.HintTemporary(fmt.Errorf("epoch balance update failed for pool app id:%d, err:%w", i+1, err))
@@ -648,6 +648,24 @@ func (d *Daemon) waitUntilBlock(ctx context.Context, round uint64) chan BlockOrE
 		}
 	}()
 	return chReturn
+}
+
+func (d *Daemon) getFirstEligibleEpochRound(curRound uint64, epochRoundLength uint64) uint64 {
+	var (
+		info               = App.retiClient.Info()
+		curRoundEpochStart = curRound - (curRound % epochRoundLength)
+		earliestEpochToUse = curRoundEpochStart
+	)
+	for i, pool := range info.Pools {
+		if _, found := info.LocalPools[uint64(i+1)]; !found {
+			continue
+		}
+		lastPayout, err := App.retiClient.GetLastPayout(pool.PoolAppId)
+		if err == nil {
+			earliestEpochToUse = min(earliestEpochToUse, nextEpoch(lastPayout, epochRoundLength))
+		}
+	}
+	return earliestEpochToUse
 }
 
 // accountHasAtLeast checks if an account has at least a certain amount of microAlgos (spendable)

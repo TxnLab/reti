@@ -127,8 +127,14 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	if err != nil {
 		return fmt.Errorf("failed to get algod status at start: %w", err)
 	}
-
-	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at round:%d for app id:%d, avail rewards:%s", poolID, status.LastRound, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
+	var epochStr string
+	epochStart := status.LastRound - status.LastRound%uint64(info.Config.EpochRoundLength)
+	if epochStart != status.LastRound {
+		epochStr = fmt.Sprintf("round:%d [EpochStart:%d]", status.LastRound, epochStart)
+	} else {
+		epochStr = fmt.Sprintf("EpochStart:%d", epochStart)
+	}
+	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at %s for app id:%d, avail rewards:%s", poolID, epochStr, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
