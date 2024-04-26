@@ -25,6 +25,7 @@ jobs:
       VITE_ALGOD_PORT: 4001
       VITE_NFD_API_URL: http://localhost:80
       VITE_NFD_APP_URL: ws://localhost:3000
+      VITE_EXPLORER_ACCOUNT_URL: https://app.dappflow.org/setnetwork?name=sandbox&redirect=explorer/account
 
     steps:
       - name: Checkout repository

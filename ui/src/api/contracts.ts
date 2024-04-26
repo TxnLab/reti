@@ -35,6 +35,7 @@ import {
 import { dayjs } from '@/utils/dayjs'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { encodeCallParams } from '@/utils/tests/abi'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -971,7 +972,7 @@ export async function callGetPools(
 ) {
   return validatorClient
     .compose()
-    .getPools({ validatorId })
+    .getPools({ validatorId }, { note: encodeCallParams('getPools', { validatorId }) })
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 

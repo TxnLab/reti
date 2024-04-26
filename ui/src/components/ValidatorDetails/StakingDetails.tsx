@@ -1,10 +1,8 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { useQueries, useQuery } from '@tanstack/react-query'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Copy } from 'lucide-react'
 import * as React from 'react'
-import { stakedInfoQueryOptions, validatorPoolsQueryOptions } from '@/api/queries'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
@@ -20,7 +18,8 @@ import {
 } from '@/components/ui/select'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
-import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
+import { useStakersChartData } from '@/hooks/useStakersChartData'
+import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { copyToClipboard } from '@/utils/copyToClipboard'
@@ -52,57 +51,10 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
       value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
     })) || []
 
-  const poolsInfoQuery = useQuery(validatorPoolsQueryOptions(validator.id))
-  const poolsInfo = poolsInfoQuery.data || []
-
-  const allStakedInfo = useQueries({
-    queries: poolsInfo.map((pool) => stakedInfoQueryOptions(pool.poolAppId)),
+  const { stakersChartData, poolsInfo, isLoading, isError } = useStakersChartData({
+    selectedPool,
+    validatorId: validator.id,
   })
-
-  const isLoading = poolsInfoQuery.isLoading || allStakedInfo.some((query) => query.isLoading)
-  const isError = poolsInfoQuery.isError || allStakedInfo.some((query) => query.isError)
-
-  const chartData = React.useMemo(() => {
-    if (!allStakedInfo) {
-      return []
-    }
-
-    const stakedInfo = allStakedInfo
-      .map((query) => query.data || [])
-      .reduce((acc, stakers, i) => {
-        if (selectedPool !== 'all' && Number(selectedPool) !== i) {
-          return acc
-        }
-
-        // Temporary fix to handle duplicate staker bug
-        const poolStakers: StakedInfo[] = []
-        for (const staker of stakers) {
-          const stakerIndex = poolStakers.findIndex((s) => s.account === staker.account)
-          if (stakerIndex > -1) {
-            staker.account += ' ' // add space to make it unique
-          }
-          poolStakers.push(staker)
-        }
-
-        for (const staker of poolStakers) {
-          const stakerIndex = acc.findIndex((s) => s.account === staker.account)
-          if (stakerIndex > -1) {
-            acc[stakerIndex].balance += staker.balance
-            acc[stakerIndex].totalRewarded += staker.totalRewarded
-            acc[stakerIndex].rewardTokenBalance += staker.rewardTokenBalance
-          } else {
-            acc.push(staker)
-          }
-        }
-        return acc
-      }, [] as StakedInfo[])
-
-    return stakedInfo.map((staker) => ({
-      name: staker.account,
-      value: Number(staker.balance),
-      href: ExplorerLink.account(staker.account).trim(), // trim to remove trailing whitespace
-    }))
-  }, [allStakedInfo, selectedPool])
 
   const valueFormatter = (v: number) => (
     <AlgoDisplayAmount
@@ -379,16 +331,17 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
             </div>
             <div className="flex items-center">{renderPoolInfo()}</div>
           </div>
-          {chartData.length > 0 && (
+
+          {stakersChartData.length > 0 && (
             <ScrollArea
               className={cn('rounded-lg border', {
-                'h-64': chartData.length > 6,
-                'sm:h-96': chartData.length > 9,
+                'h-64': stakersChartData.length > 6,
+                'sm:h-96': stakersChartData.length > 9,
               })}
             >
               <div className="p-2 pr-6">
                 <BarList
-                  data={chartData}
+                  data={stakersChartData}
                   valueFormatter={valueFormatter}
                   className="font-mono"
                   showAnimation
