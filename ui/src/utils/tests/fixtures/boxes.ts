@@ -2,7 +2,6 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { StakedInfo } from '@/interfaces/staking'
-import { dayjs } from '@/utils/dayjs'
 import { LAST_ROUND } from '@/utils/tests/constants'
 import { ACCOUNT_1, ACCOUNT_2 } from '@/utils/tests/fixtures/accounts'
 import { createStaticArray } from '@/utils/tests/utils'
@@ -12,7 +11,7 @@ export const DEFAULT_STAKED_INFO: StakedInfo = {
   balance: BigInt(0),
   totalRewarded: BigInt(0),
   rewardTokenBalance: BigInt(0),
-  entryTime: 0,
+  entryRound: 0,
 }
 
 export const MOCK_STAKED_INFO_1: StakedInfo = {
@@ -20,7 +19,7 @@ export const MOCK_STAKED_INFO_1: StakedInfo = {
   balance: BigInt(AlgoAmount.Algos(1000).microAlgos),
   totalRewarded: BigInt(AlgoAmount.Algos(10).microAlgos),
   rewardTokenBalance: BigInt(0),
-  entryTime: dayjs('2024-01-01').unix(),
+  entryRound: 1,
 }
 
 export const MOCK_STAKED_INFO_2: StakedInfo = {
@@ -28,7 +27,7 @@ export const MOCK_STAKED_INFO_2: StakedInfo = {
   balance: BigInt(AlgoAmount.Algos(2000).microAlgos),
   totalRewarded: BigInt(AlgoAmount.Algos(20).microAlgos),
   rewardTokenBalance: BigInt(0),
-  entryTime: dayjs('2024-02-02').unix(),
+  entryRound: 2,
 }
 
 interface BoxData {
@@ -73,7 +72,7 @@ export function encodeStakersToBase64(stakers: StakedInfo[]): string {
     buffer.set(algosdk.bigIntToBytes(staker.balance, 8), index * bytesPerStaker + 32)
     buffer.set(algosdk.bigIntToBytes(staker.totalRewarded, 8), index * bytesPerStaker + 40)
     buffer.set(algosdk.bigIntToBytes(staker.rewardTokenBalance, 8), index * bytesPerStaker + 48)
-    buffer.set(algosdk.bigIntToBytes(BigInt(staker.entryTime), 8), index * bytesPerStaker + 56)
+    buffer.set(algosdk.bigIntToBytes(BigInt(staker.entryRound), 8), index * bytesPerStaker + 56)
   })
 
   return Buffer.from(buffer).toString('base64')
