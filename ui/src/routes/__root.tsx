@@ -2,8 +2,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { blockTimeQueryOptions, constraintsQueryOptions } from '@/api/queries'
 import { Layout } from '@/components/Layout'
-import { blockTimeQueryOptions } from '@/api/queries'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -12,10 +12,12 @@ export const Route = createRootRouteWithContext<{
   beforeLoad: () => {
     return {
       blockTimeQueryOptions,
+      constraintsQueryOptions,
     }
   },
-  loader: ({ context: { queryClient, blockTimeQueryOptions } }) => {
+  loader: ({ context: { queryClient, blockTimeQueryOptions, constraintsQueryOptions } }) => {
     queryClient.ensureQueryData(blockTimeQueryOptions)
+    queryClient.ensureQueryData(constraintsQueryOptions)
   },
   component: () => (
     <>
