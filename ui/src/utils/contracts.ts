@@ -781,9 +781,9 @@ export function calculateMaxAvailableToStake(validator: Validator, constraints?:
  * @returns {number | null} Rewards eligibility percentage, or null if any input parameters are zero/undefined
  */
 export function calculateRewardEligibility(
-  epochRoundLength = 0,
-  lastPoolPayoutRound = 0,
-  entryRound = 0,
+  epochRoundLength: number = 0,
+  lastPoolPayoutRound: number = 0,
+  entryRound: number = 0,
 ): number | null {
   if (epochRoundLength == 0 || entryRound == 0 || lastPoolPayoutRound == 0) {
     return null
