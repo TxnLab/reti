@@ -24,6 +24,7 @@ import {
 const MAX_NODES = 8 // more just as a reasonable limit and cap on contract storage
 const MAX_POOLS_PER_NODE = 3 // max number of pools per node
 // This MAX_POOLS constant has to be explicitly specified in ValidatorInfo.pools[ xxx ] StaticArray!
+// It also must be reflected in poolPctOfWhole in PoolTokenPayoutRatio!
 // if this constant is changed, the calculated value must be put in manually into the StaticArray definition.
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE
 
@@ -118,7 +119,7 @@ type NodePoolAssignmentConfig = {
 export type PoolTokenPayoutRatio = {
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
     poolPctOfWhole: StaticArray<uint64, 24>
-    // epoch timestmap when set - only pool 1 caller can trigger/calculate this and only once per epoch
+    // current round when last set - only pool 1 caller can trigger/calculate this and only once per epoch
     // set and compared against pool 1's lastPayout property.
     updatedForPayout: uint64
 }
@@ -699,21 +700,22 @@ export class ValidatorRegistry extends Contract {
 
         // They can only call us if the epoch update time doesn't match what pool 1 already has - and it has to be at least
         // a full epoch since last update (unless not set).  Same check as pools themselves perform.
-        const curTime = globals.latestTimestamp
+        // check which epoch we're currently in and if it's outside of last payout epoch.
+        const curRound = globals.round
         const lastPayoutUpdate = this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout
         if (lastPayoutUpdate !== 0) {
-            // We've already done the calcs - return what we already have.
+            // See if we've already done the calcs because payouts match - return what we already have.
             if ((AppID.fromUint64(pool1AppID).globalState('lastPayout') as uint64) === lastPayoutUpdate) {
                 return this.validatorList(validatorId).value.tokenPayoutRatio
             }
-            const secsSinceLastPayout = curTime - lastPayoutUpdate
-            const epochInSecs = (this.validatorList(validatorId).value.config.epochRoundLength as uint64) * 60
-            // We've had one payout - so we need to be at least one epoch past the last payout.
-            if (secsSinceLastPayout < epochInSecs) {
+            const epochRoundLength = this.validatorList(validatorId).value.config.epochRoundLength as uint64
+            const thisEpochBegin = curRound - (curRound % epochRoundLength)
+            // Make sure our last payout epoch isn't still within the current epoch - we need to be at least one epoch past the last payout.
+            if (lastPayoutUpdate - (lastPayoutUpdate % epochRoundLength) === thisEpochBegin) {
                 return this.validatorList(validatorId).value.tokenPayoutRatio
             }
         }
-        this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout = curTime
+        this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout = curRound
 
         const curNumPools = this.validatorList(validatorId).value.state.numPools as uint64
         const totalStakeForValidator = this.validatorList(validatorId).value.state.totalAlgoStaked
