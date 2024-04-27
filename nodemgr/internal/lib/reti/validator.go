@@ -898,6 +898,11 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 		BoxReferences: []types.AppBoxReference{
 			{AppID: 0, Name: GetValidatorListBoxName(info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: []byte("poolTemplateApprovalBytes")},
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,

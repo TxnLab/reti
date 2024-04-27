@@ -4,12 +4,42 @@
   "methods": [
     {
       "name": "createApplication",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "initStakingContract",
       "args": [
         {
-          "name": "poolTemplateAppId",
+          "name": "approvalProgramSize",
           "type": "uint64"
         }
       ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "loadStakingContractData",
+      "args": [
+        {
+          "name": "offset",
+          "type": "uint64"
+        },
+        {
+          "name": "data",
+          "type": "byte[]"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "finalizeStakingContract",
+      "args": [],
       "returns": {
         "type": "void"
       }

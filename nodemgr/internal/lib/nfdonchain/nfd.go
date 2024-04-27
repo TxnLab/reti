@@ -23,7 +23,7 @@ func NewNfdApi(algoClient *algod.Client, network string) (*NfdApi, error) {
 	case "mainnet":
 		appId = 760937186
 	default:
-		return nil, fmt.Errorf("invalid network:%s for newNfdOnChain", network)
+		return nil, fmt.Errorf("invalid network:%s for nfd api", network)
 	}
 	return &NfdApi{algoClient: algoClient, registryAppID: appId}, nil
 }
