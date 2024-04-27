@@ -149,6 +149,7 @@ export function AddPoolModal({
 
       // Invalidate other queries to update UI
       queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
+      queryClient.invalidateQueries({ queryKey: ['constraints'] })
       queryClient.invalidateQueries({ queryKey: ['pool-assignments', validator!.id] })
       queryClient.invalidateQueries({ queryKey: ['validator-pools', validator!.id] })
       router.invalidate()
