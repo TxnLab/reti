@@ -510,14 +510,29 @@ export function getAddValidatorFormSchema(constraints: Constraints) {
     })
 }
 
-export function getEpochLengthMinutes(value: string, epochTimeframe: string): number {
+export function getEpochLengthBlocks(
+  value: string,
+  epochTimeframe: string,
+  averageBlockTime: number = 0,
+): number {
+  if (epochTimeframe !== 'blocks' && averageBlockTime <= 0) {
+    throw new Error('Average block time must be greater than zero.')
+  }
+
+  const numericValue = Number(value)
+  if (isNaN(numericValue)) {
+    throw new Error('Value must be a number.')
+  }
+
   switch (epochTimeframe) {
+    case 'blocks':
+      return numericValue // If 'blocks', return numericValue as-is
     case 'minutes':
-      return Number(value)
+      return Math.floor((numericValue * 60 * 1000) / averageBlockTime)
     case 'hours':
-      return Number(value) * 60
+      return Math.floor((numericValue * 60 * 60 * 1000) / averageBlockTime)
     case 'days':
-      return Number(value) * 60 * 24
+      return Math.floor((numericValue * 24 * 60 * 60 * 1000) / averageBlockTime)
     default:
       return 0
   }
