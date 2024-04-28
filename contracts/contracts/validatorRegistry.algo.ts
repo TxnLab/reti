@@ -1174,9 +1174,6 @@ export class ValidatorRegistry extends Contract {
         isNewStakerToValidator: boolean,
         isNewStakerToProtocol: boolean,
     ): void {
-        if (globals.opcodeBudget < 500) {
-            increaseOpcodeBudget()
-        }
         const poolAppId = this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].poolAppId
 
         // forward the payment on to the pool via 2 txns
@@ -1191,6 +1188,9 @@ export class ValidatorRegistry extends Contract {
                 stakedAmountPayment.sender,
             ],
         })
+        if (globals.opcodeBudget < 500) {
+            increaseOpcodeBudget()
+        }
 
         // Stake has been added to the pool - get its new totals and add to our own tracking data
         const poolNumStakers = AppID.fromUint64(poolAppId).globalState('numStakers') as uint64

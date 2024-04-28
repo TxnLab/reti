@@ -3472,6 +3472,7 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
                 )
                 let stakedPoolKey: ValidatorPoolKey
                 if (i < NumStakers) {
+                    consoleLogger.info(`adding staker:${i + 1}`)
                     ;[stakedPoolKey] = await addStake(
                         fixture.context,
                         validatorMasterClient,
@@ -3507,6 +3508,9 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
     )
 
     test('testFirstRewards', async () => {
+        // ensure everyone is completely in the epoch
+        await incrementRoundNumberBy(fixture.context, 320)
+
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
