@@ -240,7 +240,7 @@ export class StakingPool extends Contract {
         this.checkIfBinClosed()
         const roundsLeftInBin = this.binRoundStart.value + 30000 - globals.round
         this.stakeAccumulator.value =
-            this.stakeAccumulator.value + this.stakeAccumulator.value * (roundsLeftInBin as uint128)
+            this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
         return entryRound
     }
 

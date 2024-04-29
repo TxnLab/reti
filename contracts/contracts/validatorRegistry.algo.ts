@@ -235,7 +235,9 @@ export class ValidatorRegistry extends Contract {
             addValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorIdType>() + len<ValidatorInfo>()),
             addPoolMbr: this.minBalanceForAccount(
                 1,
-                (this.stakingPoolApprovalProgram.size - 1) / 2048,
+                // we could calculate this directly by referencing the size of stakingPoolApprovalProgram but it would
+                // mean our callers would have to reference the box AND buy up i/o - so just go max on extra pages
+                3,
                 0,
                 0,
                 0,

@@ -716,8 +716,7 @@ export async function addStake(
         let fees = AlgoAmount.MicroAlgos(240_000)
         const simulateResults = await validatorClient
             .compose()
-            .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-            .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .gas({})
             .addStake(
                 // This the actual send of stake to the ac
                 {
@@ -736,7 +735,7 @@ export async function addStake(
         }
         stakeTransfer.group = undefined
         fees = AlgoAmount.MicroAlgos(
-            3000 +
+            2000 +
                 1000 *
                     Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700),
         )
@@ -744,8 +743,7 @@ export async function addStake(
 
         const results = await validatorClient
             .compose()
-            .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-            .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+            .gas({}, { sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
             .addStake(
                 {
                     // --
@@ -759,7 +757,7 @@ export async function addStake(
             )
             .execute({ populateAppCallResources: true })
 
-        return [new ValidatorPoolKey(results.returns[2]), fees]
+        return [new ValidatorPoolKey(results.returns[1]), fees]
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message)
         // throw validatorClient.appClient.exposeLogicError(exception as Error);

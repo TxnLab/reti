@@ -1,5 +1,6 @@
 /* eslint-disable import/no-relative-packages */
 import * as algokit from '@algorandfoundation/algokit-utils'
+import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils'
 import { Account, decodeAddress, secretKeyToMnemonic } from 'algosdk'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
@@ -7,8 +8,6 @@ import * as fs from 'fs'
 import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
 import yargs from 'yargs'
 import prompts from 'prompts'
-import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils'
-import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 
@@ -151,7 +150,7 @@ async function main() {
     const validatorApp = await validatorClient.create.createApplication({})
 
     // Fund the validator w/ 2 ALGO for contract mbr reqs.
-    algokit.transferAlgos({ from: creatorAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(2) }, algod)
+    await algokit.transferAlgos({ from: creatorAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(2) }, algod)
 
     console.log(
         `loading the ${approvalCompiled.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,

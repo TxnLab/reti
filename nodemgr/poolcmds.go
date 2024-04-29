@@ -200,9 +200,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Viewing pools for our Node:", App.retiClient.NodeNum)
 	if !showAll {
-		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR\tVote\tProp.\t")
 	} else {
-		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR\tVote\tProp.\t")
 
 	}
 	for i, pool := range info.Pools {
@@ -239,6 +239,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		}
 
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppId, pool.TotalAlgoStaked)
+		apr, _ := App.retiClient.GetAvgApr(pool.PoolAppId)
 		totalRewards += rewardAvail
 
 		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppId).String(), acctInfo.Participation.SelectionParticipationKey)
@@ -262,12 +263,14 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 			}
 		}
 		if !showAll {
-			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%d\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
+				apr,
 				voteData, partData)
 		} else {
-			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%d\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
+				apr,
 				voteData, partData)
 
 		}

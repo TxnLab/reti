@@ -765,12 +765,13 @@ addStake:
 
 	// contracts/stakingPool.algo.ts:242
 	// this.stakeAccumulator.value =
-	//             this.stakeAccumulator.value + this.stakeAccumulator.value * (roundsLeftInBin as uint128)
+	//             this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
 	byte 0x7374616b65416363756d756c61746f72 // "stakeAccumulator"
 	dup
 	app_global_get
-	byte 0x7374616b65416363756d756c61746f72 // "stakeAccumulator"
-	app_global_get
+	frame_dig -1 // stakedAmountPayment: PayTxn
+	gtxns Amount
+	itob
 	frame_dig 4 // roundsLeftInBin: uint64
 	itob
 	b*
