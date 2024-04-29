@@ -14,15 +14,10 @@ export const Route = createFileRoute('/validators/$validatorId')({
   beforeLoad: () => {
     return {
       validatorQueryOptions,
-      constraintsQueryOptions,
     }
   },
-  loader: async ({
-    context: { queryClient, validatorQueryOptions, constraintsQueryOptions },
-    params: { validatorId },
-  }) => {
+  loader: ({ context: { queryClient, validatorQueryOptions }, params: { validatorId } }) => {
     queryClient.ensureQueryData(validatorQueryOptions(validatorId))
-    queryClient.ensureQueryData(constraintsQueryOptions)
   },
   component: Dashboard,
   pendingComponent: () => <Loading size="lg" className="opacity-50" />,
