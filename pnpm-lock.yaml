@@ -263,10 +263,10 @@ importers:
         specifier: 1.30.0
         version: 1.30.0(vite@5.2.10)
       '@testing-library/jest-dom':
-        specifier: ^6.4.2
+        specifier: 6.4.2
         version: 6.4.2(vitest@1.5.1)
       '@testing-library/react':
-        specifier: ^15.0.4
+        specifier: 15.0.4
         version: 15.0.4(react-dom@18.2.0)(react@18.2.0)
       '@types/big.js':
         specifier: 6.2.2
@@ -293,7 +293,7 @@ importers:
         specifier: 1.5.1
         version: 1.5.1(vitest@1.5.1)
       algo-msgpack-with-bigint:
-        specifier: ^2.1.1
+        specifier: 2.1.1
         version: 2.1.1
       autoprefixer:
         specifier: 10.4.19
@@ -308,10 +308,10 @@ importers:
         specifier: 5.1.3
         version: 5.1.3(eslint-config-prettier@9.1.0)(eslint@8.57.0)(prettier@3.2.5)
       jsdom:
-        specifier: ^24.0.0
+        specifier: 24.0.0
         version: 24.0.0
       msw:
-        specifier: ^2.2.14
+        specifier: 2.2.14
         version: 2.2.14(typescript@5.4.5)
       playwright:
         specifier: 1.43.1
