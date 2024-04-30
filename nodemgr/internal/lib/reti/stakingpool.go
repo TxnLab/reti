@@ -155,7 +155,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
 	floatApr.Quo(floatApr, big.NewFloat(10000.0))
 
-	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at %s for app id:%d, avail rewards:%s, ma apr:%s", poolID, epochStr, poolAppID, algo.FormattedAlgoAmount(rewardAvail), floatApr.String())
+	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at %s for app id:%d, avail rewards:%s, pre-epoch apr:%s", poolID, epochStr, poolAppID, algo.FormattedAlgoAmount(rewardAvail), floatApr.String())
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {

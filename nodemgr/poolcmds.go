@@ -201,9 +201,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Viewing pools for our Node:", App.retiClient.NodeNum)
 	if !showAll {
-		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR %\tVote\tProp.\t")
 	} else {
-		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR %\tVote\tProp.\t")
 
 	}
 	for i, pool := range info.Pools {
@@ -362,7 +362,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	fmt.Fprintf(tw, "Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
 	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
 	floatApr.Quo(floatApr, big.NewFloat(10000.0))
-	fmt.Fprintf(tw, "EWMA: %s : %s\t\n", apr.String(), floatApr.String())
+	fmt.Fprintf(tw, "APR %%: %s\t\n", floatApr.String())
 	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(info.Config.EpochRoundLength)))
 	fmt.Fprintf(tw, "Next Payout: %d\t\n", nextEpoch)
 	tw.Flush()
