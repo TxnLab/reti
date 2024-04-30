@@ -436,7 +436,8 @@ export function getValidatorListBoxName(validatorId: number) {
 // }
 
 export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
-    return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0]
+    const result = await validatorClient.compose().getMbrAmounts({}, {}).simulate({ allowUnnamedResources: true })
+    return result.returns![0]
 }
 
 export async function getProtocolConstraints(validatorClient: ValidatorRegistryClient) {

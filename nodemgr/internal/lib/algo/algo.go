@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -124,7 +125,7 @@ type AccountWithMinBalance struct {
 	MinBalance uint64 `json:"min-balance,omitempty"`
 }
 
-func GetIntFromGlobalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
+func GetUint64FromGlobalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
 	for _, gs := range globalState {
 		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
 		if string(rawKey) == keyName && gs.Value.Type == 2 {
@@ -132,6 +133,17 @@ func GetIntFromGlobalState(globalState []models.TealKeyValue, keyName string) (u
 		}
 	}
 	return 0, ErrStateKeyNotFound
+}
+
+func GetUint128FromGlobalState(globalState []models.TealKeyValue, keyName string) (*big.Int, error) {
+	for _, gs := range globalState {
+		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
+		if string(rawKey) == keyName && gs.Value.Type == 1 {
+			value, _ := base64.StdEncoding.DecodeString(gs.Value.Bytes)
+			return new(big.Int).SetBytes(value), nil
+		}
+	}
+	return nil, ErrStateKeyNotFound
 }
 
 func GetStringFromGlobalState(globalState []models.TealKeyValue, keyName string) (string, error) {

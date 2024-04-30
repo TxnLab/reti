@@ -22,6 +22,8 @@ const (
 	StakePoolMaxStake      = "maxStake"
 	StakePoolLastPayout    = "lastPayout"
 	StakePoolAlgodVer      = "algodVer"
+	StakePoolEWMA          = "ewma"
+	StakePoolStakeAccum    = "stakeAccumulator"
 
 	// Gating types
 	GatingTypeNone                  = 0

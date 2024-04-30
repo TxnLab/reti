@@ -168,10 +168,11 @@ export class ValidatorRegistry extends Contract {
     // ======
     // GLOBAL STATE AND TEMPLATES
     // ======
-    numValidators = GlobalStateKey<uint64>({ key: 'numV' })
+    stakingPoolApprovalProgram = BoxKey<bytes>({ key: 'poolTemplateApprovalBytes' })
 
-    // The app id of a staking pool contract instance to use as template for newly created pools
-    stakingPoolTemplateAppId = GlobalStateKey<uint64>({ key: 'poolTemplateAppId' })
+    stakingPoolInitialized = GlobalStateKey<boolean>({ key: 'init' })
+
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' })
 
     // Track the 'global' protocol number of stakers
     numStakers = GlobalStateKey<uint64>({ key: 'numStakers' })
@@ -192,11 +193,25 @@ export class ValidatorRegistry extends Contract {
     // ======
     // PUBLIC CONTRACT METHODS
     // ======
-    createApplication(poolTemplateAppId: uint64): void {
+    createApplication(): void {
+        this.stakingPoolInitialized.value = false
         this.numValidators.value = 0
-        this.stakingPoolTemplateAppId.value = poolTemplateAppId
         this.numStakers.value = 0
         this.totalAlgoStaked.value = 0
+    }
+
+    initStakingContract(approvalProgramSize: uint64): void {
+        // can only be called once !
+        this.stakingPoolApprovalProgram.create(approvalProgramSize)
+    }
+
+    loadStakingContractData(offset: uint64, data: bytes): void {
+        assert(!this.stakingPoolInitialized.value)
+        this.stakingPoolApprovalProgram.replace(offset, data)
+    }
+
+    finalizeStakingContract(): void {
+        this.stakingPoolInitialized.value = true
     }
 
     /**
@@ -220,7 +235,9 @@ export class ValidatorRegistry extends Contract {
             addValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorIdType>() + len<ValidatorInfo>()),
             addPoolMbr: this.minBalanceForAccount(
                 1,
-                0,
+                // we could calculate this directly by referencing the size of stakingPoolApprovalProgram but it would
+                // mean our callers would have to reference the box AND buy up i/o - so just go max on extra pages
+                3,
                 0,
                 0,
                 0,
@@ -561,11 +578,17 @@ export class ValidatorRegistry extends Contract {
         // Create the actual staker pool contract instance
         sendAppCall({
             onCompletion: OnCompletion.NoOp,
-            approvalProgram: AppID.fromUint64(this.stakingPoolTemplateAppId.value).approvalProgram,
-            clearStateProgram: AppID.fromUint64(this.stakingPoolTemplateAppId.value).clearStateProgram,
-            globalNumUint: AppID.fromUint64(this.stakingPoolTemplateAppId.value).globalNumUint,
-            globalNumByteSlice: AppID.fromUint64(this.stakingPoolTemplateAppId.value).globalNumByteSlice,
-            extraProgramPages: AppID.fromUint64(this.stakingPoolTemplateAppId.value).extraProgramPages,
+            approvalProgram: [
+                this.stakingPoolApprovalProgram.extract(0, 4096),
+                this.stakingPoolApprovalProgram.extract(4096, this.stakingPoolApprovalProgram.size - 4096),
+            ],
+            clearStateProgram: StakingPool.clearProgram(),
+            globalNumUint: StakingPool.schema.global.numUint,
+            globalNumByteSlice: StakingPool.schema.global.numByteSlice,
+            // first page is included, we need 'extra' 2k pages, so normally we'd do
+            // size+2047/2048 to handle integer math rounding but instead we can just subtract 1
+            // to get equivalent (ignoring the first 2048)
+            extraProgramPages: (this.stakingPoolApprovalProgram.size - 1) / 2048,
             applicationArgs: [
                 // creatingContractID, validatorId, poolId, minEntryStake
                 method('createApplication(uint64,uint64,uint64,uint64)void'),
@@ -1153,9 +1176,6 @@ export class ValidatorRegistry extends Contract {
         isNewStakerToValidator: boolean,
         isNewStakerToProtocol: boolean,
     ): void {
-        if (globals.opcodeBudget < 500) {
-            increaseOpcodeBudget()
-        }
         const poolAppId = this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].poolAppId
 
         // forward the payment on to the pool via 2 txns
@@ -1170,6 +1190,9 @@ export class ValidatorRegistry extends Contract {
                 stakedAmountPayment.sender,
             ],
         })
+        if (globals.opcodeBudget < 500) {
+            increaseOpcodeBudget()
+        }
 
         // Stake has been added to the pool - get its new totals and add to our own tracking data
         const poolNumStakers = AppID.fromUint64(poolAppId).globalState('numStakers') as uint64

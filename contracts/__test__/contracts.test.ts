@@ -65,25 +65,20 @@ beforeAll(async () => {
     // testAccount here is the account that creates the Validator master contracts themselves - but basically one-time thing to be ignored
     const { algod, testAccount } = fixture.context
 
-    // First we have to create dummy instance of a pool that we can use as template contract for validator
-    // which it can use to create new instances of that contract for staking pool.
+    // Generate staking pool template instance that the validator registry will reference
     poolClient = new StakingPoolClient(
         {
             sender: testAccount,
             resolveBy: 'id',
             id: 0,
-            deployTimeParams: {
-                nfdRegistryAppId: 0,
-                feeSinkAddr: decodeAddress(FEE_SINK_ADDR).publicKey,
-            },
         },
         algod,
     )
-    const tmplPool = await poolClient.create.createApplication({
-        creatingContractId: 0,
-        validatorId: 0,
-        poolId: 0,
-        minEntryStake: 1_000_000,
+    const { approvalCompiled } = await poolClient.appClient.compile({
+        deployTimeParams: {
+            nfdRegistryAppId: 0,
+            feeSinkAddr: decodeAddress(FEE_SINK_ADDR).publicKey,
+        },
     })
     validatorMasterClient = new ValidatorRegistryClient(
         {
@@ -97,7 +92,7 @@ beforeAll(async () => {
         algod,
     )
 
-    const validatorApp = await validatorMasterClient.create.createApplication({ poolTemplateAppId: tmplPool.appId })
+    const validatorApp = await validatorMasterClient.create.createApplication({})
     // verify that the constructed validator contract is initialized as expected
     expect(validatorApp.appId).toBeDefined()
     expect(validatorApp.appAddress).toBeDefined()
@@ -106,8 +101,22 @@ beforeAll(async () => {
     expect(validatorGlobalState.numV.value).toEqual(0)
     expect(validatorGlobalState.foo).toBeUndefined() // sanity check that undefined states doesn't match 0.
 
-    // need .1 ALGO for things to really work at all w/ this validator contract account so get that out of the way
-    await validatorMasterClient.appClient.fundAppAccount(AlgoAmount.Algos(0.1))
+    // need 2 ALGO for things to really work at all w/ this validator contract account so get that out of the way
+    await validatorMasterClient.appClient.fundAppAccount(AlgoAmount.Algos(2))
+    // Load the staking pool contract bytecode into the validator contract via box storage so it can later deploy
+    const composer = validatorMasterClient
+        .compose()
+        .initStakingContract({ approvalProgramSize: approvalCompiled.compiledBase64ToBytes.length })
+
+    // load the StakingPool contract into box storage of the validator
+    // call loadStakingContractData - chunking the data from approvalCompiled 2000 bytes at a time
+    for (let i = 0; i < approvalCompiled.compiledBase64ToBytes.length; i += 2000) {
+        composer.loadStakingContractData({
+            offset: i,
+            data: approvalCompiled.compiledBase64ToBytes.subarray(i, i + 2000),
+        })
+    }
+    await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true })
     ;[validatorMbr, poolMbr, poolInitMbr, stakerMbr] = await getMbrAmountsFromValidatorClient(validatorMasterClient)
 })
 
@@ -3463,6 +3472,7 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
                 )
                 let stakedPoolKey: ValidatorPoolKey
                 if (i < NumStakers) {
+                    consoleLogger.info(`adding staker:${i + 1}`)
                     ;[stakedPoolKey] = await addStake(
                         fixture.context,
                         validatorMasterClient,
@@ -3498,6 +3508,9 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
     )
 
     test('testFirstRewards', async () => {
+        // ensure everyone is completely in the epoch
+        await incrementRoundNumberBy(fixture.context, 320)
+
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
