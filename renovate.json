@@ -1,72 +1,91 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "dependencyDashboard": true,
   "configMigration": true,
-
   "timezone": "America/New_York",
-  "assignees": ["pbennett"],
-
-  "baseBranches": ["dev"],
-
+  "assignees": [
+    "pbennett"
+  ],
+  "baseBranches": [
+    "dev"
+  ],
   "separateMultipleMajor": true,
   "separateMajorMinor": true,
   "separateMinorPatch": false,
-
   "packageRules": [
     {
-      "matchCategories": ["node"],
+      "matchCategories": [
+        "node"
+      ],
       "enabled": false
     },
     {
-      "matchFileNames": ["nodemgr/go.mod", "Dockerfile-nodemgr"],
+      "matchFileNames": [
+        "nodemgr/go.mod",
+        "Dockerfile-nodemgr"
+      ],
       "groupName": "Node Manager",
       "semanticCommitScope": "nodemgr"
     }
   ],
-
   "npm": {
     "additionalBranchPrefix": "{{{parentDir}}}-",
     "minimumReleaseAge": "3 days",
-
     "lockFileMaintenance": {
       "enabled": true,
       "schedule": "before 4am on Tuesday"
     },
-
     "packageRules": [
       {
-        "matchDepTypes": ["dependencies", "devDependencies"],
-        "matchUpdateTypes": ["patch", "minor"],
+        "matchDepTypes": [
+          "dependencies",
+          "devDependencies"
+        ],
+        "matchUpdateTypes": [
+          "patch",
+          "minor"
+        ],
         "groupName": "non-major dependencies"
       },
       {
-        "matchDepTypes": ["devDependencies"],
-        "matchPackagePatterns": ["lint", "prettier"],
+        "matchDepTypes": [
+          "devDependencies"
+        ],
+        "matchPackagePatterns": [
+          "lint",
+          "prettier"
+        ],
         "groupName": "ESLint/Prettier"
       },
       {
-        "matchFileNames": ["contracts/package.json"],
+        "matchFileNames": [
+          "contracts/package.json"
+        ],
         "semanticCommitScope": "contracts",
-        "packageRules": [
-          {
-            "matchPackageNames": [
-              "@jest/globals",
-              "@types/jest",
-              "jest",
-              "ts-jest"
-            ],
-            "groupName": "Jest"
-          }
-        ]
+        "matchPackageNames": [
+          "@jest/globals",
+          "@types/jest",
+          "jest",
+          "ts-jest"
+        ],
+        "groupName": "Jest"
       },
       {
-        "matchFileNames": ["contracts/bootstrap/package.json"],
+        "matchFileNames": [
+          "contracts/bootstrap/package.json"
+        ],
         "semanticCommitScope": "bootstrap"
       },
       {
-        "matchFileNames": ["ui/package.json"],
-        "assignees": ["drichar"],
+        "matchFileNames": [
+          "ui/package.json"
+        ],
+        "assignees": [
+          "drichar"
+        ],
         "schedule": "before 4am on Monday",
         "semanticCommitScope": "ui",
         "rangeStrategy": "pin"
