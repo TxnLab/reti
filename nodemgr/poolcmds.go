@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -240,6 +241,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppId, pool.TotalAlgoStaked)
 		apr, _ := App.retiClient.GetAvgApr(pool.PoolAppId)
+		stakeAccum, _ := App.retiClient.GetStakeAccum(pool.PoolAppId)
 		totalRewards += rewardAvail
 
 		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppId).String(), acctInfo.Participation.SelectionParticipationKey)
@@ -262,15 +264,20 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 				partData = fmt.Sprintf("-%d", status.LastRound-lastProposal)
 			}
 		}
+		stakeAccum.Div(stakeAccum, big.NewInt(21))
+		floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
+		floatApr.Quo(floatApr, big.NewFloat(10000.0))
+
 		if !showAll {
-			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%d\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
-				apr,
-				voteData, partData)
+				floatApr.String(),
+				voteData, partData,
+			)
 		} else {
-			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%d\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
-				apr,
+				floatApr.String(),
 				voteData, partData)
 
 		}
@@ -351,7 +358,11 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\t\n", stakerName, algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
 			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryRound), stakerData.EntryRound)
 	}
-	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
+	apr, _ := App.retiClient.GetAvgApr(info.Pools[poolId-1].PoolAppId)
+	fmt.Fprintf(tw, "Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
+	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
+	floatApr.Quo(floatApr, big.NewFloat(10000.0))
+	fmt.Fprintf(tw, "EWMA: %s : %s\t\n", apr.String(), floatApr.String())
 	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(info.Config.EpochRoundLength)))
 	fmt.Fprintf(tw, "Next Payout: %d\t\n", nextEpoch)
 	tw.Flush()

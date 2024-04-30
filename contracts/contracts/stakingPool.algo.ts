@@ -10,6 +10,7 @@ import {
 } from './constants.algo'
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320 // # of blocks until algorand sees online balance changes in staking
+const APR_BIN_SIZE = 30857 // approx 'daily' bins (60*60*24/2.8)
 
 export type StakedInfo = {
     account: Address
@@ -109,7 +110,7 @@ export class StakingPool extends Contract {
         this.lastPayout.value = globals.round // set to init block to establish baseline
         this.epochNumber.value = 0
 
-        this.binRoundStart.value = globals.round - (globals.round % 30000) // place at start of 30k binning
+        this.binRoundStart.value = globals.round - (globals.round % APR_BIN_SIZE) // place at start of bin
         this.stakeAccumulator.value = 0 as uint128
         this.rewardAccumulator.value = 0
         this.weightedMovingAverage.value = 0 as uint128
@@ -180,6 +181,9 @@ export class StakingPool extends Contract {
         assert(this.txn.sender === AppID.fromUint64(this.creatingValidatorContractAppId.value).address)
         assert(staker !== globals.zeroAddress)
 
+        // Update APR data
+        this.checkIfBinClosed()
+
         // Verify the payment of stake also came from the validator - as it receives the stake from the staker, holds
         // any MBR (if needed) and then sends the stake on to us in the stakedAmountPayment transaction.
         verifyPayTxn(stakedAmountPayment, {
@@ -236,9 +240,7 @@ export class StakingPool extends Contract {
         this.numStakers.value += 1
         this.totalAlgoStaked.value += stakedAmountPayment.amount
 
-        // Update APR data
-        this.checkIfBinClosed()
-        const roundsLeftInBin = this.binRoundStart.value + 30000 - globals.round
+        const roundsLeftInBin = this.binRoundStart.value + APR_BIN_SIZE - globals.round
         this.stakeAccumulator.value =
             this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
         return entryRound
@@ -264,6 +266,8 @@ export class StakingPool extends Contract {
                 'If staker is not sender in removeStake call, then sender MUST be owner or manager of validator',
             )
         }
+        // Update APR data
+        this.checkIfBinClosed()
 
         for (let i = 0; i < this.stakers.value.length; i += 1) {
             if (globals.opcodeBudget < 300) {
@@ -335,16 +339,9 @@ export class StakingPool extends Contract {
                 // Update the box w/ the new staker data
                 this.stakers.value[i] = cmpStaker
 
-                // Update APR data
-                this.checkIfBinClosed()
-                const roundsLeftInBin = this.binRoundStart.value + 30000 - globals.round
+                const roundsLeftInBin = this.binRoundStart.value + APR_BIN_SIZE - globals.round
                 const subtractAmount: uint128 = (amountToUnstake as uint128) * (roundsLeftInBin as uint128)
-                if (subtractAmount > this.stakeAccumulator.value) {
-                    // TODO - red flag !
-                    this.stakeAccumulator.value = 0 as uint128
-                } else {
-                    this.stakeAccumulator.value = this.stakeAccumulator.value - subtractAmount
-                }
+                this.stakeAccumulator.value = this.stakeAccumulator.value - subtractAmount
 
                 // Call the validator contract and tell it we're removing stake
                 // It'll verify we're a valid staking pool id and update it
@@ -518,6 +515,9 @@ export class StakingPool extends Contract {
             // We've had one payout - so we need to be at least one epoch past the last payout.
             assert(lastPayoutEpoch !== thisEpochBegin, "can't call epochBalanceUpdate in same epoch as prior call")
         }
+        // Update APR data
+        this.checkIfBinClosed()
+
         // Update our payout and epoch number - required to match
         this.lastPayout.value = curRound
         this.epochNumber.value += 1
@@ -813,13 +813,11 @@ export class StakingPool extends Contract {
                 }
             }
         }
+
         // We've paid out the validator and updated the stakers new balances to reflect the rewards, now update
         // our 'total staked' value as well based on what we paid to validator and updated in staker balances as we
         // determined stake increases
         this.totalAlgoStaked.value += increasedStake
-
-        // Update APR data
-        this.checkIfBinClosed()
         this.rewardAccumulator.value = this.rewardAccumulator.value + increasedStake
 
         // Call the validator contract and tell it we've got new stake added
@@ -951,26 +949,33 @@ export class StakingPool extends Contract {
     }
 
     private checkIfBinClosed() {
-        if (globals.round > this.binRoundStart.value + 30000) {
+        if (globals.round >= this.binRoundStart.value + APR_BIN_SIZE) {
+            if (globals.opcodeBudget < 300) {
+                increaseOpcodeBudget()
+            }
             const approxRoundsPerYear: uint128 = 11262857 // 60*60*24*365/2.8 = 11,262,857.1428571429
-            const avgStake: uint128 = this.stakeAccumulator.value / (30000 as uint128)
-            const apr: uint128 =
-                ((this.rewardAccumulator.value as uint128) / avgStake) *
-                (approxRoundsPerYear / (30000 as uint128)) *
-                (100 as uint128)
+            const avgStake: uint128 = this.stakeAccumulator.value / (APR_BIN_SIZE as uint128)
+            if (avgStake !== 0) {
+                // do APR in hundredths so we multiply by 10000
+                // ie: reward of 100, stake of 1000 - 100/1000 = .1 - *100 = 10% - but w/ int math we can't have
+                // decimals, so we do {reward}*10000/{stake} (= 1000, .1, or 10.00%)
+                const apr: uint128 =
+                    (((this.rewardAccumulator.value as uint128) * (10000 as uint128)) / avgStake) *
+                    (approxRoundsPerYear / (APR_BIN_SIZE as uint128))
 
-            let alpha: uint128 = 10 as uint128 // .1
-            // at 300k algo go to alpha of .9
-            if (avgStake > 300000000000) {
-                alpha = 90 as uint128 // .9
+                let alpha: uint128 = 10 as uint128 // .1
+                // at 300k algo go to alpha of .9
+                if (avgStake > 300000000000) {
+                    alpha = 90 as uint128 // .9
+                }
+                this.weightedMovingAverage.value =
+                    (this.weightedMovingAverage.value * ((100 as uint128) - alpha)) / (100 as uint128) +
+                    (apr * alpha) / (100 as uint128)
             }
 
-            this.binRoundStart.value = globals.round - (globals.round % 30000)
-            this.stakeAccumulator.value = 0 as uint128
+            this.binRoundStart.value = globals.round - (globals.round % APR_BIN_SIZE)
+            this.stakeAccumulator.value = (this.totalAlgoStaked.value as uint128) * (APR_BIN_SIZE as uint128)
             this.rewardAccumulator.value = 0
-            this.weightedMovingAverage.value =
-                (this.weightedMovingAverage.value * ((100 as uint128) - alpha)) / (100 as uint128) +
-                (apr * alpha) / (100 as uint128)
         }
     }
 }

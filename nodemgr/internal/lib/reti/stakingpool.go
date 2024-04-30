@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
@@ -52,7 +53,7 @@ func (r *Reti) GetPoolID(poolAppID uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolPoolId)
+	return algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, StakePoolPoolId)
 }
 
 func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
@@ -60,15 +61,23 @@ func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolLastPayout)
+	return algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, StakePoolLastPayout)
 }
 
-func (r *Reti) GetAvgApr(poolAppID uint64) (uint64, error) {
+func (r *Reti) GetAvgApr(poolAppID uint64) (*big.Int, error) {
 	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolEWMA)
+	return algo.GetUint128FromGlobalState(appInfo.Params.GlobalState, StakePoolEWMA)
+}
+
+func (r *Reti) GetStakeAccum(poolAppID uint64) (*big.Int, error) {
+	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return algo.GetUint128FromGlobalState(appInfo.Params.GlobalState, StakePoolStakeAccum)
 }
 
 func (r *Reti) GetAlgodVer(poolAppID uint64) (string, error) {
@@ -142,7 +151,11 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	} else {
 		epochStr = fmt.Sprintf("EpochStart:%d", epochStart)
 	}
-	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at %s for app id:%d, avail rewards:%s", poolID, epochStr, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
+	apr, _ := r.GetAvgApr(poolAppID)
+	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
+	floatApr.Quo(floatApr, big.NewFloat(10000.0))
+
+	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at %s for app id:%d, avail rewards:%s, ma apr:%s", poolID, epochStr, poolAppID, algo.FormattedAlgoAmount(rewardAvail), floatApr.String())
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {

@@ -1374,7 +1374,7 @@ func (r *Reti) GetNumValidators() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrNumValidators)
+	return algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, VldtrNumValidators)
 }
 
 func (r *Reti) poolTemplateAppId() uint64 {

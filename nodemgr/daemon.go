@@ -514,7 +514,7 @@ func (d *Daemon) ensureParticipationCheckNeedsSwitched(ctx context.Context, pool
 			continue
 		}
 		// Ok, time to switch to the new key - it's in valid range
-		misc.Infof(d.logger, "account:%s is NOT online, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToCheck.Id)
+		misc.Infof(d.logger, "account:%s has newer key not in use, going online against newest of %d part keys, id:%s", account, len(keysForAccount), keyToCheck.Id)
 		err = App.retiClient.GoOnline(info.poolAppId, managerAddr, keyToCheck.Key.VoteParticipationKey, keyToCheck.Key.SelectionParticipationKey, keyToCheck.Key.StateProofKey, keyToCheck.Key.VoteFirstValid, keyToCheck.Key.VoteLastValid, keyToCheck.Key.VoteKeyDilution)
 		if err != nil {
 			return fmt.Errorf("unable to go online for account:%s [pool app id:%d], err: %w", account, info.poolAppId, err)
