@@ -48,7 +48,7 @@
         "automerge": true
       },
       {
-        "matchFileNames": ["contracts/**/package.json"],
+        "matchFileNames": ["contracts/package.json"],
         "semanticCommitScope": "contracts",
         "packageRules": [
           {
@@ -61,6 +61,10 @@
             "groupName": "Jest"
           }
         ]
+      },
+      {
+        "matchFileNames": ["contracts/bootstrap/package.json"],
+        "semanticCommitScope": "bootstrap"
       },
       {
         "matchFileNames": ["ui/package.json"],
