@@ -28,7 +28,8 @@
         "Dockerfile-nodemgr"
       ],
       "groupName": "Node Manager",
-      "semanticCommitScope": "nodemgr"
+      "semanticCommitScope": "nodemgr",
+      "schedule": "before 4am on Monday"
     }
   ],
   "npm": {
