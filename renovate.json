@@ -31,8 +31,7 @@
 
     "lockFileMaintenance": {
       "enabled": true,
-      "schedule": "before 4am on Tuesday",
-      "automerge": true
+      "schedule": "before 4am on Tuesday"
     },
 
     "packageRules": [
@@ -44,8 +43,7 @@
       {
         "matchDepTypes": ["devDependencies"],
         "matchPackagePatterns": ["lint", "prettier"],
-        "groupName": "ESLint/Prettier",
-        "automerge": true
+        "groupName": "ESLint/Prettier"
       },
       {
         "matchFileNames": ["contracts/package.json"],
@@ -71,14 +69,7 @@
         "assignees": ["drichar"],
         "schedule": "before 4am on Monday",
         "semanticCommitScope": "ui",
-        "rangeStrategy": "pin",
-        "packageRules": [
-          {
-            "matchUpdateTypes": ["pin"],
-            "groupName": "dependency ranges",
-            "automerge": true
-          }
-        ]
+        "rangeStrategy": "pin"
       },
       {
         "matchDepTypes": [
