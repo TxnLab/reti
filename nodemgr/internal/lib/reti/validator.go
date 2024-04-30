@@ -1190,7 +1190,7 @@ func (r *Reti) AddStake(validatorId uint64, staker types.Address, amount uint64,
 	return ValidatorPoolKeyFromABIReturn(result.MethodResults[1].ReturnValue)
 }
 
-func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amount uint64) error {
+func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, staker types.Address, amount uint64) error {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -1208,17 +1208,22 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 
 		// we need to stack up references in this gas method for resource pooling
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
-			AppID:  r.RetiAppId,
-			Method: gasMethod,
+			AppID:           r.RetiAppId,
+			Method:          gasMethod,
+			ForeignAccounts: []string{staker.String()},
 			BoxReferences: []types.AppBoxReference{
 				{AppID: r.RetiAppId, Name: GetValidatorListBoxName(poolKey.ID)},
 				{AppID: r.RetiAppId, Name: nil}, // extra i/o
 				{AppID: r.RetiAppId, Name: GetStakerPoolSetBoxName(staker)},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
 			},
 			SuggestedParams: params,
 			OnComplete:      types.NoOpOC,
-			Sender:          staker,
-			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+			Sender:          signer,
+			Signer:          algo.SignWithAccountForATC(r.signer, signer.String()),
 		})
 		if err != nil {
 			return atc, err
@@ -1233,6 +1238,7 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 			AppID:  poolKey.PoolAppId,
 			Method: unstakeMethod,
 			MethodArgs: []any{
+				staker,
 				amount,
 			},
 			ForeignApps: []uint64{poolKey.PoolAppId},
@@ -1247,8 +1253,8 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 			},
 			SuggestedParams: params,
 			OnComplete:      types.NoOpOC,
-			Sender:          staker,
-			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+			Sender:          signer,
+			Signer:          algo.SignWithAccountForATC(r.signer, signer.String()),
 		})
 		if err != nil {
 			return atc, err

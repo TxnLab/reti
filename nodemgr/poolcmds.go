@@ -463,7 +463,14 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("staker has not staked in the specified pool")
 	}
 
-	err = App.retiClient.RemoveStake(*poolKey, stakerAddr, command.Uint("amount")*1e6)
+	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info().Config.Owner, App.retiClient.Info().Config.Manager, stakerAddr.String()})
+	if err != nil {
+		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+	misc.Infof(App.logger, "signing unstake with:%s", signer)
+
+	err = App.retiClient.RemoveStake(*poolKey, signerAddr, stakerAddr, command.Uint("amount")*1e6)
 	if err != nil {
 		return err
 	}

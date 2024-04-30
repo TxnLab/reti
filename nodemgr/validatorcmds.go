@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/algorand/go-algorand-sdk/v2/types"
+	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v3"
 
 	"github.com/TxnLab/reti/internal/lib/algo"
+	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
@@ -73,6 +75,11 @@ func GetValidatorCmdOpts() *cli.Command {
 				Name:   "dumpAllStakers",
 				Usage:  "Display info about the validator's current state from the chain",
 				Action: DumpAllStakers,
+			},
+			{
+				Name:   "refundStakers",
+				Usage:  "Remove all stakers from all pools, sending them all their stake (may cost a lot in fees!)",
+				Action: RefundAllStakers,
 			},
 		},
 	}
@@ -301,6 +308,58 @@ func DumpAllStakers(ctx context.Context, command *cli.Command) error {
 		csvData += fmt.Sprintf("%s,%f,%d\n", staker.Account, staker.Stake, staker.NumPools)
 	}
 	return os.WriteFile("stakers.csv", []byte(csvData), 0644)
+}
+
+func RefundAllStakers(ctx context.Context, command *cli.Command) error {
+	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info().Config.Owner, App.retiClient.Info().Config.Manager})
+	if err != nil {
+		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+	misc.Infof(App.logger, "signing unstake with:%s", signer)
+
+	var (
+		info   = App.retiClient.Info()
+		fanOut = syncutil.NewFanOut(20)
+	)
+
+	type removeStakeRequest struct {
+		poolKey reti.ValidatorPoolKey
+		staker  types.Address
+	}
+	unstakeRequests := make(chan removeStakeRequest, 200)
+
+	go func() {
+		defer close(unstakeRequests)
+		for i, pool := range info.Pools {
+			ledger, err := App.retiClient.GetLedgerForPool(pool.PoolAppId)
+			if err != nil {
+				misc.Errorf(App.logger, "error getting ledger for pool %d: %v", pool.PoolAppId, err)
+				return
+			}
+			for _, stakerData := range ledger {
+				if stakerData.Account == types.ZeroAddress {
+					continue
+				}
+				unstakeRequests <- removeStakeRequest{poolKey: reti.ValidatorPoolKey{ID: info.Config.ID, PoolId: uint64(i + 1), PoolAppId: pool.PoolAppId}, staker: stakerData.Account}
+			}
+		}
+	}()
+	for send := range unstakeRequests {
+		fanOut.Run(func(val any) error {
+			sendReq := val.(removeStakeRequest)
+			err = App.retiClient.RemoveStake(sendReq.poolKey, signerAddr, sendReq.staker, 0)
+			if err != nil {
+				misc.Errorf(App.logger, "error removing stake for pool %d, staker:%s, err:%v", sendReq.poolKey.PoolAppId, sendReq.staker.String(), err)
+			} else {
+				misc.Infof(App.logger, "Stake Removed for pool %d, staker:%s", sendReq.poolKey.PoolAppId, sendReq.staker.String())
+			}
+			return nil
+		}, send)
+	}
+	fanOut.Wait()
+
+	return nil
 }
 
 func getInt(prompt string, defVal int, minVal int, maxVal int) (int, error) {
