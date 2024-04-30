@@ -1,43 +1,93 @@
 {
-	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"baseBranches": ["dev"],
-	"timezone": "America/New_York",
-	"dependencyDashboard": true,
-	"packageRules": [
-		{
-			"matchFileNames": ["nodemgr/go.mod", "Dockerfile-nodemgr"],
-			"extends": [
-				"config:recommended",
-				"group:allNonMajor",
-				":assignee(pbennett)",
-				":semanticCommitScope(nodemgr)",
-				":semanticPrefixChore"
-			]
-		},
-		{
-			"matchFileNames": ["contracts/**", "**/workflows/release.yaml"],
-			"extends": [
-				"config:recommended",
-				"group:allNonMajor",
-				":assignee(pbennett)",
-				":semanticCommitScope(contracts)",
-				":semanticPrefixChore"
-			]
-		},
-		{
-			"matchFileNames": ["ui/**", "**/workflows/ci-ui.yaml"],
-			"extends": [
-				"config:js-app",
-				"group:allNonMajor",
-				"schedule:earlyMondays",
-				":assignee(drichar)",
-				":combinePatchMinorReleases",
-				":maintainLockFilesWeekly",
-				":rebaseStalePrs",
-				":renovatePrefix",
-				":semanticCommitScope(ui)",
-				":semanticPrefixChore"
-			]
-		}
-	]
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "configMigration": true,
+
+  "timezone": "America/New_York",
+  "assignees": ["pbennett"],
+
+  "baseBranches": ["dev"],
+
+  "separateMultipleMajor": true,
+  "separateMajorMinor": true,
+  "separateMinorPatch": false,
+
+  "packageRules": [
+    {
+      "matchCategories": ["node"],
+      "enabled": false
+    },
+    {
+      "matchFileNames": ["nodemgr/go.mod", "Dockerfile-nodemgr"],
+      "groupName": "Node Manager",
+      "semanticCommitScope": "nodemgr"
+    }
+  ],
+
+  "npm": {
+    "additionalBranchPrefix": "{{{parentDir}}}-",
+    "minimumReleaseAge": "3 days",
+
+    "lockFileMaintenance": {
+      "enabled": true,
+      "schedule": "before 4am on Tuesday",
+      "automerge": true
+    },
+
+    "packageRules": [
+      {
+        "matchDepTypes": ["dependencies", "devDependencies"],
+        "matchUpdateTypes": ["patch", "minor"],
+        "groupName": "non-major dependencies"
+      },
+      {
+        "matchDepTypes": ["devDependencies"],
+        "matchPackagePatterns": ["lint", "prettier"],
+        "groupName": "ESLint/Prettier",
+        "automerge": true
+      },
+      {
+        "matchFileNames": ["contracts/package.json"],
+        "semanticCommitScope": "contracts",
+        "packageRules": [
+          {
+            "matchPackageNames": [
+              "@jest/globals",
+              "@types/jest",
+              "jest",
+              "ts-jest"
+            ],
+            "groupName": "Jest"
+          }
+        ]
+      },
+      {
+        "matchFileNames": ["contracts/bootstrap/package.json"],
+        "semanticCommitScope": "bootstrap"
+      },
+      {
+        "matchFileNames": ["ui/package.json"],
+        "assignees": ["drichar"],
+        "schedule": "before 4am on Monday",
+        "semanticCommitScope": "ui",
+        "rangeStrategy": "pin",
+        "packageRules": [
+          {
+            "matchUpdateTypes": ["pin"],
+            "groupName": "dependency ranges",
+            "automerge": true
+          }
+        ]
+      },
+      {
+        "matchDepTypes": [
+          "optionalDependencies",
+          "peerDependencies",
+          "engines"
+        ],
+        "enabled": false
+      }
+    ]
+  }
 }
