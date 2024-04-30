@@ -36,7 +36,9 @@
     "minimumReleaseAge": "3 days",
     "lockFileMaintenance": {
       "enabled": true,
-      "schedule": "before 4am on Tuesday"
+      "schedule": "before 4am on Tuesday",
+      "semanticCommitScope": "deps",
+      "additionalBranchPrefix": ""
     },
     "packageRules": [
       {
