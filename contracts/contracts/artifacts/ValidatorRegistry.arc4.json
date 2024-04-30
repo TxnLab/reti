@@ -298,7 +298,7 @@
     },
     {
       "name": "changeValidatorNFD",
-      "desc": "Changes the NFD for a validator in the validatorList contract.[ ONLY OWNER OR MANAGER CAN CHANGE ]",
+      "desc": "Changes the NFD for a validator in the validatorList contract.[ ONLY OWNER CAN CHANGE ]",
       "args": [
         {
           "name": "validatorId",

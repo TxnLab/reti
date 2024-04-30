@@ -489,18 +489,15 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Changes the NFD for a validator in the validatorList contract.
-     * [ ONLY OWNER OR MANAGER CAN CHANGE ]
+     * [ ONLY OWNER CAN CHANGE ]
      *
      * @param {ValidatorIdType} validatorId - The id of the validator to update.
      * @param {uint64} nfdAppID - The application id of the NFD to assign to the validator.
      * @param {string} nfdName - The name of the NFD (which must match)
      */
     changeValidatorNFD(validatorId: ValidatorIdType, nfdAppID: uint64, nfdName: string): void {
-        // Must be called by the owner or manager of the validator.
-        assert(
-            this.txn.sender === this.validatorList(validatorId).value.config.owner ||
-                this.txn.sender === this.validatorList(validatorId).value.config.manager,
-        )
+        // Must be called by the owner of the validator.
+        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
         // verify nfd is real, and owned by owner or manager
         sendAppCall({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
