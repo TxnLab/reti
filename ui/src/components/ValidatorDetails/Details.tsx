@@ -1,17 +1,18 @@
+import { useWallet } from '@txnlab/use-wallet-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { EditCommissionAccount } from '@/components/ValidatorDetails/EditCommissionAccount'
+import { EditEntryGating } from '@/components/ValidatorDetails/EditEntryGating'
+import { EditManagerAccount } from '@/components/ValidatorDetails/EditManagerAccount'
+import { EditNfdForInfo } from '@/components/ValidatorDetails/EditNfdForInfo'
+import { EditRewardPerPayout } from '@/components/ValidatorDetails/EditRewardPerPayout'
+import { EditSunsettingInfo } from '@/components/ValidatorDetails/EditSunsettingInfo'
 import { Validator } from '@/interfaces/validator'
 import { dayjs, formatDuration } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { EditManagerAccount } from '@/components/ValidatorDetails/EditManagerAccount'
-import { EditCommissionAccount } from './EditCommissionAccount'
-import { useWallet } from '@txnlab/use-wallet-react'
-import { EditSunsettingInfo } from './EditSunsettingInfo'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
-import { EditNfdForInfo } from './EditNfdForInfo'
-import { EditRewardPerPayout } from './EditRewardPerPayout'
-import { EditEntryGating } from './EditEntryGating'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -88,16 +89,25 @@ export function Details({ validator }: DetailsProps) {
                 <dt className="flex items-center text-sm font-medium leading-6 text-muted-foreground">
                   Associated NFD
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
+                <dd className="flex items-center justify-between gap-x-2 mt-1 text-sm font-medium leading-6 sm:mt-0">
                   {validator.nfd ? (
-                    <a
-                      href={`${nfdAppUrl}/name/${validator.nfd.name}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="hover:underline"
-                    >
-                      {validator.nfd.name}
-                    </a>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={`${nfdAppUrl}/name/${validator.nfd.name}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="truncate hover:underline"
+                          >
+                            {validator.nfd.name}
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-stone-900 text-white font-semibold tracking-tight dark:bg-white dark:text-stone-900">
+                          {validator.nfd.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ) : (
                     <span className="text-muted-foreground">--</span>
                   )}
