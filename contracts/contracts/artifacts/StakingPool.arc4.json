@@ -166,6 +166,11 @@
       "desc": "Registers a staking pool key online against a participation key.[ ONLY OWNER OR MANAGER CAN CALL ]",
       "args": [
         {
+          "name": "feePayment",
+          "type": "pay",
+          "desc": "payment to cover extra fee of going online if offline - or 0 if not renewal"
+        },
+        {
           "name": "votePK",
           "type": "byte[]",
           "desc": "The vote public key."

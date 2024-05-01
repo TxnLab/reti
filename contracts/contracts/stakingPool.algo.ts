@@ -151,7 +151,7 @@ export class StakingPool extends Contract {
             this.costForBoxStorage(7 /* 'stakers' name */ + len<StakedInfo>() * MAX_STAKERS_PER_POOL)
 
         // the pay transaction must exactly match our MBR requirement.
-        verifyPayTxn(mbrPayment, { amount: PoolInitMbr })
+        verifyPayTxn(mbrPayment, { receiver: this.app.address, amount: PoolInitMbr })
         this.stakers.create()
 
         if (isTokenEligible && this.poolId.value === 1) {
@@ -840,6 +840,7 @@ export class StakingPool extends Contract {
      * Registers a staking pool key online against a participation key.
      * [ ONLY OWNER OR MANAGER CAN CALL ]
      *
+     * @param {PayTxn} feePayment - payment to cover extra fee of going online if offline - or 0 if not renewal
      * @param {bytes} votePK - The vote public key.
      * @param {bytes} selectionPK - The selection public key.
      * @param {bytes} stateProofPK - The state proof public key.
@@ -849,6 +850,7 @@ export class StakingPool extends Contract {
      * @throws {Error} Will throw an error if the caller is not the owner or a manager.
      */
     goOnline(
+        feePayment: PayTxn,
         votePK: bytes,
         selectionPK: bytes,
         stateProofPK: bytes,
@@ -857,6 +859,8 @@ export class StakingPool extends Contract {
         voteKeyDilution: uint64,
     ): void {
         assert(this.isOwnerOrManagerCaller())
+        const extraFee = this.getGoOnlineFee()
+        verifyPayTxn(feePayment, { receiver: this.app.address, amount: extraFee })
         sendOnlineKeyRegistration({
             votePK: votePK,
             selectionPK: selectionPK,
@@ -864,6 +868,7 @@ export class StakingPool extends Contract {
             voteFirst: voteFirst,
             voteLast: voteLast,
             voteKeyDilution: voteKeyDilution,
+            fee: this.getGoOnlineFee(),
         })
     }
 
@@ -941,6 +946,17 @@ export class StakingPool extends Contract {
         const online = this.getCurrentOnlineStake()
 
         return wideRatio([online, MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL], [1000])
+    }
+
+    private getGoOnlineFee(): uint64 {
+        // TODO - replace w/ appropriate AVM call once available - to determine if we're currently offline
+        // if offline then we have to pay a particular high fee to go online
+        const isOnline = false
+        if (!isOnline) {
+            // TODO - replace w/ AVM call once available to determine fee to go online
+            return 2_000_000
+        }
+        return 0
     }
 
     private getCurrentOnlineStake(): uint64 {
