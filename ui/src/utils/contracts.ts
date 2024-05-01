@@ -1,4 +1,5 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { z } from 'zod'
 import { getAccountInformation } from '@/api/algod'
@@ -764,10 +765,6 @@ export function calculateMaxAvailableToStake(validator: Validator, constraints?:
     maxAlgoPerPool = constraints.maxAlgoPerPool
   }
 
-  if (validator.pools.length === 0) {
-    return Number(maxAlgoPerPool)
-  }
-
   // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
   const maxAvailableToStake = validator.pools.reduce((acc, pool) => {
     const availableToStake = Number(maxAlgoPerPool) - Number(pool.totalAlgoStaked)
@@ -817,4 +814,33 @@ export function calculateRewardEligibility(
 
   // Round down to nearest integer
   return Math.floor(eligibilityPercent)
+}
+
+/**
+ * Update validator data in the query cache after a mutation
+ * @param {QueryClient} queryClient - Tanstack Query client instance
+ * @param {Validator} data - The new validator object
+ */
+export function setValidatorQueriesData(queryClient: QueryClient, data: Validator): void {
+  const { id, nodePoolAssignment, pools } = data
+
+  queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
+    if (!prevData) {
+      return prevData
+    }
+
+    return prevData.map((validator: Validator) => {
+      if (validator.id === validator!.id) {
+        return data
+      }
+      return validator
+    })
+  })
+
+  queryClient.setQueryData<Validator>(['validator', String(id)], data)
+  queryClient.setQueryData<PoolInfo[]>(['pools-info', String(id)], pools)
+  queryClient.setQueryData<NodePoolAssignmentConfig>(
+    ['pool-assignments', String(id)],
+    nodePoolAssignment,
+  )
 }
