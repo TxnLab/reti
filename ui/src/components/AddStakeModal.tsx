@@ -13,8 +13,8 @@ import { getAccountInformation } from '@/api/algod'
 import {
   addStake,
   doesStakerNeedToPayMbr,
+  fetchValidator,
   findPoolForStaker,
-  isNewStakerToValidator,
 } from '@/api/contracts'
 import { mbrQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
@@ -47,6 +47,7 @@ import {
   fetchGatingAssets,
   findQualifiedGatingAssetId,
   hasQualifiedGatingAsset,
+  setValidatorQueriesData,
 } from '@/utils/contracts'
 import { formatAlgoAmount } from '@/utils/format'
 
@@ -276,12 +277,6 @@ export function AddStakeModal({
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
       const totalAmount = mbrRequired ? amountToStake + stakerMbr : amountToStake
 
-      const isNewStaker = await isNewStakerToValidator(
-        validator.id,
-        activeAddress,
-        Number(validator.config.minEntryStake),
-      )
-
       const { entryGatingType, gatingAssetMinBalance } = validator.config
 
       const valueToVerify = findQualifiedGatingAssetId(
@@ -319,33 +314,15 @@ export function AddStakeModal({
         },
       )
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((v: Validator) => {
-          if (v.id === validator!.id) {
-            return {
-              ...v,
-              state: {
-                ...v.state,
-                totalStakers: isNewStaker ? v.state.totalStakers + 1 : v.state.totalStakers,
-                totalAlgoStaked: v.state.totalAlgoStaked + BigInt(amountToStake),
-              },
-            }
-          }
-
-          return v
-        })
-      })
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
 
       // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
       queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
       queryClient.invalidateQueries({ queryKey: ['staked-info'] })
-      queryClient.invalidateQueries({ queryKey: ['validator-pools', validator!.id] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to add stake to pool', { id: toastId })
