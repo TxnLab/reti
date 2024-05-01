@@ -16,6 +16,14 @@ import { dayjs, formatDuration } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
+import {
+  GATING_TYPE_ASSETS_CREATED_BY,
+  GATING_TYPE_ASSET_ID,
+  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
+  GATING_TYPE_NONE,
+  GATING_TYPE_SEGMENT_OF_NFD,
+} from '@/constants/gating'
+import { NfdThumbnail } from '../NfdThumbnail'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -27,6 +35,71 @@ export function Details({ validator }: DetailsProps) {
   const { activeAddress } = useWallet()
 
   const isOwner = activeAddress === validator.config.owner
+
+  const renderEntryGating = () => {
+    const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
+
+    switch (entryGatingType) {
+      case GATING_TYPE_NONE:
+        return 'None'
+      case GATING_TYPE_ASSETS_CREATED_BY:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
+            <a
+              href={ExplorerLink.account(entryGatingAddress)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 font-mono whitespace-nowrap hover:underline"
+            >
+              {ellipseAddressJsx(entryGatingAddress)}
+            </a>
+          </>
+        )
+      case GATING_TYPE_ASSET_ID:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Asset ID</strong>
+            <ul className="mt-1 list-none list-inside">
+              {entryGatingAssets
+                .filter((assetId) => assetId !== 0)
+                .map((assetId) => (
+                  <li key={assetId}>
+                    <a
+                      href={ExplorerLink.asset(assetId)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono hover:underline"
+                    >
+                      {assetId}
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          </>
+        )
+      case GATING_TYPE_CREATED_BY_NFD_ADDRESSES:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
+            <div className="truncate">
+              <NfdThumbnail nameOrId={entryGatingAssets[0]} truncate tooltip link />
+            </div>
+          </>
+        )
+      case GATING_TYPE_SEGMENT_OF_NFD:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
+            <div className="truncate">
+              <NfdThumbnail nameOrId={entryGatingAssets[0]} truncate tooltip link />
+            </div>
+          </>
+        )
+      default:
+        return 'None'
+    }
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -199,7 +272,7 @@ export function Details({ validator }: DetailsProps) {
                     {validator.config.entryGatingType === 0 ? (
                       <span className="text-muted-foreground">--</span>
                     ) : (
-                      validator.config.entryGatingType
+                      <div className="text-sm">{renderEntryGating()}</div>
                     )}
                     {isOwner && <EditEntryGating validator={validator} />}
                   </dd>
