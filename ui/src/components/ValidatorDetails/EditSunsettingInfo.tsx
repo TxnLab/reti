@@ -36,6 +36,7 @@ interface EditSunsettingInfoProps {
 export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState(false)
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false)
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
@@ -165,8 +166,8 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
 
   return (
     <EditValidatorModal
-      title="Edit Sunsetting Info"
-      description={`Set sunsetting info for Validator ${validator.id}`}
+      title="Edit Sunset Date"
+      description={`Set a date to decommission Validator ${validator.id}`}
       open={isOpen}
       onOpenChange={handleOpenChange}
     >
@@ -202,31 +203,29 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
             />
 
             <div
-              className={cn('grid gap-4 sm:grid-cols-2', {
-                'opacity-25 pointer-events-none': !enableSunset,
+              className={cn('grid gap-4 grid-cols-5 sm:grid-cols-2 transition-opacity', {
+                'opacity-0 pointer-events-none': !enableSunset,
               })}
             >
               <FormField
                 control={form.control}
                 name="sunsettingOn"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
+                  <FormItem className="col-span-3 sm:col-auto">
+                    <FormLabel className={cn({ 'pointer-events-none': !enableSunset })}>
                       Sunset date
-                      <InfoPopover className={infoPopoverClassName}>
-                        Date when validator will sunset
-                      </InfoPopover>
                     </FormLabel>
                     <div className="flex items-center gap-x-3">
-                      <Popover>
+                      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
                               variant="outline"
                               className={cn(
-                                'w-[240px] h-9 pl-3 text-left font-normal',
+                                'w-[240px] h-9 pl-3 text-left font-normal disabled:cursor-not-allowed',
                                 !field.value && 'text-muted-foreground',
                               )}
+                              disabled={!enableSunset}
                             >
                               {field.value ? (
                                 dayjs(field.value).format('LL')
@@ -244,6 +243,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={(date) => date < dayjs().add(24, 'hours').toDate()}
+                            onDayClick={() => setIsCalendarOpen(false)}
                             initialFocus
                           />
                         </PopoverContent>
@@ -258,15 +258,15 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                 control={form.control}
                 name="sunsettingTo"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-2 sm:col-auto">
                     <FormLabel>
-                      Sunset to (validator ID)
+                      Migrate to
                       <InfoPopover className={infoPopoverClassName}>
-                        Validator ID that the validator is moving to (if known)
+                        Validator ID that stakers should migrate to, if known (optional)
                       </InfoPopover>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="" {...field} />
+                      <Input placeholder="" disabled={!enableSunset} {...field} />
                     </FormControl>
                     <FormMessage>{errors.sunsettingTo?.message}</FormMessage>
                   </FormItem>
