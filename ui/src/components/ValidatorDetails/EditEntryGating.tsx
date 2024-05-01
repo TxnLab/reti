@@ -2,12 +2,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
+import { isAxiosError } from 'axios'
 import { ArrowUpRight, Check, RotateCcw } from 'lucide-react'
 import * as React from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
 import { changeValidatorRewardInfo } from '@/api/contracts'
+import { fetchNfd } from '@/api/nfd'
+import { InfoPopover } from '@/components/InfoPopover'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import {
@@ -19,8 +24,14 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
-import { EntryGatingAssets, Validator } from '@/interfaces/validator'
 import {
   GATING_TYPE_ASSETS_CREATED_BY,
   GATING_TYPE_ASSET_ID,
@@ -28,15 +39,10 @@ import {
   GATING_TYPE_NONE,
   GATING_TYPE_SEGMENT_OF_NFD,
 } from '@/constants/gating'
-import algosdk from 'algosdk'
-import { isValidName, isValidRoot, trimExtension } from '@/utils/nfd'
+import { EntryGatingAssets, Validator } from '@/interfaces/validator'
 import { transformEntryGatingAssets } from '@/utils/contracts'
-import { fetchNfd } from '@/api/nfd'
-import { isAxiosError } from 'axios'
-import { useDebouncedCallback } from 'use-debounce'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
-import { InfoPopover } from '../InfoPopover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { isValidName, isValidRoot, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
