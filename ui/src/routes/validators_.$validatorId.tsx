@@ -1,14 +1,13 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { ValidatorNotFoundError, fetchStakerValidatorData } from '@/api/contracts'
-import { constraintsQueryOptions, validatorQueryOptions } from '@/api/queries'
+import { ValidatorNotFoundError } from '@/api/contracts'
+import { constraintsQueryOptions, stakesQueryOptions, validatorQueryOptions } from '@/api/queries'
 import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageMain } from '@/components/PageMain'
 import { ValidatorDetails } from '@/components/ValidatorDetails'
 import { DetailsHeader } from '@/components/ValidatorDetails/DetailsHeader'
-import { StakerValidatorData } from '@/interfaces/staking'
 
 export const Route = createFileRoute('/validators/$validatorId')({
   beforeLoad: () => {
@@ -44,14 +43,7 @@ function Dashboard() {
 
   const { activeAddress } = useWallet()
 
-  const stakesQuery = useQuery<StakerValidatorData[]>({
-    queryKey: ['stakes', { staker: activeAddress! }],
-    queryFn: () => fetchStakerValidatorData(activeAddress!),
-    enabled: !!activeAddress,
-    retry: false,
-    refetchInterval: 1000 * 60, // every minute
-  })
-
+  const stakesQuery = useQuery(stakesQueryOptions(activeAddress))
   const stakesByValidator = stakesQuery.data || []
 
   const pageTitle = validator.nfd ? validator.nfd.name : `Validator ${validator.id}`
