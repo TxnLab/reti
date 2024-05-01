@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { MessageCircleWarning } from 'lucide-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -11,11 +12,6 @@ import { EditManagerAccount } from '@/components/ValidatorDetails/EditManagerAcc
 import { EditNfdForInfo } from '@/components/ValidatorDetails/EditNfdForInfo'
 import { EditRewardPerPayout } from '@/components/ValidatorDetails/EditRewardPerPayout'
 import { EditSunsettingInfo } from '@/components/ValidatorDetails/EditSunsettingInfo'
-import { Validator } from '@/interfaces/validator'
-import { dayjs, formatDuration } from '@/utils/dayjs'
-import { ellipseAddressJsx } from '@/utils/ellipseAddress'
-import { ExplorerLink } from '@/utils/explorer'
-import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import {
   GATING_TYPE_ASSETS_CREATED_BY,
   GATING_TYPE_ASSET_ID,
@@ -23,7 +19,12 @@ import {
   GATING_TYPE_NONE,
   GATING_TYPE_SEGMENT_OF_NFD,
 } from '@/constants/gating'
-import { NfdThumbnail } from '../NfdThumbnail'
+import { Validator } from '@/interfaces/validator'
+import { dayjs, formatDuration } from '@/utils/dayjs'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
+import { ExplorerLink } from '@/utils/explorer'
+import { formatAssetAmount } from '@/utils/format'
+import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -264,19 +265,31 @@ export function Details({ validator }: DetailsProps) {
               )}
 
               {(isOwner || validator.config.entryGatingType > 0) && (
-                <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                  <dt className="text-sm font-medium leading-6 text-muted-foreground">
-                    Entry Gating
-                  </dt>
-                  <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
-                    {validator.config.entryGatingType === 0 ? (
-                      <span className="text-muted-foreground">--</span>
-                    ) : (
-                      <div className="text-sm">{renderEntryGating()}</div>
-                    )}
-                    {isOwner && <EditEntryGating validator={validator} />}
-                  </dd>
-                </div>
+                <>
+                  <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
+                    <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                      Entry Gating
+                    </dt>
+                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                      {validator.config.entryGatingType === 0 ? (
+                        <span className="text-muted-foreground">--</span>
+                      ) : (
+                        <div className="text-sm">{renderEntryGating()}</div>
+                      )}
+                      {isOwner && <EditEntryGating validator={validator} />}
+                    </dd>
+                  </div>
+                  {validator.config.entryGatingType != GATING_TYPE_SEGMENT_OF_NFD && (
+                    <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
+                      <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                        Gating Asset Minimum Balance
+                      </dt>
+                      <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                        {formatAssetAmount(validator.config.gatingAssetMinBalance.toString())}
+                      </dd>
+                    </div>
+                  )}
+                </>
               )}
 
               {isOwner || validator.config.sunsettingOn ? (
