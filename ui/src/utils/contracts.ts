@@ -830,7 +830,7 @@ export function setValidatorQueriesData(queryClient: QueryClient, data: Validato
     }
 
     return prevData.map((validator: Validator) => {
-      if (validator.id === validator!.id) {
+      if (validator.id === id) {
         return data
       }
       return validator
