@@ -838,7 +838,7 @@ export function setValidatorQueriesData(queryClient: QueryClient, data: Validato
   })
 
   queryClient.setQueryData<Validator>(['validator', String(id)], data)
-  queryClient.setQueryData<PoolInfo[]>(['validator-pools', String(id)], pools)
+  queryClient.setQueryData<PoolInfo[]>(['pools-info', String(id)], pools)
   queryClient.setQueryData<NodePoolAssignmentConfig>(
     ['pool-assignments', String(id)],
     nodePoolAssignment,

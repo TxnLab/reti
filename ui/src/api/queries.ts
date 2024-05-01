@@ -75,7 +75,7 @@ export const nfdQueryOptions = (
 
 export const validatorPoolsQueryOptions = (validatorId: number) =>
   queryOptions({
-    queryKey: ['validator-pools', validatorId],
+    queryKey: ['pools-info', validatorId],
     queryFn: () => fetchValidatorPools(validatorId),
     enabled: !!validatorId,
   })
