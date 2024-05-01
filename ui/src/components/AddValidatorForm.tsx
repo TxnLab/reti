@@ -8,7 +8,7 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
-import { addValidator } from '@/api/contracts'
+import { addValidator, fetchValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { InfoPopover } from '@/components/InfoPopover'
@@ -29,24 +29,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  GATING_TYPE_ASSETS_CREATED_BY,
-  GATING_TYPE_ASSET_ID,
-  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-  GATING_TYPE_NONE,
-  GATING_TYPE_SEGMENT_OF_NFD,
-} from '@/constants/gating'
+import { GatingType } from '@/constants/gating'
 import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
-  getAddValidatorFormSchema,
   getEpochLengthMinutes,
+  setValidatorQueriesData,
   transformEntryGatingAssets,
 } from '@/utils/contracts'
 // import { validatorAutoFill } from '@/utils/development'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
+import { entryGatingRefinement, validatorSchemas } from '@/utils/validation'
+import { useQueryClient } from '@tanstack/react-query'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -67,9 +63,30 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const { transactionSigner, activeAddress } = useWallet()
   const { authAddress } = useAuthAddress()
 
+  const queryClient = useQueryClient()
+
   const navigate = useNavigate({ from: '/add' })
 
-  const formSchema = getAddValidatorFormSchema(constraints)
+  const formSchema = z
+    .object({
+      owner: validatorSchemas.owner(),
+      manager: validatorSchemas.manager(),
+      nfdForInfo: validatorSchemas.nfdForInfo(),
+      entryGatingType: validatorSchemas.entryGatingType(),
+      entryGatingAddress: validatorSchemas.entryGatingAddress(),
+      entryGatingAssets: validatorSchemas.entryGatingAssets(),
+      entryGatingNfdCreator: validatorSchemas.entryGatingNfdCreator(),
+      entryGatingNfdParent: validatorSchemas.entryGatingNfdParent(),
+      gatingAssetMinBalance: validatorSchemas.gatingAssetMinBalance(),
+      rewardTokenId: validatorSchemas.rewardTokenId(),
+      rewardPerPayout: validatorSchemas.rewardPerPayout(),
+      payoutEveryXMins: validatorSchemas.payoutEveryXMins(constraints),
+      percentToValidator: validatorSchemas.percentToValidator(constraints),
+      validatorCommissionAddress: validatorSchemas.validatorCommissionAddress(),
+      minEntryStake: validatorSchemas.minEntryStake(constraints),
+      poolsPerNode: validatorSchemas.poolsPerNode(constraints),
+    })
+    .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
 
   type FormValues = z.infer<typeof formSchema>
 
@@ -104,17 +121,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const selectedGatingType = form.watch('entryGatingType')
 
-  const isEntryGatingAddressEnabled = selectedGatingType === String(GATING_TYPE_ASSETS_CREATED_BY)
-  const isEntryGatingAssetsEnabled = selectedGatingType === String(GATING_TYPE_ASSET_ID)
-  const isEntryGatingNfdParentEnabled = selectedGatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
+  const showCreatorAddressField = selectedGatingType === String(GatingType.CreatorAccount)
+  const showAssetFields = selectedGatingType === String(GatingType.AssetId)
+  const showCreatorNfdField = selectedGatingType === String(GatingType.CreatorNfd)
+  const showParentNfdField = selectedGatingType === String(GatingType.SegmentNfd)
 
-  const isEntryGatingNfdCreatorEnabled =
-    selectedGatingType === String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)
-
-  const isGatingAssetMinBalanceEnabled = [
-    String(GATING_TYPE_ASSETS_CREATED_BY),
-    String(GATING_TYPE_ASSET_ID),
-    String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
+  const showMinBalanceField = [
+    String(GatingType.CreatorAccount),
+    String(GatingType.AssetId),
+    String(GatingType.CreatorNfd),
   ].includes(selectedGatingType)
 
   const fetchNfdAppId = async (
@@ -253,6 +268,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           duration: 5000,
         },
       )
+
+      // Fetch validator data
+      const newData = await fetchValidator(validatorId)
+
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
 
       await navigate({ to: '/' })
     } catch (error) {
@@ -665,27 +686,25 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <Select
                         value={field.value}
-                        onValueChange={(gatingType) => {
-                          field.onChange(gatingType) // Inform react-hook-form of the change
+                        onValueChange={(type) => {
+                          field.onChange(type) // Inform react-hook-form of the change
 
-                          replace([{ value: '' }]) // Reset entryGatingAssets array
-                          form.setValue('entryGatingAddress', '') // Reset entryGatingAddress
-                          form.setValue('entryGatingNfdCreator', '') // Reset entryGatingNfdCreator
-                          form.setValue('entryGatingNfdParent', '') // Reset entryGatingNfdParent
+                          // Reset form fields
+                          replace([{ value: '' }])
+                          form.setValue('entryGatingAddress', '')
+                          form.setValue('entryGatingNfdCreator', '')
+                          form.setValue('entryGatingNfdParent', '')
+                          form.setValue(
+                            'gatingAssetMinBalance',
+                            type === String(GatingType.SegmentNfd) ? '1' : '',
+                          )
 
                           // Clear any errors
                           form.clearErrors('entryGatingAssets')
                           form.clearErrors('entryGatingAddress')
                           form.clearErrors('entryGatingNfdCreator')
                           form.clearErrors('entryGatingNfdParent')
-
-                          const isNfdSegmentGating =
-                            gatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
-
-                          const gatingMinBalance = isNfdSegmentGating ? '1' : ''
-
-                          form.setValue('gatingAssetMinBalance', gatingMinBalance) // Set/reset min balance
-                          form.clearErrors('gatingAssetMinBalance') // Clear any errors for gating min balance
+                          form.clearErrors('gatingAssetMinBalance')
                         }}
                       >
                         <FormControl>
@@ -694,17 +713,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value={String(GATING_TYPE_NONE)}>None</SelectItem>
-                          <SelectItem value={String(GATING_TYPE_ASSETS_CREATED_BY)}>
+                          <SelectItem value={String(GatingType.None)}>None</SelectItem>
+                          <SelectItem value={String(GatingType.CreatorAccount)}>
                             Asset by Creator Account
                           </SelectItem>
-                          <SelectItem value={String(GATING_TYPE_ASSET_ID)}>Asset ID</SelectItem>
-                          <SelectItem value={String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)}>
+                          <SelectItem value={String(GatingType.AssetId)}>Asset ID</SelectItem>
+                          <SelectItem value={String(GatingType.CreatorNfd)}>
                             Asset Created by NFD
                           </SelectItem>
-                          <SelectItem value={String(GATING_TYPE_SEGMENT_OF_NFD)}>
-                            NFD Segment
-                          </SelectItem>
+                          <SelectItem value={String(GatingType.SegmentNfd)}>NFD Segment</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -717,7 +734,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="entryGatingAddress"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingAddressEnabled })}>
+                  <FormItem className={cn({ hidden: !showCreatorAddressField })}>
                     <FormLabel>
                       Asset creator account
                       <InfoPopover className={infoPopoverClassName}>
@@ -733,7 +750,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 )}
               />
 
-              <div className={cn({ hidden: !isEntryGatingAssetsEnabled })}>
+              <div className={cn({ hidden: !showAssetFields })}>
                 {fields.map((field, index) => (
                   <FormField
                     control={form.control}
@@ -775,7 +792,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="entryGatingNfdCreator"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingNfdCreatorEnabled })}>
+                  <FormItem className={cn({ hidden: !showCreatorNfdField })}>
                     <FormLabel>
                       Asset creator NFD
                       <InfoPopover className={infoPopoverClassName}>
@@ -835,7 +852,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="entryGatingNfdParent"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingNfdParentEnabled })}>
+                  <FormItem className={cn({ hidden: !showParentNfdField })}>
                     <FormLabel>
                       Root/parent NFD
                       <InfoPopover className={infoPopoverClassName}>
@@ -931,7 +948,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="gatingAssetMinBalance"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isGatingAssetMinBalanceEnabled })}>
+                  <FormItem className={cn({ hidden: !showMinBalanceField })}>
                     <FormLabel>
                       Minimum balance
                       <InfoPopover className={infoPopoverClassName}>

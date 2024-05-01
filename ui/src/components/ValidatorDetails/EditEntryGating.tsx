@@ -1,8 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import algosdk from 'algosdk'
 import { isAxiosError } from 'axios'
 import { ArrowUpRight, Check, RotateCcw } from 'lucide-react'
 import * as React from 'react'
@@ -10,7 +8,7 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
-import { changeValidatorRewardInfo } from '@/api/contracts'
+import { changeValidatorRewardInfo, fetchValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { nfdQueryOptions } from '@/api/queries'
 import { InfoPopover } from '@/components/InfoPopover'
@@ -34,18 +32,13 @@ import {
 } from '@/components/ui/select'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
-import {
-  GATING_TYPE_ASSETS_CREATED_BY,
-  GATING_TYPE_ASSET_ID,
-  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-  GATING_TYPE_NONE,
-  GATING_TYPE_SEGMENT_OF_NFD,
-} from '@/constants/gating'
+import { GatingType } from '@/constants/gating'
 import { EntryGatingAssets, Validator } from '@/interfaces/validator'
-import { transformEntryGatingAssets } from '@/utils/contracts'
+import { setValidatorQueriesData, transformEntryGatingAssets } from '@/utils/contracts'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
-import { isValidName, isValidRoot, trimExtension } from '@/utils/nfd'
+import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
+import { entryGatingRefinement, validatorSchemas } from '@/utils/validation'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -57,255 +50,56 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState(false)
 
-  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(
-    validator.config.entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES
-      ? validator.config.entryGatingAssets[0]
-      : 0,
-  )
+  const {
+    entryGatingType,
+    entryGatingAddress,
+    entryGatingAssets,
+    gatingAssetMinBalance,
+    rewardPerPayout,
+  } = validator.config
+
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
-
-  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(
-    validator.config.entryGatingType === GATING_TYPE_SEGMENT_OF_NFD
-      ? validator.config.entryGatingAssets[0]
-      : 0,
+  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(
+    entryGatingType === GatingType.CreatorNfd ? entryGatingAssets[0] : 0,
   )
+
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
-
-  const { transactionSigner, activeAddress } = useWallet()
-  const queryClient = useQueryClient()
-  const router = useRouter()
-
-  const formSchema = z
-    .object({
-      entryGatingType: z.string(),
-      entryGatingAddress: z.string(),
-      entryGatingAssets: z.array(
-        z.object({
-          value: z
-            .string()
-            .refine(
-              (val) =>
-                val === '' ||
-                (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
-              {
-                message: 'Invalid asset ID',
-              },
-            ),
-        }),
-      ),
-      entryGatingNfdCreator: z.string().refine((val) => val === '' || isValidName(val), {
-        message: 'NFD name is invalid',
-      }),
-      entryGatingNfdParent: z.string().refine((val) => val === '' || isValidRoot(val), {
-        message: 'Root/parent NFD name is invalid',
-      }),
-      gatingAssetMinBalance: z
-        .string()
-        .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
-          message: 'Invalid minimum balance',
-        }),
-    })
-    .superRefine((data, ctx) => {
-      const {
-        entryGatingType,
-        entryGatingAddress,
-        entryGatingAssets,
-        entryGatingNfdCreator,
-        entryGatingNfdParent,
-        gatingAssetMinBalance,
-      } = data
-
-      switch (entryGatingType) {
-        case String(GATING_TYPE_NONE):
-          if (entryGatingAddress !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAddress'],
-              message: 'entryGatingAddress should not be set when entry gating is disabled',
-            })
-          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'entryGatingAssets should not be set when entry gating is disabled',
-            })
-          } else if (entryGatingNfdCreator !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdCreator'],
-              message: 'entryGatingNfdCreator should not be set when entry gating is disabled',
-            })
-          } else if (entryGatingNfdParent !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdParent'],
-              message: 'entryGatingNfdParent should not be set when entry gating is disabled',
-            })
-          }
-          break
-        case String(GATING_TYPE_ASSETS_CREATED_BY):
-          if (
-            typeof entryGatingAddress !== 'string' ||
-            !algosdk.isValidAddress(entryGatingAddress)
-          ) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAddress'],
-              message: 'Invalid Algorand address',
-            })
-          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'entryGatingAssets should not be set when entryGatingType is 1',
-            })
-          } else if (entryGatingNfdCreator !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdCreator'],
-              message: 'entryGatingNfdCreator should not be set when entryGatingType is 1',
-            })
-          } else if (entryGatingNfdParent !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdParent'],
-              message: 'entryGatingNfdParent should not be set when entryGatingType is 1',
-            })
-          }
-          break
-        case String(GATING_TYPE_ASSET_ID):
-          if (entryGatingAssets.length === 0) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'No gating asset(s) provided',
-            })
-          } else if (entryGatingAssets.length > 4) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'Cannot have more than 4 gating assets',
-            })
-          } else if (!entryGatingAssets.some((asset) => asset.value !== '')) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'Must provide at least one gating asset',
-            })
-          } else if (entryGatingAddress !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAddress'],
-              message: 'entryGatingAddress should not be set when entryGatingType is 2',
-            })
-          } else if (entryGatingNfdCreator !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdCreator'],
-              message: 'entryGatingNfdCreator should not be set when entryGatingType is 2',
-            })
-          } else if (entryGatingNfdParent !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdParent'],
-              message: 'entryGatingNfdParent should not be set when entryGatingType is 2',
-            })
-          }
-          break
-        case String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES):
-          if (entryGatingAddress !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAddress'],
-              message: 'entryGatingAddress should not be set when entryGatingType is 3',
-            })
-          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'entryGatingAssets should not be set when entryGatingType is 3',
-            })
-          } else if (entryGatingNfdParent !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdParent'],
-              message: 'entryGatingNfdParent should not be set when entryGatingType is 3',
-            })
-          }
-          break
-        case String(GATING_TYPE_SEGMENT_OF_NFD):
-          if (entryGatingAddress !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAddress'],
-              message: 'entryGatingAddress should not be set when entryGatingType is 4',
-            })
-          } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingAssets'],
-              message: 'entryGatingAssets should not be set when entryGatingType is 4',
-            })
-          } else if (entryGatingNfdCreator !== '') {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ['entryGatingNfdCreator'],
-              message: 'entryGatingNfdCreator should not be set when entryGatingType is 4',
-            })
-          }
-          break
-        default:
-          break
-      }
-
-      const isGatingEnabled = [
-        String(GATING_TYPE_ASSETS_CREATED_BY),
-        String(GATING_TYPE_ASSET_ID),
-        String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
-        String(GATING_TYPE_SEGMENT_OF_NFD),
-      ].includes(String(entryGatingType))
-
-      if (isGatingEnabled) {
-        if (
-          isNaN(Number(gatingAssetMinBalance)) ||
-          !Number.isInteger(Number(gatingAssetMinBalance)) ||
-          Number(gatingAssetMinBalance) <= 0
-        ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['gatingAssetMinBalance'],
-            message: 'Invalid minimum balance',
-          })
-        }
-      } else if (gatingAssetMinBalance !== '') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['gatingAssetMinBalance'],
-          message: 'gatingAssetMinBalance should not be set when entry gating is disabled',
-        })
-      }
-    })
+  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(
+    entryGatingType === GatingType.SegmentNfd ? entryGatingAssets[0] : 0,
+  )
 
   const nfdCreatorQuery = useQuery(nfdQueryOptions(nfdCreatorAppId))
   const nfdParentQuery = useQuery(nfdQueryOptions(nfdParentAppId))
 
-  const defaultEntryGatingAssets =
-    validator.config.entryGatingType === GATING_TYPE_ASSET_ID
-      ? validator.config.entryGatingAssets
-          .filter((assetId) => assetId > 0)
-          .map((assetId) => ({ value: String(assetId) }))
-      : [{ value: '' }]
+  const { transactionSigner, activeAddress } = useWallet()
+  const queryClient = useQueryClient()
 
-  const defaultValues = {
-    entryGatingType: String(validator.config.entryGatingType),
-    entryGatingAddress: validator.config.entryGatingAddress,
-    entryGatingAssets: defaultEntryGatingAssets,
-    entryGatingNfdCreator: nfdCreatorQuery.data?.name || '',
-    entryGatingNfdParent: nfdParentQuery.data?.name || '',
-    gatingAssetMinBalance: String(validator.config.gatingAssetMinBalance),
-  }
+  const formSchema = z
+    .object({
+      entryGatingType: validatorSchemas.entryGatingType(),
+      entryGatingAddress: validatorSchemas.entryGatingAddress(),
+      entryGatingAssets: validatorSchemas.entryGatingAssets(),
+      entryGatingNfdCreator: validatorSchemas.entryGatingNfdCreator(),
+      entryGatingNfdParent: validatorSchemas.entryGatingNfdParent(),
+      gatingAssetMinBalance: validatorSchemas.gatingAssetMinBalance(),
+    })
+    .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
 
   type FormValues = z.infer<typeof formSchema>
+
+  const defaultValues = {
+    entryGatingType: String(entryGatingType),
+    entryGatingAddress: entryGatingAddress,
+    entryGatingAssets:
+      entryGatingType === GatingType.AssetId
+        ? entryGatingAssets
+            .filter((assetId) => assetId > 0)
+            .map((assetId) => ({ value: String(assetId) }))
+        : [{ value: '' }],
+    entryGatingNfdCreator: nfdCreatorQuery.data?.name || '',
+    entryGatingNfdParent: nfdParentQuery.data?.name || '',
+    gatingAssetMinBalance: String(gatingAssetMinBalance),
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -313,6 +107,11 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
   })
 
   const { errors, isDirty } = form.formState
+
+  const { fields, append, replace } = useFieldArray({
+    control: form.control,
+    name: 'entryGatingAssets',
+  })
 
   const handleResetForm = () => {
     form.reset(defaultValues)
@@ -325,27 +124,21 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
       setTimeout(() => handleResetForm(), 500)
     } else {
       setIsOpen(true)
+      handleResetForm()
     }
   }
 
-  const { fields, append, replace } = useFieldArray({
-    control: form.control,
-    name: 'entryGatingAssets',
-  })
-
   const selectedGatingType = form.watch('entryGatingType')
 
-  const isEntryGatingAddressEnabled = selectedGatingType === String(GATING_TYPE_ASSETS_CREATED_BY)
-  const isEntryGatingAssetsEnabled = selectedGatingType === String(GATING_TYPE_ASSET_ID)
-  const isEntryGatingNfdParentEnabled = selectedGatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
+  const showCreatorAddressField = selectedGatingType === String(GatingType.CreatorAccount)
+  const showAssetFields = selectedGatingType === String(GatingType.AssetId)
+  const showCreatorNfdField = selectedGatingType === String(GatingType.CreatorNfd)
+  const showParentNfdField = selectedGatingType === String(GatingType.SegmentNfd)
 
-  const isEntryGatingNfdCreatorEnabled =
-    selectedGatingType === String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)
-
-  const isGatingAssetMinBalanceEnabled = [
-    String(GATING_TYPE_ASSETS_CREATED_BY),
-    String(GATING_TYPE_ASSET_ID),
-    String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
+  const showMinBalanceField = [
+    String(GatingType.CreatorAccount),
+    String(GatingType.AssetId),
+    String(GatingType.CreatorNfd),
   ].includes(selectedGatingType)
 
   const fetchNfdAppId = async (
@@ -421,8 +214,6 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
     return showPrimary ? `${nfdAppUrl}/mint?q=${trimExtension(name)}` : `${nfdAppUrl}/mint`
   }
 
-  const infoPopoverClassName = 'mx-1.5 relative top-0.5 sm:mx-1 sm:top-0'
-
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
 
@@ -438,24 +229,22 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
 
       toast.loading('Sign transactions to update entry gating...', { id: toastId })
 
-      const { rewardPerPayout } = validator.config
-
-      const entryGatingType = Number(values.entryGatingType)
-      const entryGatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
-      const gatingAssetMinBalance = BigInt(values.gatingAssetMinBalance)
-
-      const entryGatingAssets = transformEntryGatingAssets(
+      const gatingAssets = transformEntryGatingAssets(
         values.entryGatingType,
         values.entryGatingAssets,
         nfdCreatorAppId,
         nfdParentAppId,
       ).map(Number) as EntryGatingAssets
 
+      const gatingType = Number(values.entryGatingType)
+      const gatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
+      const gatingAssetMinBalance = BigInt(values.gatingAssetMinBalance)
+
       await changeValidatorRewardInfo(
         validator.id,
-        entryGatingType,
-        entryGatingAddress,
-        entryGatingAssets,
+        gatingType,
+        gatingAddress,
+        gatingAssets,
         gatingAssetMinBalance,
         rewardPerPayout,
         transactionSigner,
@@ -467,33 +256,11 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
         duration: 5000,
       })
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              config: {
-                ...validator.config,
-                entryGatingType,
-                entryGatingAddress,
-                entryGatingAssets,
-                gatingAssetMinBalance,
-              },
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator.id)] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to update entry gating', { id: toastId })
       console.error(error)
@@ -521,33 +288,32 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                 <FormItem>
                   <FormLabel>
                     Gating type
-                    <InfoPopover className={infoPopoverClassName}>
+                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                       Require stakers to hold a qualified asset to enter pool (optional)
                     </InfoPopover>
                   </FormLabel>
                   <FormControl>
                     <Select
                       value={field.value}
-                      onValueChange={(gatingType) => {
-                        field.onChange(gatingType) // Inform react-hook-form of the change
+                      onValueChange={(type) => {
+                        field.onChange(type) // Inform react-hook-form of the change
 
-                        replace([{ value: '' }]) // Reset entryGatingAssets array
-                        form.setValue('entryGatingAddress', '') // Reset entryGatingAddress
-                        form.setValue('entryGatingNfdCreator', '') // Reset entryGatingNfdCreator
-                        form.setValue('entryGatingNfdParent', '') // Reset entryGatingNfdParent
+                        // Reset form fields
+                        replace([{ value: '' }])
+                        form.setValue('entryGatingAddress', '')
+                        form.setValue('entryGatingNfdCreator', '')
+                        form.setValue('entryGatingNfdParent', '')
+                        form.setValue(
+                          'gatingAssetMinBalance',
+                          type === String(GatingType.SegmentNfd) ? '1' : '',
+                        )
 
                         // Clear any errors
                         form.clearErrors('entryGatingAssets')
                         form.clearErrors('entryGatingAddress')
                         form.clearErrors('entryGatingNfdCreator')
                         form.clearErrors('entryGatingNfdParent')
-
-                        const isNfdSegmentGating = gatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
-
-                        const gatingMinBalance = isNfdSegmentGating ? '1' : ''
-
-                        form.setValue('gatingAssetMinBalance', gatingMinBalance) // Set/reset min balance
-                        form.clearErrors('gatingAssetMinBalance') // Clear any errors for gating min balance
+                        form.clearErrors('gatingAssetMinBalance')
                       }}
                     >
                       <FormControl>
@@ -556,17 +322,15 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={String(GATING_TYPE_NONE)}>None</SelectItem>
-                        <SelectItem value={String(GATING_TYPE_ASSETS_CREATED_BY)}>
+                        <SelectItem value={String(GatingType.None)}>None</SelectItem>
+                        <SelectItem value={String(GatingType.CreatorAccount)}>
                           Asset by Creator Account
                         </SelectItem>
-                        <SelectItem value={String(GATING_TYPE_ASSET_ID)}>Asset ID</SelectItem>
-                        <SelectItem value={String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)}>
+                        <SelectItem value={String(GatingType.AssetId)}>Asset ID</SelectItem>
+                        <SelectItem value={String(GatingType.CreatorNfd)}>
                           Asset Created by NFD
                         </SelectItem>
-                        <SelectItem value={String(GATING_TYPE_SEGMENT_OF_NFD)}>
-                          NFD Segment
-                        </SelectItem>
+                        <SelectItem value={String(GatingType.SegmentNfd)}>NFD Segment</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -579,10 +343,10 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               control={form.control}
               name="entryGatingAddress"
               render={({ field }) => (
-                <FormItem className={cn({ hidden: !isEntryGatingAddressEnabled })}>
+                <FormItem className={cn({ hidden: !showCreatorAddressField })}>
                   <FormLabel>
                     Asset creator account
-                    <InfoPopover className={infoPopoverClassName}>
+                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                       Must hold asset created by this account to enter pool
                     </InfoPopover>
                     <span className="text-primary">*</span>
@@ -595,7 +359,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               )}
             />
 
-            <div className={cn({ hidden: !isEntryGatingAssetsEnabled })}>
+            <div className={cn({ hidden: !showAssetFields })}>
               {fields.map((field, index) => (
                 <FormField
                   control={form.control}
@@ -605,7 +369,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                     <FormItem>
                       <FormLabel className={cn(index !== 0 && 'sr-only')}>
                         Asset ID
-                        <InfoPopover className={infoPopoverClassName}>
+                        <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                           Must hold asset with this ID to enter pool
                         </InfoPopover>
                         <span className="text-primary">*</span>
@@ -635,10 +399,10 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               control={form.control}
               name="entryGatingNfdCreator"
               render={({ field }) => (
-                <FormItem className={cn({ hidden: !isEntryGatingNfdCreatorEnabled })}>
+                <FormItem className={cn({ hidden: !showCreatorNfdField })}>
                   <FormLabel>
                     Asset creator NFD
-                    <InfoPopover className={infoPopoverClassName}>
+                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                       Must hold asset created by an account linked to this NFD to enter pool
                     </InfoPopover>
                     <span className="text-primary">*</span>
@@ -695,10 +459,10 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               control={form.control}
               name="entryGatingNfdParent"
               render={({ field }) => (
-                <FormItem className={cn({ hidden: !isEntryGatingNfdParentEnabled })}>
+                <FormItem className={cn({ hidden: !showParentNfdField })}>
                   <FormLabel>
                     Root/parent NFD
-                    <InfoPopover className={infoPopoverClassName}>
+                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                       Must hold a segment of this root/parent NFD to enter pool
                     </InfoPopover>
                     <span className="text-primary">*</span>
@@ -791,10 +555,10 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               control={form.control}
               name="gatingAssetMinBalance"
               render={({ field }) => (
-                <FormItem className={cn({ hidden: !isGatingAssetMinBalanceEnabled })}>
+                <FormItem className={cn({ hidden: !showMinBalanceField })}>
                   <FormLabel>
                     Minimum balance
-                    <InfoPopover className={infoPopoverClassName}>
+                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                       Minimum required balance of the entry gating asset
                     </InfoPopover>
                     <span className="text-primary">*</span>

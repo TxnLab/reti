@@ -829,12 +829,13 @@ export function setValidatorQueriesData(queryClient: QueryClient, data: Validato
       return prevData
     }
 
-    return prevData.map((validator: Validator) => {
-      if (validator.id === id) {
-        return data
-      }
-      return validator
-    })
+    const validatorExists = prevData.some((validator) => validator.id === id)
+
+    if (validatorExists) {
+      return prevData.map((validator) => (validator.id === id ? data : validator))
+    } else {
+      return [...prevData, data]
+    }
   })
 
   queryClient.setQueryData<Validator>(['validator', String(id)], data)
