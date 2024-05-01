@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { removeStake } from '@/api/contracts'
+import { fetchValidator, removeStake } from '@/api/contracts'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +38,7 @@ import {
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
+import { setValidatorQueriesData } from '@/utils/contracts'
 import { formatAlgoAmount } from '@/utils/format'
 
 interface UnstakeModalProps {
@@ -205,68 +206,15 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         },
       )
 
-      // Manually update ['validators'] query to avoid refetching
-      const allStakerData = queryClient.getQueryData<StakerValidatorData[]>([
-        'stakes',
-        { staker: activeAddress },
-      ])
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-      const stakerValidatorData = allStakerData?.find(
-        (data) => data.validatorId === pool.poolKey.validatorId,
-      )
-
-      if (stakerValidatorData) {
-        const updatedPool = stakerValidatorData.pools.find(
-          (p) => p.poolKey.poolId === pool.poolKey.poolId,
-        )
-
-        if (updatedPool) {
-          const newBalance = updatedPool.balance - BigInt(amountToUnstake)
-
-          const newPools =
-            newBalance === BigInt(0)
-              ? stakerValidatorData.pools.filter((p) => p.poolKey.poolId !== pool.poolKey.poolId)
-              : stakerValidatorData.pools.map((p) => {
-                  if (p.poolKey.poolId === pool.poolKey.poolId) {
-                    return {
-                      ...p,
-                      balance: newBalance,
-                    }
-                  }
-
-                  return p
-                })
-
-          const allStakeRemoved = newPools.length === 0
-
-          queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-            if (!prevData) {
-              return prevData
-            }
-
-            return prevData.map((v: Validator) => {
-              if (v.id === pool.poolKey.validatorId) {
-                return {
-                  ...v,
-                  state: {
-                    ...v.state,
-                    totalStakers: allStakeRemoved ? v.state.totalStakers - 1 : v.state.totalStakers,
-                    totalAlgoStaked: v.state.totalAlgoStaked - BigInt(amountToUnstake),
-                  },
-                }
-              }
-
-              return v
-            })
-          })
-        }
-      }
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
 
       // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
       queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
       queryClient.invalidateQueries({ queryKey: ['staked-info'] })
-      queryClient.invalidateQueries({ queryKey: ['validator-pools', validator!.id] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to remove stake from pool', { id: toastId })
