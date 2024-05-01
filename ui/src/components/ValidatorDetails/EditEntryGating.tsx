@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
@@ -12,6 +12,7 @@ import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
 import { changeValidatorRewardInfo } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
+import { nfdQueryOptions } from '@/api/queries'
 import { InfoPopover } from '@/components/InfoPopover'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
@@ -32,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
+import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import {
   GATING_TYPE_ASSETS_CREATED_BY,
   GATING_TYPE_ASSET_ID,
@@ -54,9 +56,19 @@ interface EditEntryGatingProps {
 export function EditEntryGating({ validator }: EditEntryGatingProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState(false)
-  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(0)
+
+  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(
+    validator.config.entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES
+      ? validator.config.entryGatingAssets[0]
+      : 0,
+  )
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
-  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
+
+  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(
+    validator.config.entryGatingType === GATING_TYPE_SEGMENT_OF_NFD
+      ? validator.config.entryGatingAssets[0]
+      : 0,
+  )
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
 
   const { transactionSigner, activeAddress } = useWallet()
@@ -274,13 +286,23 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
       }
     })
 
+  const nfdCreatorQuery = useQuery(nfdQueryOptions(nfdCreatorAppId))
+  const nfdParentQuery = useQuery(nfdQueryOptions(nfdParentAppId))
+
+  const defaultEntryGatingAssets =
+    validator.config.entryGatingType === GATING_TYPE_ASSET_ID
+      ? validator.config.entryGatingAssets
+          .filter((assetId) => assetId > 0)
+          .map((assetId) => ({ value: String(assetId) }))
+      : [{ value: '' }]
+
   const defaultValues = {
-    entryGatingType: '0',
-    entryGatingAddress: '',
-    entryGatingAssets: [{ value: '' }],
-    entryGatingNfdCreator: '',
-    entryGatingNfdParent: '',
-    gatingAssetMinBalance: '',
+    entryGatingType: String(validator.config.entryGatingType),
+    entryGatingAddress: validator.config.entryGatingAddress,
+    entryGatingAssets: defaultEntryGatingAssets,
+    entryGatingNfdCreator: nfdCreatorQuery.data?.name || '',
+    entryGatingNfdParent: nfdParentQuery.data?.name || '',
+    gatingAssetMinBalance: String(validator.config.gatingAssetMinBalance),
   }
 
   type FormValues = z.infer<typeof formSchema>
@@ -419,7 +441,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
       const { rewardPerPayout } = validator.config
 
       const entryGatingType = Number(values.entryGatingType)
-      const entryGatingAddress = values.entryGatingAddress
+      const entryGatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
       const gatingAssetMinBalance = BigInt(values.gatingAssetMinBalance)
 
       const entryGatingAssets = transformEntryGatingAssets(
@@ -510,6 +532,9 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                         field.onChange(gatingType) // Inform react-hook-form of the change
 
                         replace([{ value: '' }]) // Reset entryGatingAssets array
+                        form.setValue('entryGatingAddress', '') // Reset entryGatingAddress
+                        form.setValue('entryGatingNfdCreator', '') // Reset entryGatingNfdCreator
+                        form.setValue('entryGatingNfdParent', '') // Reset entryGatingNfdParent
 
                         // Clear any errors
                         form.clearErrors('entryGatingAssets')

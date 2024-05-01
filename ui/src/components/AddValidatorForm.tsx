@@ -669,6 +669,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           field.onChange(gatingType) // Inform react-hook-form of the change
 
                           replace([{ value: '' }]) // Reset entryGatingAssets array
+                          form.setValue('entryGatingAddress', '') // Reset entryGatingAddress
+                          form.setValue('entryGatingNfdCreator', '') // Reset entryGatingNfdCreator
+                          form.setValue('entryGatingNfdParent', '') // Reset entryGatingNfdParent
 
                           // Clear any errors
                           form.clearErrors('entryGatingAssets')
