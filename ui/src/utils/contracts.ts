@@ -765,10 +765,6 @@ export function calculateMaxAvailableToStake(validator: Validator, constraints?:
     maxAlgoPerPool = constraints.maxAlgoPerPool
   }
 
-  if (validator.pools.length === 0) {
-    return Number(maxAlgoPerPool)
-  }
-
   // For each pool, subtract the totalAlgoStaked from maxAlgoPerPool and return the highest value
   const maxAvailableToStake = validator.pools.reduce((acc, pool) => {
     const availableToStake = Number(maxAlgoPerPool) - Number(pool.totalAlgoStaked)
