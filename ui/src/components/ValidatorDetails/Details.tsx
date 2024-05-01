@@ -279,7 +279,10 @@ export function Details({ validator }: DetailsProps) {
                       {isOwner && <EditEntryGating validator={validator} />}
                     </dd>
                   </div>
-                  {validator.config.entryGatingType != GATING_TYPE_SEGMENT_OF_NFD && (
+
+                  {![GATING_TYPE_NONE, GATING_TYPE_SEGMENT_OF_NFD].includes(
+                    validator.config.entryGatingType,
+                  ) && (
                     <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
                       <dt className="text-sm font-medium leading-6 text-muted-foreground">
                         Gating Asset Minimum Balance
