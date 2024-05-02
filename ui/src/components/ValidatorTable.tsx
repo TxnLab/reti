@@ -78,7 +78,10 @@ export function ValidatorTable({
   const { transactionSigner, activeAddress } = useWallet()
   const navigate = useNavigate()
 
-  const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [])
+  const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [
+    { id: 'stake', desc: true },
+  ])
+
   const handleSortingChange = (updaterOrValue: Updater<SortingState>) => {
     if (typeof updaterOrValue === 'function') {
       const newState = updaterOrValue(sorting)
