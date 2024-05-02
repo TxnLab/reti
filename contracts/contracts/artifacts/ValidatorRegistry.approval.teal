@@ -208,7 +208,7 @@ getMbrAmounts:
 	callsub costForBoxStorage
 	itob
 	int 3
-	int 10
+	int 11
 	int 0
 	dupn 2
 	int 3
@@ -1954,7 +1954,7 @@ addPool:
 
 	// contracts/validatorRegistry.algo.ts:583
 	// globalNumUint: StakingPool.schema.global.numUint
-	int 10
+	int 11
 	itxn_field GlobalNumUint
 
 	// contracts/validatorRegistry.algo.ts:584

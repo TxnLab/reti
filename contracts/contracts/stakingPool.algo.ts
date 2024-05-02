@@ -10,7 +10,7 @@ import {
 } from './constants.algo'
 
 const ALGORAND_STAKING_BLOCK_DELAY = 320 // # of blocks until algorand sees online balance changes in staking
-const APR_BIN_SIZE = 30857 // approx 'daily' bins (60*60*24/2.8)
+const AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)
 
 export type StakedInfo = {
     account: Address
@@ -70,6 +70,8 @@ export class StakingPool extends Contract {
 
     // --
     // Stake APR calculation values
+    roundsPerDay = GlobalStateKey<uint64>({ key: 'roundsPerDay' })
+
     binRoundStart = GlobalStateKey<uint64>({ key: 'binRoundStart' })
 
     stakeAccumulator = GlobalStateKey<uint128>({ key: 'stakeAccumulator' })
@@ -110,7 +112,8 @@ export class StakingPool extends Contract {
         this.lastPayout.value = globals.round // set to init block to establish baseline
         this.epochNumber.value = 0
 
-        this.binRoundStart.value = globals.round - (globals.round % APR_BIN_SIZE) // place at start of bin
+        this.setRoundsPerDay()
+        this.binRoundStart.value = globals.round - (globals.round % this.roundsPerDay.value) // place at start of bin
         this.stakeAccumulator.value = 0 as uint128
         this.rewardAccumulator.value = 0
         this.weightedMovingAverage.value = 0 as uint128
@@ -240,7 +243,7 @@ export class StakingPool extends Contract {
         this.numStakers.value += 1
         this.totalAlgoStaked.value += stakedAmountPayment.amount
 
-        const roundsLeftInBin = this.binRoundStart.value + APR_BIN_SIZE - globals.round
+        const roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
         this.stakeAccumulator.value =
             this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
         return entryRound
@@ -339,7 +342,7 @@ export class StakingPool extends Contract {
                 // Update the box w/ the new staker data
                 this.stakers.value[i] = cmpStaker
 
-                const roundsLeftInBin = this.binRoundStart.value + APR_BIN_SIZE - globals.round
+                const roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
                 const subtractAmount: uint128 = (amountToUnstake as uint128) * (roundsLeftInBin as uint128)
                 this.stakeAccumulator.value = this.stakeAccumulator.value - subtractAmount
 
@@ -817,7 +820,10 @@ export class StakingPool extends Contract {
         // We've paid out the validator and updated the stakers new balances to reflect the rewards, now update
         // our 'total staked' value as well based on what we paid to validator and updated in staker balances as we
         // determined stake increases
+        const roundsLeftInBin = this.binRoundStart.value + AVG_ROUNDS_PER_DAY - globals.round
         this.totalAlgoStaked.value += increasedStake
+        this.stakeAccumulator.value =
+            this.stakeAccumulator.value + (increasedStake as uint128) * (roundsLeftInBin as uint128)
         this.rewardAccumulator.value = this.rewardAccumulator.value + increasedStake
 
         // Call the validator contract and tell it we've got new stake added
@@ -949,8 +955,9 @@ export class StakingPool extends Contract {
     }
 
     private getGoOnlineFee(): uint64 {
-        // TODO - replace w/ appropriate AVM call once available - to determine if we're currently offline
-        // if offline then we have to pay a particular high fee to go online
+        // TODO - AVM will have opcode like:
+        // voter_params_get IncentiveEligible
+        // this will be needed to determine if our pool is currently NOT eligible and we thus need to pay the fee.
         const isOnline = false
         if (!isOnline) {
             // TODO - replace w/ AVM call once available to determine fee to go online
@@ -964,20 +971,24 @@ export class StakingPool extends Contract {
         return 2_000_000_000_000_000
     }
 
+    /**
+     * Checks if the current round is in a 'new calculation bin' (approximately daily)
+     */
     private checkIfBinClosed() {
-        if (globals.round >= this.binRoundStart.value + APR_BIN_SIZE) {
+        const currentBinSize = this.roundsPerDay.value as uint128
+        if (globals.round >= this.binRoundStart.value + (currentBinSize as uint64)) {
             if (globals.opcodeBudget < 300) {
                 increaseOpcodeBudget()
             }
-            const approxRoundsPerYear: uint128 = 11262857 // 60*60*24*365/2.8 = 11,262,857.1428571429
-            const avgStake: uint128 = this.stakeAccumulator.value / (APR_BIN_SIZE as uint128)
+            const approxRoundsPerYear: uint128 = currentBinSize * (365 as uint128)
+            const avgStake: uint128 = this.stakeAccumulator.value / currentBinSize
             if (avgStake !== 0) {
-                // do APR in hundredths so we multiply by 10000
+                // do APR in hundredths, so we multiply by 10000
                 // ie: reward of 100, stake of 1000 - 100/1000 = .1 - *100 = 10% - but w/ int math we can't have
                 // decimals, so we do {reward}*10000/{stake} (= 1000, .1, or 10.00%)
                 const apr: uint128 =
                     (((this.rewardAccumulator.value as uint128) * (10000 as uint128)) / avgStake) *
-                    (approxRoundsPerYear / (APR_BIN_SIZE as uint128))
+                    (approxRoundsPerYear / currentBinSize)
 
                 let alpha: uint128 = 10 as uint128 // .1
                 // at 300k algo go to alpha of .9
@@ -989,9 +1000,27 @@ export class StakingPool extends Contract {
                     (apr * alpha) / (100 as uint128)
             }
 
-            this.binRoundStart.value = globals.round - (globals.round % APR_BIN_SIZE)
-            this.stakeAccumulator.value = (this.totalAlgoStaked.value as uint128) * (APR_BIN_SIZE as uint128)
+            // Re-calc the avg rounds per day to set new binning numbers
+            this.setRoundsPerDay()
+            this.stakeAccumulator.value = (this.totalAlgoStaked.value as uint128) * (this.roundsPerDay.value as uint128)
             this.rewardAccumulator.value = 0
+            this.binRoundStart.value = globals.round - (globals.round % this.roundsPerDay.value)
         }
+    }
+
+    private setRoundsPerDay() {
+        this.roundsPerDay.value = AVG_ROUNDS_PER_DAY
+        // TODO fetching prior block times doesn't appear to be working in local testing - tabling for now
+        // if (globals.round < 10) {
+        //     // must be start of dev/test? - just pick dummy val
+        //     this.roundsPerDay.value = 30857 // approx 'daily' bins (60*60*24/2.8)
+        //     return
+        // }
+        // // get average block time - taking time delta between prior 10 blocks [block-11 : block-2]
+        // const avgBlockTimeTenths = blocks[globals.round - 2].timestamp - blocks[globals.round - 11].timestamp
+        // // dividing the diff by 10 would give us avg block time, but because we want block time as integet (with no decimals)
+        // // we can just take the time as is - thus 25 seconds that would become 2.5 - we leave as '25' - then honoring the
+        // // decimal later in final calcs.
+        // this.roundsPerDay.value = (24 * 60 * 60 * 10) / avgBlockTimeTenths
     }
 }

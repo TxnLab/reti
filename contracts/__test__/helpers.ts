@@ -489,7 +489,7 @@ export async function addValidator(
                     sender: owner,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
         return Number(results.returns![0])
     } catch (e) {
         // throw validatorClient.appClient.exposeLogicError(e as Error)
@@ -551,7 +551,7 @@ export async function addStakingPool(
                     sender: vldtrAcct,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
     } catch (exception) {
         console.log((exception as LogicError).message)
         throw exception
@@ -587,7 +587,7 @@ export async function addStakingPool(
                 },
             },
         )
-        .execute({ populateAppCallResources: true })
+        .execute({ populateAppCallResources: true, suppressLog: true })
 
     return poolKey
 }
@@ -755,7 +755,7 @@ export async function addStake(
                 },
                 { sendParams: { fee: fees }, sender: staker },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
 
         return [new ValidatorPoolKey(results.returns[1]), fees]
     } catch (exception) {
@@ -803,10 +803,10 @@ export async function removeStake(
                         // pays us back and tells validator about balance changed
                         fee: AlgoAmount.MicroAlgos(itxnfees.microAlgos),
                     },
-                    sender: staker,
+                    sender: altSender || staker,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message)
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
@@ -851,7 +851,7 @@ export async function claimTokens(stakeClient: StakingPoolClient, staker: Accoun
                     sender: staker,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message)
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
@@ -884,7 +884,7 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
         .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
-        .execute({ populateAppCallResources: true })
+        .execute({ populateAppCallResources: true, suppressLog: true })
     return fees
 }
 
