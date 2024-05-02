@@ -352,7 +352,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                     <span className="text-primary">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="" {...field} />
+                    <Input className="font-mono" placeholder="" {...field} />
                   </FormControl>
                   <FormMessage>{errors.entryGatingAddress?.message}</FormMessage>
                 </FormItem>
@@ -375,7 +375,11 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                         <span className="text-primary">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input
+                          className="font-mono placeholder:font-sans"
+                          placeholder="Enter asset ID"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

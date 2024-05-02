@@ -106,7 +106,9 @@ export function Details({ validator }: DetailsProps) {
           <div className="border-t border-foreground-muted">
             <dl className="divide-y divide-foreground-muted">
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">ID</dt>
+                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                  Validator ID
+                </dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">{validator.id}</dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
@@ -281,7 +283,7 @@ export function Details({ validator }: DetailsProps) {
                       <dt className="text-sm font-medium leading-6 text-muted-foreground">
                         Gating Asset Minimum Balance
                       </dt>
-                      <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                      <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-6">
                         {formatAssetAmount(validator.config.gatingAssetMinBalance.toString())}
                       </dd>
                     </div>
