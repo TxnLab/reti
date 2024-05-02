@@ -1,14 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import algosdk from 'algosdk'
 import { RotateCcw } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { changeValidatorManager } from '@/api/contracts'
+import { changeValidatorManager, fetchValidator } from '@/api/contracts'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import {
@@ -22,6 +20,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { setValidatorQueriesData } from '@/utils/contracts'
+import { validatorSchemas } from '@/utils/validation'
 
 interface EditManagerAccountProps {
   validator: Validator
@@ -33,30 +33,25 @@ export function EditManagerAccount({ validator }: EditManagerAccountProps) {
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
-  const router = useRouter()
 
   const formSchema = z.object({
-    manager: z
-      .string()
-      .refine((val) => val !== '', {
-        message: 'Required field',
-      })
-      .refine((val) => algosdk.isValidAddress(val), {
-        message: 'Invalid Algorand address',
-      }),
+    manager: validatorSchemas.manager(),
   })
+
+  const { manager } = validator.config
+  const defaultValues = {
+    manager,
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      manager: validator.config.manager,
-    },
+    defaultValues,
   })
 
   const { errors, isDirty } = form.formState
 
   const handleResetForm = () => {
-    form.resetField('manager')
+    form.reset(defaultValues)
     form.clearErrors()
   }
 
@@ -66,6 +61,7 @@ export function EditManagerAccount({ validator }: EditManagerAccountProps) {
       setTimeout(() => handleResetForm(), 500)
     } else {
       setIsOpen(true)
+      handleResetForm()
     }
   }
 
@@ -73,7 +69,7 @@ export function EditManagerAccount({ validator }: EditManagerAccountProps) {
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const toastId = `${TOAST_ID}-validator`
+    const toastId = `${TOAST_ID}-edit-manager-account`
 
     try {
       setIsSigning(true)
@@ -91,30 +87,11 @@ export function EditManagerAccount({ validator }: EditManagerAccountProps) {
         duration: 5000,
       })
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              config: {
-                ...validator.config,
-                manager: values.manager,
-              },
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to update manager account', { id: toastId })
       console.error(error)

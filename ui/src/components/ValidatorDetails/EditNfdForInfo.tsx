@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { isAxiosError } from 'axios'
 import { ArrowUpRight, Check, RotateCcw } from 'lucide-react'
@@ -9,7 +8,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
-import { changeValidatorNfd } from '@/api/contracts'
+import { changeValidatorNfd, fetchValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { InfoPopover } from '@/components/InfoPopover'
 import { Button } from '@/components/ui/button'
@@ -25,10 +24,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { setValidatorQueriesData } from '@/utils/contracts'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
-import { Nfd } from '@/interfaces/nfd'
+import { validatorSchemas } from '@/utils/validation'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -39,30 +39,32 @@ interface EditNfdForInfoProps {
 export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState(false)
-  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(0)
+
+  const { nfdForInfo } = validator.config
+
   const [isFetchingNfdForInfo, setIsFetchingNfdForInfo] = React.useState(false)
+  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(nfdForInfo)
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
-  const router = useRouter()
 
   const formSchema = z.object({
-    nfdForInfo: z.string().refine((val) => val === '' || isValidName(val), {
-      message: 'NFD name is invalid',
-    }),
+    nfdForInfo: validatorSchemas.nfdForInfo(),
   })
+
+  const defaultValues = {
+    nfdForInfo: validator.nfd?.name || '',
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      nfdForInfo: validator.nfd?.name || '',
-    },
+    defaultValues,
   })
 
   const { errors, isDirty } = form.formState
 
   const handleResetForm = () => {
-    form.resetField('nfdForInfo')
+    form.reset(defaultValues)
     form.clearErrors()
   }
 
@@ -72,6 +74,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
       setTimeout(() => handleResetForm(), 500)
     } else {
       setIsOpen(true)
+      handleResetForm()
     }
   }
 
@@ -116,7 +119,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
     }
   }, 500)
 
-  const nfdForInfo = form.watch('nfdForInfo')
+  const $nfdForInfo = form.watch('nfdForInfo')
 
   const showPrimaryMintNfd = (
     name: string,
@@ -137,7 +140,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const toastId = `${TOAST_ID}-nfd-for-info`
+    const toastId = `${TOAST_ID}-edit-nfd-for-info`
 
     try {
       setIsSigning(true)
@@ -161,39 +164,11 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
         duration: 5000,
       })
 
-      let nfd: Nfd
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-      try {
-        nfd = await fetchNfd(nfdForInfoAppId, { view: 'full' })
-      } catch (error) {
-        console.error(error)
-      }
-
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
-
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              config: {
-                ...validator.config,
-                nfdForInfo: nfdForInfoAppId,
-              },
-              nfd,
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator.id)] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to update validator NFD', { id: toastId })
       console.error(error)
@@ -273,7 +248,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
                       size="sm"
                       variant={
                         showPrimaryMintNfd(
-                          nfdForInfo,
+                          $nfdForInfo,
                           isFetchingNfdForInfo,
                           nfdForInfoAppId,
                           errors.nfdForInfo?.message,
@@ -285,9 +260,9 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
                     >
                       <a
                         href={getNfdMintUrl(
-                          nfdForInfo,
+                          $nfdForInfo,
                           showPrimaryMintNfd(
-                            nfdForInfo,
+                            $nfdForInfo,
                             isFetchingNfdForInfo,
                             nfdForInfoAppId,
                             errors.nfdForInfo?.message,

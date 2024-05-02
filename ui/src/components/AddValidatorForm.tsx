@@ -119,18 +119,18 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     name: 'entryGatingAssets',
   })
 
-  const selectedGatingType = form.watch('entryGatingType')
+  const $entryGatingType = form.watch('entryGatingType')
 
-  const showCreatorAddressField = selectedGatingType === String(GatingType.CreatorAccount)
-  const showAssetFields = selectedGatingType === String(GatingType.AssetId)
-  const showCreatorNfdField = selectedGatingType === String(GatingType.CreatorNfd)
-  const showParentNfdField = selectedGatingType === String(GatingType.SegmentNfd)
+  const showCreatorAddressField = $entryGatingType === String(GatingType.CreatorAccount)
+  const showAssetFields = $entryGatingType === String(GatingType.AssetId)
+  const showCreatorNfdField = $entryGatingType === String(GatingType.CreatorNfd)
+  const showParentNfdField = $entryGatingType === String(GatingType.SegmentNfd)
 
   const showMinBalanceField = [
     String(GatingType.CreatorAccount),
     String(GatingType.AssetId),
     String(GatingType.CreatorNfd),
-  ].includes(selectedGatingType)
+  ].includes($entryGatingType)
 
   const fetchNfdAppId = async (
     value: string,
@@ -201,8 +201,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     }
   }, 500)
 
-  const nfdForInfo = form.watch('nfdForInfo')
-  const entryGatingNfdParent = form.watch('entryGatingNfdParent')
+  const $nfdForInfo = form.watch('nfdForInfo')
+  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
   const showPrimaryMintNfd = (
     name: string,
@@ -599,7 +599,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         size="sm"
                         variant={
                           showPrimaryMintNfd(
-                            nfdForInfo,
+                            $nfdForInfo,
                             isFetchingNfdForInfo,
                             nfdForInfoAppId,
                             errors.nfdForInfo?.message,
@@ -611,9 +611,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       >
                         <a
                           href={getNfdMintUrl(
-                            nfdForInfo,
+                            $nfdForInfo,
                             showPrimaryMintNfd(
-                              nfdForInfo,
+                              $nfdForInfo,
                               isFetchingNfdForInfo,
                               nfdForInfoAppId,
                               errors.nfdForInfo?.message,
@@ -911,7 +911,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         size="sm"
                         variant={
                           showPrimaryMintNfd(
-                            entryGatingNfdParent,
+                            $entryGatingNfdParent,
                             isFetchingNfdParent,
                             nfdParentAppId,
                             errors.entryGatingNfdParent?.message,
@@ -923,9 +923,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       >
                         <a
                           href={getNfdMintUrl(
-                            entryGatingNfdParent,
+                            $entryGatingNfdParent,
                             showPrimaryMintNfd(
-                              entryGatingNfdParent,
+                              $entryGatingNfdParent,
                               isFetchingNfdParent,
                               nfdParentAppId,
                               errors.entryGatingNfdParent?.message,

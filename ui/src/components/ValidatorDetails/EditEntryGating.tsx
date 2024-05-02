@@ -128,18 +128,18 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
     }
   }
 
-  const selectedGatingType = form.watch('entryGatingType')
+  const $entryGatingType = form.watch('entryGatingType')
 
-  const showCreatorAddressField = selectedGatingType === String(GatingType.CreatorAccount)
-  const showAssetFields = selectedGatingType === String(GatingType.AssetId)
-  const showCreatorNfdField = selectedGatingType === String(GatingType.CreatorNfd)
-  const showParentNfdField = selectedGatingType === String(GatingType.SegmentNfd)
+  const showCreatorAddressField = $entryGatingType === String(GatingType.CreatorAccount)
+  const showAssetFields = $entryGatingType === String(GatingType.AssetId)
+  const showCreatorNfdField = $entryGatingType === String(GatingType.CreatorNfd)
+  const showParentNfdField = $entryGatingType === String(GatingType.SegmentNfd)
 
   const showMinBalanceField = [
     String(GatingType.CreatorAccount),
     String(GatingType.AssetId),
     String(GatingType.CreatorNfd),
-  ].includes(selectedGatingType)
+  ].includes($entryGatingType)
 
   const fetchNfdAppId = async (
     value: string,
@@ -197,7 +197,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
     }
   }, 500)
 
-  const entryGatingNfdParent = form.watch('entryGatingNfdParent')
+  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
   const showPrimaryMintNfd = (
     name: string,
@@ -218,7 +218,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const toastId = `${TOAST_ID}-validator`
+    const toastId = `${TOAST_ID}-edit-entry-gating`
 
     try {
       setIsSigning(true)
@@ -518,7 +518,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                       size="sm"
                       variant={
                         showPrimaryMintNfd(
-                          entryGatingNfdParent,
+                          $entryGatingNfdParent,
                           isFetchingNfdParent,
                           nfdParentAppId,
                           errors.entryGatingNfdParent?.message,
@@ -530,9 +530,9 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                     >
                       <a
                         href={getNfdMintUrl(
-                          entryGatingNfdParent,
+                          $entryGatingNfdParent,
                           showPrimaryMintNfd(
-                            entryGatingNfdParent,
+                            $entryGatingNfdParent,
                             isFetchingNfdParent,
                             nfdParentAppId,
                             errors.entryGatingNfdParent?.message,

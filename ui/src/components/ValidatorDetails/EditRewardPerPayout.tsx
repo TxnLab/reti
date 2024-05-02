@@ -1,13 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { RotateCcw } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { changeValidatorRewardInfo } from '@/api/contracts'
+import { changeValidatorRewardInfo, fetchValidator } from '@/api/contracts'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import {
@@ -21,6 +20,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { setValidatorQueriesData } from '@/utils/contracts'
+import { validatorSchemas } from '@/utils/validation'
 
 interface EditRewardPerPayoutProps {
   validator: Validator
@@ -32,27 +33,32 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
-  const router = useRouter()
 
   const formSchema = z.object({
-    rewardPerPayout: z
-      .string()
-      .refine((val) => val === '' || (!isNaN(Number(val)) && Number(val) > 0), {
-        message: 'Invalid reward amount per payout',
-      }),
+    rewardPerPayout: validatorSchemas.rewardPerPayout(),
   })
+
+  const {
+    entryGatingType,
+    entryGatingAddress,
+    entryGatingAssets,
+    gatingAssetMinBalance,
+    rewardPerPayout,
+  } = validator.config
+
+  const defaultValues = {
+    rewardPerPayout: String(Number(rewardPerPayout) || ''),
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      rewardPerPayout: String(validator.config.rewardPerPayout || ''),
-    },
+    defaultValues,
   })
 
   const { errors, isDirty } = form.formState
 
   const handleResetForm = () => {
-    form.resetField('rewardPerPayout')
+    form.reset(defaultValues)
     form.clearErrors()
   }
 
@@ -62,6 +68,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
       setTimeout(() => handleResetForm(), 500)
     } else {
       setIsOpen(true)
+      handleResetForm()
     }
   }
 
@@ -69,7 +76,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const toastId = `${TOAST_ID}-validator`
+    const toastId = `${TOAST_ID}-edit-reward-per-payout`
 
     try {
       setIsSigning(true)
@@ -79,9 +86,6 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
       }
 
       toast.loading('Sign transactions to update reward amount per payout...', { id: toastId })
-
-      const { entryGatingType, entryGatingAddress, entryGatingAssets, gatingAssetMinBalance } =
-        validator.config
 
       await changeValidatorRewardInfo(
         validator.id,
@@ -99,30 +103,11 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         duration: 5000,
       })
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              config: {
-                ...validator.config,
-                rewardPerPayout: BigInt(values.rewardPerPayout),
-              },
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator.id)] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to update reward amount per payout', { id: toastId })
       console.error(error)

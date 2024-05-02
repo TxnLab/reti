@@ -1,14 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import algosdk from 'algosdk'
 import { RotateCcw } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { changeValidatorCommissionAddress } from '@/api/contracts'
+import { changeValidatorCommissionAddress, fetchValidator } from '@/api/contracts'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import {
@@ -22,6 +20,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { setValidatorQueriesData } from '@/utils/contracts'
+import { validatorSchemas } from '@/utils/validation'
 
 interface EditCommissionAccountProps {
   validator: Validator
@@ -33,31 +33,26 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
-  const router = useRouter()
 
   const formSchema = z.object({
-    validatorCommissionAddress: z
-      .string()
-      .refine((val) => val !== '', {
-        message: 'Required field',
-      })
-      .refine((val) => algosdk.isValidAddress(val), {
-        message: 'Invalid Algorand address',
-      }),
+    validatorCommissionAddress: validatorSchemas.validatorCommissionAddress(),
   })
+
+  const { validatorCommissionAddress } = validator.config
+  const defaultValues = {
+    validatorCommissionAddress,
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     mode: 'onChange',
-    defaultValues: {
-      validatorCommissionAddress: validator.config.validatorCommissionAddress,
-    },
+    defaultValues,
   })
 
   const { errors, isDirty } = form.formState
 
   const handleResetForm = () => {
-    form.resetField('validatorCommissionAddress')
+    form.reset(defaultValues)
     form.clearErrors()
   }
 
@@ -67,6 +62,7 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
       setTimeout(() => handleResetForm(), 500)
     } else {
       setIsOpen(true)
+      handleResetForm()
     }
   }
 
@@ -74,7 +70,7 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const toastId = `${TOAST_ID}-validator`
+    const toastId = `${TOAST_ID}-edit-commission-account`
 
     try {
       setIsSigning(true)
@@ -99,30 +95,11 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
         duration: 5000,
       })
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              config: {
-                ...validator.config,
-                validatorCommissionAddress: values.validatorCommissionAddress,
-              },
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator.id)] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to update commission account', { id: toastId })
       console.error(error)

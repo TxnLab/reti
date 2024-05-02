@@ -200,6 +200,23 @@ export const validatorSchemas = {
         message: `Cannot exceed ${constraints.maxPoolsPerNode} pools per node`,
       })
   },
+  enableSunset: () => z.boolean(),
+  sunsettingOn: () => {
+    return z.date({
+      required_error: 'Required field',
+    })
+  },
+  sunsettingTo: () => {
+    return z
+      .string()
+      .refine(
+        (val) =>
+          val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
+        {
+          message: 'Invalid validator id',
+        },
+      )
+  },
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

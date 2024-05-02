@@ -1,13 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { CalendarIcon, RotateCcw } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { changeValidatorSunsetInfo } from '@/api/contracts'
+import { changeValidatorSunsetInfo, fetchValidator } from '@/api/contracts'
 import { InfoPopover } from '@/components/InfoPopover'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -26,8 +25,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { setValidatorQueriesData } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { cn } from '@/utils/ui'
+import { validatorSchemas } from '@/utils/validation'
 
 interface EditSunsettingInfoProps {
   validator: Validator
@@ -40,49 +41,31 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
-  const router = useRouter()
 
   const formSchema = z.object({
-    enableSunset: z.boolean(),
-    sunsettingOn: z.date({
-      required_error: 'Required field',
-    }),
-    sunsettingTo: z
-      .string()
-      .refine(
-        (val) =>
-          val === '' || (!isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0),
-        {
-          message: 'Invalid validator id',
-        },
-      ),
+    enableSunset: validatorSchemas.enableSunset(),
+    sunsettingOn: validatorSchemas.sunsettingOn(),
+    sunsettingTo: validatorSchemas.sunsettingTo(),
   })
+
+  const { sunsettingOn, sunsettingTo } = validator.config
+  const defaultValues = {
+    enableSunset: sunsettingOn > 0,
+    sunsettingOn: sunsettingOn > 0 ? dayjs.unix(sunsettingOn).toDate() : undefined,
+    sunsettingTo: String(sunsettingTo || ''),
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      enableSunset: validator.config.sunsettingOn > 0,
-      sunsettingOn:
-        validator.config.sunsettingOn > 0
-          ? dayjs.unix(validator.config.sunsettingOn).toDate()
-          : undefined,
-      sunsettingTo: String(validator.config.sunsettingTo || ''),
-    },
+    defaultValues,
   })
 
   const { errors, isDirty } = form.formState
 
-  const enableSunset = form.watch('enableSunset')
+  const $enableSunset = form.watch('enableSunset')
 
   const handleResetForm = () => {
-    form.reset({
-      enableSunset: validator.config.sunsettingOn > 0,
-      sunsettingOn:
-        validator.config.sunsettingOn > 0
-          ? dayjs.unix(validator.config.sunsettingOn).toDate()
-          : undefined,
-      sunsettingTo: String(validator.config.sunsettingTo || ''),
-    })
+    form.reset(defaultValues)
     form.clearErrors()
   }
 
@@ -92,16 +75,15 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
       setTimeout(() => handleResetForm(), 500)
     } else {
       setIsOpen(true)
+      handleResetForm()
     }
   }
-
-  const infoPopoverClassName = 'mx-1.5 relative top-0.5 sm:mx-1 sm:top-0'
 
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const toastId = `${TOAST_ID}-validator`
+    const toastId = `${TOAST_ID}-edit-sunset-info`
 
     try {
       setIsSigning(true)
@@ -110,16 +92,16 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
         throw new Error('No active address')
       }
 
-      const sunsettingOn = values.enableSunset ? dayjs(values.sunsettingOn).unix() : 0
-      const sunsettingTo =
+      const newSunsettingOn = values.enableSunset ? dayjs(values.sunsettingOn).unix() : 0
+      const newSunsettingTo =
         values.enableSunset && values.sunsettingTo !== '' ? Number(values.sunsettingTo) : 0
 
       toast.loading('Sign transactions to update sunsetting info...', { id: toastId })
 
       await changeValidatorSunsetInfo(
         validator.id,
-        sunsettingOn,
-        sunsettingTo,
+        newSunsettingOn,
+        newSunsettingTo,
         transactionSigner,
         activeAddress,
       )
@@ -129,31 +111,11 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
         duration: 5000,
       })
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              config: {
-                ...validator.config,
-                sunsettingOn,
-                sunsettingTo,
-              },
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to update sunsetting info', { id: toastId })
       console.error(error)
@@ -172,7 +134,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
       onOpenChange={handleOpenChange}
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="">
+        <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="grid gap-4 py-4">
             <FormField
               control={form.control}
@@ -204,7 +166,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
 
             <div
               className={cn('grid gap-4 grid-cols-5 sm:grid-cols-2 transition-opacity', {
-                'opacity-0 pointer-events-none': !enableSunset,
+                'opacity-0 pointer-events-none': !$enableSunset,
               })}
             >
               <FormField
@@ -212,7 +174,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                 name="sunsettingOn"
                 render={({ field }) => (
                   <FormItem className="col-span-3 sm:col-auto">
-                    <FormLabel className={cn({ 'pointer-events-none': !enableSunset })}>
+                    <FormLabel className={cn({ 'pointer-events-none': !$enableSunset })}>
                       Sunset date
                     </FormLabel>
                     <div className="flex items-center gap-x-3">
@@ -225,7 +187,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                                 'w-[240px] h-9 pl-3 text-left font-normal disabled:cursor-not-allowed',
                                 !field.value && 'text-muted-foreground',
                               )}
-                              disabled={!enableSunset}
+                              disabled={!$enableSunset}
                             >
                               {field.value ? (
                                 dayjs(field.value).format('LL')
@@ -261,12 +223,12 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                   <FormItem className="col-span-2 sm:col-auto">
                     <FormLabel>
                       Migrate to
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
                         Validator ID that stakers should migrate to, if known (optional)
                       </InfoPopover>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="" disabled={!enableSunset} {...field} />
+                      <Input placeholder="" disabled={!$enableSunset} {...field} />
                     </FormControl>
                     <FormMessage>{errors.sunsettingTo?.message}</FormMessage>
                   </FormItem>
