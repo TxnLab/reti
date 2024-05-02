@@ -315,7 +315,7 @@ export function Details({ validator }: DetailsProps) {
                           params={{ validatorId: String(validator.config.sunsettingTo) }}
                           className="hover:underline underline-offset-4"
                         >
-                          Validator 4
+                          Validator {validator.config.sunsettingTo}
                         </Link>
                       </AlertDescription>
                     </Alert>

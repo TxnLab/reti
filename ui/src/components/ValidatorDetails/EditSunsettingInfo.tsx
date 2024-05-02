@@ -204,7 +204,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                             defaultMonth={field.value}
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date < dayjs().add(24, 'hours').toDate()}
+                            disabled={(date) => dayjs(date).isBefore(dayjs().startOf('day'))}
                             onDayClick={() => setIsCalendarOpen(false)}
                             initialFocus
                           />
