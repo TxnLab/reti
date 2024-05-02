@@ -23,6 +23,7 @@ import {
   ValidatorConfig,
   ValidatorState,
 } from '@/interfaces/validator'
+import { dayjs } from '@/utils/dayjs'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
@@ -263,7 +264,12 @@ export function isStakingDisabled(
   const maxStakersReached = totalStakers >= maxStakers
   const maxStakeReached = Number(totalAlgoStaked) >= maxStake
 
-  return noPools || maxStakersReached || maxStakeReached
+  const isSunsetted =
+    validator.config.sunsettingOn > 0
+      ? dayjs.unix(validator.config.sunsettingOn).isBefore(dayjs())
+      : false
+
+  return noPools || maxStakersReached || maxStakeReached || isSunsetted
 }
 
 export function isUnstakingDisabled(
