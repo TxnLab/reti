@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { nfdQueryOptions } from '@/api/queries'
 import { NfdAvatar } from '@/components/NfdAvatar'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip } from '@/components/Tooltip'
 import { Nfd } from '@/interfaces/nfd'
 import { getNfdProfileUrl } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
@@ -75,16 +75,7 @@ function NfdThumbnailBase({
   const renderContent = () => (link ? renderLink() : renderThumbnail())
 
   if (tooltip) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>{renderContent()}</TooltipTrigger>
-          <TooltipContent className="bg-stone-900 text-white font-semibold tracking-tight dark:bg-white dark:text-stone-900">
-            {nfd.name}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
+    return <Tooltip content={nfd.name}>{renderContent()}</Tooltip>
   }
 
   return renderContent()
