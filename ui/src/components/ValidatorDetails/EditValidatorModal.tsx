@@ -36,7 +36,7 @@ export function EditValidatorModal({
             <Settings2 className="h-5 w-5" />
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-w-[600px]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
