@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
-import { fetchAssetHoldings, fetchBalance } from '@/api/algod'
+import { fetchAssetHoldings, fetchBalance, fetchSuggestedParams } from '@/api/algod'
 import {
   fetchMbrAmounts,
   fetchNodePoolAssignments,
@@ -95,3 +95,9 @@ export const stakesQueryOptions = (staker: string | null) =>
     retry: false,
     refetchInterval: 1000 * 60, // every minute
   })
+
+export const suggestedParamsQueryOptions = queryOptions({
+  queryKey: ['suggested-params'],
+  queryFn: () => fetchSuggestedParams(),
+  staleTime: 1000 * 60 * 5, // every 5 mins
+})
