@@ -1,6 +1,6 @@
 {
     "name": "bootstrap",
-    "version": "0.7.3",
+    "version": "0.8.0",
     "description": "",
     "main": "index.ts",
     "scripts": {
