@@ -1111,3 +1111,86 @@ export async function fetchStakedInfoForPool(poolAppId: number): Promise<StakedI
     throw error
   }
 }
+
+export async function changeValidatorManager(
+  validatorId: number | bigint,
+  manager: string,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  return validatorClient
+    .compose()
+    .changeValidatorManager({ validatorId, manager })
+    .execute({ populateAppCallResources: true })
+}
+
+export async function changeValidatorSunsetInfo(
+  validatorId: number | bigint,
+  sunsettingOn: number,
+  sunsettingTo: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  return validatorClient
+    .compose()
+    .changeValidatorSunsetInfo({ validatorId, sunsettingOn, sunsettingTo })
+    .execute({ populateAppCallResources: true })
+}
+
+export async function changeValidatorNfd(
+  validatorId: number | bigint,
+  nfdAppId: number,
+  nfdName: string,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  return validatorClient
+    .compose()
+    .changeValidatorNfd({ validatorId, nfdAppId, nfdName })
+    .execute({ populateAppCallResources: true })
+}
+
+export async function changeValidatorCommissionAddress(
+  validatorId: number | bigint,
+  commissionAddress: string,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  return validatorClient
+    .compose()
+    .changeValidatorCommissionAddress({ validatorId, commissionAddress })
+    .execute({ populateAppCallResources: true })
+}
+
+export async function changeValidatorRewardInfo(
+  validatorId: number | bigint,
+  entryGatingType: number,
+  entryGatingAddress: string,
+  entryGatingAssets: EntryGatingAssets,
+  gatingAssetMinBalance: number | bigint,
+  rewardPerPayout: number | bigint,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  const validatorClient = makeValidatorClient(signer, activeAddress)
+
+  return validatorClient
+    .compose()
+    .changeValidatorRewardInfo({
+      validatorId,
+      entryGatingType,
+      entryGatingAddress,
+      entryGatingAssets,
+      gatingAssetMinBalance,
+      rewardPerPayout,
+    })
+    .execute({ populateAppCallResources: true })
+}

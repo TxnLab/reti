@@ -154,30 +154,30 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     if (!selectedPoolInfo) {
       return (
         <div className="w-full">
-          <div className="py-6 px-4 sm:px-0">
+          <div className="py-6">
             <h4 className="text-xl font-semibold leading-none tracking-tight">All Pools</h4>
           </div>
           <div className="border-t border-foreground-muted">
             <dl className="divide-y divide-foreground-muted">
-              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+              <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Total Pools</dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
                   {validator.state.numPools}
                 </dd>
               </div>
-              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+              <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">
                   Total Stakers
                 </dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
                   {validator.state.totalStakers}
                 </dd>
               </div>
-              <div className="px-4 py-4 sm:px-0">
+              <div className="py-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">
                   Total Staked
                 </dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
                   <div className="w-full mt-1">
                     <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content flex items-center justify-between">
                       <span>
@@ -220,9 +220,9 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         <div className="border-t border-foreground-muted">
           <dl className="divide-y divide-foreground-muted">
             {!!selectedPoolInfo.poolAddress && (
-              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+              <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Address</dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm font-mono leading-6">
                   <a
                     href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
                     target="_blank"
@@ -243,15 +243,15 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 </dd>
               </div>
             )}
-            <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+            <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
-              <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+              <dd className="flex items-center gap-x-2 text-sm leading-6">
                 {selectedPoolInfo.totalStakers}
               </dd>
             </div>
             <div className="px-4 py-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Staked</dt>
-              <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+              <dd className="flex items-center gap-x-2 text-sm leading-6">
                 <div className="w-full mt-1">
                   <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content flex items-center justify-between">
                     <span>
