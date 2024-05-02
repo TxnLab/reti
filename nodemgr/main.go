@@ -11,9 +11,9 @@ import (
 var App *RetiApp
 
 func main() {
-	App = initApp()
-
 	misc.LoadEnvSettings()
+
+	App = initApp()
 	err := App.cliCmd.Run(context.Background(), os.Args)
 	if err != nil {
 		slog.Error("Error in execution:", "msg", err)

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -124,7 +125,7 @@ type AccountWithMinBalance struct {
 	MinBalance uint64 `json:"min-balance,omitempty"`
 }
 
-func GetIntFromGlobalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
+func GetUint64FromGlobalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
 	for _, gs := range globalState {
 		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
 		if string(rawKey) == keyName && gs.Value.Type == 2 {
@@ -132,6 +133,17 @@ func GetIntFromGlobalState(globalState []models.TealKeyValue, keyName string) (u
 		}
 	}
 	return 0, ErrStateKeyNotFound
+}
+
+func GetUint128FromGlobalState(globalState []models.TealKeyValue, keyName string) (*big.Int, error) {
+	for _, gs := range globalState {
+		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
+		if string(rawKey) == keyName && gs.Value.Type == 1 {
+			value, _ := base64.StdEncoding.DecodeString(gs.Value.Bytes)
+			return new(big.Int).SetBytes(value), nil
+		}
+	}
+	return nil, ErrStateKeyNotFound
 }
 
 func GetStringFromGlobalState(globalState []models.TealKeyValue, keyName string) (string, error) {
@@ -166,4 +178,24 @@ func GetVersionString(ctx context.Context, algoClient *algod.Client) (string, er
 		return "", fmt.Errorf("error fetching /versions from algod: %w", err)
 	}
 	return fmt.Sprintf("%d.%d.%d %s [%s]", vers.Build.Major, vers.Build.Minor, vers.Build.BuildNumber, vers.Build.Branch, vers.Build.CommitHash), nil
+}
+
+func CalcBlockTimes(ctx context.Context, algoClient *algod.Client, numRounds uint64) (time.Duration, error) {
+	status, err := algoClient.Status().Do(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("unable to fetch node status: %w", err)
+	}
+	var blockTimes []time.Time
+	for round := status.LastRound - numRounds; round < status.LastRound; round++ {
+		block, err := algoClient.Block(round).Do(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("unable to fetch block in getAverageBlockTime, err:%w", err)
+		}
+		blockTimes = append(blockTimes, time.Unix(block.TimeStamp, 0))
+	}
+	var totalBlockTime time.Duration
+	for i := 1; i < len(blockTimes); i++ {
+		totalBlockTime += blockTimes[i].Sub(blockTimes[i-1])
+	}
+	return totalBlockTime / time.Duration(len(blockTimes)-1), nil
 }

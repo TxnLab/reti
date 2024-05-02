@@ -39,7 +39,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { ValidatorRewards } from '@/components/ValidatorRewards'
+import { useBlockTime } from '@/hooks/useBlockTime'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
@@ -54,8 +57,8 @@ import {
 import { formatDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
 import { ellipseAddress } from '@/utils/ellipseAddress'
+import { formatNumber } from '@/utils/format'
 import { cn } from '@/utils/ui'
-import { ValidatorRewards } from '@/components/ValidatorRewards'
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -77,6 +80,8 @@ export function ValidatorTable({
 
   const { transactionSigner, activeAddress } = useWallet()
   const navigate = useNavigate()
+
+  const blockTime = useBlockTime()
 
   const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [
     { id: 'stake', desc: true },
@@ -227,12 +232,26 @@ export function ValidatorTable({
     },
     {
       id: 'epoch',
-      accessorFn: (row) => row.config.payoutEveryXMins,
+      accessorFn: (row) => row.config.epochRoundLength,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Epoch" />,
       cell: ({ row }) => {
         const validator = row.original
-        const frequencyFormatted = formatDuration(validator.config.payoutEveryXMins, true)
-        return <span className="capitalize">{frequencyFormatted}</span>
+        const epochLength = validator.config.epochRoundLength
+        const numRounds = formatNumber(epochLength)
+        const durationEstimate = epochLength * blockTime.ms
+
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <span className="capitalize">{numRounds} blocks</span>
+              </TooltipTrigger>
+              <TooltipContent className="bg-stone-900 text-white font-semibold tracking-tight dark:bg-white dark:text-stone-900">
+                Pays out every ~{formatDuration(durationEstimate)}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
       },
     },
     {

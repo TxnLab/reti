@@ -13,12 +13,10 @@ export const Route = createFileRoute('/')({
   beforeLoad: () => {
     return {
       validatorsQueryOptions,
-      constraintsQueryOptions,
     }
   },
-  loader: async ({ context: { queryClient, validatorsQueryOptions, constraintsQueryOptions } }) => {
+  loader: ({ context: { queryClient, validatorsQueryOptions } }) => {
     queryClient.ensureQueryData(validatorsQueryOptions)
-    queryClient.ensureQueryData(constraintsQueryOptions)
   },
   component: Dashboard,
   pendingComponent: () => <Loading size="lg" className="opacity-50" />,

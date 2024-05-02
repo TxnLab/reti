@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
@@ -20,7 +21,7 @@ type StakedInfo struct {
 	Balance            uint64
 	TotalRewarded      uint64
 	RewardTokenBalance uint64
-	EntryTime          uint64
+	EntryRound         uint64
 }
 
 func (r *Reti) GetLedgerForPool(poolAppID uint64) ([]StakedInfo, error) {
@@ -40,7 +41,7 @@ func (r *Reti) GetLedgerForPool(poolAppID uint64) ([]StakedInfo, error) {
 		stakedInfo.Balance = binary.BigEndian.Uint64(ledgerData[32:40])
 		stakedInfo.TotalRewarded = binary.BigEndian.Uint64(ledgerData[40:48])
 		stakedInfo.RewardTokenBalance = binary.BigEndian.Uint64(ledgerData[48:56])
-		stakedInfo.EntryTime = binary.BigEndian.Uint64(ledgerData[56:64])
+		stakedInfo.EntryRound = binary.BigEndian.Uint64(ledgerData[56:64])
 		retLedger = append(retLedger, stakedInfo)
 	}
 
@@ -52,7 +53,7 @@ func (r *Reti) GetPoolID(poolAppID uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolPoolId)
+	return algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, StakePoolPoolId)
 }
 
 func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
@@ -60,7 +61,23 @@ func (r *Reti) GetLastPayout(poolAppID uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, StakePoolLastPayout)
+	return algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, StakePoolLastPayout)
+}
+
+func (r *Reti) GetAvgApr(poolAppID uint64) (*big.Int, error) {
+	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return algo.GetUint128FromGlobalState(appInfo.Params.GlobalState, StakePoolEWMA)
+}
+
+func (r *Reti) GetStakeAccum(poolAppID uint64) (*big.Int, error) {
+	appInfo, err := r.algoClient.GetApplicationByID(poolAppID).Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return algo.GetUint128FromGlobalState(appInfo.Params.GlobalState, StakePoolStakeAccum)
 }
 
 func (r *Reti) GetAlgodVer(poolAppID uint64) (string, error) {
@@ -122,7 +139,23 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		return fmt.Errorf("failed to get validator pools: %w", err)
 	}
 	rewardAvail := r.PoolAvailableRewards(poolAppID, pools[poolID-1].TotalAlgoStaked)
-	misc.Infof(r.Logger, "Pool:%d epoch update for app id:%d, avail rewards:%s", poolID, poolAppID, algo.FormattedAlgoAmount(rewardAvail))
+
+	status, err := r.algoClient.Status().Do(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get algod status at start: %w", err)
+	}
+	var epochStr string
+	epochStart := status.LastRound - status.LastRound%uint64(info.Config.EpochRoundLength)
+	if epochStart != status.LastRound {
+		epochStr = fmt.Sprintf("round:%d [EpochStart:%d]", status.LastRound, epochStart)
+	} else {
+		epochStr = fmt.Sprintf("EpochStart:%d", epochStart)
+	}
+	apr, _ := r.GetAvgApr(poolAppID)
+	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
+	floatApr.Quo(floatApr, big.NewFloat(10000.0))
+
+	misc.Infof(r.Logger, "[EpochBalanceUpdate] pool:%d epoch update at %s for app id:%d, avail rewards:%s, pre-epoch apr:%s", poolID, epochStr, poolAppID, algo.FormattedAlgoAmount(rewardAvail), floatApr.String())
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
@@ -238,7 +271,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	return nil
 }
 
-func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
+func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, offlineToOnline bool, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -252,10 +285,29 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, s
 	params.FlatFee = true
 	params.Fee = transaction.MinTxnFee * 3
 
+	var goOnlineFee uint64 = 0
+	if true {
+		// TODO - this is temporary - need to wait until AVM has opcode which can detect if acount is offline
+		// otherwise we always have to pay it
+		//if offlineToOnline {
+		// if going offline to online - pay extra 2 algo so the account is payouts eligible !
+		r.Logger.Info("paying extra fee for offline->online transition")
+		goOnlineFee = 2e6
+	}
+
+	paymentTxn, err := transaction.MakePaymentTxn(caller.String(), crypto.GetApplicationAddress(poolAppID).String(), goOnlineFee, nil, "", params)
+	payTxWithSigner := transaction.TransactionWithSigner{
+		Txn:    paymentTxn,
+		Signer: algo.SignWithAccountForATC(r.signer, caller.String()),
+	}
+
 	err = atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  poolAppID,
 		Method: goOnlineMethod,
 		MethodArgs: []any{
+			// -- payment transaction to cover fee of going online (if needed)
+			payTxWithSigner,
+			//
 			votePK,
 			selectionPK,
 			stateProofPK,
@@ -277,10 +329,11 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, s
 		return err
 	}
 
-	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	result, err := atc.Execute(r.algoClient, context.Background(), 4)
 	if err != nil {
 		return err
 	}
+	misc.Infof(r.Logger, "went online in round:%d", result.ConfirmedRound)
 	return nil
 }
 

@@ -138,13 +138,13 @@ export function StakingTable({
       cell: ({ row }) => {
         const stakerValidatorData = row.original
         const validator = validators.find((v) => v.id === stakerValidatorData.validatorId)
-        const { payoutEveryXMins } = validator?.config || {}
+        const { epochRoundLength } = validator?.config || {}
 
         const allPoolsEligibility = stakerValidatorData.pools.map((poolData) => {
           const eligibility = calculateRewardEligibility(
-            payoutEveryXMins,
+            epochRoundLength,
             poolData.lastPayout,
-            poolData.entryTime,
+            poolData.entryRound,
           )
           return eligibility
         })

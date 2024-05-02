@@ -14,10 +14,10 @@ import { EditRewardPerPayout } from '@/components/ValidatorDetails/EditRewardPer
 import { EditSunsettingInfo } from '@/components/ValidatorDetails/EditSunsettingInfo'
 import { GatingType } from '@/constants/gating'
 import { Validator } from '@/interfaces/validator'
-import { dayjs, formatDuration } from '@/utils/dayjs'
+import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { formatAssetAmount } from '@/utils/format'
+import { formatAssetAmount, formatNumber } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
@@ -207,7 +207,7 @@ export function Details({ validator }: DetailsProps) {
                 </dt>
                 <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
                   <span className="capitalize">
-                    {formatDuration(validator.config.payoutEveryXMins)}
+                    {formatNumber(validator.config.epochRoundLength)} blocks
                   </span>
                 </dd>
               </div>

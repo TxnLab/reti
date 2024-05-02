@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { isAxiosError } from 'axios'
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,15 +27,18 @@ import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { GatingType } from '@/constants/gating'
+import { useBlockTime } from '@/hooks/useBlockTime'
 import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
-  getEpochLengthMinutes,
+  getEpochLengthBlocks,
   setValidatorQueriesData,
   transformEntryGatingAssets,
 } from '@/utils/contracts'
@@ -42,7 +47,6 @@ import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
 import { entryGatingRefinement, validatorSchemas } from '@/utils/validation'
-import { useQueryClient } from '@tanstack/react-query'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -57,7 +61,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
   const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
-  const [epochTimeframe, setEpochTimeframe] = React.useState('minutes')
+  const [epochTimeframe, setEpochTimeframe] = React.useState('blocks')
   const [isSigning, setIsSigning] = React.useState(false)
 
   const { transactionSigner, activeAddress } = useWallet()
@@ -80,7 +84,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       gatingAssetMinBalance: validatorSchemas.gatingAssetMinBalance(),
       rewardTokenId: validatorSchemas.rewardTokenId(),
       rewardPerPayout: validatorSchemas.rewardPerPayout(),
-      payoutEveryXMins: validatorSchemas.payoutEveryXMins(constraints),
+      epochRoundLength: validatorSchemas.epochRoundLength(constraints),
       percentToValidator: validatorSchemas.percentToValidator(constraints),
       validatorCommissionAddress: validatorSchemas.validatorCommissionAddress(),
       minEntryStake: validatorSchemas.minEntryStake(constraints),
@@ -104,7 +108,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       gatingAssetMinBalance: '',
       rewardTokenId: '',
       rewardPerPayout: '',
-      payoutEveryXMins: '',
+      epochRoundLength: '',
       percentToValidator: '',
       validatorCommissionAddress: '',
       minEntryStake: '',
@@ -221,6 +225,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const infoPopoverClassName = 'mx-1.5 relative top-0.5 sm:mx-1 sm:top-0'
 
+  const blockTime = useBlockTime()
+
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
 
@@ -236,7 +242,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
-      const payoutEveryXMins = getEpochLengthMinutes(values.payoutEveryXMins, epochTimeframe)
+      const epochRoundLength = getEpochLengthBlocks(
+        values.epochRoundLength,
+        epochTimeframe,
+        blockTime.ms,
+      )
+
       const entryGatingAssets = transformEntryGatingAssets(
         values.entryGatingType,
         values.entryGatingAssets,
@@ -246,7 +257,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const newValues = {
         ...values,
-        payoutEveryXMins: String(payoutEveryXMins),
+        epochRoundLength: String(epochRoundLength),
         entryGatingAssets,
       }
 
@@ -445,13 +456,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="payoutEveryXMins"
+                name="epochRoundLength"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
                       Epoch length
                       <InfoPopover className={infoPopoverClassName}>
-                        Frequency of rewards payouts
+                        Frequency of rewards payouts, in blocks. If a timeframe is selected, it will
+                        be converted to blocks based on the current average block time (approx.{' '}
+                        {blockTime.secs} seconds).
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
@@ -469,14 +482,35 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="minutes">Minutes</SelectItem>
-                            <SelectItem value="hours">Hours</SelectItem>
-                            <SelectItem value="days">Days</SelectItem>
+                            <SelectGroup>
+                              <SelectItem value="blocks">Blocks</SelectItem>
+                            </SelectGroup>
+                            <div className="-mx-1 my-1">
+                              <Separator />
+                            </div>
+                            <SelectGroup>
+                              <SelectItem value="minutes" disabled={!blockTime}>
+                                Minutes
+                              </SelectItem>
+                              <SelectItem value="hours" disabled={!blockTime}>
+                                Hours
+                              </SelectItem>
+                              <SelectItem value="days" disabled={!blockTime}>
+                                Days
+                              </SelectItem>
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                       </div>
                     </FormControl>
-                    <FormMessage>{errors.payoutEveryXMins?.message}</FormMessage>
+                    <FormDescription
+                      className={cn({ hidden: epochTimeframe === 'blocks' || !blockTime })}
+                    >
+                      Timeframes are approximate and based on{' '}
+                      <strong className="font-semibold text-foreground">{blockTime.secs}s</strong>{' '}
+                      avg block time
+                    </FormDescription>
+                    <FormMessage>{errors.epochRoundLength?.message}</FormMessage>
                   </FormItem>
                 )}
               />

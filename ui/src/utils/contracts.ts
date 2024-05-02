@@ -9,21 +9,20 @@ import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
+  EntryGatingAssets,
   NodeInfo,
   NodePoolAssignmentConfig,
+  PoolInfo,
   PoolTokenPayoutRatio,
-  RawPoolTokenPayoutRatios,
   RawNodePoolAssignmentConfig,
+  RawPoolsInfo,
+  RawPoolTokenPayoutRatios,
+  RawValidatorConfig,
+  RawValidatorState,
   Validator,
   ValidatorConfig,
-  RawValidatorConfig,
   ValidatorState,
-  RawValidatorState,
-  PoolInfo,
-  RawPoolsInfo,
-  EntryGatingAssets,
 } from '@/interfaces/validator'
-import { dayjs } from '@/utils/dayjs'
 
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
@@ -37,7 +36,7 @@ export function transformValidatorConfig(rawConfig: RawValidatorConfig): Validat
     gatingAssetMinBalance: rawConfig[7],
     rewardTokenId: Number(rawConfig[8]),
     rewardPerPayout: rawConfig[9],
-    payoutEveryXMins: Number(rawConfig[10]),
+    epochRoundLength: Number(rawConfig[10]),
     percentToValidator: Number(rawConfig[11]),
     validatorCommissionAddress: rawConfig[12],
     minEntryStake: rawConfig[13],
@@ -111,7 +110,7 @@ export function transformStakedInfo(data: Uint8Array): StakedInfo {
     balance: algosdk.bytesToBigInt(data.slice(32, 40)),
     totalRewarded: algosdk.bytesToBigInt(data.slice(40, 48)),
     rewardTokenBalance: algosdk.bytesToBigInt(data.slice(48, 56)),
-    entryTime: Number(algosdk.bytesToBigInt(data.slice(56, 64))),
+    entryRound: Number(algosdk.bytesToBigInt(data.slice(56, 64))),
   }
 }
 
@@ -154,14 +153,29 @@ export function findFirstAvailableNode(
   return null // No available slot found
 }
 
-export function getEpochLengthMinutes(value: string, epochTimeframe: string): number {
+export function getEpochLengthBlocks(
+  value: string,
+  epochTimeframe: string,
+  averageBlockTime: number = 0,
+): number {
+  if (epochTimeframe !== 'blocks' && averageBlockTime <= 0) {
+    throw new Error('Average block time must be greater than zero.')
+  }
+
+  const numericValue = Number(value)
+  if (isNaN(numericValue)) {
+    throw new Error('Value must be a number.')
+  }
+
   switch (epochTimeframe) {
+    case 'blocks':
+      return numericValue // If 'blocks', return numericValue as-is
     case 'minutes':
-      return Number(value)
+      return Math.floor((numericValue * 60 * 1000) / averageBlockTime)
     case 'hours':
-      return Number(value) * 60
+      return Math.floor((numericValue * 60 * 60 * 1000) / averageBlockTime)
     case 'days':
-      return Number(value) * 60 * 24
+      return Math.floor((numericValue * 24 * 60 * 60 * 1000) / averageBlockTime)
     default:
       return 0
   }
@@ -419,36 +433,31 @@ export function calculateMaxAvailableToStake(validator: Validator, constraints?:
 /**
  * Calculate rewards eligibility percentage for a staker based on their entry time and last pool payout time
  *
- * @param {number} epochLengthMins Validator payout frequency in minutes (payoutEveryXMins)
- * @param {number} lastPoolPayoutTime Last pool payout time in Unix timestamp
- * @param {number} entryTime Staker entry time in Unix timestamp (15 min postdated)
+ * @param {number} epochRoundLength Validator payout frequency in rounds
+ * @param {number} lastPoolPayoutRound Last pool payout round number
+ * @param {number} entryRound Staker entry time in Unix timestamp (15 min postdated)
  * @returns {number | null} Rewards eligibility percentage, or null if any input parameters are zero/undefined
  */
 export function calculateRewardEligibility(
-  epochLengthMins = 0,
-  lastPoolPayoutTime = 0,
-  entryTime = 0,
+  epochRoundLength: number = 0,
+  lastPoolPayoutRound: number = 0,
+  entryRound: number = 0,
 ): number | null {
-  if (epochLengthMins == 0 || entryTime == 0 || lastPoolPayoutTime == 0) {
+  if (epochRoundLength == 0 || entryRound == 0 || lastPoolPayoutRound == 0) {
     return null
   }
 
-  const now = dayjs()
-  const entry = dayjs.unix(entryTime)
-  const lastPayout = dayjs.unix(lastPoolPayoutTime)
+  // Calc next payout round
+  const nextEpoch =
+    lastPoolPayoutRound - (lastPoolPayoutRound % epochRoundLength) + epochRoundLength
 
-  // Calculate the next payout time
-  let nextPayout = lastPayout.add(epochLengthMins, 'minutes')
-
-  // If the next payout time is in the past (i.e., no rewards last payout), set next payout to now
-  if (nextPayout.isBefore(now)) {
-    nextPayout = now
+  // If the next payout time is in the past (i.e., no rewards last payout), there can't be a reward
+  if (nextEpoch < entryRound) {
+    return 0
   }
-
-  // Calculate rewards eligibility as a percentage of time elapsed since entry
-  const epochLengthSecs = dayjs.duration({ minutes: epochLengthMins }).asSeconds()
-  const elapsedTimeSecs = nextPayout.diff(entry, 'seconds')
-  let eligibilityPercent = (elapsedTimeSecs / epochLengthSecs) * 100
+  // Calculate rewards eligibility as a percentage entry round vs epoch beginning
+  const timeInEpoch = nextEpoch - entryRound
+  let eligibilityPercent = (timeInEpoch / epochRoundLength) * 100
 
   // Ensure eligibility falls within 0-100% range
   // If eligibility is negative, it means they're past the epoch (entry time + 320 rounds, ~16 mins)

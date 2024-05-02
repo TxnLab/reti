@@ -24,11 +24,12 @@ import {
 const MAX_NODES = 8 // more just as a reasonable limit and cap on contract storage
 const MAX_POOLS_PER_NODE = 3 // max number of pools per node
 // This MAX_POOLS constant has to be explicitly specified in ValidatorInfo.pools[ xxx ] StaticArray!
+// It also must be reflected in poolPctOfWhole in PoolTokenPayoutRatio!
 // if this constant is changed, the calculated value must be put in manually into the StaticArray definition.
 const MAX_POOLS = MAX_NODES * MAX_POOLS_PER_NODE
 
-const MIN_PAYOUT_MINS = 1
-const MAX_PAYOUT_MINS = 10080 // 7 days in minutes
+const MIN_EPOCH_LENGTH = 1 // 1 round is technical minimum but its absurd - 20 would be approx 1 minute
+const MAX_EPOCH_LENGTH = 1000000 // 1 million rounds or.. just over a month ?
 const MAX_POOLS_PER_STAKER = 6
 
 type ValidatorIdType = uint64
@@ -78,7 +79,7 @@ export type ValidatorConfig = {
     // (by their % stake of the validators total)
     rewardPerPayout: uint64
 
-    payoutEveryXMins: uint16 // Payout frequency in minutes (can be no shorter than this)
+    epochRoundLength: uint32 // Number of rounds per epoch - ie: 30,857 for approx 24hrs w/ 2.8s round times
     percentToValidator: uint32 // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 
     validatorCommissionAddress: Address // [CHANGEABLE] account that receives the validation commission each epoch payout (can be ZeroAddress)
@@ -118,7 +119,7 @@ type NodePoolAssignmentConfig = {
 export type PoolTokenPayoutRatio = {
     // MUST TRACK THE MAX_POOLS CONSTANT (MAX_POOLS_PER_NODE * MAX_NODES) !
     poolPctOfWhole: StaticArray<uint64, 24>
-    // epoch timestmap when set - only pool 1 caller can trigger/calculate this and only once per epoch
+    // current round when last set - only pool 1 caller can trigger/calculate this and only once per epoch
     // set and compared against pool 1's lastPayout property.
     updatedForPayout: uint64
 }
@@ -140,8 +141,8 @@ type MbrAmounts = {
 }
 
 type Constraints = {
-    epochPayoutMinsMin: uint64
-    epochPayoutMinsMax: uint64
+    epochPayoutRoundsMin: uint64
+    epochPayoutRoundsMax: uint64
     minPctToValidatorWFourDecimals: uint64
     maxPctToValidatorWFourDecimals: uint64
     minEntryStake: uint64 // in microAlgo
@@ -167,10 +168,11 @@ export class ValidatorRegistry extends Contract {
     // ======
     // GLOBAL STATE AND TEMPLATES
     // ======
-    numValidators = GlobalStateKey<uint64>({ key: 'numV' })
+    stakingPoolApprovalProgram = BoxKey<bytes>({ key: 'poolTemplateApprovalBytes' })
 
-    // The app id of a staking pool contract instance to use as template for newly created pools
-    stakingPoolTemplateAppId = GlobalStateKey<uint64>({ key: 'poolTemplateAppId' })
+    stakingPoolInitialized = GlobalStateKey<boolean>({ key: 'init' })
+
+    numValidators = GlobalStateKey<uint64>({ key: 'numV' })
 
     // Track the 'global' protocol number of stakers
     numStakers = GlobalStateKey<uint64>({ key: 'numStakers' })
@@ -191,11 +193,25 @@ export class ValidatorRegistry extends Contract {
     // ======
     // PUBLIC CONTRACT METHODS
     // ======
-    createApplication(poolTemplateAppId: uint64): void {
+    createApplication(): void {
+        this.stakingPoolInitialized.value = false
         this.numValidators.value = 0
-        this.stakingPoolTemplateAppId.value = poolTemplateAppId
         this.numStakers.value = 0
         this.totalAlgoStaked.value = 0
+    }
+
+    initStakingContract(approvalProgramSize: uint64): void {
+        // can only be called once !
+        this.stakingPoolApprovalProgram.create(approvalProgramSize)
+    }
+
+    loadStakingContractData(offset: uint64, data: bytes): void {
+        assert(!this.stakingPoolInitialized.value)
+        this.stakingPoolApprovalProgram.replace(offset, data)
+    }
+
+    finalizeStakingContract(): void {
+        this.stakingPoolInitialized.value = true
     }
 
     /**
@@ -219,7 +235,9 @@ export class ValidatorRegistry extends Contract {
             addValidatorMbr: this.costForBoxStorage(1 /* v prefix */ + len<ValidatorIdType>() + len<ValidatorInfo>()),
             addPoolMbr: this.minBalanceForAccount(
                 1,
-                0,
+                // we could calculate this directly by referencing the size of stakingPoolApprovalProgram but it would
+                // mean our callers would have to reference the box AND buy up i/o - so just go max on extra pages
+                3,
                 0,
                 0,
                 0,
@@ -242,8 +260,8 @@ export class ValidatorRegistry extends Contract {
      */
     getProtocolConstraints(): Constraints {
         return {
-            epochPayoutMinsMin: MIN_PAYOUT_MINS,
-            epochPayoutMinsMax: MAX_PAYOUT_MINS,
+            epochPayoutRoundsMin: MIN_EPOCH_LENGTH,
+            epochPayoutRoundsMax: MAX_EPOCH_LENGTH,
             minPctToValidatorWFourDecimals: MIN_PCT_TO_VALIDATOR,
             maxPctToValidatorWFourDecimals: MAX_PCT_TO_VALIDATOR,
             minEntryStake: MIN_ALGO_STAKE_PER_POOL,
@@ -389,10 +407,12 @@ export class ValidatorRegistry extends Contract {
     }
 
     /** Adds a new validator
-     * @param mbrPayment payment from caller which covers mbr increase of new validator storage
-     * @param nfdName (Optional) Name of nfd (used as double-check against id specified in config)
-     * @param config ValidatorConfig struct
-     * @returns validator id
+     * Requires at least 10 ALGO as the 'fee' for the transaction to help dissuade spammed validator adds.
+     *
+     * @param {PayTxn} mbrPayment payment from caller which covers mbr increase of new validator storage
+     * @param {string} nfdName (Optional) Name of nfd (used as double-check against id specified in config)
+     * @param {ValidatorConfig} config ValidatorConfig struct
+     * @returns {uint64} validator id
      */
     addValidator(mbrPayment: PayTxn, nfdName: string, config: ValidatorConfig): uint64 {
         this.validateConfig(config)
@@ -401,6 +421,8 @@ export class ValidatorRegistry extends Contract {
         assert(this.txn.sender === config.owner, 'sender must be owner to add new validator')
 
         verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addValidatorMbr })
+
+        assert(mbrPayment.fee > 10 * 1000000, 'fee must be 10 ALGO or more to prevent spamming of validators')
 
         // We're adding a new validator - same owner might have multiple - we don't care.
         const validatorId = this.numValidators.value + 1
@@ -467,18 +489,15 @@ export class ValidatorRegistry extends Contract {
 
     /**
      * Changes the NFD for a validator in the validatorList contract.
-     * [ ONLY OWNER OR MANAGER CAN CHANGE ]
+     * [ ONLY OWNER CAN CHANGE ]
      *
      * @param {ValidatorIdType} validatorId - The id of the validator to update.
      * @param {uint64} nfdAppID - The application id of the NFD to assign to the validator.
      * @param {string} nfdName - The name of the NFD (which must match)
      */
     changeValidatorNFD(validatorId: ValidatorIdType, nfdAppID: uint64, nfdName: string): void {
-        // Must be called by the owner or manager of the validator.
-        assert(
-            this.txn.sender === this.validatorList(validatorId).value.config.owner ||
-                this.txn.sender === this.validatorList(validatorId).value.config.manager,
-        )
+        // Must be called by the owner of the validator.
+        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
         // verify nfd is real, and owned by owner or manager
         sendAppCall({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
@@ -556,11 +575,17 @@ export class ValidatorRegistry extends Contract {
         // Create the actual staker pool contract instance
         sendAppCall({
             onCompletion: OnCompletion.NoOp,
-            approvalProgram: AppID.fromUint64(this.stakingPoolTemplateAppId.value).approvalProgram,
-            clearStateProgram: AppID.fromUint64(this.stakingPoolTemplateAppId.value).clearStateProgram,
-            globalNumUint: AppID.fromUint64(this.stakingPoolTemplateAppId.value).globalNumUint,
-            globalNumByteSlice: AppID.fromUint64(this.stakingPoolTemplateAppId.value).globalNumByteSlice,
-            extraProgramPages: AppID.fromUint64(this.stakingPoolTemplateAppId.value).extraProgramPages,
+            approvalProgram: [
+                this.stakingPoolApprovalProgram.extract(0, 4096),
+                this.stakingPoolApprovalProgram.extract(4096, this.stakingPoolApprovalProgram.size - 4096),
+            ],
+            clearStateProgram: StakingPool.clearProgram(),
+            globalNumUint: StakingPool.schema.global.numUint,
+            globalNumByteSlice: StakingPool.schema.global.numByteSlice,
+            // first page is included, we need 'extra' 2k pages, so normally we'd do
+            // size+2047/2048 to handle integer math rounding but instead we can just subtract 1
+            // to get equivalent (ignoring the first 2048)
+            extraProgramPages: (this.stakingPoolApprovalProgram.size - 1) / 2048,
             applicationArgs: [
                 // creatingContractID, validatorId, poolId, minEntryStake
                 method('createApplication(uint64,uint64,uint64,uint64)void'),
@@ -598,6 +623,14 @@ export class ValidatorRegistry extends Contract {
      */
     addStake(stakedAmountPayment: PayTxn, validatorId: ValidatorIdType, valueToVerify: uint64): ValidatorPoolKey {
         assert(this.validatorList(validatorId).exists)
+
+        // Ensure this validator hasn't reached its sunset date
+        if (this.validatorList(validatorId).value.config.sunsettingOn > 0) {
+            assert(
+                this.validatorList(validatorId).value.config.sunsettingOn < globals.latestTimestamp,
+                "can't stake with a validator that is past its sunsetting time",
+            )
+        }
 
         const staker = this.txn.sender
         // The prior transaction should be a payment to this pool for the amount specified.  If this is stakers
@@ -664,13 +697,13 @@ export class ValidatorRegistry extends Contract {
     /**
      * setTokenPayoutRatio is called by Staking Pool # 1 (ONLY) to ask the validator (us) to calculate the ratios
      * of stake in the pools for subsequent token payouts (ie: 2 pools, '100' algo total staked, 60 in pool 1, and 40
-     * in pool 2.  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered by
+     * in pool 2)  This is done so we have a stable snapshot of stake - taken once per epoch - only triggered by
      * pool 1 doing payout.  pools other than 1 doing payout call pool 1 to ask it do it first.
      * It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
      * their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
      * during the epoch updates across pools)
      *
-     * Multiple pools will call us via pool 1 (pool2->pool1->valdiator, etc.) so don't assert on pool1 calling multiple
+     * Multiple pools will call us via pool 1 (pool2->pool1->validator, etc.) so don't assert on pool1 calling multiple
      * times in same epoch.  Just return.
      *
      * @param validatorId - validator id (and thus pool) calling us.  Verified so that sender MUST be pool 1 of this validator.
@@ -687,21 +720,22 @@ export class ValidatorRegistry extends Contract {
 
         // They can only call us if the epoch update time doesn't match what pool 1 already has - and it has to be at least
         // a full epoch since last update (unless not set).  Same check as pools themselves perform.
-        const curTime = globals.latestTimestamp
+        // check which epoch we're currently in and if it's outside of last payout epoch.
+        const curRound = globals.round
         const lastPayoutUpdate = this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout
         if (lastPayoutUpdate !== 0) {
-            // We've already done the calcs - return what we already have.
+            // See if we've already done the calcs because payouts match - return what we already have.
             if ((AppID.fromUint64(pool1AppID).globalState('lastPayout') as uint64) === lastPayoutUpdate) {
                 return this.validatorList(validatorId).value.tokenPayoutRatio
             }
-            const secsSinceLastPayout = curTime - lastPayoutUpdate
-            const epochInSecs = (this.validatorList(validatorId).value.config.payoutEveryXMins as uint64) * 60
-            // We've had one payout - so we need to be at least one epoch past the last payout.
-            if (secsSinceLastPayout < epochInSecs) {
+            const epochRoundLength = this.validatorList(validatorId).value.config.epochRoundLength as uint64
+            const thisEpochBegin = curRound - (curRound % epochRoundLength)
+            // Make sure our last payout epoch isn't still within the current epoch - we need to be at least one epoch past the last payout.
+            if (lastPayoutUpdate - (lastPayoutUpdate % epochRoundLength) === thisEpochBegin) {
                 return this.validatorList(validatorId).value.tokenPayoutRatio
             }
         }
-        this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout = curTime
+        this.validatorList(validatorId).value.tokenPayoutRatio.updatedForPayout = curRound
 
         const curNumPools = this.validatorList(validatorId).value.state.numPools as uint64
         const totalStakeForValidator = this.validatorList(validatorId).value.state.totalAlgoStaked
@@ -1105,7 +1139,7 @@ export class ValidatorRegistry extends Contract {
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the values in the ValidatorConfig are correct
         assert(config.entryGatingType >= GATING_TYPE_NONE && config.entryGatingType <= GATING_TYPE_CONST_MAX)
-        assert(config.payoutEveryXMins >= MIN_PAYOUT_MINS && config.payoutEveryXMins <= MAX_PAYOUT_MINS)
+        assert(config.epochRoundLength >= MIN_EPOCH_LENGTH && config.epochRoundLength <= MAX_EPOCH_LENGTH)
         assert(config.percentToValidator >= MIN_PCT_TO_VALIDATOR && config.percentToValidator <= MAX_PCT_TO_VALIDATOR)
         if (config.percentToValidator !== 0) {
             assert(
@@ -1116,6 +1150,9 @@ export class ValidatorRegistry extends Contract {
         assert(config.minEntryStake >= MIN_ALGO_STAKE_PER_POOL)
         // we don't care about maxAlgoPerPool - if set to 0 it floats w/ network incentive values: maxAlgoAllowedPerPool()
         assert(config.poolsPerNode > 0 && config.poolsPerNode <= MAX_POOLS_PER_NODE)
+        if (config.sunsettingOn !== 0) {
+            assert(config.sunsettingOn > globals.latestTimestamp, 'sunsettingOn must be later than now if set')
+        }
     }
 
     /**
@@ -1136,14 +1173,11 @@ export class ValidatorRegistry extends Contract {
         isNewStakerToValidator: boolean,
         isNewStakerToProtocol: boolean,
     ): void {
-        if (globals.opcodeBudget < 500) {
-            increaseOpcodeBudget()
-        }
         const poolAppId = this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].poolAppId
 
         // forward the payment on to the pool via 2 txns
         // payment + 'add stake' call
-        sendMethodCall<typeof StakingPool.prototype.addStake>({
+        sendMethodCall<typeof StakingPool.prototype.addStake, uint64>({
             applicationID: AppID.fromUint64(poolAppId),
             methodArgs: [
                 // =======
@@ -1153,6 +1187,9 @@ export class ValidatorRegistry extends Contract {
                 stakedAmountPayment.sender,
             ],
         })
+        if (globals.opcodeBudget < 500) {
+            increaseOpcodeBudget()
+        }
 
         // Stake has been added to the pool - get its new totals and add to our own tracking data
         const poolNumStakers = AppID.fromUint64(poolAppId).globalState('numStakers') as uint64
