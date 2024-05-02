@@ -3,13 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { getAccountInformation } from '@/api/algod'
 import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
-import {
-  GATING_TYPE_ASSETS_CREATED_BY,
-  GATING_TYPE_ASSET_ID,
-  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-  GATING_TYPE_NONE,
-  GATING_TYPE_SEGMENT_OF_NFD,
-} from '@/constants/gating'
+import { GatingType } from '@/constants/gating'
 import { AssetHolding } from '@/interfaces/algod'
 import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
@@ -182,14 +176,14 @@ export function transformEntryGatingAssets(
   const fixedLengthArray: string[] = new Array(4).fill('0')
 
   switch (type) {
-    case String(GATING_TYPE_ASSET_ID):
+    case String(GatingType.AssetId):
       for (let i = 0; i < assets.length && i < 4; i++) {
         fixedLengthArray[i] = assets[i].value !== '' ? assets[i].value : '0'
       }
       return fixedLengthArray.sort((a, b) => Number(b) - Number(a))
-    case String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES):
+    case String(GatingType.CreatorNfd):
       return [nfdCreatorAppId.toString(), '0', '0', '0']
-    case String(GATING_TYPE_SEGMENT_OF_NFD):
+    case String(GatingType.SegmentNfd):
       return [nfdParentAppId.toString(), '0', '0', '0']
     default:
       return fixedLengthArray
@@ -307,7 +301,7 @@ export async function fetchGatingAssets(
 
   const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
-  if (entryGatingType === GATING_TYPE_ASSETS_CREATED_BY) {
+  if (entryGatingType === GatingType.CreatorAccount) {
     const creatorAddress = entryGatingAddress
     const accountInfo = await getAccountInformation(creatorAddress)
 
@@ -317,11 +311,11 @@ export async function fetchGatingAssets(
     }
   }
 
-  if (entryGatingType === GATING_TYPE_ASSET_ID) {
+  if (entryGatingType === GatingType.AssetId) {
     return entryGatingAssets.filter((asset) => asset !== 0)
   }
 
-  if (entryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES) {
+  if (entryGatingType === GatingType.CreatorNfd) {
     const nfdAppId = entryGatingAssets[0]
     const nfd = await fetchNfd(nfdAppId, { view: 'tiny' })
     const addresses = nfd.caAlgo || []
@@ -337,7 +331,7 @@ export async function fetchGatingAssets(
     return assetIds
   }
 
-  if (entryGatingType === GATING_TYPE_SEGMENT_OF_NFD) {
+  if (entryGatingType === GatingType.SegmentNfd) {
     const parentAppID = entryGatingAssets[0]
 
     let offset = 0

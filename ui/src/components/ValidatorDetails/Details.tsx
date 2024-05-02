@@ -12,13 +12,7 @@ import { EditManagerAccount } from '@/components/ValidatorDetails/EditManagerAcc
 import { EditNfdForInfo } from '@/components/ValidatorDetails/EditNfdForInfo'
 import { EditRewardPerPayout } from '@/components/ValidatorDetails/EditRewardPerPayout'
 import { EditSunsettingInfo } from '@/components/ValidatorDetails/EditSunsettingInfo'
-import {
-  GATING_TYPE_ASSETS_CREATED_BY,
-  GATING_TYPE_ASSET_ID,
-  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-  GATING_TYPE_NONE,
-  GATING_TYPE_SEGMENT_OF_NFD,
-} from '@/constants/gating'
+import { GatingType } from '@/constants/gating'
 import { Validator } from '@/interfaces/validator'
 import { dayjs, formatDuration } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
@@ -41,9 +35,9 @@ export function Details({ validator }: DetailsProps) {
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
     switch (entryGatingType) {
-      case GATING_TYPE_NONE:
+      case GatingType.None:
         return 'None'
-      case GATING_TYPE_ASSETS_CREATED_BY:
+      case GatingType.CreatorAccount:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -57,7 +51,7 @@ export function Details({ validator }: DetailsProps) {
             </a>
           </>
         )
-      case GATING_TYPE_ASSET_ID:
+      case GatingType.AssetId:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset ID</strong>
@@ -79,7 +73,7 @@ export function Details({ validator }: DetailsProps) {
             </ul>
           </>
         )
-      case GATING_TYPE_CREATED_BY_NFD_ADDRESSES:
+      case GatingType.CreatorNfd:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -88,7 +82,7 @@ export function Details({ validator }: DetailsProps) {
             </div>
           </>
         )
-      case GATING_TYPE_SEGMENT_OF_NFD:
+      case GatingType.SegmentNfd:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
@@ -280,7 +274,7 @@ export function Details({ validator }: DetailsProps) {
                     </dd>
                   </div>
 
-                  {![GATING_TYPE_NONE, GATING_TYPE_SEGMENT_OF_NFD].includes(
+                  {![GatingType.None, GatingType.SegmentNfd].includes(
                     validator.config.entryGatingType,
                   ) && (
                     <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">

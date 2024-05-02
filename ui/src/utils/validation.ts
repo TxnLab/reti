@@ -1,13 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { RefinementCtx, z } from 'zod'
-import {
-  GATING_TYPE_ASSETS_CREATED_BY,
-  GATING_TYPE_ASSET_ID,
-  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-  GATING_TYPE_NONE,
-  GATING_TYPE_SEGMENT_OF_NFD,
-} from '@/constants/gating'
+import { GatingType } from '@/constants/gating'
 import { Constraints } from '@/interfaces/validator'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
@@ -231,7 +225,7 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
   } = data
 
   switch (entryGatingType) {
-    case String(GATING_TYPE_NONE):
+    case String(GatingType.None):
       if (entryGatingAddress !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -258,7 +252,7 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
         })
       }
       break
-    case String(GATING_TYPE_ASSETS_CREATED_BY):
+    case String(GatingType.CreatorAccount):
       if (typeof entryGatingAddress !== 'string' || !algosdk.isValidAddress(entryGatingAddress)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -285,7 +279,7 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
         })
       }
       break
-    case String(GATING_TYPE_ASSET_ID):
+    case String(GatingType.AssetId):
       if (entryGatingAssets.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -324,7 +318,7 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
         })
       }
       break
-    case String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES):
+    case String(GatingType.CreatorNfd):
       if (entryGatingAddress !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -345,7 +339,7 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
         })
       }
       break
-    case String(GATING_TYPE_SEGMENT_OF_NFD):
+    case String(GatingType.SegmentNfd):
       if (entryGatingAddress !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -371,10 +365,10 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
   }
 
   const isGatingEnabled = [
-    String(GATING_TYPE_ASSETS_CREATED_BY),
-    String(GATING_TYPE_ASSET_ID),
-    String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
-    String(GATING_TYPE_SEGMENT_OF_NFD),
+    String(GatingType.CreatorAccount),
+    String(GatingType.AssetId),
+    String(GatingType.CreatorNfd),
+    String(GatingType.SegmentNfd),
   ].includes(String(entryGatingType))
 
   if (isGatingEnabled) {
