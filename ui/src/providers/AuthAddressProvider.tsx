@@ -1,6 +1,6 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import * as React from 'react'
-import { getAccountInformation } from '@/api/algod'
+import { fetchAccountInformation } from '@/api/algod'
 
 interface IContext {
   authAddress: string | undefined
@@ -26,7 +26,7 @@ export function AuthAddressProvider({ children }: { children: React.ReactNode })
   React.useEffect(() => {
     const fetchAuthAddress = async () => {
       try {
-        const accountInfo = await getAccountInformation(activeAddress!, 'all')
+        const accountInfo = await fetchAccountInformation(activeAddress!, 'all')
         const authAddr = accountInfo['auth-addr']
         setAuthAddress(authAddr)
       } catch (error) {

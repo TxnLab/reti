@@ -4,7 +4,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import algosdk from 'algosdk'
 import { toast } from 'sonner'
-import { getAccountInformation, getAsset } from '@/api/algod'
+import { fetchAccountInformation, fetchAsset } from '@/api/algod'
 import { epochBalanceUpdate } from '@/api/contracts'
 import { StakerPoolData } from '@/interfaces/staking'
 import { ToStringTypes } from '@/interfaces/utils'
@@ -98,7 +98,7 @@ export async function sendRewardTokensToPool(
 
   try {
     const tokenId = validator.config.rewardTokenId
-    const asset = await getAsset(tokenId)
+    const asset = await fetchAsset(tokenId)
     const unitName = asset.params['unit-name']
 
     toast.loading(`Sign to send ${rewardTokenAmount} ${unitName} tokens to pool`, {
@@ -123,7 +123,7 @@ export async function sendRewardTokensToPool(
     atc.addTransaction({ txn: assetTxn, signer })
     await atc.execute(algodClient, 4)
 
-    const poolAccountInfo = await getAccountInformation(poolAddress)
+    const poolAccountInfo = await fetchAccountInformation(poolAddress)
     const assetHolding = poolAccountInfo.assets?.find((a) => a['asset-id'] === tokenId)
 
     const balanceStr = formatAssetAmount(
