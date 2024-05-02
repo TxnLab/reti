@@ -1,10 +1,7 @@
-import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { MessageCircleWarning } from 'lucide-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Tooltip } from '@/components/Tooltip'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EditCommissionAccount } from '@/components/ValidatorDetails/EditCommissionAccount'
 import { EditEntryGating } from '@/components/ValidatorDetails/EditEntryGating'
@@ -297,22 +294,6 @@ export function Details({ validator }: DetailsProps) {
                     )}
                     {isOwner && <EditSunsettingInfo validator={validator} />}
                   </dd>
-                  {validator.config.sunsettingTo > 0 && (
-                    <Alert className="col-span-2 mt-1 bg-background/50">
-                      <MessageCircleWarning className="h-5 w-5 -mt-1" />
-                      <AlertTitle>Migration Notice</AlertTitle>
-                      <AlertDescription>
-                        Stakers should migrate to{' '}
-                        <Link
-                          to="/validators/$validatorId"
-                          params={{ validatorId: String(validator.config.sunsettingTo) }}
-                          className="hover:underline underline-offset-4"
-                        >
-                          Validator {validator.config.sunsettingTo}
-                        </Link>
-                      </AlertDescription>
-                    </Alert>
-                  )}
                 </div>
               ) : null}
             </dl>
