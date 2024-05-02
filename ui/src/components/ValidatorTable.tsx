@@ -13,7 +13,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { FlaskConical, MoreHorizontal } from 'lucide-react'
+import { FlaskConical, MonitorOff, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
@@ -21,6 +21,7 @@ import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
+import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -39,7 +40,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { ValidatorRewards } from '@/components/ValidatorRewards'
 import { useBlockTime } from '@/hooks/useBlockTime'
@@ -52,11 +52,12 @@ import {
   canManageValidator,
   isAddingPoolDisabled,
   isStakingDisabled,
+  isSunsetted,
   isUnstakingDisabled,
 } from '@/utils/contracts'
-import { formatDuration } from '@/utils/dayjs'
+import { dayjs, formatDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
-import { ellipseAddress } from '@/utils/ellipseAddress'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatNumber } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
@@ -119,7 +120,14 @@ export function ValidatorTable({
         const nfd = validator.nfd
 
         return (
-          <div className="flex min-w-0 max-w-[10rem] xl:max-w-[14rem]">
+          <div className="flex items-center gap-x-2 min-w-0 max-w-[10rem] xl:max-w-[14rem]">
+            {isSunsetted(validator) && (
+              <Tooltip
+                content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+              >
+                <MonitorOff className="h-5 w-5 text-muted-foreground transition-colors" />
+              </Tooltip>
+            )}
             <Link
               to="/validators/$validatorId"
               params={{
@@ -131,7 +139,7 @@ export function ValidatorTable({
               {nfd ? (
                 <NfdThumbnail nfd={nfd} truncate tooltip />
               ) : (
-                ellipseAddress(validator.config.owner)
+                <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
               )}
             </Link>
           </div>
@@ -241,16 +249,9 @@ export function ValidatorTable({
         const durationEstimate = epochLength * blockTime.ms
 
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <span className="capitalize">{numRounds} blocks</span>
-              </TooltipTrigger>
-              <TooltipContent className="bg-stone-900 text-white font-semibold tracking-tight dark:bg-white dark:text-stone-900">
-                Pays out every ~{formatDuration(durationEstimate)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip content={`Pays out every ~${formatDuration(durationEstimate)}`}>
+            <span className="capitalize">{numRounds} blocks</span>
+          </Tooltip>
         )
       },
     },
@@ -272,6 +273,7 @@ export function ValidatorTable({
           <div className="flex items-center justify-end gap-x-2">
             <Button
               size="sm"
+              className={cn({ hidden: isSunsetted(validator) })}
               onClick={(e) => {
                 e.stopPropagation()
                 setAddStakeValidator(validator)
@@ -311,18 +313,7 @@ export function ValidatorTable({
                   >
                     Unstake
                   </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/validators/$validatorId"
-                      params={{ validatorId: validator.id.toString() }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {canManage ? 'Manage' : 'View'}
-                    </Link>
-                  </DropdownMenuItem>
+
                   {canManage && (
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -357,6 +348,18 @@ export function ValidatorTable({
                       </DropdownMenuGroup>
                     </>
                   )}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/validators/$validatorId"
+                      params={{ validatorId: validator.id.toString() }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canManage ? 'Manage' : 'View'}
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -423,6 +426,9 @@ export function ValidatorTable({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
+                    className={cn({
+                      'text-foreground/50 hover:bg-muted/25': isSunsetted(row.original),
+                    })}
                     onClick={async () =>
                       await navigate({
                         to: `/validators/$validatorId`,
