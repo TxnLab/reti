@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { isAxiosError } from 'axios'
@@ -8,7 +9,7 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
-import { addValidator } from '@/api/contracts'
+import { addValidator, fetchValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { InfoPopover } from '@/components/InfoPopover'
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,28 +27,26 @@ import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  GATING_TYPE_ASSETS_CREATED_BY,
-  GATING_TYPE_ASSET_ID,
-  GATING_TYPE_CREATED_BY_NFD_ADDRESSES,
-  GATING_TYPE_NONE,
-  GATING_TYPE_SEGMENT_OF_NFD,
-} from '@/constants/gating'
+import { Separator } from '@/components/ui/separator'
+import { GatingType } from '@/constants/gating'
+import { useBlockTime } from '@/hooks/useBlockTime'
 import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
-  getAddValidatorFormSchema,
-  getEpochLengthMinutes,
+  getEpochLengthBlocks,
+  setValidatorQueriesData,
   transformEntryGatingAssets,
 } from '@/utils/contracts'
 // import { validatorAutoFill } from '@/utils/development'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
+import { entryGatingRefinement, validatorSchemas } from '@/utils/validation'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -61,15 +61,36 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
   const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
-  const [epochTimeframe, setEpochTimeframe] = React.useState('minutes')
+  const [epochTimeframe, setEpochTimeframe] = React.useState('blocks')
   const [isSigning, setIsSigning] = React.useState(false)
 
   const { transactionSigner, activeAddress } = useWallet()
   const { authAddress } = useAuthAddress()
 
+  const queryClient = useQueryClient()
+
   const navigate = useNavigate({ from: '/add' })
 
-  const formSchema = getAddValidatorFormSchema(constraints)
+  const formSchema = z
+    .object({
+      owner: validatorSchemas.owner(),
+      manager: validatorSchemas.manager(),
+      nfdForInfo: validatorSchemas.nfdForInfo(),
+      entryGatingType: validatorSchemas.entryGatingType(),
+      entryGatingAddress: validatorSchemas.entryGatingAddress(),
+      entryGatingAssets: validatorSchemas.entryGatingAssets(),
+      entryGatingNfdCreator: validatorSchemas.entryGatingNfdCreator(),
+      entryGatingNfdParent: validatorSchemas.entryGatingNfdParent(),
+      gatingAssetMinBalance: validatorSchemas.gatingAssetMinBalance(),
+      rewardTokenId: validatorSchemas.rewardTokenId(),
+      rewardPerPayout: validatorSchemas.rewardPerPayout(),
+      epochRoundLength: validatorSchemas.epochRoundLength(constraints),
+      percentToValidator: validatorSchemas.percentToValidator(constraints),
+      validatorCommissionAddress: validatorSchemas.validatorCommissionAddress(),
+      minEntryStake: validatorSchemas.minEntryStake(constraints),
+      poolsPerNode: validatorSchemas.poolsPerNode(constraints),
+    })
+    .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
 
   type FormValues = z.infer<typeof formSchema>
 
@@ -87,7 +108,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       gatingAssetMinBalance: '',
       rewardTokenId: '',
       rewardPerPayout: '',
-      payoutEveryXMins: '',
+      epochRoundLength: '',
       percentToValidator: '',
       validatorCommissionAddress: '',
       minEntryStake: '',
@@ -102,20 +123,18 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     name: 'entryGatingAssets',
   })
 
-  const selectedGatingType = form.watch('entryGatingType')
+  const $entryGatingType = form.watch('entryGatingType')
 
-  const isEntryGatingAddressEnabled = selectedGatingType === String(GATING_TYPE_ASSETS_CREATED_BY)
-  const isEntryGatingAssetsEnabled = selectedGatingType === String(GATING_TYPE_ASSET_ID)
-  const isEntryGatingNfdParentEnabled = selectedGatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
+  const showCreatorAddressField = $entryGatingType === String(GatingType.CreatorAccount)
+  const showAssetFields = $entryGatingType === String(GatingType.AssetId)
+  const showCreatorNfdField = $entryGatingType === String(GatingType.CreatorNfd)
+  const showParentNfdField = $entryGatingType === String(GatingType.SegmentNfd)
 
-  const isEntryGatingNfdCreatorEnabled =
-    selectedGatingType === String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)
-
-  const isGatingAssetMinBalanceEnabled = [
-    String(GATING_TYPE_ASSETS_CREATED_BY),
-    String(GATING_TYPE_ASSET_ID),
-    String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES),
-  ].includes(selectedGatingType)
+  const showMinBalanceField = [
+    String(GatingType.CreatorAccount),
+    String(GatingType.AssetId),
+    String(GatingType.CreatorNfd),
+  ].includes($entryGatingType)
 
   const fetchNfdAppId = async (
     value: string,
@@ -186,8 +205,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     }
   }, 500)
 
-  const nfdForInfo = form.watch('nfdForInfo')
-  const entryGatingNfdParent = form.watch('entryGatingNfdParent')
+  const $nfdForInfo = form.watch('nfdForInfo')
+  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
   const showPrimaryMintNfd = (
     name: string,
@@ -206,6 +225,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const infoPopoverClassName = 'mx-1.5 relative top-0.5 sm:mx-1 sm:top-0'
 
+  const blockTime = useBlockTime()
+
   const toastIdRef = React.useRef(`toast-${Date.now()}-${Math.random()}`)
   const TOAST_ID = toastIdRef.current
 
@@ -221,7 +242,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
-      const payoutEveryXMins = getEpochLengthMinutes(values.payoutEveryXMins, epochTimeframe)
+      const epochRoundLength = getEpochLengthBlocks(
+        values.epochRoundLength,
+        epochTimeframe,
+        blockTime.ms,
+      )
+
       const entryGatingAssets = transformEntryGatingAssets(
         values.entryGatingType,
         values.entryGatingAssets,
@@ -231,7 +257,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const newValues = {
         ...values,
-        payoutEveryXMins: String(payoutEveryXMins),
+        epochRoundLength: String(epochRoundLength),
         entryGatingAssets,
       }
 
@@ -253,6 +279,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           duration: 5000,
         },
       )
+
+      // Fetch validator data
+      const newData = await fetchValidator(validatorId)
+
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
 
       await navigate({ to: '/' })
     } catch (error) {
@@ -424,13 +456,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <FormField
                 control={form.control}
-                name="payoutEveryXMins"
+                name="epochRoundLength"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
                       Epoch length
                       <InfoPopover className={infoPopoverClassName}>
-                        Frequency of rewards payouts
+                        Frequency of rewards payouts, in blocks. If a timeframe is selected, it will
+                        be converted to blocks based on the current average block time (approx.{' '}
+                        {blockTime.secs} seconds).
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
@@ -448,14 +482,35 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="minutes">Minutes</SelectItem>
-                            <SelectItem value="hours">Hours</SelectItem>
-                            <SelectItem value="days">Days</SelectItem>
+                            <SelectGroup>
+                              <SelectItem value="blocks">Blocks</SelectItem>
+                            </SelectGroup>
+                            <div className="-mx-1 my-1">
+                              <Separator />
+                            </div>
+                            <SelectGroup>
+                              <SelectItem value="minutes" disabled={!blockTime}>
+                                Minutes
+                              </SelectItem>
+                              <SelectItem value="hours" disabled={!blockTime}>
+                                Hours
+                              </SelectItem>
+                              <SelectItem value="days" disabled={!blockTime}>
+                                Days
+                              </SelectItem>
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                       </div>
                     </FormControl>
-                    <FormMessage>{errors.payoutEveryXMins?.message}</FormMessage>
+                    <FormDescription
+                      className={cn({ hidden: epochTimeframe === 'blocks' || !blockTime })}
+                    >
+                      Timeframes are approximate and based on{' '}
+                      <strong className="font-semibold text-foreground">{blockTime.secs}s</strong>{' '}
+                      avg block time
+                    </FormDescription>
+                    <FormMessage>{errors.epochRoundLength?.message}</FormMessage>
                   </FormItem>
                 )}
               />
@@ -578,7 +633,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         size="sm"
                         variant={
                           showPrimaryMintNfd(
-                            nfdForInfo,
+                            $nfdForInfo,
                             isFetchingNfdForInfo,
                             nfdForInfoAppId,
                             errors.nfdForInfo?.message,
@@ -590,9 +645,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       >
                         <a
                           href={getNfdMintUrl(
-                            nfdForInfo,
+                            $nfdForInfo,
                             showPrimaryMintNfd(
-                              nfdForInfo,
+                              $nfdForInfo,
                               isFetchingNfdForInfo,
                               nfdForInfoAppId,
                               errors.nfdForInfo?.message,
@@ -665,24 +720,25 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <Select
                         value={field.value}
-                        onValueChange={(gatingType) => {
-                          field.onChange(gatingType) // Inform react-hook-form of the change
+                        onValueChange={(type) => {
+                          field.onChange(type) // Inform react-hook-form of the change
 
-                          replace([{ value: '' }]) // Reset entryGatingAssets array
+                          // Reset form fields
+                          replace([{ value: '' }])
+                          form.setValue('entryGatingAddress', '')
+                          form.setValue('entryGatingNfdCreator', '')
+                          form.setValue('entryGatingNfdParent', '')
+                          form.setValue(
+                            'gatingAssetMinBalance',
+                            type === String(GatingType.SegmentNfd) ? '1' : '',
+                          )
 
                           // Clear any errors
                           form.clearErrors('entryGatingAssets')
                           form.clearErrors('entryGatingAddress')
                           form.clearErrors('entryGatingNfdCreator')
                           form.clearErrors('entryGatingNfdParent')
-
-                          const isNfdSegmentGating =
-                            gatingType === String(GATING_TYPE_SEGMENT_OF_NFD)
-
-                          const gatingMinBalance = isNfdSegmentGating ? '1' : ''
-
-                          form.setValue('gatingAssetMinBalance', gatingMinBalance) // Set/reset min balance
-                          form.clearErrors('gatingAssetMinBalance') // Clear any errors for gating min balance
+                          form.clearErrors('gatingAssetMinBalance')
                         }}
                       >
                         <FormControl>
@@ -691,17 +747,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value={String(GATING_TYPE_NONE)}>None</SelectItem>
-                          <SelectItem value={String(GATING_TYPE_ASSETS_CREATED_BY)}>
+                          <SelectItem value={String(GatingType.None)}>None</SelectItem>
+                          <SelectItem value={String(GatingType.CreatorAccount)}>
                             Asset by Creator Account
                           </SelectItem>
-                          <SelectItem value={String(GATING_TYPE_ASSET_ID)}>Asset ID</SelectItem>
-                          <SelectItem value={String(GATING_TYPE_CREATED_BY_NFD_ADDRESSES)}>
+                          <SelectItem value={String(GatingType.AssetId)}>Asset ID</SelectItem>
+                          <SelectItem value={String(GatingType.CreatorNfd)}>
                             Asset Created by NFD
                           </SelectItem>
-                          <SelectItem value={String(GATING_TYPE_SEGMENT_OF_NFD)}>
-                            NFD Segment
-                          </SelectItem>
+                          <SelectItem value={String(GatingType.SegmentNfd)}>NFD Segment</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -714,7 +768,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="entryGatingAddress"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingAddressEnabled })}>
+                  <FormItem className={cn({ hidden: !showCreatorAddressField })}>
                     <FormLabel>
                       Asset creator account
                       <InfoPopover className={infoPopoverClassName}>
@@ -730,7 +784,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 )}
               />
 
-              <div className={cn({ hidden: !isEntryGatingAssetsEnabled })}>
+              <div className={cn({ hidden: !showAssetFields })}>
                 {fields.map((field, index) => (
                   <FormField
                     control={form.control}
@@ -772,7 +826,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="entryGatingNfdCreator"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingNfdCreatorEnabled })}>
+                  <FormItem className={cn({ hidden: !showCreatorNfdField })}>
                     <FormLabel>
                       Asset creator NFD
                       <InfoPopover className={infoPopoverClassName}>
@@ -832,7 +886,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="entryGatingNfdParent"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isEntryGatingNfdParentEnabled })}>
+                  <FormItem className={cn({ hidden: !showParentNfdField })}>
                     <FormLabel>
                       Root/parent NFD
                       <InfoPopover className={infoPopoverClassName}>
@@ -891,7 +945,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         size="sm"
                         variant={
                           showPrimaryMintNfd(
-                            entryGatingNfdParent,
+                            $entryGatingNfdParent,
                             isFetchingNfdParent,
                             nfdParentAppId,
                             errors.entryGatingNfdParent?.message,
@@ -903,9 +957,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       >
                         <a
                           href={getNfdMintUrl(
-                            entryGatingNfdParent,
+                            $entryGatingNfdParent,
                             showPrimaryMintNfd(
-                              entryGatingNfdParent,
+                              $entryGatingNfdParent,
                               isFetchingNfdParent,
                               nfdParentAppId,
                               errors.entryGatingNfdParent?.message,
@@ -928,7 +982,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="gatingAssetMinBalance"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !isGatingAssetMinBalanceEnabled })}>
+                  <FormItem className={cn({ hidden: !showMinBalanceField })}>
                     <FormLabel>
                       Minimum balance
                       <InfoPopover className={infoPopoverClassName}>

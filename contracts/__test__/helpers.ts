@@ -15,6 +15,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { expect } from '@jest/globals'
+import { signTransaction, waitForConfirmation } from '@algorandfoundation/algokit-utils'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 
@@ -27,65 +28,65 @@ export const GATING_TYPE_CREATED_BY_NFD_ADDRESSES = 3
 export const GATING_TYPE_SEGMENT_OF_NFD = 4
 
 export class ValidatorConfig {
-    ID: bigint // id of this validator (sequentially assigned)
+    id: bigint // id of this validator (sequentially assigned)
 
-    Owner: string // account that controls config - presumably cold-wallet
+    owner: string // account that controls config - presumably cold-wallet
 
-    Manager: string // account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
+    manager: string // account that triggers/pays for payouts and keyreg transactions - needs to be hotwallet as node has to sign for the transactions
 
     // Optional NFD AppID which the validator uses to describe their validator pool
     // NFD must be currently OWNED by address that adds the validator
-    NFDForInfo: bigint
+    nfdForInfo: bigint
 
-    EntryGatingType: number
+    entryGatingType: number
 
-    EntryGatingAddress: string
+    entryGatingAddress: string
 
-    EntryGatingAssets: [bigint, bigint, bigint, bigint]
+    entryGatingAssets: [bigint, bigint, bigint, bigint]
 
-    GatingAssetMinBalance: bigint
+    gatingAssetMinBalance: bigint
 
-    RewardTokenID: bigint
+    rewardTokenID: bigint
 
-    RewardPerPayout: bigint
+    rewardPerPayout: bigint
 
-    PayoutEveryXMins: number // // Payout frequency in minutes (can be no shorter than this)
+    epochRoundLength: number // Payout frequency in minutes (can be no shorter than this)
 
-    PercentToValidator: number // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
+    percentToValidator: number // Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 
-    ValidatorCommissionAddress: string // account that receives the validation commission each epoch payout
+    validatorCommissionAddress: string // account that receives the validation commission each epoch payout
 
-    MinEntryStake: bigint // minimum stake required to enter pool
+    minEntryStake: bigint // minimum stake required to enter pool
 
-    MaxAlgoPerPool: bigint // maximum stake allowed per pool (to keep under incentive limits)
+    maxAlgoPerPool: bigint // maximum stake allowed per pool (to keep under incentive limits)
 
-    PoolsPerNode: number // Number of pools to allow per node (max of 3 is recommended)
+    poolsPerNode: number // Number of pools to allow per node (max of 3 is recommended)
 
-    SunsettingOn: bigint // timestamp when validator will sunset (if != 0)
+    sunsettingOn: bigint // timestamp when validator will sunset (if != 0)
 
-    SunsettingTo: bigint // validator id that validator is 'moving' to (if known)
+    sunsettingTo: bigint // validator id that validator is 'moving' to (if known)
 
     // getValidatorConfig(uint64)(uint64,address,address,uint64,uint16,uint32,address,uint64,uint64,uint8)
     // constructor to take array of values like ABI string above and set into the named instance vars
     constructor([
-        ID,
-        Owner,
-        Manager,
-        NFDForInfo,
-        EntryGatingType,
-        EntryGatingAddress,
-        EntryGatingAssets,
-        GatingAssetMinBalance,
-        RewardTokenID,
-        RewardPerPayout,
-        PayoutEveryXMins,
-        PercentToValidator,
-        ValidatorCommissionAddress,
-        MinEntryStake,
-        MaxAlgoPerPool,
-        PoolsPerNode,
-        SunsettingOn,
-        SunsettingTo,
+        id,
+        owner,
+        manager,
+        nfdForInfo,
+        entryGatingType,
+        entryGatingAddress,
+        entryGatingAssets,
+        gatingAssetMinBalance,
+        rewardTokenID,
+        rewardPerPayout,
+        epochRoundLength,
+        percentToValidator,
+        validatorCommissionAddress,
+        minEntryStake,
+        maxAlgoPerPool,
+        poolsPerNode,
+        sunsettingOn,
+        sunsettingTo,
     ]: [
         bigint,
         string,
@@ -106,46 +107,46 @@ export class ValidatorConfig {
         bigint,
         bigint,
     ]) {
-        this.ID = ID
-        this.Owner = Owner
-        this.Manager = Manager
-        this.NFDForInfo = NFDForInfo
-        this.EntryGatingType = Number(EntryGatingType)
-        this.EntryGatingAddress = EntryGatingAddress
-        this.EntryGatingAssets = EntryGatingAssets
-        this.GatingAssetMinBalance = GatingAssetMinBalance
-        this.RewardTokenID = RewardTokenID
-        this.RewardPerPayout = RewardPerPayout
-        this.PayoutEveryXMins = Number(PayoutEveryXMins)
-        this.PercentToValidator = Number(PercentToValidator)
-        this.ValidatorCommissionAddress = ValidatorCommissionAddress
-        this.MinEntryStake = MinEntryStake
-        this.MaxAlgoPerPool = MaxAlgoPerPool
-        this.PoolsPerNode = Number(PoolsPerNode)
-        this.SunsettingOn = SunsettingOn
-        this.SunsettingTo = SunsettingTo
+        this.id = id
+        this.owner = owner
+        this.manager = manager
+        this.nfdForInfo = nfdForInfo
+        this.entryGatingType = Number(entryGatingType)
+        this.entryGatingAddress = entryGatingAddress
+        this.entryGatingAssets = entryGatingAssets
+        this.gatingAssetMinBalance = gatingAssetMinBalance
+        this.rewardTokenID = rewardTokenID
+        this.rewardPerPayout = rewardPerPayout
+        this.epochRoundLength = Number(epochRoundLength)
+        this.percentToValidator = Number(percentToValidator)
+        this.validatorCommissionAddress = validatorCommissionAddress
+        this.minEntryStake = minEntryStake
+        this.maxAlgoPerPool = maxAlgoPerPool
+        this.poolsPerNode = Number(poolsPerNode)
+        this.sunsettingOn = sunsettingOn
+        this.sunsettingTo = sunsettingTo
     }
 }
 
 const DefaultValidatorConfig: ValidatorConfig = {
-    ID: BigInt(0),
-    Owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    Manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    NFDForInfo: 0n,
-    EntryGatingType: GATING_TYPE_NONE,
-    EntryGatingAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    EntryGatingAssets: [0n, 0n, 0n, 0n],
-    GatingAssetMinBalance: 0n,
-    RewardTokenID: 0n,
-    RewardPerPayout: 0n,
-    PayoutEveryXMins: 60 * 24, // daily payout
-    PercentToValidator: 10000, // 1.0000%
-    ValidatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
-    MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-    MaxAlgoPerPool: 0n, // float w/ online caps
-    PoolsPerNode: 3,
-    SunsettingOn: 0n,
-    SunsettingTo: 0n,
+    id: BigInt(0),
+    owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    nfdForInfo: 0n,
+    entryGatingType: GATING_TYPE_NONE,
+    entryGatingAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    entryGatingAssets: [0n, 0n, 0n, 0n],
+    gatingAssetMinBalance: 0n,
+    rewardTokenID: 0n,
+    rewardPerPayout: 0n,
+    epochRoundLength: 1, // minimum allowed
+    percentToValidator: 10000, // 1.0000%
+    validatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
+    minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+    maxAlgoPerPool: 0n, // float w/ online caps
+    poolsPerNode: 3,
+    sunsettingOn: 0n,
+    sunsettingTo: 0n,
 }
 
 export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): ValidatorConfig {
@@ -155,24 +156,24 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
     }
 
     return new ValidatorConfig([
-        configObj.ID,
-        configObj.Owner,
-        configObj.Manager,
-        configObj.NFDForInfo,
-        configObj.EntryGatingType,
-        configObj.EntryGatingAddress,
-        configObj.EntryGatingAssets,
-        configObj.GatingAssetMinBalance,
-        configObj.RewardTokenID,
-        configObj.RewardPerPayout,
-        configObj.PayoutEveryXMins,
-        configObj.PercentToValidator,
-        configObj.ValidatorCommissionAddress,
-        configObj.MinEntryStake,
-        configObj.MaxAlgoPerPool,
-        configObj.PoolsPerNode,
-        configObj.SunsettingOn,
-        configObj.SunsettingTo,
+        configObj.id,
+        configObj.owner,
+        configObj.manager,
+        configObj.nfdForInfo,
+        configObj.entryGatingType,
+        configObj.entryGatingAddress,
+        configObj.entryGatingAssets,
+        configObj.gatingAssetMinBalance,
+        configObj.rewardTokenID,
+        configObj.rewardPerPayout,
+        configObj.epochRoundLength,
+        configObj.percentToValidator,
+        configObj.validatorCommissionAddress,
+        configObj.minEntryStake,
+        configObj.maxAlgoPerPool,
+        configObj.poolsPerNode,
+        configObj.sunsettingOn,
+        configObj.sunsettingTo,
     ])
 }
 
@@ -199,24 +200,24 @@ function validatorConfigAsArray(
     bigint,
 ] {
     return [
-        config.ID,
-        config.Owner,
-        config.Manager,
-        config.NFDForInfo,
-        config.EntryGatingType,
-        config.EntryGatingAddress,
-        config.EntryGatingAssets,
-        config.GatingAssetMinBalance,
-        config.RewardTokenID,
-        config.RewardPerPayout,
-        config.PayoutEveryXMins,
-        config.PercentToValidator,
-        config.ValidatorCommissionAddress,
-        config.MinEntryStake,
-        config.MaxAlgoPerPool,
-        config.PoolsPerNode,
-        config.SunsettingOn,
-        config.SunsettingTo,
+        config.id,
+        config.owner,
+        config.manager,
+        config.nfdForInfo,
+        config.entryGatingType,
+        config.entryGatingAddress,
+        config.entryGatingAssets,
+        config.gatingAssetMinBalance,
+        config.rewardTokenID,
+        config.rewardPerPayout,
+        config.epochRoundLength,
+        config.percentToValidator,
+        config.validatorCommissionAddress,
+        config.minEntryStake,
+        config.maxAlgoPerPool,
+        config.poolsPerNode,
+        config.sunsettingOn,
+        config.sunsettingTo,
     ]
 }
 
@@ -279,17 +280,17 @@ export class StakedInfo {
 
     rewardTokenBalance: bigint
 
-    entryTime: bigint
+    entryRound: bigint
 
     constructor(data: Uint8Array) {
         this.staker = decodeAddress(encodeAddress(data.slice(0, 32)))
         this.balance = bytesToBigInt(data.slice(32, 40))
         this.totalRewarded = bytesToBigInt(data.slice(40, 48))
         this.rewardTokenBalance = bytesToBigInt(data.slice(48, 56))
-        this.entryTime = bytesToBigInt(data.slice(56, 64))
+        this.entryRound = bytesToBigInt(data.slice(56, 64))
     }
 
-    public static fromValues([Staker, Balance, TotalRewarded, RewardTokenBalance, EntryTime]: [
+    public static fromValues([staker, balance, totalRewarded, rewardTokenBalance, entryRound]: [
         string,
         bigint,
         bigint,
@@ -297,11 +298,11 @@ export class StakedInfo {
         bigint,
     ]): StakedInfo {
         return {
-            staker: decodeAddress(Staker),
-            balance: Balance,
-            totalRewarded: TotalRewarded,
-            rewardTokenBalance: RewardTokenBalance,
-            entryTime: EntryTime,
+            staker: decodeAddress(staker),
+            balance,
+            totalRewarded,
+            rewardTokenBalance,
+            entryRound,
         }
     }
 
@@ -320,9 +321,9 @@ export class StakedInfo {
 
 // ProtocolConstraints returns data from the contracts on minimums, maximums, etc.
 export class ProtocolConstraints {
-    EpochPayoutMinsMin: bigint
+    epochPayoutRoundsMin: bigint
 
-    EpochPayoutMinsMax: bigint
+    epochPayoutRoundsMax: bigint
 
     MinPctToValidatorWFourDecimals: bigint
 
@@ -343,8 +344,8 @@ export class ProtocolConstraints {
     MaxStakersPerPool: bigint
 
     constructor([
-        EpochPayoutMinsMin,
-        EpochPayoutMinsMax,
+        epochPayoutRoundsMin,
+        epochPayoutRoundsMax,
         MinPctToValidatorWFourDecimals,
         MaxPctToValidatorWFourDecimals,
         MinEntryStake,
@@ -355,8 +356,8 @@ export class ProtocolConstraints {
         MaxPoolsPerNode,
         MaxStakersPerPool,
     ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]) {
-        this.EpochPayoutMinsMin = EpochPayoutMinsMin
-        this.EpochPayoutMinsMax = EpochPayoutMinsMax
+        this.epochPayoutRoundsMin = epochPayoutRoundsMin
+        this.epochPayoutRoundsMax = epochPayoutRoundsMax
         this.MinPctToValidatorWFourDecimals = MinPctToValidatorWFourDecimals
         this.MaxPctToValidatorWFourDecimals = MaxPctToValidatorWFourDecimals
         this.MinEntryStake = MinEntryStake
@@ -369,8 +370,8 @@ export class ProtocolConstraints {
     }
 
     public static fromValues([
-        EpochPayoutMinsMin,
-        EpochPayoutMinsMax,
+        epochPayoutRoundsMin,
+        epochPayoutRoundsMax,
         MinPctToValidatorWFourDecimals,
         MaxPctToValidatorWFourDecimals,
         MinEntryStake,
@@ -382,8 +383,8 @@ export class ProtocolConstraints {
         MaxStakersPerPool,
     ]: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]): ProtocolConstraints {
         return {
-            EpochPayoutMinsMin,
-            EpochPayoutMinsMax,
+            epochPayoutRoundsMin,
+            epochPayoutRoundsMax,
             MinPctToValidatorWFourDecimals,
             MaxPctToValidatorWFourDecimals,
             MinEntryStake,
@@ -435,7 +436,8 @@ export function getValidatorListBoxName(validatorId: number) {
 // }
 
 export async function getMbrAmountsFromValidatorClient(validatorClient: ValidatorRegistryClient) {
-    return (await validatorClient.compose().getMbrAmounts({}, {}).simulate()).returns![0]
+    const result = await validatorClient.compose().getMbrAmounts({}, {}).simulate({ allowUnnamedResources: true })
+    return result.returns![0]
 }
 
 export async function getProtocolConstraints(validatorClient: ValidatorRegistryClient) {
@@ -458,6 +460,9 @@ export async function addValidator(
     const suggestedParams = await context.algod.getTransactionParams().do()
     const validatorsAppRef = await validatorClient.appClient.getAppReference()
 
+    suggestedParams.flatFee = true
+    suggestedParams.fee = AlgoAmount.Algos(10.001).microAlgos
+
     // Pay the additional mbr to the validator contract for the new validator mbr
     const payValidatorMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,
@@ -472,7 +477,10 @@ export async function addValidator(
             .addValidator(
                 {
                     // the required MBR payment transaction..
-                    mbrPayment: { transaction: payValidatorMbr, signer: context.testAccount },
+                    mbrPayment: {
+                        transaction: payValidatorMbr,
+                        signer: context.testAccount,
+                    },
                     // --
                     nfdName: '',
                     config: validatorConfigAsArray(config),
@@ -481,7 +489,7 @@ export async function addValidator(
                     sender: owner,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
         return Number(results.returns![0])
     } catch (e) {
         // throw validatorClient.appClient.exposeLogicError(e as Error)
@@ -543,7 +551,7 @@ export async function addStakingPool(
                     sender: vldtrAcct,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
     } catch (exception) {
         console.log((exception as LogicError).message)
         throw exception
@@ -579,7 +587,7 @@ export async function addStakingPool(
                 },
             },
         )
-        .execute({ populateAppCallResources: true })
+        .execute({ populateAppCallResources: true, suppressLog: true })
 
     return poolKey
 }
@@ -598,7 +606,7 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
     }
 }
 
-export async function getCurMaxStatePerPool(validatorClient: ValidatorRegistryClient, validatorId: number) {
+export async function getCurMaxStakePerPool(validatorClient: ValidatorRegistryClient, validatorId: number) {
     try {
         return (
             await validatorClient
@@ -747,7 +755,7 @@ export async function addStake(
                 },
                 { sendParams: { fee: fees }, sender: staker },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
 
         return [new ValidatorPoolKey(results.returns[1]), fees]
     } catch (exception) {
@@ -757,18 +765,23 @@ export async function addStake(
     }
 }
 
-export async function removeStake(stakeClient: StakingPoolClient, staker: Account, unstakeAmount: AlgoAmount) {
+export async function removeStake(
+    stakeClient: StakingPoolClient,
+    staker: Account,
+    unstakeAmount: AlgoAmount,
+    altSender?: Account,
+) {
     const simulateResults = await stakeClient
         .compose()
         .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .removeStake(
-            { amountToUnstake: unstakeAmount.microAlgos },
+            { staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos },
             {
                 sendParams: {
                     fee: AlgoAmount.MicroAlgos(240000),
                 },
-                sender: staker,
+                sender: altSender || staker,
             },
         )
         .simulate({ allowUnnamedResources: true })
@@ -784,16 +797,16 @@ export async function removeStake(stakeClient: StakingPoolClient, staker: Accoun
             .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
             .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
             .removeStake(
-                { amountToUnstake: unstakeAmount.microAlgos },
+                { staker: staker.addr, amountToUnstake: unstakeAmount.microAlgos },
                 {
                     sendParams: {
                         // pays us back and tells validator about balance changed
                         fee: AlgoAmount.MicroAlgos(itxnfees.microAlgos),
                     },
-                    sender: staker,
+                    sender: altSender || staker,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message)
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
@@ -838,7 +851,7 @@ export async function claimTokens(stakeClient: StakingPoolClient, staker: Accoun
                     sender: staker,
                 },
             )
-            .execute({ populateAppCallResources: true })
+            .execute({ populateAppCallResources: true, suppressLog: true })
     } catch (exception) {
         consoleLogger.warn((exception as LogicError).message)
         // throw stakeClient.appClient.exposeLogicError(exception as Error);
@@ -871,7 +884,7 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
         .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
-        .execute({ populateAppCallResources: true })
+        .execute({ populateAppCallResources: true, suppressLog: true })
     return fees
 }
 
@@ -885,19 +898,15 @@ export async function logStakingPoolInfo(
         context.algod,
     )
     const stakingPoolGS = await firstPoolClient.appClient.getGlobalState()
-    let lastPayoutTime: Date = new Date()
-    if (stakingPoolGS.lastPayout !== undefined) {
-        lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000)
-    }
-
     const stakers = await getStakeInfoFromBoxValue(firstPoolClient)
     // iterate stakers displaying the info
-    consoleLogger.info(`${msgToDisplay}, last Payout: ${lastPayoutTime.toUTCString()}`)
+    const lastPayout = stakingPoolGS.lastPayout ? stakingPoolGS.lastPayout.value : 0
+    consoleLogger.info(`${msgToDisplay}, last Payout: ${lastPayout}`)
     for (let i = 0; i < stakers.length; i += 1) {
         if (encodeAddress(stakers[i].staker.publicKey) !== ALGORAND_ZERO_ADDRESS_STRING) {
-            const entryTime = new Date(Number(stakers[i].entryTime) * 1000)
             consoleLogger.info(
-                `${i}: Staker:${encodeAddress(stakers[i].staker.publicKey)}, Balance:${stakers[i].balance}, Rwd Tokens:${stakers[i].rewardTokenBalance} Entry:${entryTime.toUTCString()}`,
+                `${i}: Staker:${encodeAddress(stakers[i].staker.publicKey)}, Balance:${stakers[i].balance}, ` +
+                    `Rwd Tokens:${stakers[i].rewardTokenBalance} Entry:${stakers[i].entryRound}`,
             )
         }
     }
@@ -909,9 +918,8 @@ export async function verifyRewardAmounts(
     tokenRewardedAmount: bigint,
     stakersPriorToReward: StakedInfo[],
     stakersAfterReward: StakedInfo[],
-    payoutEveryXMins: number,
+    epochRoundLength: number,
 ): Promise<void> {
-    const payoutDaysInSecs = payoutEveryXMins * 24 * 60 * 60
     // iterate stakersPriorToReward and total the 'balance' value to get a 'total amount'
     // then determine if the stakersAfterReward version's balance incremented in accordance w/ their percentage of
     // the 'total' - where they get that percentage of the rewardedAmount.
@@ -920,11 +928,13 @@ export async function verifyRewardAmounts(
     // Figure out the timestamp of prior block and use that as the 'current time' for purposes
     // of matching the epoch payout calculations in the contract
     const curStatus = await context.algod.status().do()
-    const lastBlock = await context.algod.block(curStatus['last-round'] - 1).do()
-    const payoutTimeToUse = new Date(lastBlock.block.ts * 1000)
+    const lastBlock = curStatus['last-round']
+    const thisEpochBegin = lastBlock - (lastBlock % epochRoundLength)
 
     consoleLogger.info(
-        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers.  reward:${algoRewardedAmount}, totalAmount:${totalAmount}, payout time to use:${payoutTimeToUse.toString()}`,
+        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers. ` +
+            `reward:${algoRewardedAmount}, totalAmount:${totalAmount}, ` +
+            `epochBegin:${thisEpochBegin}, epochLength:${epochRoundLength}`,
     )
     // Iterate all stakers - determine which haven't been for entire epoch - pay them proportionally less for having
     // less time in pool.  We keep track of their stake and then will later reduce the effective 'total staked' amount
@@ -938,21 +948,23 @@ export async function verifyRewardAmounts(
         if (encodeAddress(stakersPriorToReward[i].staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
             continue
         }
-        const stakerEntryTime = new Date(Number(stakersPriorToReward[i].entryTime) * 1000)
-        if (stakerEntryTime.getTime() >= payoutTimeToUse.getTime()) {
+        if (stakersPriorToReward[i].entryRound >= thisEpochBegin) {
+            consoleLogger.info(`staker:${i}, Entry:${stakersPriorToReward[i].entryRound} - after epoch - continuing`)
             continue
         }
         const origBalance = stakersPriorToReward[i].balance
         const origRwdTokenBal = stakersPriorToReward[i].rewardTokenBalance
-        const timeInPoolSecs: bigint =
-            (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000)
-        const timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs) // 34.7% becomes 347
+        const timeInPool: bigint = BigInt(thisEpochBegin) - stakersPriorToReward[i].entryRound
+        const timePercentage: bigint = (BigInt(timeInPool) * BigInt(1000)) / BigInt(epochRoundLength) // 34.7% becomes 347
         if (timePercentage < BigInt(1000)) {
             // partial staker
             const expectedReward =
                 (BigInt(origBalance) * algoRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000))
             consoleLogger.info(
-                `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].balance - origBalance} ${encodeAddress(stakersPriorToReward[i].staker.publicKey)}`,
+                `staker:${i}, Entry:${stakersPriorToReward[i].entryRound} TimePct:${timePercentage}, ` +
+                    `PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ` +
+                    `ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].balance - origBalance} ` +
+                    `${encodeAddress(stakersPriorToReward[i].staker.publicKey)}`,
             )
 
             if (origBalance + expectedReward !== stakersAfterReward[i].balance) {
@@ -987,17 +999,15 @@ export async function verifyRewardAmounts(
         if (encodeAddress(stakersPriorToReward[i].staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
             continue
         }
-        const stakerEntryTime = new Date(Number(stakersPriorToReward[i].entryTime) * 1000)
-        if (stakerEntryTime.getTime() >= payoutTimeToUse.getTime()) {
+        if (stakersPriorToReward[i].entryRound >= thisEpochBegin) {
             consoleLogger.info(
-                `staker:${i}, ${encodeAddress(stakersPriorToReward[i].staker.publicKey)} SKIPPED because entry is newer at:${stakerEntryTime.toString()}`,
+                `staker:${i}, ${encodeAddress(stakersPriorToReward[i].staker.publicKey)} SKIPPED because entry is newer at:${stakersPriorToReward[i].entryRound}`,
             )
         } else {
             const origBalance = stakersPriorToReward[i].balance
             const origRwdTokenBal = stakersPriorToReward[i].rewardTokenBalance
-            const timeInPoolSecs: bigint =
-                (BigInt(payoutTimeToUse.getTime()) - BigInt(stakerEntryTime.getTime())) / BigInt(1000)
-            let timePercentage: bigint = (BigInt(timeInPoolSecs) * BigInt(1000)) / BigInt(payoutDaysInSecs) // 34.7% becomes 347
+            const timeInPool: bigint = BigInt(thisEpochBegin) - stakersPriorToReward[i].entryRound
+            let timePercentage: bigint = (BigInt(timeInPool) * BigInt(1000)) / BigInt(epochRoundLength) // 34.7% becomes 347
             if (timePercentage < BigInt(1000)) {
                 continue
             }
@@ -1066,4 +1076,41 @@ export async function createAsset(
     const assetId = ptx['asset-index']
 
     return assetId
+}
+
+export async function incrementRoundNumberBy(context: AlgorandTestAutomationContext, rounds: number) {
+    if (rounds === 0) {
+        return
+    }
+    // send rounds number of 'dummy' pay self 0 transactions
+    let params = await context.algod.getTransactionParams().do()
+    console.log('block before incrementRoundNumberBy:', params.firstRound)
+    let txnid = ''
+    for (let i = 0; i < rounds; i += 1) {
+        // we definitely want the await here - we want to ensure these are a block per transaction (in dev mode)
+        const txn = makePaymentTxnWithSuggestedParamsFromObject({
+            from: context.testAccount.addr,
+            to: context.testAccount.addr,
+            amount: 0,
+            note: new TextEncoder().encode(`${i}`),
+            suggestedParams: params,
+        })
+        txnid = txn.txID()
+        const signedTransaction = await signTransaction(txn, context.testAccount)
+        context.algod.sendRawTransaction(signedTransaction).do()
+        // await algokit.transferAlgos(
+        //     {
+        //         from: context.testAccount,
+        //         to: context.testAccount,
+        //         amount: AlgoAmount.Algos(1),
+        //         suppressLog: true,
+        //     },
+        //     context.algod,
+        // )
+    }
+    // wait for the final transaction to show up...
+    await waitForConfirmation(txnid, rounds + 1, context.algod)
+
+    params = await context.algod.getTransactionParams().do()
+    console.log('block AFTER incrementRoundNumberBy:', params.firstRound)
 }

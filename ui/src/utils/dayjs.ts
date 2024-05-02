@@ -5,79 +5,22 @@ import localizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(duration)
 dayjs.extend(localizedFormat)
 
-// Utility function to format durations into human-readable strings
-export function formatDuration(minutes: number, compact = false): string {
-  // Create a duration object from the given minutes
-  const durationObj = dayjs.duration(minutes, 'minutes')
+export function formatDuration(milliseconds: number): string {
+  const dur = dayjs.duration(milliseconds)
 
-  // Special cases
-  if (minutes === 1440) return 'daily'
-  if (minutes === 10080) return 'weekly'
-
-  // General case formatting
-  const days = durationObj.days()
-  const hours = durationObj.hours()
-  const mins = durationObj.minutes()
+  const days = dur.days()
+  const hours = dur.hours()
+  const minutes = dur.minutes()
+  const seconds = dur.seconds()
 
   let result = ''
 
-  if (compact) {
-    if (days > 0) {
-      result += `${days}d`
-      if (hours > 0 || mins > 0) result += ' '
-    }
-    if (hours > 0) {
-      result += `${hours}h`
-      if (mins > 0) result += ' '
-    }
-    if (mins > 0) {
-      result += `${mins}m`
-    }
-  } else {
-    result = 'every '
-    if (days > 0) {
-      result += `${days} day${days > 1 ? 's' : ''}`
-      if (hours > 0 || mins > 0) result += ', '
-    }
-    if (hours > 0) {
-      result += `${hours} hour${hours > 1 ? 's' : ''}`
-      if (mins > 0) result += ', '
-    }
-    if (mins > 0) {
-      result += `${mins} minute${mins > 1 ? 's' : ''}`
-    }
-  }
+  if (days > 0) result += `${days}d `
+  if (hours > 0) result += `${hours}h `
+  if (minutes > 0) result += `${minutes}m `
+  if (seconds > 0) result += `${seconds}s `
 
-  return result
-}
-
-export function formatCompactDuration(minutes: number): string {
-  // Create a duration object from the given minutes
-  const durationObj = dayjs.duration(minutes, 'minutes')
-
-  // Special cases
-  if (minutes === 1440) return 'daily'
-  if (minutes === 10080) return 'weekly'
-
-  // General case formatting
-  const days = durationObj.days()
-  const hours = durationObj.hours()
-  const mins = durationObj.minutes()
-  let result = ''
-
-  if (days > 0) {
-    result += `${days}d`
-    if (hours > 0 || mins > 0) result += ' '
-  }
-  if (hours > 0) {
-    result += `${hours}h`
-    if (mins > 0) result += ' '
-  }
-  if (mins > 0) {
-    result += `${mins}m`
-  }
-
-  return result
+  return result.trim()
 }
 
 export { dayjs }

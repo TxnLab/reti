@@ -27,14 +27,7 @@
     },
     "types": ["vitest/globals"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "vite.config.js",
-    "src/utils/ellipseAddress.spec.tsx",
-    "src/utils/ellipseAddress.spec.tsx",
-    "src/main.tsx"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "vitest.setup.ts"],
   "references": [
     {
       "path": "./tsconfig.node.json"

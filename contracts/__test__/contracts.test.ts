@@ -17,7 +17,7 @@ import {
     epochBalanceUpdate,
     GATING_TYPE_ASSET_ID,
     GATING_TYPE_ASSETS_CREATED_BY,
-    getCurMaxStatePerPool,
+    getCurMaxStakePerPool,
     getMbrAmountsFromValidatorClient,
     getPoolAvailBalance,
     getPoolInfo,
@@ -27,6 +27,7 @@ import {
     getStakerInfo,
     getTokenPayoutRatio,
     getValidatorState,
+    incrementRoundNumberBy,
     logStakingPoolInfo,
     ProtocolConstraints,
     removeStake,
@@ -64,25 +65,20 @@ beforeAll(async () => {
     // testAccount here is the account that creates the Validator master contracts themselves - but basically one-time thing to be ignored
     const { algod, testAccount } = fixture.context
 
-    // First we have to create dummy instance of a pool that we can use as template contract for validator
-    // which it can use to create new instances of that contract for staking pool.
+    // Generate staking pool template instance that the validator registry will reference
     poolClient = new StakingPoolClient(
         {
             sender: testAccount,
             resolveBy: 'id',
             id: 0,
-            deployTimeParams: {
-                nfdRegistryAppId: 0,
-                feeSinkAddr: decodeAddress(FEE_SINK_ADDR).publicKey,
-            },
         },
         algod,
     )
-    const tmplPool = await poolClient.create.createApplication({
-        creatingContractId: 0,
-        validatorId: 0,
-        poolId: 0,
-        minEntryStake: 1_000_000,
+    const { approvalCompiled } = await poolClient.appClient.compile({
+        deployTimeParams: {
+            nfdRegistryAppId: 0,
+            feeSinkAddr: decodeAddress(FEE_SINK_ADDR).publicKey,
+        },
     })
     validatorMasterClient = new ValidatorRegistryClient(
         {
@@ -96,7 +92,7 @@ beforeAll(async () => {
         algod,
     )
 
-    const validatorApp = await validatorMasterClient.create.createApplication({ poolTemplateAppId: tmplPool.appId })
+    const validatorApp = await validatorMasterClient.create.createApplication({})
     // verify that the constructed validator contract is initialized as expected
     expect(validatorApp.appId).toBeDefined()
     expect(validatorApp.appAddress).toBeDefined()
@@ -105,8 +101,22 @@ beforeAll(async () => {
     expect(validatorGlobalState.numV.value).toEqual(0)
     expect(validatorGlobalState.foo).toBeUndefined() // sanity check that undefined states doesn't match 0.
 
-    // need .1 ALGO for things to really work at all w/ this validator contract account so get that out of the way
-    await validatorMasterClient.appClient.fundAppAccount(AlgoAmount.Algos(0.1))
+    // need 2 ALGO for things to really work at all w/ this validator contract account so get that out of the way
+    await validatorMasterClient.appClient.fundAppAccount(AlgoAmount.Algos(2))
+    // Load the staking pool contract bytecode into the validator contract via box storage so it can later deploy
+    const composer = validatorMasterClient
+        .compose()
+        .initStakingContract({ approvalProgramSize: approvalCompiled.compiledBase64ToBytes.length })
+
+    // load the StakingPool contract into box storage of the validator
+    // call loadStakingContractData - chunking the data from approvalCompiled 2000 bytes at a time
+    for (let i = 0; i < approvalCompiled.compiledBase64ToBytes.length; i += 2000) {
+        composer.loadStakingContractData({
+            offset: i,
+            data: approvalCompiled.compiledBase64ToBytes.subarray(i, i + 2000),
+        })
+    }
+    await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true })
     ;[validatorMbr, poolMbr, poolInitMbr, stakerMbr] = await getMbrAmountsFromValidatorClient(validatorMasterClient)
 })
 
@@ -128,9 +138,9 @@ describe('MultValidatorAddCheck', () => {
         ]
 
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
         })
         let expectedID = 1
         let validatorId = await addValidator(
@@ -186,13 +196,13 @@ describe('StakeAdds', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: 50000, // 5%
-            PoolsPerNode: MaxPoolsPerNode,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 50000, // 5%
+            poolsPerNode: MaxPoolsPerNode,
         })
 
         validatorId = await addValidator(
@@ -723,6 +733,172 @@ describe('StakeAdds', () => {
     })
 })
 
+describe('StakeAddWMixedRemove', () => {
+    beforeEach(fixture.beforeEach)
+    beforeEach(logs.beforeEach)
+    afterEach(logs.afterEach)
+
+    let validatorId: number
+    let validatorOwnerAccount: Account
+    let firstPoolKey: ValidatorPoolKey
+
+    beforeAll(async () => {
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        const config = createValidatorConfig({
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool),
+            percentToValidator: 50000,
+            poolsPerNode: MaxPoolsPerNode,
+        })
+
+        validatorId = await addValidator(
+            fixture.context,
+            validatorMasterClient,
+            validatorOwnerAccount,
+            config,
+            validatorMbr,
+        )
+        firstPoolKey = await addStakingPool(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            1,
+            validatorOwnerAccount,
+            poolMbr,
+            poolInitMbr,
+        )
+    })
+    test('addRemoveByStaker', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        let amountStaked = 0
+        const [addStake1] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            AlgoAmount.Algos(1100),
+            0n,
+        )
+        amountStaked = AlgoAmount.Algos(1100).microAlgos - Number(stakerMbr)
+        expect(addStake1.id).toEqual(firstPoolKey.id)
+        expect(addStake1.poolId).toEqual(firstPoolKey.poolId)
+        expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        const ourPoolClient = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+
+        // Get Pool info before removing stake..
+        const preRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        // then remove the stake !
+        const removeFees = await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(0))
+        const newBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        expect(newBalance.amount).toEqual(
+            stakerAcctBalance.amount + amountStaked - removeFees, // microAlgo for `removeStake fees
+        )
+
+        // stakers should have been reduced and stake amount should have been reduced by stake removed
+        const postRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        expect(postRemovePoolInfo.totalStakers).toEqual(preRemovePoolInfo.totalStakers - 1)
+        expect(postRemovePoolInfo.totalAlgoStaked).toEqual(preRemovePoolInfo.totalAlgoStaked - BigInt(amountStaked))
+    })
+
+    test('addRemoveFail', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        const [addStake1] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            AlgoAmount.Algos(1100),
+            0n,
+        )
+        expect(addStake1.id).toEqual(firstPoolKey.id)
+        expect(addStake1.poolId).toEqual(firstPoolKey.poolId)
+        expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const ourPoolClient = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+        const otherAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+
+        await expect(removeStake(ourPoolClient, otherAccount, AlgoAmount.MicroAlgos(0))).rejects.toThrowError()
+    })
+
+    test('addRemoveByValidator', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.Algos(10_000),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        let amountStaked = 0
+        const [addStake1] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            AlgoAmount.Algos(1100),
+            0n,
+        )
+        amountStaked = AlgoAmount.Algos(1100).microAlgos - Number(stakerMbr)
+        expect(addStake1.id).toEqual(firstPoolKey.id)
+        expect(addStake1.poolId).toEqual(firstPoolKey.poolId)
+        expect(addStake1.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const stakerAcctBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        const ourPoolClient = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+
+        const preRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        const removeFees = await removeStake(ourPoolClient, stakerAccount, AlgoAmount.MicroAlgos(0))
+        const newBalance = await fixture.context.algod.accountInformation(stakerAccount.addr).do()
+        expect(newBalance.amount).toEqual(
+            stakerAcctBalance.amount + amountStaked - removeFees, // microAlgo for `removeStake fees
+        )
+
+        // stakers should have been reduced and stake amount should have been reduced by stake removed
+        const postRemovePoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        expect(postRemovePoolInfo.totalStakers).toEqual(preRemovePoolInfo.totalStakers - 1)
+        expect(postRemovePoolInfo.totalAlgoStaked).toEqual(preRemovePoolInfo.totalAlgoStaked - BigInt(amountStaked))
+    })
+})
+
 describe('StakeWRewards', () => {
     beforeEach(fixture.beforeEach)
     beforeEach(logs.beforeEach)
@@ -736,6 +912,7 @@ describe('StakeWRewards', () => {
     let firstPoolClient: StakingPoolClient
 
     const PctToValidator = 5
+    const epochRoundLength = 4
 
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
@@ -748,12 +925,13 @@ describe('StakeWRewards', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: PctToValidator * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            epochRoundLength,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -840,9 +1018,6 @@ describe('StakeWRewards', () => {
     })
 
     test('testFirstRewards', async () => {
-        // increment time a day(+) at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 61 * 24).do()
-
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
@@ -857,6 +1032,7 @@ describe('StakeWRewards', () => {
             },
             fixture.context.algod,
         )
+        await incrementRoundNumberBy(fixture.context, 320 + epochRoundLength + epochRoundLength / 2)
 
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
         consoleLogger.info(`pool stakers:${poolInfo.totalStakers}, staked:${poolInfo.totalAlgoStaked}`)
@@ -889,7 +1065,7 @@ describe('StakeWRewards', () => {
             0n,
             stakersPriorToReward as StakedInfo[],
             stakersAfterReward as StakedInfo[],
-            1 as number,
+            epochRoundLength,
         )
 
         // the total staked should have grown as well - reward minus what the validator was paid in their commission
@@ -924,23 +1100,23 @@ describe('StakeWRewards', () => {
         expect(poolBalance).toEqual(newValidatorState.totalAlgoStaked)
     })
 
-    test('testNotEnoughRewards', async () => {
-        // Do epoch payout immediately with no new funds - should fail because not enough to pay out to validator, etc.
+    test('testNoRewards', async () => {
+        await incrementRoundNumberBy(fixture.context, epochRoundLength)
+
+        // Do epoch payout immediately with no new funds - should still succeed but basically do nothing
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         const epochBefore = BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint)
+        const lastPayout = BigInt((await firstPoolClient.appClient.getGlobalState()).lastPayout.value as bigint)
         const fees = await epochBalanceUpdate(firstPoolClient)
 
-        expect(BigInt((await firstPoolClient.appClient.getGlobalState()).epochNumber.value as bigint)).toEqual(
-            epochBefore + 1n,
-        )
+        const newGS = await firstPoolClient.appClient.getGlobalState()
+        expect(BigInt(newGS.epochNumber.value as bigint)).toEqual(epochBefore + 1n)
+        expect(newGS.lastPayout.value as bigint).toBeGreaterThan(lastPayout)
         const newOwnerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         expect(newOwnerBalance.amount).toEqual(ownerBalance.amount - fees.microAlgos)
     })
 
     test('testTooEarlyEpoch', async () => {
-        // increment 1 hour at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60).do()
-
         // put some test 'reward' algos into staking pool
         await transferAlgos(
             {
@@ -950,9 +1126,12 @@ describe('StakeWRewards', () => {
             },
             fixture.context.algod,
         )
-
-        // this payout should work... between prior tests and just now - it's been a day.
-        // validator will have received 5 algo (on the 100 we just put in the pool) - we account for that later...
+        const params = await fixture.context.algod.getTransactionParams().do()
+        // add blocks to get to exact start of new epoch
+        if (params.firstRound % epochRoundLength !== 0) {
+            await incrementRoundNumberBy(fixture.context, epochRoundLength - (params.firstRound % epochRoundLength))
+        }
+        // this payout should work...
         await epochBalanceUpdate(firstPoolClient)
 
         await transferAlgos(
@@ -984,26 +1163,18 @@ describe('StakeWRewards', () => {
     })
 
     test('testPartialReward', async () => {
-        // increment 1 hour at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60).do()
+        // Create second (brand new!) staker - with same amount entered - but we'll enter later to the first staker so
+        // it will be a 'partial' entry into the epoch (so we can ensure partial payout occurs)
+        const partialEpochStaker = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        stakerAccounts.push(partialEpochStaker)
 
-        // loop until we get a payout (from prior 'too early' state)
-        for (let i = 0; i < 24; i += 1) {
-            try {
-                await epochBalanceUpdate(firstPoolClient)
-                break
-            } catch (exception) {
-                // move the clock by issuing a txn.
-                await transferAlgos(
-                    {
-                        from: fixture.context.testAccount,
-                        to: getApplicationAddress(firstPoolKey.poolAppId),
-                        amount: AlgoAmount.Algos(10),
-                    },
-                    fixture.context.algod,
-                )
-            }
-        }
+        const params = await fixture.context.algod.getTransactionParams().do()
+        // add blocks to get to block prior to start of new epoch
+        await incrementRoundNumberBy(fixture.context, epochRoundLength - 1 - (params.firstRound % epochRoundLength))
 
         // double-check no one should be left and be 0 balance
         const checkPoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
@@ -1031,26 +1202,15 @@ describe('StakeWRewards', () => {
         expect(aPoolKey.poolAppId).toEqual(aPoolKey.poolAppId)
 
         const staker1Info = await getStakerInfo(firstPoolClient, stakerAccounts[0])
-        const entryTime = new Date(Number(staker1Info.entryTime) * 1000) // convert to ms
         const stakingPoolGS = await firstPoolClient.appClient.getGlobalState()
-        const lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000)
-        consoleLogger.info(`lastPayout:${lastPayoutTime.toString()}, new entry time: ${entryTime.toString()}`)
-
-        // Ok - bump time so that the next staker will be towards tail end of next epoch payout
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 24).do()
-
-        // Add second (brand new!) staker - with same amount entered - but entering later (so it will be a 'partial'
-        // entry into the epoch (so we can ensure partial payout occurs)
-        const partialEpochStaker = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
+        consoleLogger.info(
+            `lastPayout:${stakingPoolGS.lastPayout.value}, staker1 entry round: ${staker1Info.entryRound}`,
         )
-        stakerAccounts.push(partialEpochStaker)
+
+        // add next staker immediately after - with such small epoch it should be somewhat smaller reward
         const stakeAmount2 = AlgoAmount.MicroAlgos(
             AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos,
         )
-
         // Add stake for partial-epoch staker
         const [newPoolKey] = await addStake(
             fixture.context,
@@ -1063,8 +1223,7 @@ describe('StakeWRewards', () => {
 
         expect(newPoolKey.poolAppId).toEqual(aPoolKey.poolAppId)
         const staker2Info = await getStakerInfo(firstPoolClient, partialEpochStaker)
-        const staker2Entry = new Date(Number(staker2Info.entryTime) * 1000)
-        consoleLogger.info(`partialEpochStaker: new entry time: ${staker2Entry.toString()}`)
+        consoleLogger.info(`partialEpochStaker: new entry round: ${staker2Info.entryRound}`)
 
         await logStakingPoolInfo(fixture.context, firstPoolKey.poolAppId, 'should have two stakers')
 
@@ -1081,6 +1240,8 @@ describe('StakeWRewards', () => {
 
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
 
+        await incrementRoundNumberBy(fixture.context, 320 + epochRoundLength)
+
         // do reward calcs
         await epochBalanceUpdate(firstPoolClient)
         const stakersAfterReward = await getStakeInfoFromBoxValue(firstPoolClient)
@@ -1092,7 +1253,7 @@ describe('StakeWRewards', () => {
             0n,
             stakersPriorToReward,
             stakersAfterReward,
-            1,
+            epochRoundLength,
         )
     })
 })
@@ -1122,12 +1283,12 @@ describe('StakeW0Commission', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: PctToValidator * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -1198,8 +1359,7 @@ describe('StakeW0Commission', () => {
     })
 
     test('testFirstRewards', async () => {
-        // increment time a day(+) at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 61 * 24).do()
+        await incrementRoundNumberBy(fixture.context, 322)
 
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
@@ -1305,12 +1465,12 @@ describe('StakeW100Commission', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: PctToValidator * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -1381,9 +1541,6 @@ describe('StakeW100Commission', () => {
     })
 
     test('testFirstRewards', async () => {
-        // increment time a day(+) at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 61 * 24).do()
-
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
@@ -1480,6 +1637,7 @@ describe('StakeWTokenWRewards', () => {
     const PctToValidator = 5
     const decimals = 0
     const tokenRewardPerPayout = BigInt(1000 * 10 ** decimals)
+    const epochRoundLength = 4
 
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
@@ -1507,14 +1665,15 @@ describe('StakeWTokenWRewards', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: PctToValidator * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
-            RewardTokenID: rewardTokenID,
-            RewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            rewardTokenID,
+            rewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
+            epochRoundLength,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -1616,9 +1775,6 @@ describe('StakeWTokenWRewards', () => {
     })
 
     test('testFirstRewards', async () => {
-        // increment time a day(+) at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 25).do()
-
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
@@ -1634,6 +1790,7 @@ describe('StakeWTokenWRewards', () => {
             },
             fixture.context.algod,
         )
+        await incrementRoundNumberBy(fixture.context, 320 + epochRoundLength + epochRoundLength / 2)
 
         const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
         consoleLogger.info(`pool stakers:${poolInfo.totalStakers}, staked:${poolInfo.totalAlgoStaked}`)
@@ -1666,7 +1823,7 @@ describe('StakeWTokenWRewards', () => {
         // await logStakingPoolInfo(fixture.context, firstPoolKey.poolAppId, 'tokenRewardCheck');
 
         // the reward tokens 'held' back should've grown by the token payout amount
-        expect(newValidatorState.rewardTokenHeldBack).toEqual(BigInt(validatorConfig.RewardPerPayout))
+        expect(newValidatorState.rewardTokenHeldBack).toEqual(BigInt(validatorConfig.rewardPerPayout))
 
         const poolBalance = await getPoolAvailBalance(fixture.context, firstPoolKey)
         expect(poolBalance).toEqual(newValidatorState.totalAlgoStaked)
@@ -1704,26 +1861,20 @@ describe('StakeWTokenWRewards', () => {
     })
 
     test('testPartialReward', async () => {
-        // increment 1 hour at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60).do()
+        // Create second (brand new!) staker - with same amount entered - but we'll enter later to the first staker so
+        // it will be a 'partial' entry into the epoch (so we can ensure partial payout occurs)
+        const partialEpochStaker = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        stakerAccounts.push(partialEpochStaker)
+        // opt-in to reward token
+        await assetOptIn({ account: partialEpochStaker, assetId: Number(rewardTokenID) }, fixture.context.algod)
 
-        // loop until we get a payout (from prior 'too early' state)
-        for (let i = 0; i < 24; i += 1) {
-            try {
-                await epochBalanceUpdate(firstPoolClient)
-                break
-            } catch (exception) {
-                // move the clock by issuing a txn.
-                await transferAlgos(
-                    {
-                        from: fixture.context.testAccount,
-                        to: getApplicationAddress(firstPoolKey.poolAppId),
-                        amount: AlgoAmount.Algos(10),
-                    },
-                    fixture.context.algod,
-                )
-            }
-        }
+        const params = await fixture.context.algod.getTransactionParams().do()
+        // add blocks to get to block prior to start of new epoch
+        await incrementRoundNumberBy(fixture.context, epochRoundLength - 1 - (params.firstRound % epochRoundLength))
 
         // double-check no one should be left and be 0 balance
         const checkPoolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
@@ -1751,24 +1902,10 @@ describe('StakeWTokenWRewards', () => {
         expect(aPoolKey.poolAppId).toEqual(aPoolKey.poolAppId)
 
         const staker1Info = await getStakerInfo(firstPoolClient, stakerAccounts[0])
-        const entryTime = new Date(Number(staker1Info.entryTime) * 1000) // convert to ms
         const stakingPoolGS = await firstPoolClient.appClient.getGlobalState()
-        const lastPayoutTime = new Date(Number(stakingPoolGS.lastPayout.value as bigint) * 1000)
-        consoleLogger.info(`lastPayout:${lastPayoutTime.toString()}, new entry time: ${entryTime.toString()}`)
-
-        // Ok - bump time so that the next staker will be towards tail end of next epoch payout
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 24).do()
-
-        // Add second (brand new!) staker - with same amount entered - but entering later (so it will be a 'partial'
-        // entry into the epoch (so we can ensure partial payout occurs)
-        const partialEpochStaker = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
+        consoleLogger.info(
+            `lastPayout:${stakingPoolGS.lastPayout.value}, staker1 entry round: ${staker1Info.entryRound}`,
         )
-        stakerAccounts.push(partialEpochStaker)
-        // opt-in to reward token
-        await assetOptIn({ account: partialEpochStaker, assetId: Number(rewardTokenID) }, fixture.context.algod)
 
         const stakeAmount2 = AlgoAmount.MicroAlgos(
             AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos,
@@ -1786,8 +1923,7 @@ describe('StakeWTokenWRewards', () => {
 
         expect(newPoolKey.poolAppId).toEqual(aPoolKey.poolAppId)
         const staker2Info = await getStakerInfo(firstPoolClient, partialEpochStaker)
-        const staker2Entry = new Date(Number(staker2Info.entryTime) * 1000)
-        consoleLogger.info(`partialEpochStaker: new entry time: ${staker2Entry.toString()}`)
+        consoleLogger.info(`partialEpochStaker: new entry round: ${staker2Info.entryRound}`)
 
         await logStakingPoolInfo(fixture.context, firstPoolKey.poolAppId, 'should have two stakers')
 
@@ -1804,6 +1940,8 @@ describe('StakeWTokenWRewards', () => {
 
         const stakersPriorToReward = await getStakeInfoFromBoxValue(firstPoolClient)
 
+        await incrementRoundNumberBy(fixture.context, 320 + epochRoundLength)
+
         // do reward calcs
         await epochBalanceUpdate(firstPoolClient)
         const stakersAfterReward = await getStakeInfoFromBoxValue(firstPoolClient)
@@ -1815,7 +1953,7 @@ describe('StakeWTokenWRewards', () => {
             BigInt(tokenRewardPerPayout),
             stakersPriorToReward,
             stakersAfterReward,
-            1,
+            epochRoundLength,
         )
     })
 })
@@ -1859,14 +1997,14 @@ describe('TokenRewardOnlyTokens', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: 5 * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
-            RewardTokenID: rewardTokenID,
-            RewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 5 * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            rewardTokenID,
+            rewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
         })
         validatorId = await addValidator(
             fixture.context,
@@ -1932,8 +2070,7 @@ describe('TokenRewardOnlyTokens', () => {
     })
 
     test('testFirstRewards', async () => {
-        // increment time a day at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 25).do()
+        await incrementRoundNumberBy(fixture.context, 322)
 
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()
@@ -1964,7 +2101,7 @@ describe('TokenRewardOnlyTokens', () => {
         expect(newValidatorState.totalAlgoStaked).toEqual(origValidatorState.totalAlgoStaked)
 
         // the reward tokens 'held' back should've grown by the token payout amount
-        expect(newValidatorState.rewardTokenHeldBack).toEqual(BigInt(validatorConfig.RewardPerPayout))
+        expect(newValidatorState.rewardTokenHeldBack).toEqual(BigInt(validatorConfig.rewardPerPayout))
 
         const poolBalance = await getPoolAvailBalance(fixture.context, firstPoolKey)
         expect(poolBalance).toEqual(newValidatorState.totalAlgoStaked)
@@ -2040,14 +2177,14 @@ describe('DoublePoolWTokens', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(AlgoAmount.Algos(5_000).microAlgos), // just do 5k per pool
-            PercentToValidator: PctToValidator * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
-            RewardTokenID: rewardTokenID,
-            RewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(AlgoAmount.Algos(5_000).microAlgos), // just do 5k per pool
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            rewardTokenID,
+            rewardPerPayout: tokenRewardPerPayout, // 1000 tokens per epoch
         })
         validatorId = await addValidator(
             fixture.context,
@@ -2173,8 +2310,7 @@ describe('DoublePoolWTokens', () => {
     })
 
     test('testFirstRewards', async () => {
-        // increment time a day at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 24).do()
+        await incrementRoundNumberBy(fixture.context, 322)
 
         let cumTokRewards = 0n
         for (let poolIdx = 0; poolIdx < 2; poolIdx += 1) {
@@ -2248,7 +2384,7 @@ describe('DoublePoolWTokens', () => {
             )
             // verify that pending reward token payout came to us
             const newStakerAssetBalance = await fixture.context.algod
-                .accountAssetInformation(stakerAccounts[0].addr, Number(rewardTokenID))
+                .accountAssetInformation(stakerAccounts[i].addr, Number(rewardTokenID))
                 .do()
             expect(BigInt(newStakerAssetBalance['asset-holding'].amount)).toEqual(
                 BigInt(origStakerAssetBalance['asset-holding'].amount) + stakerInfo.rewardTokenBalance,
@@ -2320,16 +2456,16 @@ describe('TokenGatingByCreator', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: 5 * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 5 * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
             // stakers must possess any token created by tokenCreatorAccount
-            EntryGatingType: GATING_TYPE_ASSETS_CREATED_BY,
-            EntryGatingAddress: tokenCreatorAccount.addr,
-            GatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails us
+            entryGatingType: GATING_TYPE_ASSETS_CREATED_BY,
+            entryGatingAddress: tokenCreatorAccount.addr,
+            gatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails us
         })
         validatorId = await addValidator(
             fixture.context,
@@ -2543,16 +2679,16 @@ describe('TokenGatingByAsset', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: 5 * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 5 * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
             // stakers must possess ONLY the second gating token - explicit id !
-            EntryGatingType: GATING_TYPE_ASSET_ID,
-            EntryGatingAssets: [gatingToken2Id, 0n, 0n, 0n],
-            GatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails us
+            entryGatingType: GATING_TYPE_ASSET_ID,
+            entryGatingAssets: [gatingToken2Id, 0n, 0n, 0n],
+            gatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails us
         })
         validatorId = await addValidator(
             fixture.context,
@@ -2748,16 +2884,16 @@ describe('TokenGatingMultAssets', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: 5 * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 5 * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
             // stakers must possess ONLY the second gating token - explicit id !
-            EntryGatingType: GATING_TYPE_ASSET_ID,
-            EntryGatingAssets: [gatingTokens[0], gatingTokens[1], gatingTokens[2], gatingTokens[3]],
-            GatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails
+            entryGatingType: GATING_TYPE_ASSET_ID,
+            entryGatingAssets: [gatingTokens[0], gatingTokens[1], gatingTokens[2], gatingTokens[3]],
+            gatingAssetMinBalance: 2n, // require 2 so we can see if only having 1 fails
         })
         validatorId = await addValidator(
             fixture.context,
@@ -2952,13 +3088,12 @@ describe('SaturatedValidator', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: constraints.MaxAlgoPerPool,
-            PayoutEveryXMins: 1,
-            PercentToValidator: 5 * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: constraints.MaxAlgoPerPool,
+            percentToValidator: 5 * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -3009,9 +3144,9 @@ describe('SaturatedValidator', () => {
         ).rejects.toThrowError()
     })
 
-    // Now we add 2 more pools, total of 3 - which means we can have up to 70m * 3 = 210m total stake yet in current config
+    // Now we add 2 more pools, total of 3 - and max state per pool should reduce accordingly.
     test('addPools', async () => {
-        const curSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorId)
+        const curSoftMax = await getCurMaxStakePerPool(validatorMasterClient, validatorId)
         expect(curSoftMax).toEqual(constraints.MaxAlgoPerPool)
 
         for (let i = 0; i < 2; i += 1) {
@@ -3029,18 +3164,14 @@ describe('SaturatedValidator', () => {
         }
         expect((await getValidatorState(validatorMasterClient, validatorId)).numPools).toEqual(3)
         // Our maximum per pool should've changed now - to be max algo per validator / numNodes (3)
-        const newSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorId)
+        const newSoftMax = await getCurMaxStakePerPool(validatorMasterClient, validatorId)
         expect(newSoftMax).toEqual(
             BigInt(Math.min(Number(constraints.MaxAlgoPerValidator / 3n), Number(constraints.MaxAlgoPerPool))),
         )
     })
 
     test('fillNewPools', async () => {
-        // bump by 15 mins at a time, so we account for the entry time post-dating and can stake and be immediately
-        // 100%
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 15).do()
-
-        const newSoftMax = await getCurMaxStatePerPool(validatorMasterClient, validatorId)
+        const newSoftMax = await getCurMaxStakePerPool(validatorMasterClient, validatorId)
 
         let [poolKey] = await addStake(
             fixture.context,
@@ -3094,11 +3225,14 @@ describe('SaturatedValidator', () => {
             fixture.context.algod,
         )
         const wNewRewardPoolBal = await getPoolAvailBalance(fixture.context, pools[2])
-        // balance should be excess above totalAlgoStaked now...
+        // pools account balance should be excess above totalAlgoStaked now...
         expect(wNewRewardPoolBal).toEqual(poolInfo.totalAlgoStaked + BigInt(rewardAmount))
 
-        // but after next epochBalanceUpdate - it should have grown - but not by as much (depends on ratio of stake vs saturation limit)
+        // but after epochBalanceUpdate - the 'staked amount' should have grown - but not by as much (depends on ratio of stake vs saturation limit)
         const origFeeSinkBal = await fixture.context.algod.accountInformation(FEE_SINK_ADDR).do()
+        // make sure all the stakers are considered fully staked...
+        await incrementRoundNumberBy(fixture.context, 321)
+
         await epochBalanceUpdate(tmpPoolClient)
 
         const postSaturatedPoolBal = await getPoolAvailBalance(fixture.context, pools[2])
@@ -3110,6 +3244,7 @@ describe('SaturatedValidator', () => {
         expect(newFeeSinkBal.amount).toBeGreaterThanOrEqual(
             origFeeSinkBal.amount + (rewardAmount - Number(diminishedRewards)),
         )
+        consoleLogger.info(`diminishedRewards:${diminishedRewards}`)
 
         // stake should've increased by diminishedRewards
         const newPoolInfo = await getPoolInfo(validatorMasterClient, pools[2])
@@ -3136,13 +3271,13 @@ describe('StakeAddRemoveBugVerify', () => {
             fixture.context.kmd,
         )
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1).microAlgos),
-            MaxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
-            PercentToValidator: 50000, // 5%
-            PoolsPerNode: MaxPoolsPerNode,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 50000, // 5%
+            poolsPerNode: MaxPoolsPerNode,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -3255,8 +3390,6 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
 
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
-        await fixture.context.algod.setBlockOffsetTimestamp(0).do()
-
         // Fund a 'validator account' that will be the validator owner.
         validatorOwnerAccount = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
@@ -3266,12 +3399,12 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
-            Owner: validatorOwnerAccount.addr,
-            Manager: validatorOwnerAccount.addr,
-            MinEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
-            MaxAlgoPerPool: BigInt(AlgoAmount.Algos(1000 * NumStakers).microAlgos), // this comes into play in later tests !!
-            PercentToValidator: PctToValidator * 10000,
-            ValidatorCommissionAddress: validatorOwnerAccount.addr,
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(AlgoAmount.Algos(1000 * NumStakers).microAlgos), // this comes into play in later tests !!
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
         })
         validatorId = await addValidator(
             fixture.context,
@@ -3339,6 +3472,7 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
                 )
                 let stakedPoolKey: ValidatorPoolKey
                 if (i < NumStakers) {
+                    consoleLogger.info(`adding staker:${i + 1}`)
                     ;[stakedPoolKey] = await addStake(
                         fixture.context,
                         validatorMasterClient,
@@ -3374,8 +3508,8 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
     )
 
     test('testFirstRewards', async () => {
-        // increment time a day at a time per transaction
-        await fixture.context.algod.setBlockOffsetTimestamp(60 * 60 * 25).do()
+        // ensure everyone is completely in the epoch
+        await incrementRoundNumberBy(fixture.context, 320)
 
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
         const ownerBalance = await fixture.context.algod.accountInformation(validatorOwnerAccount.addr).do()

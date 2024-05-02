@@ -1,26 +1,22 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { fetchStakerValidatorData } from '@/api/contracts'
-import { constraintsQueryOptions, validatorsQueryOptions } from '@/api/queries'
+import { constraintsQueryOptions, stakesQueryOptions, validatorsQueryOptions } from '@/api/queries'
 import { Loading } from '@/components/Loading'
 import { Meta } from '@/components/Meta'
 import { PageHeader } from '@/components/PageHeader'
 import { PageMain } from '@/components/PageMain'
 import { StakingTable } from '@/components/StakingTable'
 import { ValidatorTable } from '@/components/ValidatorTable'
-import { StakerValidatorData } from '@/interfaces/staking'
 
 export const Route = createFileRoute('/')({
   beforeLoad: () => {
     return {
       validatorsQueryOptions,
-      constraintsQueryOptions,
     }
   },
-  loader: async ({ context: { queryClient, validatorsQueryOptions, constraintsQueryOptions } }) => {
+  loader: ({ context: { queryClient, validatorsQueryOptions } }) => {
     queryClient.ensureQueryData(validatorsQueryOptions)
-    queryClient.ensureQueryData(constraintsQueryOptions)
   },
   component: Dashboard,
   pendingComponent: () => <Loading size="lg" className="opacity-50" />,
@@ -41,14 +37,7 @@ function Dashboard() {
 
   const { activeAddress } = useWallet()
 
-  const stakesQuery = useQuery<StakerValidatorData[]>({
-    queryKey: ['stakes', { staker: activeAddress! }],
-    queryFn: () => fetchStakerValidatorData(activeAddress!),
-    enabled: !!activeAddress,
-    retry: false,
-    refetchInterval: 1000 * 60, // every minute
-  })
-
+  const stakesQuery = useQuery(stakesQueryOptions(activeAddress))
   const stakesByValidator = stakesQuery.data || []
 
   return (

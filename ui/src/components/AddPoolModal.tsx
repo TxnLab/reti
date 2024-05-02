@@ -1,12 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { addStakingPool, fetchMbrAmounts, initStakingPoolStorage } from '@/api/contracts'
+import {
+  addStakingPool,
+  fetchMbrAmounts,
+  fetchValidator,
+  initStakingPoolStorage,
+} from '@/api/contracts'
 import { poolAssignmentQueryOptions } from '@/api/queries'
 import { NodeSelect } from '@/components/NodeSelect'
 import { Button } from '@/components/ui/button'
@@ -26,7 +30,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { NodePoolAssignmentConfig, Validator } from '@/interfaces/validator'
-import { findFirstAvailableNode } from '@/utils/contracts'
+import { findFirstAvailableNode, setValidatorQueriesData } from '@/utils/contracts'
 import { cn } from '@/utils/ui'
 
 const formSchema = z.object({
@@ -47,7 +51,6 @@ export function AddPoolModal({
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
   const queryClient = useQueryClient()
-  const router = useRouter()
   const { transactionSigner, activeAddress } = useWallet()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -126,32 +129,11 @@ export function AddPoolModal({
         duration: 5000,
       })
 
-      // Manually update ['validators'] query to avoid refetching
-      queryClient.setQueryData<Validator[]>(['validators'], (prevData) => {
-        if (!prevData) {
-          return prevData
-        }
+      // Refetch validator data
+      const newData = await fetchValidator(validator!.id)
 
-        return prevData.map((validator: Validator) => {
-          if (validator.id === validator!.id) {
-            return {
-              ...validator,
-              state: {
-                ...validator.state,
-                numPools: validator.state.numPools + 1,
-              },
-            }
-          }
-
-          return validator
-        })
-      })
-
-      // Invalidate other queries to update UI
-      queryClient.invalidateQueries({ queryKey: ['validator', String(validator!.id)] })
-      queryClient.invalidateQueries({ queryKey: ['pool-assignments', validator!.id] })
-      queryClient.invalidateQueries({ queryKey: ['validator-pools', validator!.id] })
-      router.invalidate()
+      // Seed/update query cache with new data
+      setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       toast.error('Failed to create staking pool', { id: toastId })
       console.error(error)

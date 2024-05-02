@@ -1,10 +1,8 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { useQueries, useQuery } from '@tanstack/react-query'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Copy } from 'lucide-react'
 import * as React from 'react'
-import { stakedInfoQueryOptions, validatorPoolsQueryOptions } from '@/api/queries'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
@@ -20,7 +18,8 @@ import {
 } from '@/components/ui/select'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
-import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
+import { useStakersChartData } from '@/hooks/useStakersChartData'
+import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
 import { copyToClipboard } from '@/utils/copyToClipboard'
@@ -52,57 +51,10 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
       value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
     })) || []
 
-  const poolsInfoQuery = useQuery(validatorPoolsQueryOptions(validator.id))
-  const poolsInfo = poolsInfoQuery.data || []
-
-  const allStakedInfo = useQueries({
-    queries: poolsInfo.map((pool) => stakedInfoQueryOptions(pool.poolAppId)),
+  const { stakersChartData, poolsInfo, isLoading, isError } = useStakersChartData({
+    selectedPool,
+    validatorId: validator.id,
   })
-
-  const isLoading = poolsInfoQuery.isLoading || allStakedInfo.some((query) => query.isLoading)
-  const isError = poolsInfoQuery.isError || allStakedInfo.some((query) => query.isError)
-
-  const chartData = React.useMemo(() => {
-    if (!allStakedInfo) {
-      return []
-    }
-
-    const stakedInfo = allStakedInfo
-      .map((query) => query.data || [])
-      .reduce((acc, stakers, i) => {
-        if (selectedPool !== 'all' && Number(selectedPool) !== i) {
-          return acc
-        }
-
-        // Temporary fix to handle duplicate staker bug
-        const poolStakers: StakedInfo[] = []
-        for (const staker of stakers) {
-          const stakerIndex = poolStakers.findIndex((s) => s.account === staker.account)
-          if (stakerIndex > -1) {
-            staker.account += ' ' // add space to make it unique
-          }
-          poolStakers.push(staker)
-        }
-
-        for (const staker of poolStakers) {
-          const stakerIndex = acc.findIndex((s) => s.account === staker.account)
-          if (stakerIndex > -1) {
-            acc[stakerIndex].balance += staker.balance
-            acc[stakerIndex].totalRewarded += staker.totalRewarded
-            acc[stakerIndex].rewardTokenBalance += staker.rewardTokenBalance
-          } else {
-            acc.push(staker)
-          }
-        }
-        return acc
-      }, [] as StakedInfo[])
-
-    return stakedInfo.map((staker) => ({
-      name: staker.account,
-      value: Number(staker.balance),
-      href: ExplorerLink.account(staker.account).trim(), // trim to remove trailing whitespace
-    }))
-  }, [allStakedInfo, selectedPool])
 
   const valueFormatter = (v: number) => (
     <AlgoDisplayAmount
@@ -202,30 +154,30 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     if (!selectedPoolInfo) {
       return (
         <div className="w-full">
-          <div className="py-6 px-4 sm:px-0">
+          <div className="py-6">
             <h4 className="text-xl font-semibold leading-none tracking-tight">All Pools</h4>
           </div>
           <div className="border-t border-foreground-muted">
             <dl className="divide-y divide-foreground-muted">
-              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+              <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Total Pools</dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
                   {validator.state.numPools}
                 </dd>
               </div>
-              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+              <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">
                   Total Stakers
                 </dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
                   {validator.state.totalStakers}
                 </dd>
               </div>
-              <div className="px-4 py-4 sm:px-0">
+              <div className="py-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">
                   Total Staked
                 </dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
                   <div className="w-full mt-1">
                     <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content flex items-center justify-between">
                       <span>
@@ -268,9 +220,9 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         <div className="border-t border-foreground-muted">
           <dl className="divide-y divide-foreground-muted">
             {!!selectedPoolInfo.poolAddress && (
-              <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+              <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Address</dt>
-                <dd className="flex items-center gap-x-2 mt-1 text-sm font-mono leading-6 sm:mt-0">
+                <dd className="flex items-center gap-x-2 text-sm font-mono leading-6">
                   <a
                     href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
                     target="_blank"
@@ -291,15 +243,15 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 </dd>
               </div>
             )}
-            <div className="px-4 py-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0">
+            <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
-              <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+              <dd className="flex items-center gap-x-2 text-sm leading-6">
                 {selectedPoolInfo.totalStakers}
               </dd>
             </div>
             <div className="px-4 py-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Staked</dt>
-              <dd className="flex items-center gap-x-2 mt-1 text-sm leading-6 sm:mt-0">
+              <dd className="flex items-center gap-x-2 text-sm leading-6">
                 <div className="w-full mt-1">
                   <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content flex items-center justify-between">
                     <span>
@@ -379,16 +331,17 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
             </div>
             <div className="flex items-center">{renderPoolInfo()}</div>
           </div>
-          {chartData.length > 0 && (
+
+          {stakersChartData.length > 0 && (
             <ScrollArea
               className={cn('rounded-lg border', {
-                'h-64': chartData.length > 6,
-                'sm:h-96': chartData.length > 9,
+                'h-64': stakersChartData.length > 6,
+                'sm:h-96': stakersChartData.length > 9,
               })}
             >
               <div className="p-2 pr-6">
                 <BarList
-                  data={chartData}
+                  data={stakersChartData}
                   valueFormatter={valueFormatter}
                   className="font-mono"
                   showAnimation
