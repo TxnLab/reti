@@ -5,6 +5,7 @@ import {
   fetchNodePoolAssignments,
   fetchProtocolConstraints,
   fetchStakedInfoForPool,
+  fetchStakerValidatorData,
   fetchValidator,
   fetchValidatorPools,
   fetchValidators,
@@ -74,7 +75,7 @@ export const nfdQueryOptions = (
 
 export const validatorPoolsQueryOptions = (validatorId: number) =>
   queryOptions({
-    queryKey: ['validator-pools', validatorId],
+    queryKey: ['pools-info', validatorId],
     queryFn: () => fetchValidatorPools(validatorId),
     enabled: !!validatorId,
   })
@@ -84,6 +85,15 @@ export const stakedInfoQueryOptions = (poolAppId: number) =>
     queryKey: ['staked-info', poolAppId],
     queryFn: () => fetchStakedInfoForPool(poolAppId),
     enabled: !!poolAppId,
+  })
+
+export const stakesQueryOptions = (staker: string | null) =>
+  queryOptions({
+    queryKey: ['stakes', { staker }],
+    queryFn: () => fetchStakerValidatorData(staker!),
+    enabled: !!staker,
+    retry: false,
+    refetchInterval: 1000 * 60, // every minute
   })
 
 export const blockTimeQueryOptions = queryOptions({
