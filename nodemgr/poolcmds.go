@@ -241,7 +241,6 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppId, pool.TotalAlgoStaked)
 		apr, _ := App.retiClient.GetAvgApr(pool.PoolAppId)
-		stakeAccum, _ := App.retiClient.GetStakeAccum(pool.PoolAppId)
 		totalRewards += rewardAvail
 
 		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppId).String(), acctInfo.Participation.SelectionParticipationKey)
@@ -264,7 +263,6 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 				partData = fmt.Sprintf("-%d", status.LastRound-lastProposal)
 			}
 		}
-		stakeAccum.Div(stakeAccum, big.NewInt(21))
 		floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
 		floatApr.Quo(floatApr, big.NewFloat(10000.0))
 
@@ -360,6 +358,10 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	}
 	apr, _ := App.retiClient.GetAvgApr(info.Pools[poolId-1].PoolAppId)
 	fmt.Fprintf(tw, "Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
+	stakeAccum, _ := App.retiClient.GetStakeAccum(info.Pools[poolId-1].PoolAppId)
+	stakeAccum.Div(stakeAccum, big.NewInt(30857))
+	stakeAccum.Div(stakeAccum, big.NewInt(1e6))
+	fmt.Fprintf(tw, "Avg Stake: %s\t\n", stakeAccum.String())
 	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
 	floatApr.Quo(floatApr, big.NewFloat(10000.0))
 	fmt.Fprintf(tw, "APR %%: %s\t\n", floatApr.String())

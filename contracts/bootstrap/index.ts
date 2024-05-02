@@ -169,7 +169,7 @@ async function main() {
             data: approvalCompiled.compiledBase64ToBytes.subarray(i, i + 2000),
         })
     }
-    await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true })
+    await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true, suppressLog: true })
 
     console.log(`Validator registry app id is:${validatorApp.appId}`)
 
