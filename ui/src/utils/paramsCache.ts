@@ -1,0 +1,47 @@
+import * as algokit from '@algorandfoundation/algokit-utils'
+import algosdk from 'algosdk'
+import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+
+const algodConfig = getAlgodConfigFromViteEnvironment()
+
+interface CachedParams {
+  suggestedParams: algosdk.SuggestedParams
+  timestamp: number
+}
+
+export class ParamsCache {
+  private static instance: ParamsCache
+  private client: algosdk.Algodv2
+  private cache: CachedParams | null = null
+
+  private constructor() {
+    this.client = algokit.getAlgoClient({
+      server: algodConfig.server,
+      port: algodConfig.port,
+      token: algodConfig.token,
+    })
+  }
+
+  public static getInstance(): ParamsCache {
+    if (!ParamsCache.instance) {
+      ParamsCache.instance = new ParamsCache()
+    }
+    return ParamsCache.instance
+  }
+
+  public async getSuggestedParams(): Promise<algosdk.SuggestedParams> {
+    const now = Date.now()
+    const staleTime = 1000 * 60 * 5 // 5 minutes
+
+    if (this.cache && now - this.cache.timestamp < staleTime) {
+      return this.cache.suggestedParams
+    }
+
+    const suggestedParams = await this.client.getTransactionParams().do()
+    this.cache = {
+      suggestedParams,
+      timestamp: now,
+    }
+    return suggestedParams
+  }
+}
