@@ -137,7 +137,12 @@ export function ValidatorTable({
               onClick={(e) => e.stopPropagation()}
             >
               {nfd ? (
-                <NfdThumbnail nfd={nfd} truncate tooltip />
+                <NfdThumbnail
+                  nfd={nfd}
+                  truncate
+                  tooltip
+                  className={cn(isSunsetted(validator) ? 'opacity-50' : '')}
+                />
               ) : (
                 <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
               )}
