@@ -20,7 +20,7 @@ const algodClient = algokit.getAlgoClient({
   token: algodConfig.token,
 })
 
-export async function getAccountInformation(
+export async function fetchAccountInformation(
   address: string,
   exclude: Exclude = 'none',
 ): Promise<AccountInformation> {
@@ -28,16 +28,16 @@ export async function getAccountInformation(
   return accountInfo as AccountInformation
 }
 
-export async function getAccountBalance(
+export async function fetchAccountBalance(
   address: string,
   availableBalance = false,
 ): Promise<number> {
-  const accountInfo = await getAccountInformation(address, 'all')
+  const accountInfo = await fetchAccountInformation(address, 'all')
 
   return availableBalance ? accountInfo.amount - accountInfo['min-balance'] : accountInfo.amount
 }
 
-export async function getAsset(assetId: number): Promise<Asset> {
+export async function fetchAsset(assetId: number): Promise<Asset> {
   const asset = await algodClient.getAssetByID(assetId).do()
   return asset as Asset
 }
@@ -46,7 +46,7 @@ export async function fetchBalance(address: string | null): Promise<AccountBalan
   if (!address) {
     throw new Error('No address provided')
   }
-  const accountInfo = await getAccountInformation(address, 'all')
+  const accountInfo = await fetchAccountInformation(address, 'all')
 
   const amount = accountInfo.amount
   const minimum = accountInfo['min-balance']
@@ -63,7 +63,7 @@ export async function fetchAssetHoldings(address: string | null): Promise<AssetH
   if (!address) {
     throw new Error('No address provided')
   }
-  const accountInfo = await getAccountInformation(address)
+  const accountInfo = await fetchAccountInformation(address)
   const assets = accountInfo.assets || []
   return assets
 }
@@ -91,7 +91,7 @@ export async function fetchAssetCreatorHoldings(
   const batches = chunkArray(assetHoldings, batchSize)
 
   for (const batch of batches) {
-    const promises = batch.map((holding) => getAsset(holding['asset-id']))
+    const promises = batch.map((holding) => fetchAsset(holding['asset-id']))
     const assets = await Promise.all(promises)
     const assetCreatorHoldings = assets.map((asset, index) => {
       return {

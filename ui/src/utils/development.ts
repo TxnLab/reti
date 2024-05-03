@@ -4,7 +4,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import algosdk from 'algosdk'
 import { toast } from 'sonner'
-import { getAccountInformation, getAsset } from '@/api/algod'
+import { fetchAccountInformation, fetchAsset } from '@/api/algod'
 import { epochBalanceUpdate } from '@/api/contracts'
 import { StakerPoolData } from '@/interfaces/staking'
 import { ToStringTypes } from '@/interfaces/utils'
@@ -12,6 +12,7 @@ import { Validator, ValidatorConfig } from '@/interfaces/validator'
 import { convertToStringTypes } from '@/utils/convert'
 import { convertToBaseUnits, formatAssetAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { ParamsCache } from '@/utils/paramsCache'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -47,7 +48,7 @@ export async function simulateEpoch(
     )
 
     const atc = new algosdk.AtomicTransactionComposer()
-    const suggestedParams = await algodClient.getTransactionParams().do()
+    const suggestedParams = await ParamsCache.getSuggestedParams()
 
     for (const pool of pools) {
       const poolKey = pool.poolKey
@@ -98,7 +99,7 @@ export async function sendRewardTokensToPool(
 
   try {
     const tokenId = validator.config.rewardTokenId
-    const asset = await getAsset(tokenId)
+    const asset = await fetchAsset(tokenId)
     const unitName = asset.params['unit-name']
 
     toast.loading(`Sign to send ${rewardTokenAmount} ${unitName} tokens to pool`, {
@@ -110,7 +111,7 @@ export async function sendRewardTokensToPool(
     const poolAddress = algosdk.getApplicationAddress(poolAppId)
 
     const atc = new algosdk.AtomicTransactionComposer()
-    const suggestedParams = await algodClient.getTransactionParams().do()
+    const suggestedParams = await ParamsCache.getSuggestedParams()
 
     const assetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       from: activeAddress,
@@ -123,7 +124,7 @@ export async function sendRewardTokensToPool(
     atc.addTransaction({ txn: assetTxn, signer })
     await atc.execute(algodClient, 4)
 
-    const poolAccountInfo = await getAccountInformation(poolAddress)
+    const poolAccountInfo = await fetchAccountInformation(poolAddress)
     const assetHolding = poolAccountInfo.assets?.find((a) => a['asset-id'] === tokenId)
 
     const balanceStr = formatAssetAmount(

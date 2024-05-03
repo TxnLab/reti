@@ -1,6 +1,6 @@
 import { Validator } from '@/interfaces/validator'
 import { useQuery } from '@tanstack/react-query'
-import { getAccountBalance } from '@/api/algod'
+import { fetchAccountBalance } from '@/api/algod'
 import { getApplicationAddress } from 'algosdk'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 
@@ -14,7 +14,7 @@ async function fetchRewardBalances(validator: Validator) {
   try {
     let totalBalances = 0
     for (const pool of validator.pools) {
-      const poolBal = await getAccountBalance(getApplicationAddress(pool.poolAppId), true)
+      const poolBal = await fetchAccountBalance(getApplicationAddress(pool.poolAppId), true)
       totalBalances += poolBal
     }
     // Truncate to nearest whole ALGO

@@ -2,8 +2,14 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
+import {
+  getSimulateStakingPoolClient,
+  getSimulateValidatorClient,
+  getStakingPoolClient,
+  getValidatorClient,
+} from '@/api/clients'
 import { fetchNfd } from '@/api/nfd'
-import { ALGORAND_ZERO_ADDRESS_STRING, FEE_SINK } from '@/constants/accounts'
+import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
@@ -33,8 +39,8 @@ import {
   transformValidatorData,
 } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
-import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -43,60 +49,6 @@ const algodClient = algokit.getAlgoClient({
   port: algodConfig.port,
   token: algodConfig.token,
 })
-
-const RETI_APP_ID = getRetiAppIdFromViteEnvironment()
-
-export const makeSimulateValidatorClient = (senderAddr: string = FEE_SINK, authAddr?: string) => {
-  return new ValidatorRegistryClient(
-    {
-      sender: { addr: senderAddr, signer: makeEmptyTransactionSigner(authAddr) },
-      resolveBy: 'id',
-      id: RETI_APP_ID,
-    },
-    algodClient,
-  )
-}
-
-export const makeValidatorClient = (signer: algosdk.TransactionSigner, activeAddress: string) => {
-  return new ValidatorRegistryClient(
-    {
-      sender: { signer, addr: activeAddress } as TransactionSignerAccount,
-      resolveBy: 'id',
-      id: RETI_APP_ID,
-    },
-    algodClient,
-  )
-}
-
-export const makeSimulateStakingPoolClient = (
-  poolAppId: number | bigint,
-  senderAddr: string = FEE_SINK,
-  authAddr?: string,
-) => {
-  return new StakingPoolClient(
-    {
-      sender: { addr: senderAddr, signer: makeEmptyTransactionSigner(authAddr) },
-      resolveBy: 'id',
-      id: poolAppId,
-    },
-    algodClient,
-  )
-}
-
-export const makeStakingPoolClient = (
-  poolAppId: number | bigint,
-  signer: algosdk.TransactionSigner,
-  activeAddress: string,
-) => {
-  return new StakingPoolClient(
-    {
-      sender: { signer, addr: activeAddress } as TransactionSignerAccount,
-      resolveBy: 'id',
-      id: poolAppId,
-    },
-    algodClient,
-  )
-}
 
 export function callGetNumValidators(validatorClient: ValidatorRegistryClient) {
   return validatorClient
@@ -130,7 +82,7 @@ export async function fetchValidator(
   client?: ValidatorRegistryClient,
 ) {
   try {
-    const validatorClient = client || makeSimulateValidatorClient()
+    const validatorClient = client || (await getSimulateValidatorClient())
 
     const [config, state, validatorPoolData, poolTokenPayoutRatios, nodePoolAssignments] =
       await Promise.all([
@@ -180,7 +132,7 @@ export async function fetchValidator(
 
 export async function fetchValidators(client?: ValidatorRegistryClient) {
   try {
-    const validatorClient = client || makeSimulateValidatorClient()
+    const validatorClient = client || (await getSimulateValidatorClient())
 
     // App call to fetch total number of validators
     const numValidatorsResponse = await callGetNumValidators(validatorClient)
@@ -227,7 +179,7 @@ export async function addValidator(
   activeAddress: string,
   authAddr?: string,
 ) {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
 
@@ -246,7 +198,7 @@ export async function addValidator(
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
   ).returns![0]
 
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   suggestedParams.flatFee = true
   suggestedParams.fee = AlgoAmount.Algos(10.001).microAlgos
@@ -343,7 +295,7 @@ export async function fetchNodePoolAssignments(
   validatorId: string | number | bigint,
 ): Promise<NodePoolAssignmentConfig> {
   try {
-    const validatorClient = makeSimulateValidatorClient()
+    const validatorClient = await getSimulateValidatorClient()
 
     const nodePoolAssignmentResponse = await callGetNodePoolAssignments(
       Number(validatorId),
@@ -377,7 +329,7 @@ export function callGetTokenPayoutRatio(
 
 export async function fetchTokenPayoutRatio(validatorId: string | number | bigint) {
   try {
-    const validatorClient = makeSimulateValidatorClient()
+    const validatorClient = await getSimulateValidatorClient()
 
     const result = await callGetTokenPayoutRatio(Number(validatorId), validatorClient)
 
@@ -397,7 +349,7 @@ export function callGetMbrAmounts(validatorClient: ValidatorRegistryClient) {
 
 export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise<MbrAmounts> {
   try {
-    const validatorClient = client || makeSimulateValidatorClient()
+    const validatorClient = client || (await getSimulateValidatorClient())
 
     const mbrAmountsResponse = await callGetMbrAmounts(validatorClient)
     const [validatorMbr, poolMbr, poolInitMbr, stakerMbr] = mbrAmountsResponse.returns![0]
@@ -421,10 +373,10 @@ export async function addStakingPool(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorPoolKey> {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   const payValidatorAddPoolMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
@@ -472,7 +424,7 @@ export async function initStakingPoolStorage(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<void> {
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   const mbrAmount = optInRewardToken ? poolInitMbr + AlgoAmount.Algos(0.1).microAlgos : poolInitMbr
 
@@ -483,7 +435,7 @@ export async function initStakingPoolStorage(
     suggestedParams,
   })
 
-  const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+  const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
   await stakingPoolClient
     .compose()
@@ -506,7 +458,7 @@ export async function doesStakerNeedToPayMbr(
   authAddr?: string,
   client?: ValidatorRegistryClient,
 ): Promise<boolean> {
-  const validatorClient = client || makeSimulateValidatorClient(activeAddress, authAddr)
+  const validatorClient = client || (await getSimulateValidatorClient(activeAddress, authAddr))
 
   const result = await validatorClient
     .compose()
@@ -528,7 +480,7 @@ export async function findPoolForStaker(
   authAddr?: string,
   client?: ValidatorRegistryClient,
 ): Promise<FindPoolForStakerResponse> {
-  const validatorClient = client || makeSimulateValidatorClient(activeAddress, authAddr)
+  const validatorClient = client || (await getSimulateValidatorClient(activeAddress, authAddr))
 
   const result = await validatorClient
     .compose()
@@ -573,10 +525,10 @@ export async function addStake(
   activeAddress: string,
   authAddr?: string,
 ): Promise<ValidatorPoolKey> {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   const stakeTransferPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
@@ -585,7 +537,7 @@ export async function addStake(
     suggestedParams,
   })
 
-  const simulateValidatorClient = makeSimulateValidatorClient(activeAddress, authAddr)
+  const simulateValidatorClient = await getSimulateValidatorClient(activeAddress, authAddr)
 
   const simulateResults = await simulateValidatorClient
     .compose()
@@ -652,7 +604,7 @@ export async function isNewStakerToValidator(
   staker: string,
   minEntryStake: number | bigint,
 ) {
-  const validatorClient = makeSimulateValidatorClient()
+  const validatorClient = await getSimulateValidatorClient()
   const result = await callFindPoolForStaker(validatorId, staker, minEntryStake, validatorClient)
 
   const [_, isNewStaker] = result.returns![0]
@@ -672,7 +624,7 @@ export async function callGetStakedPoolsForAccount(
 
 export async function fetchStakedPoolsForAccount(staker: string): Promise<ValidatorPoolKey[]> {
   try {
-    const validatorClient = makeSimulateValidatorClient()
+    const validatorClient = await getSimulateValidatorClient()
     const result = await callGetStakedPoolsForAccount(staker, validatorClient)
 
     const stakedPools = result.returns![0]
@@ -700,7 +652,7 @@ export async function fetchStakerPoolData(
   staker: string,
 ): Promise<StakerPoolData> {
   try {
-    const stakingPoolClient = makeSimulateStakingPoolClient(poolKey.poolAppId)
+    const stakingPoolClient = await getSimulateStakingPoolClient(poolKey.poolAppId)
     const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
 
     let lastPayoutTime = dayjs()
@@ -803,7 +755,7 @@ export async function fetchProtocolConstraints(
   client?: ValidatorRegistryClient,
 ): Promise<Constraints> {
   try {
-    const validatorClient = client || makeSimulateValidatorClient()
+    const validatorClient = client || (await getSimulateValidatorClient())
 
     const result = await callGetProtocolConstraints(validatorClient)
 
@@ -847,7 +799,7 @@ export async function removeStake(
   activeAddress: string,
   authAddr?: string,
 ) {
-  const stakingPoolSimulateClient = makeSimulateStakingPoolClient(
+  const stakingPoolSimulateClient = await getSimulateStakingPoolClient(
     poolAppId,
     activeAddress,
     authAddr,
@@ -874,7 +826,7 @@ export async function removeStake(
       ),
   )
 
-  const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+  const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
   await stakingPoolClient
     .compose()
@@ -897,7 +849,7 @@ export async function epochBalanceUpdate(
   authAddr?: string,
 ): Promise<void> {
   try {
-    const stakingPoolSimulateClient = makeSimulateStakingPoolClient(
+    const stakingPoolSimulateClient = await getSimulateStakingPoolClient(
       poolAppId,
       activeAddress,
       authAddr,
@@ -915,7 +867,7 @@ export async function epochBalanceUpdate(
       3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
     )
 
-    const stakingPoolClient = makeStakingPoolClient(poolAppId, signer, activeAddress)
+    const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
     await stakingPoolClient
       .compose()
@@ -944,13 +896,13 @@ export async function fetchPoolInfo(
   client?: ValidatorRegistryClient,
 ): Promise<PoolInfo> {
   try {
-    const validatorClient = client || makeSimulateValidatorClient()
+    const validatorClient = client || (await getSimulateValidatorClient())
 
     const result = await callGetPoolInfo(poolKey, validatorClient)
 
     const [poolAppId, totalStakers, totalAlgoStaked] = result.returns![0]
 
-    const stakingPoolClient = makeSimulateStakingPoolClient(poolAppId)
+    const stakingPoolClient = await getSimulateStakingPoolClient(poolAppId)
     const poolAppRef = await stakingPoolClient.appClient.getAppReference()
     const poolAddress = poolAppRef.appAddress
 
@@ -981,7 +933,7 @@ export async function fetchValidatorPools(
   client?: ValidatorRegistryClient,
 ): Promise<PoolInfo[]> {
   try {
-    const validatorClient = client || makeSimulateValidatorClient()
+    const validatorClient = client || (await getSimulateValidatorClient())
 
     const result = await callGetPools(Number(validatorId), validatorClient)
 
@@ -990,7 +942,7 @@ export async function fetchValidatorPools(
     const poolAddresses: string[] = []
 
     for (const poolInfo of poolsInfo) {
-      const stakingPoolClient = makeSimulateStakingPoolClient(poolInfo[0])
+      const stakingPoolClient = await getSimulateStakingPoolClient(poolInfo[0])
       const poolAppRef = await stakingPoolClient.appClient.getAppReference()
       const poolAddress = poolAppRef.appAddress
       poolAddresses.push(poolAddress)
@@ -1017,7 +969,7 @@ export async function claimTokens(
   const atc1 = new algosdk.AtomicTransactionComposer()
 
   for (const pool of pools) {
-    const client = makeSimulateStakingPoolClient(pool.poolAppId, activeAddress, authAddr)
+    const client = await getSimulateStakingPoolClient(pool.poolAppId, activeAddress, authAddr)
     await client.gas({}, { note: '1', sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(0) } })
     await client.gas({}, { note: '2', sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(0) } })
     await client.claimTokens({}, { sendParams: { atc: atc1, fee: AlgoAmount.MicroAlgos(240_000) } })
@@ -1043,7 +995,7 @@ export async function claimTokens(
   const atc2 = new algosdk.AtomicTransactionComposer()
 
   for (const pool of pools) {
-    const client = makeStakingPoolClient(pool.poolAppId, signer, activeAddress)
+    const client = await getStakingPoolClient(pool.poolAppId, signer, activeAddress)
     await client.gas({}, { note: '1', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
     await client.gas({}, { note: '2', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
     await client.claimTokens({}, { sendParams: { atc: atc2, fee: feesAmount } })
@@ -1057,7 +1009,7 @@ export async function claimTokens(
 
 export async function fetchStakedInfoForPool(poolAppId: number): Promise<StakedInfo[]> {
   try {
-    const stakingPoolClient = makeSimulateStakingPoolClient(poolAppId)
+    const stakingPoolClient = await getSimulateStakingPoolClient(poolAppId)
     const boxValue = await stakingPoolClient.appClient.getBoxValue('stakers')
 
     const stakersInfo = chunkBytes(boxValue)
@@ -1077,7 +1029,7 @@ export async function changeValidatorManager(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ) {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   return validatorClient
     .compose()
@@ -1092,7 +1044,7 @@ export async function changeValidatorSunsetInfo(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ) {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   return validatorClient
     .compose()
@@ -1107,7 +1059,7 @@ export async function changeValidatorNfd(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ) {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   return validatorClient
     .compose()
@@ -1121,7 +1073,7 @@ export async function changeValidatorCommissionAddress(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ) {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   return validatorClient
     .compose()
@@ -1139,7 +1091,7 @@ export async function changeValidatorRewardInfo(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ) {
-  const validatorClient = makeValidatorClient(signer, activeAddress)
+  const validatorClient = await getValidatorClient(signer, activeAddress)
 
   return validatorClient
     .compose()
