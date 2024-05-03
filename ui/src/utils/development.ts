@@ -12,6 +12,7 @@ import { Validator, ValidatorConfig } from '@/interfaces/validator'
 import { convertToStringTypes } from '@/utils/convert'
 import { convertToBaseUnits, formatAssetAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { ParamsCache } from '@/utils/paramsCache'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -47,7 +48,7 @@ export async function simulateEpoch(
     )
 
     const atc = new algosdk.AtomicTransactionComposer()
-    const suggestedParams = await algodClient.getTransactionParams().do()
+    const suggestedParams = await ParamsCache.getSuggestedParams()
 
     for (const pool of pools) {
       const poolKey = pool.poolKey
@@ -110,7 +111,7 @@ export async function sendRewardTokensToPool(
     const poolAddress = algosdk.getApplicationAddress(poolAppId)
 
     const atc = new algosdk.AtomicTransactionComposer()
-    const suggestedParams = await algodClient.getTransactionParams().do()
+    const suggestedParams = await ParamsCache.getSuggestedParams()
 
     const assetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       from: activeAddress,

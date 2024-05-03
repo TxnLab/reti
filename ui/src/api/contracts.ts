@@ -40,6 +40,7 @@ import {
 } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -197,7 +198,7 @@ export async function addValidator(
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
   ).returns![0]
 
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   suggestedParams.flatFee = true
   suggestedParams.fee = AlgoAmount.Algos(10.001).microAlgos
@@ -375,7 +376,7 @@ export async function addStakingPool(
   const validatorClient = await getValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   const payValidatorAddPoolMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
@@ -423,7 +424,7 @@ export async function initStakingPoolStorage(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<void> {
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   const mbrAmount = optInRewardToken ? poolInitMbr + AlgoAmount.Algos(0.1).microAlgos : poolInitMbr
 
@@ -527,7 +528,7 @@ export async function addStake(
   const validatorClient = await getValidatorClient(signer, activeAddress)
 
   const validatorAppRef = await validatorClient.appClient.getAppReference()
-  const suggestedParams = await algodClient.getTransactionParams().do()
+  const suggestedParams = await ParamsCache.getSuggestedParams()
 
   const stakeTransferPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
