@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebouncedCallback } from 'use-debounce'
 import { z } from 'zod'
-import { getAccountInformation } from '@/api/algod'
+import { fetchAccountInformation } from '@/api/algod'
 import {
   addStake,
   doesStakerNeedToPayMbr,
@@ -81,7 +81,7 @@ export function AddStakeModal({
 
   const accountInfoQuery = useQuery({
     queryKey: ['account-info', activeAddress],
-    queryFn: () => getAccountInformation(activeAddress!),
+    queryFn: () => fetchAccountInformation(activeAddress!),
     enabled: !!activeAddress && !!validator, // wait until modal is open
   })
 

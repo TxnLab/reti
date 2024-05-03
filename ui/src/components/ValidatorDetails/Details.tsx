@@ -1,11 +1,8 @@
-import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { MessageCircleWarning } from 'lucide-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Tooltip } from '@/components/Tooltip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { EditCommissionAccount } from '@/components/ValidatorDetails/EditCommissionAccount'
 import { EditEntryGating } from '@/components/ValidatorDetails/EditEntryGating'
 import { EditManagerAccount } from '@/components/ValidatorDetails/EditManagerAccount'
@@ -118,7 +115,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.owner)}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:underline"
+                    className="text-link"
                   >
                     {ellipseAddressJsx(validator.config.owner)}
                   </a>
@@ -133,7 +130,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.manager)}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:underline"
+                    className="text-link"
                   >
                     {ellipseAddressJsx(validator.config.manager)}
                   </a>
@@ -149,7 +146,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.validatorCommissionAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:underline"
+                    className="text-link"
                   >
                     {ellipseAddressJsx(validator.config.validatorCommissionAddress)}
                   </a>
@@ -164,23 +161,16 @@ export function Details({ validator }: DetailsProps) {
                   </dt>
                   <dd className="flex items-center justify-between gap-x-2 text-sm font-medium leading-6">
                     {validator.nfd ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <a
-                              href={`${nfdAppUrl}/name/${validator.nfd.name}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="truncate hover:underline"
-                            >
-                              {validator.nfd.name}
-                            </a>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-stone-900 text-white font-semibold tracking-tight dark:bg-white dark:text-stone-900">
-                            {validator.nfd.name}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Tooltip content={validator.nfd.name}>
+                        <a
+                          href={`${nfdAppUrl}/name/${validator.nfd.name}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-link truncate"
+                        >
+                          {validator.nfd.name}
+                        </a>
+                      </Tooltip>
                     ) : (
                       <span className="text-muted-foreground">--</span>
                     )}
@@ -304,22 +294,6 @@ export function Details({ validator }: DetailsProps) {
                     )}
                     {isOwner && <EditSunsettingInfo validator={validator} />}
                   </dd>
-                  {validator.config.sunsettingTo > 0 && (
-                    <Alert className="col-span-2 mt-1 bg-background/50">
-                      <MessageCircleWarning className="h-5 w-5 -mt-1" />
-                      <AlertTitle>Migration Notice</AlertTitle>
-                      <AlertDescription>
-                        Stakers should migrate to{' '}
-                        <Link
-                          to="/validators/$validatorId"
-                          params={{ validatorId: String(validator.config.sunsettingTo) }}
-                          className="hover:underline underline-offset-4"
-                        >
-                          Validator {validator.config.sunsettingTo}
-                        </Link>
-                      </AlertDescription>
-                    </Alert>
-                  )}
                 </div>
               ) : null}
             </dl>

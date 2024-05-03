@@ -1,7 +1,7 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
-import { getAccountInformation } from '@/api/algod'
+import { fetchAccountInformation } from '@/api/algod'
 import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
 import { GatingType } from '@/constants/gating'
 import { AssetHolding } from '@/interfaces/algod'
@@ -264,12 +264,7 @@ export function isStakingDisabled(
   const maxStakersReached = totalStakers >= maxStakers
   const maxStakeReached = Number(totalAlgoStaked) >= maxStake
 
-  const isSunsetted =
-    validator.config.sunsettingOn > 0
-      ? dayjs.unix(validator.config.sunsettingOn).isBefore(dayjs())
-      : false
-
-  return noPools || maxStakersReached || maxStakeReached || isSunsetted
+  return noPools || maxStakersReached || maxStakeReached || isSunsetted(validator)
 }
 
 export function isUnstakingDisabled(
@@ -300,7 +295,21 @@ export function isAddingPoolDisabled(
 
   const hasAvailableSlots = numPools < poolsPerNode * maxNodes
 
-  return !hasAvailableSlots
+  return !hasAvailableSlots || isSunsetted(validator)
+}
+
+export function isSunsetting(validator: Validator): boolean {
+  return validator.config.sunsettingOn > 0
+}
+
+export function isSunsetted(validator: Validator): boolean {
+  return validator.config.sunsettingOn > 0
+    ? dayjs.unix(validator.config.sunsettingOn).isBefore(dayjs())
+    : false
+}
+
+export function isMigrationSet(validator: Validator): boolean {
+  return validator.config.sunsettingTo > 0
 }
 
 export function canManageValidator(activeAddress: string | null, validator: Validator): boolean {
@@ -323,7 +332,7 @@ export async function fetchGatingAssets(
 
   if (entryGatingType === GatingType.CreatorAccount) {
     const creatorAddress = entryGatingAddress
-    const accountInfo = await getAccountInformation(creatorAddress)
+    const accountInfo = await fetchAccountInformation(creatorAddress)
 
     if (accountInfo['created-assets']) {
       const assetIds = accountInfo['created-assets'].map((asset) => asset.index)
@@ -340,7 +349,7 @@ export async function fetchGatingAssets(
     const nfd = await fetchNfd(nfdAppId, { view: 'tiny' })
     const addresses = nfd.caAlgo || []
 
-    const promises = addresses.map((address) => getAccountInformation(address))
+    const promises = addresses.map((address) => fetchAccountInformation(address))
     const accountsInfo = await Promise.all(promises)
     const assetIds = accountsInfo
       .map((accountInfo) => accountInfo['created-assets'])
