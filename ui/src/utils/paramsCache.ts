@@ -10,7 +10,7 @@ interface CachedParams {
 }
 
 export class ParamsCache {
-  private static instance: ParamsCache
+  private static readonly instance: ParamsCache = new ParamsCache()
   private client: algosdk.Algodv2
   private cache: CachedParams | null = null
 
@@ -22,14 +22,11 @@ export class ParamsCache {
     })
   }
 
-  public static getInstance(): ParamsCache {
-    if (!ParamsCache.instance) {
-      ParamsCache.instance = new ParamsCache()
-    }
-    return ParamsCache.instance
+  public static async getSuggestedParams(): Promise<algosdk.SuggestedParams> {
+    return this.instance.fetchAndCacheParams()
   }
 
-  public async getSuggestedParams(): Promise<algosdk.SuggestedParams> {
+  private async fetchAndCacheParams(): Promise<algosdk.SuggestedParams> {
     const now = Date.now()
     const staleTime = 1000 * 60 * 5 // 5 minutes
 

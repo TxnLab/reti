@@ -22,7 +22,7 @@ export async function getValidatorClient(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<ValidatorRegistryClient> {
-  const params = await ParamsCache.getInstance().getSuggestedParams()
+  const params = await ParamsCache.getSuggestedParams()
 
   return new ValidatorRegistryClient(
     {
@@ -39,7 +39,7 @@ export async function getSimulateValidatorClient(
   senderAddr: string = FEE_SINK,
   authAddr?: string,
 ): Promise<ValidatorRegistryClient> {
-  const params = await ParamsCache.getInstance().getSuggestedParams()
+  const params = await ParamsCache.getSuggestedParams()
 
   return new ValidatorRegistryClient(
     {
@@ -57,7 +57,7 @@ export async function getStakingPoolClient(
   signer: algosdk.TransactionSigner,
   activeAddress: string,
 ): Promise<StakingPoolClient> {
-  const params = await ParamsCache.getInstance().getSuggestedParams()
+  const params = await ParamsCache.getSuggestedParams()
 
   return new StakingPoolClient(
     {
@@ -75,7 +75,7 @@ export async function getSimulateStakingPoolClient(
   senderAddr: string = FEE_SINK,
   authAddr?: string,
 ): Promise<StakingPoolClient> {
-  const params = await ParamsCache.getInstance().getSuggestedParams()
+  const params = await ParamsCache.getSuggestedParams()
 
   return new StakingPoolClient(
     {
