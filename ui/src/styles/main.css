@@ -58,6 +58,12 @@
   }
 }
 
+@layer base {
+  .text-link {
+    @apply underline underline-offset-4 decoration-foreground/50 hover:decoration-2 hover:decoration-primary;
+  }
+}
+
 @font-face {
   font-family: 'Algo';
   font-style: normal;
