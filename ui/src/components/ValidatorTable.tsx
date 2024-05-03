@@ -283,11 +283,10 @@ export function ValidatorTable({
 
         return (
           <div className="flex items-center justify-end gap-x-2">
-            {isSunsetting(validator) ? (
+            {isSunsetting(validator) && !unstakingDisabled ? (
               <Button
                 size="sm"
                 variant="secondary"
-                className={cn({ hidden: unstakingDisabled })}
                 onClick={(e) => {
                   e.stopPropagation()
                   setUnstakeValidator(validator)
