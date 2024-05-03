@@ -283,17 +283,30 @@ export function ValidatorTable({
 
         return (
           <div className="flex items-center justify-end gap-x-2">
-            <Button
-              size="sm"
-              className={cn({ hidden: isSunsetted(validator) })}
-              onClick={(e) => {
-                e.stopPropagation()
-                setAddStakeValidator(validator)
-              }}
-              disabled={stakingDisabled}
-            >
-              Stake
-            </Button>
+            {isSunsetting(validator) ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                className={cn({ hidden: unstakingDisabled })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setUnstakeValidator(validator)
+                }}
+              >
+                Unstake
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className={cn({ hidden: stakingDisabled })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAddStakeValidator(validator)
+                }}
+              >
+                Stake
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -439,7 +452,7 @@ export function ValidatorTable({
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
                     className={cn({
-                      'text-foreground/50 hover:bg-muted/25': isSunsetted(row.original),
+                      'text-foreground/50': isSunsetted(row.original),
                     })}
                     onClick={async () =>
                       await navigate({

@@ -12,12 +12,13 @@ import {
   VisibilityState,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { FlaskConical, MoreHorizontal } from 'lucide-react'
+import { Ban, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
+import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -43,8 +44,11 @@ import {
   calculateRewardEligibility,
   canManageValidator,
   isStakingDisabled,
+  isSunsetted,
+  isSunsetting,
   isUnstakingDisabled,
 } from '@/utils/contracts'
+import { dayjs } from '@/utils/dayjs'
 import { simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
@@ -90,19 +94,35 @@ export function StakingTable({
 
         const nfdAppId = validator.config.nfdForInfo
         return (
-          <Link
-            to="/validators/$validatorId"
-            params={{
-              validatorId: String(row.original.validatorId),
-            }}
-            className="hover:underline underline-offset-4"
-          >
-            {nfdAppId > 0 ? (
-              <NfdThumbnail nameOrId={nfdAppId} />
-            ) : (
-              <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
-            )}
-          </Link>
+          <div className="flex items-center gap-x-2">
+            {isSunsetted(validator) ? (
+              <Tooltip
+                content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+              >
+                <Ban className="h-5 w-5 text-muted-foreground transition-colors" />
+              </Tooltip>
+            ) : isSunsetting(validator) ? (
+              <Tooltip
+                content={`Will sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+              >
+                <Sunset className="h-5 w-5 text-muted-foreground transition-colors" />
+              </Tooltip>
+            ) : null}
+
+            <Link
+              to="/validators/$validatorId"
+              params={{
+                validatorId: String(row.original.validatorId),
+              }}
+              className="hover:underline underline-offset-4"
+            >
+              {nfdAppId > 0 ? (
+                <NfdThumbnail nameOrId={nfdAppId} />
+              ) : (
+                <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
+              )}
+            </Link>
+          </div>
         )
       },
     },
@@ -177,12 +197,18 @@ export function StakingTable({
           <div className="flex items-center justify-end gap-x-2 ml-2">
             <Button
               size="sm"
+              className={cn({ hidden: isSunsetted(validator) })}
               onClick={() => setAddStakeValidator(validator)}
               disabled={stakingDisabled}
             >
               Stake
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setUnstakeValidator(validator)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setUnstakeValidator(validator)}
+              disabled={unstakingDisabled}
+            >
               Unstake
             </Button>
 
