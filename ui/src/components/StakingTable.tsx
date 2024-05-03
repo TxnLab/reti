@@ -130,14 +130,24 @@ export function StakingTable({
       accessorKey: 'balance',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
       cell: ({ row }) => (
-        <AlgoDisplayAmount amount={row.original.balance} microalgos mutedRemainder />
+        <AlgoDisplayAmount
+          amount={row.original.balance}
+          microalgos
+          mutedRemainder
+          className="font-mono"
+        />
       ),
     },
     {
       accessorKey: 'totalRewarded',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Total Rewarded" />,
       cell: ({ row }) => (
-        <AlgoDisplayAmount amount={row.original.totalRewarded} microalgos mutedRemainder />
+        <AlgoDisplayAmount
+          amount={row.original.totalRewarded}
+          microalgos
+          mutedRemainder
+          className="font-mono"
+        />
       ),
     },
     {
@@ -148,8 +158,9 @@ export function StakingTable({
       cell: ({ row }) => {
         const validator = validators.find((v) => v.id === row.original.validatorId)
         const { rewardTokenId } = validator?.config || {}
-        if (!rewardTokenId || Number(rewardTokenId) === 0) return '--'
-        return <span>{Number(row.original.rewardTokenBalance) || 0}</span>
+        if (!rewardTokenId || Number(rewardTokenId) === 0)
+          return <span className="text-muted-foreground">--</span>
+        return <span className="font-mono">{Number(row.original.rewardTokenBalance) || 0}</span>
       },
     },
     {

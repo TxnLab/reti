@@ -18,6 +18,7 @@ import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
@@ -188,6 +189,7 @@ export function ValidatorTable({
 
         return (
           <span className="whitespace-nowrap">
+            <AlgoSymbol />
             {currentStakeCompact} / {maxStakeCompact}
           </span>
         )
