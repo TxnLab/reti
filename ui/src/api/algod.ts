@@ -105,11 +105,6 @@ export async function fetchAssetCreatorHoldings(
   return allAssetCreatorHoldings
 }
 
-export async function fetchSuggestedParams() {
-  const suggestedParams = await algodClient.getTransactionParams().do()
-  return suggestedParams
-}
-
 /**
  * Fetches the average time between blocks over a specified number of rounds.
  * @param {number} numRounds - The number of rounds to fetch.

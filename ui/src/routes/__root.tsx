@@ -2,11 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import {
-  blockTimeQueryOptions,
-  constraintsQueryOptions,
-  suggestedParamsQueryOptions,
-} from '@/api/queries'
+import { blockTimeQueryOptions, constraintsQueryOptions } from '@/api/queries'
 import { Layout } from '@/components/Layout'
 
 export const Route = createRootRouteWithContext<{
@@ -17,20 +13,11 @@ export const Route = createRootRouteWithContext<{
     return {
       blockTimeQueryOptions,
       constraintsQueryOptions,
-      suggestedParamsQueryOptions,
     }
   },
-  loader: ({
-    context: {
-      queryClient,
-      blockTimeQueryOptions,
-      constraintsQueryOptions,
-      suggestedParamsQueryOptions,
-    },
-  }) => {
+  loader: ({ context: { queryClient, blockTimeQueryOptions, constraintsQueryOptions } }) => {
     queryClient.ensureQueryData(blockTimeQueryOptions)
     queryClient.ensureQueryData(constraintsQueryOptions)
-    queryClient.ensureQueryData(suggestedParamsQueryOptions)
   },
   component: () => (
     <>
