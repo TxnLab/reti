@@ -13,7 +13,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Ban, FlaskConical, MoreHorizontal } from 'lucide-react'
+import { Ban, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
 import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
@@ -53,6 +53,7 @@ import {
   isAddingPoolDisabled,
   isStakingDisabled,
   isSunsetted,
+  isSunsetting,
   isUnstakingDisabled,
 } from '@/utils/contracts'
 import { dayjs, formatDuration } from '@/utils/dayjs'
@@ -121,13 +122,19 @@ export function ValidatorTable({
 
         return (
           <div className="flex items-center gap-x-2 min-w-0 max-w-[10rem] xl:max-w-[14rem]">
-            {isSunsetted(validator) && (
+            {isSunsetted(validator) ? (
               <Tooltip
                 content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
               >
                 <Ban className="h-5 w-5 text-muted-foreground transition-colors" />
               </Tooltip>
-            )}
+            ) : isSunsetting(validator) ? (
+              <Tooltip
+                content={`Will sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+              >
+                <Sunset className="h-5 w-5 text-muted-foreground transition-colors" />
+              </Tooltip>
+            ) : null}
             <Link
               to="/validators/$validatorId"
               params={{
