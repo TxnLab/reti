@@ -13,7 +13,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { FlaskConical, MonitorOff, MoreHorizontal } from 'lucide-react'
+import { Ban, FlaskConical, MoreHorizontal } from 'lucide-react'
 import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
@@ -125,7 +125,7 @@ export function ValidatorTable({
               <Tooltip
                 content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
               >
-                <MonitorOff className="h-5 w-5 text-muted-foreground transition-colors" />
+                <Ban className="h-5 w-5 text-muted-foreground transition-colors" />
               </Tooltip>
             )}
             <Link

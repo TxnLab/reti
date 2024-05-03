@@ -62,11 +62,7 @@ function NfdThumbnailBase({
       href={getNfdProfileUrl(nfd.name)}
       target="_blank"
       rel="noreferrer"
-      className={cn(
-        defaultClassName,
-        'text-foreground/75 hover:text-foreground hover:underline underline-offset-4',
-        className,
-      )}
+      className={cn(defaultClassName, className)}
     >
       {renderChildren()}
     </a>

@@ -46,7 +46,7 @@ import {
   isUnstakingDisabled,
 } from '@/utils/contracts'
 import { simulateEpoch } from '@/utils/development'
-import { ellipseAddress } from '@/utils/ellipseAddress'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -100,7 +100,7 @@ export function StakingTable({
             {nfdAppId > 0 ? (
               <NfdThumbnail nameOrId={nfdAppId} />
             ) : (
-              ellipseAddress(validator.config.owner)
+              <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
             )}
           </Link>
         )

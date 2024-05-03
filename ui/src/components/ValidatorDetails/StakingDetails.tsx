@@ -2,7 +2,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { Link } from '@tanstack/react-router'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Copy, MonitorOff, Signpost } from 'lucide-react'
+import { Ban, Copy, Signpost } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
@@ -236,7 +236,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                     href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:underline"
+                    className="text-link"
                   >
                     {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
                   </a>
@@ -344,9 +344,9 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
           {isSunsetting(validator) && (
             <div className="flex flex-col gap-4 md:flex-row">
               <div className="w-full md:flex-1">
-                <Alert className="bg-background/50">
-                  <MonitorOff className="h-4 w-4 -mt-1" />
-                  <AlertTitle>Sunset Notice</AlertTitle>
+                <Alert className="bg-background/50 pb-4">
+                  <Ban className="h-5 w-5 -mt-[3px] text-muted-foreground" />
+                  <AlertTitle className="leading-normal">Sunset Notice</AlertTitle>
                   <AlertDescription className="max-w-xl space-y-2">
                     Adding stake{' '}
                     {isSunsetted(validator) ? 'was disabled as of' : 'will be disabled on'}{' '}
@@ -358,15 +358,15 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
               {isMigrationSet(validator) && (
                 <div className="w-full md:flex-1">
-                  <Alert className="bg-background/50">
-                    <Signpost className="h-4 w-4 -mt-1" />
-                    <AlertTitle>Migration Notice</AlertTitle>
+                  <Alert className="bg-background/50 pb-4">
+                    <Signpost className="h-5 w-5 -mt-[3px] text-muted-foreground" />
+                    <AlertTitle className="leading-normal">Migration Notice</AlertTitle>
                     <AlertDescription>
                       The validator owner has indicated stakers should migrate to{' '}
                       <Link
                         to="/validators/$validatorId"
                         params={{ validatorId: String(validator.config.sunsettingTo) }}
-                        className="whitespace-nowrap font-semibold hover:underline underline-offset-4"
+                        className="whitespace-nowrap font-semibold text-link"
                       >
                         Validator {validator.config.sunsettingTo}
                       </Link>
@@ -389,7 +389,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 <BarList
                   data={stakersChartData}
                   valueFormatter={valueFormatter}
-                  className="font-mono"
+                  className="font-mono underline-offset-4"
                   showAnimation
                 />
               </div>
