@@ -80,7 +80,7 @@ export const validatorSchemas = {
       message: 'Invalid reward amount per payout',
     })
   },
-  payoutEveryXMins: (constraints: Constraints) => {
+  epochRoundLength: (constraints: Constraints) => {
     return z
       .string()
       .refine((val) => val !== '', {
@@ -91,25 +91,25 @@ export const validatorSchemas = {
       })
       .superRefine((val, ctx) => {
         const minutes = Number(val)
-        const { payoutMinsMin, payoutMinsMax } = constraints
+        const { payoutRoundsMin, payoutRoundsMax } = constraints
 
-        if (minutes < payoutMinsMin) {
+        if (minutes < payoutRoundsMin) {
           ctx.addIssue({
             code: z.ZodIssueCode.too_small,
-            minimum: payoutMinsMin,
+            minimum: payoutRoundsMin,
             type: 'number',
             inclusive: true,
-            message: `Epoch length must be at least ${payoutMinsMin} minute${payoutMinsMin === 1 ? '' : 's'}`,
+            message: `Epoch length must be at least ${payoutRoundsMin} minute${payoutRoundsMin === 1 ? '' : 's'}`,
           })
         }
 
-        if (minutes > payoutMinsMax) {
+        if (minutes > payoutRoundsMax) {
           ctx.addIssue({
             code: z.ZodIssueCode.too_big,
-            maximum: payoutMinsMax,
+            maximum: payoutRoundsMax,
             type: 'number',
             inclusive: true,
-            message: `Epoch length cannot exceed ${payoutMinsMax} minutes`,
+            message: `Epoch length cannot exceed ${payoutRoundsMax} minutes`,
           })
         }
       })

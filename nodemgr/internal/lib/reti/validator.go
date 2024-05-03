@@ -64,8 +64,8 @@ type ValidatorConfig struct {
 	RewardTokenId   uint64
 	RewardPerPayout uint64
 
-	// Payout frequency in minutes (can be no shorter than this)
-	PayoutEveryXMins int
+	// Number of rounds per epoch
+	EpochRoundLength int
 	// Payout percentage expressed w/ four decimals - ie: 50000 = 5% -> .0005 -
 	PercentToValidator int
 	// account that receives the validation commission each epoch payout (can be ZeroAddress)
@@ -109,7 +109,7 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 		config.GatingAssetMinBalance = arrReturn[7].(uint64)
 		config.RewardTokenId = arrReturn[8].(uint64)
 		config.RewardPerPayout = arrReturn[9].(uint64)
-		config.PayoutEveryXMins = int(arrReturn[10].(uint16))
+		config.EpochRoundLength = int(arrReturn[10].(uint32))
 		config.PercentToValidator = int(arrReturn[11].(uint32))
 		config.ValidatorCommissionAddress = pkAsString(arrReturn[12].([]uint8))
 		config.MinEntryStake = arrReturn[13].(uint64)
@@ -123,8 +123,8 @@ func ValidatorConfigFromABIReturn(returnVal any) (*ValidatorConfig, error) {
 }
 
 type ProtocolConstraints struct {
-	EpochPayoutMinsMin             uint64
-	EpochPayoutMinsMax             uint64
+	epochPayoutRoundsMin           uint64
+	epochPayoutRoundsMax           uint64
 	MinPctToValidatorWFourDecimals uint64
 	MaxPctToValidatorWFourDecimals uint64
 	MinEntryStake                  uint64 // in microAlgo
@@ -142,8 +142,8 @@ func ProtocolConstraintsFromABIReturn(returnVal any) (*ProtocolConstraints, erro
 			return nil, fmt.Errorf("should be 10 elements returned in ProtocolConstraints response")
 		}
 		constraints := &ProtocolConstraints{}
-		constraints.EpochPayoutMinsMin = arrReturn[0].(uint64)
-		constraints.EpochPayoutMinsMax = arrReturn[1].(uint64)
+		constraints.epochPayoutRoundsMin = arrReturn[0].(uint64)
+		constraints.epochPayoutRoundsMax = arrReturn[1].(uint64)
 		constraints.MinPctToValidatorWFourDecimals = arrReturn[2].(uint64)
 		constraints.MaxPctToValidatorWFourDecimals = arrReturn[3].(uint64)
 		constraints.MinEntryStake = arrReturn[4].(uint64)
@@ -207,7 +207,7 @@ func (v *ValidatorConfig) String() string {
 		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
 	}
 
-	out.WriteString(fmt.Sprintf("Payout Every %s\n", formattedMinutes(v.PayoutEveryXMins)))
+	out.WriteString(fmt.Sprintf("Epoch Length:%d\n", v.EpochRoundLength))
 	out.WriteString(fmt.Sprintf("Min Entry Stake: %s\n", algo.FormattedAlgoAmount(v.MinEntryStake)))
 	out.WriteString(fmt.Sprintf("Max Algo Per Pool: %s\n", algo.FormattedAlgoAmount(v.MaxAlgoPerPool)))
 	out.WriteString(fmt.Sprintf("Max pools per Node: %d\n", v.PoolsPerNode))
@@ -348,12 +348,16 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 	}
 	slog.Debug("mbrs", "validatormbr", mbrs.AddValidatorMbr)
 
+	params.FlatFee = true
+	params.Fee = 10e6 + 1000
+
 	// Pay the mbr to add a validator then wrap for use in ATC.
 	paymentTxn, err := transaction.MakePaymentTxn(ownerAddr.String(), crypto.GetApplicationAddress(r.RetiAppId).String(), mbrs.AddValidatorMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, ownerAddr.String()),
 	}
+	params.Fee = 1000
 
 	err = atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppId,
@@ -374,7 +378,7 @@ func (r *Reti) AddValidator(info *ValidatorInfo, nfdName string) (uint64, error)
 				info.Config.GatingAssetMinBalance,
 				info.Config.RewardTokenId,
 				info.Config.RewardPerPayout,
-				uint16(info.Config.PayoutEveryXMins),
+				uint32(info.Config.EpochRoundLength),
 				uint16(info.Config.PercentToValidator),
 				commissionAddr,
 				info.Config.MinEntryStake,
@@ -894,6 +898,11 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 		BoxReferences: []types.AppBoxReference{
 			{AppID: 0, Name: GetValidatorListBoxName(info.Config.ID)},
 			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: []byte("poolTemplateApprovalBytes")},
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil}, // extra i/o
 		},
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
@@ -1181,7 +1190,7 @@ func (r *Reti) AddStake(validatorId uint64, staker types.Address, amount uint64,
 	return ValidatorPoolKeyFromABIReturn(result.MethodResults[1].ReturnValue)
 }
 
-func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amount uint64) error {
+func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, staker types.Address, amount uint64) error {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -1199,17 +1208,22 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 
 		// we need to stack up references in this gas method for resource pooling
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
-			AppID:  r.RetiAppId,
-			Method: gasMethod,
+			AppID:           r.RetiAppId,
+			Method:          gasMethod,
+			ForeignAccounts: []string{staker.String()},
 			BoxReferences: []types.AppBoxReference{
 				{AppID: r.RetiAppId, Name: GetValidatorListBoxName(poolKey.ID)},
 				{AppID: r.RetiAppId, Name: nil}, // extra i/o
 				{AppID: r.RetiAppId, Name: GetStakerPoolSetBoxName(staker)},
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
+				{AppID: 0, Name: nil}, // extra i/o
 			},
 			SuggestedParams: params,
 			OnComplete:      types.NoOpOC,
-			Sender:          staker,
-			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+			Sender:          signer,
+			Signer:          algo.SignWithAccountForATC(r.signer, signer.String()),
 		})
 		if err != nil {
 			return atc, err
@@ -1224,6 +1238,7 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 			AppID:  poolKey.PoolAppId,
 			Method: unstakeMethod,
 			MethodArgs: []any{
+				staker,
 				amount,
 			},
 			ForeignApps: []uint64{poolKey.PoolAppId},
@@ -1238,8 +1253,8 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, staker types.Address, amoun
 			},
 			SuggestedParams: params,
 			OnComplete:      types.NoOpOC,
-			Sender:          staker,
-			Signer:          algo.SignWithAccountForATC(r.signer, staker.String()),
+			Sender:          signer,
+			Signer:          algo.SignWithAccountForATC(r.signer, signer.String()),
 		})
 		if err != nil {
 			return atc, err
@@ -1365,7 +1380,7 @@ func (r *Reti) GetNumValidators() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrNumValidators)
+	return algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, VldtrNumValidators)
 }
 
 func (r *Reti) poolTemplateAppId() uint64 {

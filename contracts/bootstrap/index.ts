@@ -1,5 +1,6 @@
 /* eslint-disable import/no-relative-packages */
 import * as algokit from '@algorandfoundation/algokit-utils'
+import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils'
 import { Account, decodeAddress, secretKeyToMnemonic } from 'algosdk'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
@@ -7,7 +8,6 @@ import * as fs from 'fs'
 import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
 import yargs from 'yargs'
 import prompts from 'prompts'
-import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 
@@ -118,24 +118,20 @@ async function main() {
         console.log(`Primary DISPENSER account is: ${creatorAcct.addr}`)
     }
 
-    // Generate staking pool template instance that the validatory registry will reference
+    // Generate staking pool template instance that the validator registry will reference
     const poolClient = new StakingPoolClient(
         {
             sender: creatorAcct,
             resolveBy: 'id',
             id: 0,
-            deployTimeParams: {
-                nfdRegistryAppId: registryAppID,
-                feeSinkAddr: decodeAddress(feeSink).publicKey,
-            },
         },
         algod,
     )
-    const tmplPool = await poolClient.create.createApplication({
-        creatingContractId: 0,
-        validatorId: 0,
-        poolId: 0,
-        minEntryStake: 1_000_000, // 1 algo min is hard req in contract creation
+    const { approvalCompiled } = await poolClient.appClient.compile({
+        deployTimeParams: {
+            nfdRegistryAppId: registryAppID,
+            feeSinkAddr: decodeAddress(feeSink).publicKey,
+        },
     })
 
     // first we have to deploy a staking pool contract instance for future use by the staking master contract (which uses it as its
@@ -151,10 +147,29 @@ async function main() {
         },
         algod,
     )
-    const validatorApp = await validatorClient.create.createApplication({ poolTemplateAppId: tmplPool.appId })
+    const validatorApp = await validatorClient.create.createApplication({})
 
-    // Fund the validator w/ min .1 ALGO !
-    algokit.transferAlgos({ from: creatorAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(0.1) }, algod)
+    // Fund the validator w/ 2 ALGO for contract mbr reqs.
+    await algokit.transferAlgos({ from: creatorAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(2) }, algod)
+
+    console.log(
+        `loading the ${approvalCompiled.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
+    )
+
+    // Load the staking pool contract bytecode into the validator contract via box storage so it can later deploy
+    const composer = validatorClient
+        .compose()
+        .initStakingContract({ approvalProgramSize: approvalCompiled.compiledBase64ToBytes.length })
+
+    // load the StakingPool contract into box storage of the validator
+    // call loadStakingContractData - chunking the data from approvalCompiled 2000 bytes at a time
+    for (let i = 0; i < approvalCompiled.compiledBase64ToBytes.length; i += 2000) {
+        composer.loadStakingContractData({
+            offset: i,
+            data: approvalCompiled.compiledBase64ToBytes.subarray(i, i + 2000),
+        })
+    }
+    await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true, suppressLog: true })
 
     console.log(`Validator registry app id is:${validatorApp.appId}`)
 

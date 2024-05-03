@@ -101,7 +101,7 @@ func (r *Reti) LoadState(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.poolTmplAppId, _ = algo.GetIntFromGlobalState(appInfo.Params.GlobalState, VldtrPoolTmplId)
+	r.poolTmplAppId, _ = algo.GetUint64FromGlobalState(appInfo.Params.GlobalState, VldtrPoolTmplId)
 
 	// Now load all the data from the chain for our validator, etc.
 	if r.ValidatorId != 0 {

@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"strconv"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
@@ -201,9 +201,9 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Viewing pools for our Node:", App.retiClient.NodeNum)
 	if !showAll {
-		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR %\tVote\tProp.\t")
 	} else {
-		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tVote\tProp.\t")
+		fmt.Fprintln(tw, "Pool (O=Online)\tNode\tPool App id\t# stakers\tAmt Staked\tRwd Avail\tAPR %\tVote\tProp.\t")
 
 	}
 	for i, pool := range info.Pools {
@@ -240,6 +240,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 		}
 
 		rewardAvail := App.retiClient.PoolAvailableRewards(pool.PoolAppId, pool.TotalAlgoStaked)
+		apr, _ := App.retiClient.GetAvgApr(pool.PoolAppId)
 		totalRewards += rewardAvail
 
 		lastVote, lastProposal := getParticipationData(crypto.GetApplicationAddress(pool.PoolAppId).String(), acctInfo.Participation.SelectionParticipationKey)
@@ -262,13 +263,19 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 				partData = fmt.Sprintf("-%d", status.LastRound-lastProposal)
 			}
 		}
+		floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
+		floatApr.Quo(floatApr, big.NewFloat(10000.0))
+
 		if !showAll {
-			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
-				voteData, partData)
+				floatApr.String(),
+				voteData, partData,
+			)
 		} else {
-			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
+			fmt.Fprintf(tw, "%d %s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\t\n", i+1, onlineStr, nodeStr, pool.PoolAppId, pool.TotalStakers,
 				algo.FormattedAlgoAmount(pool.TotalAlgoStaked), algo.FormattedAlgoAmount(rewardAvail),
+				floatApr.String(),
 				voteData, partData)
 
 		}
@@ -282,11 +289,7 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 }
 
 func PoolLedger(ctx context.Context, command *cli.Command) error {
-	var (
-		nextPayTime   time.Time
-		info          = App.retiClient.Info()
-		epochDuration = time.Duration(info.Config.PayoutEveryXMins) * time.Minute
-	)
+	var info = App.retiClient.Info()
 	poolId := int(command.Uint("pool"))
 	if poolId == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
@@ -294,29 +297,28 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	if poolId > len(info.Pools) {
 		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolId)
 	}
+	params, _ := App.algoClient.SuggestedParams().Do(ctx)
 
 	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolId-1].PoolAppId)
-	if err == nil {
-		nextPayTime = time.Unix(int64(lastPayout), 0).Add(time.Duration(info.Config.PayoutEveryXMins) * time.Minute)
-	} else {
-		nextPayTime = time.Now()
+	nextEpoch := lastPayout - (lastPayout % uint64(info.Config.EpochRoundLength)) + uint64(info.Config.EpochRoundLength)
+	if nextEpoch < uint64(params.FirstRoundValid) {
+		nextEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(info.Config.EpochRoundLength))
 	}
-	if nextPayTime.Before(time.Now()) {
-		// there haven't been payouts for a while (no rewards) - so treat 'now' as the next pay time
-		// so 'time in epoch' is valid
-		nextPayTime = time.Now()
-	}
-	pctTimeInEpoch := func(stakerEntryTime uint64) int {
-		entryTime := time.Unix(int64(stakerEntryTime), 0)
-		timeInEpoch := nextPayTime.Sub(entryTime).Seconds() / epochDuration.Seconds() * 100
+	pctTimeInEpoch := func(stakerEntry uint64) int {
+		if nextEpoch == 0 {
+			return 100
+		}
+		if nextEpoch < stakerEntry {
+			return 0
+		}
+		timeInEpoch := (nextEpoch - stakerEntry) * 1000 / uint64(info.Config.EpochRoundLength)
 		if timeInEpoch < 0 {
-			// they're past the epoch because of entry time + 320 rounds (~16mins)
 			timeInEpoch = 0
 		}
-		if timeInEpoch > 100 {
-			timeInEpoch = 100
+		if timeInEpoch > 1000 {
+			timeInEpoch = 1000
 		}
-		return int(timeInEpoch)
+		return int(timeInEpoch / 10)
 	}
 
 	ledger, err := App.retiClient.GetLedgerForPool(info.Pools[poolId-1].PoolAppId)
@@ -336,7 +338,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Time\t")
+	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Round\t")
 	for _, stakerData := range ledger {
 		if stakerData.Account == types.ZeroAddress {
 			continue
@@ -351,11 +353,20 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 			}
 
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%s\t\n", stakerName, algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
-			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryTime), time.Unix(int64(stakerData.EntryTime), 0).UTC().Format(time.RFC3339))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\t\n", stakerName, algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
+			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryRound), stakerData.EntryRound)
 	}
-	fmt.Fprintf(tw, "Pool Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
-	fmt.Fprintf(tw, "Last Payout: %s\t\n", time.Unix(int64(lastPayout), 0).UTC().Format(time.RFC3339))
+	apr, _ := App.retiClient.GetAvgApr(info.Pools[poolId-1].PoolAppId)
+	fmt.Fprintf(tw, "Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
+	stakeAccum, _ := App.retiClient.GetStakeAccum(info.Pools[poolId-1].PoolAppId)
+	stakeAccum.Div(stakeAccum, big.NewInt(30857))
+	stakeAccum.Div(stakeAccum, big.NewInt(1e6))
+	fmt.Fprintf(tw, "Avg Stake: %s\t\n", stakeAccum.String())
+	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
+	floatApr.Quo(floatApr, big.NewFloat(10000.0))
+	fmt.Fprintf(tw, "APR %%: %s\t\n", floatApr.String())
+	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(info.Config.EpochRoundLength)))
+	fmt.Fprintf(tw, "Next Payout: %d\t\n", nextEpoch)
 	tw.Flush()
 	slog.Info(out.String())
 	return nil
@@ -454,7 +465,14 @@ func StakeRemove(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("staker has not staked in the specified pool")
 	}
 
-	err = App.retiClient.RemoveStake(*poolKey, stakerAddr, command.Uint("amount")*1e6)
+	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info().Config.Owner, App.retiClient.Info().Config.Manager, stakerAddr.String()})
+	if err != nil {
+		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+	misc.Infof(App.logger, "signing unstake with:%s", signer)
+
+	err = App.retiClient.RemoveStake(*poolKey, signerAddr, stakerAddr, command.Uint("amount")*1e6)
 	if err != nil {
 		return err
 	}

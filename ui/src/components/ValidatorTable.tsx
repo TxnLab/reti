@@ -13,14 +13,16 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { FlaskConical, MoreHorizontal } from 'lucide-react'
+import { Ban, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
 import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
+import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -40,6 +42,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { ValidatorRewards } from '@/components/ValidatorRewards'
+import { useBlockTime } from '@/hooks/useBlockTime'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
@@ -49,13 +53,15 @@ import {
   canManageValidator,
   isAddingPoolDisabled,
   isStakingDisabled,
+  isSunsetted,
+  isSunsetting,
   isUnstakingDisabled,
 } from '@/utils/contracts'
-import { formatDuration } from '@/utils/dayjs'
+import { dayjs, formatDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
-import { ellipseAddress } from '@/utils/ellipseAddress'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
+import { formatNumber } from '@/utils/format'
 import { cn } from '@/utils/ui'
-import { ValidatorRewards } from '@/components/ValidatorRewards'
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -77,6 +83,8 @@ export function ValidatorTable({
 
   const { transactionSigner, activeAddress } = useWallet()
   const navigate = useNavigate()
+
+  const blockTime = useBlockTime()
 
   const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [
     { id: 'stake', desc: true },
@@ -114,7 +122,20 @@ export function ValidatorTable({
         const nfd = validator.nfd
 
         return (
-          <div className="flex min-w-0 max-w-[10rem] xl:max-w-[14rem]">
+          <div className="flex items-center gap-x-2 min-w-0 max-w-[10rem] xl:max-w-[14rem]">
+            {isSunsetted(validator) ? (
+              <Tooltip
+                content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+              >
+                <Ban className="h-5 w-5 text-muted-foreground transition-colors" />
+              </Tooltip>
+            ) : isSunsetting(validator) ? (
+              <Tooltip
+                content={`Will sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+              >
+                <Sunset className="h-5 w-5 text-muted-foreground transition-colors" />
+              </Tooltip>
+            ) : null}
             <Link
               to="/validators/$validatorId"
               params={{
@@ -124,9 +145,14 @@ export function ValidatorTable({
               onClick={(e) => e.stopPropagation()}
             >
               {nfd ? (
-                <NfdThumbnail nfd={nfd} truncate tooltip />
+                <NfdThumbnail
+                  nfd={nfd}
+                  truncate
+                  tooltip
+                  className={cn(isSunsetted(validator) ? 'opacity-50' : '')}
+                />
               ) : (
-                ellipseAddress(validator.config.owner)
+                <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
               )}
             </Link>
           </div>
@@ -163,6 +189,7 @@ export function ValidatorTable({
 
         return (
           <span className="whitespace-nowrap">
+            <AlgoSymbol />
             {currentStakeCompact} / {maxStakeCompact}
           </span>
         )
@@ -227,12 +254,19 @@ export function ValidatorTable({
     },
     {
       id: 'epoch',
-      accessorFn: (row) => row.config.payoutEveryXMins,
+      accessorFn: (row) => row.config.epochRoundLength,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Epoch" />,
       cell: ({ row }) => {
         const validator = row.original
-        const frequencyFormatted = formatDuration(validator.config.payoutEveryXMins, true)
-        return <span className="capitalize">{frequencyFormatted}</span>
+        const epochLength = validator.config.epochRoundLength
+        const numRounds = formatNumber(epochLength)
+        const durationEstimate = epochLength * blockTime.ms
+
+        return (
+          <Tooltip content={`Pays out every ~${formatDuration(durationEstimate)}`}>
+            <span className="capitalize">{numRounds} blocks</span>
+          </Tooltip>
+        )
       },
     },
     {
@@ -251,16 +285,29 @@ export function ValidatorTable({
 
         return (
           <div className="flex items-center justify-end gap-x-2">
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                setAddStakeValidator(validator)
-              }}
-              disabled={stakingDisabled}
-            >
-              Stake
-            </Button>
+            {isSunsetting(validator) && !unstakingDisabled ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setUnstakeValidator(validator)
+                }}
+              >
+                Unstake
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className={cn({ hidden: stakingDisabled })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setAddStakeValidator(validator)
+                }}
+              >
+                Stake
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -292,18 +339,7 @@ export function ValidatorTable({
                   >
                     Unstake
                   </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/validators/$validatorId"
-                      params={{ validatorId: validator.id.toString() }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {canManage ? 'Manage' : 'View'}
-                    </Link>
-                  </DropdownMenuItem>
+
                   {canManage && (
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -338,6 +374,18 @@ export function ValidatorTable({
                       </DropdownMenuGroup>
                     </>
                   )}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/validators/$validatorId"
+                      params={{ validatorId: validator.id.toString() }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canManage ? 'Manage' : 'View'}
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -404,6 +452,9 @@ export function ValidatorTable({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
+                    className={cn({
+                      'text-foreground/50': isSunsetted(row.original),
+                    })}
                     onClick={async () =>
                       await navigate({
                         to: `/validators/$validatorId`,

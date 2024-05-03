@@ -81,7 +81,7 @@ export function formatAlgoAmount(
   return formatAssetAmount(amount, microalgos, 6, trim, maxLength)
 }
 
-export function roundToFirstNonZeroDecimal(num: number) {
+export function roundToFirstNonZeroDecimal(num: number): number {
   if (num === 0) return 0
 
   // Convert the number to exponential format to easily find the exponent
@@ -93,4 +93,34 @@ export function roundToFirstNonZeroDecimal(num: number) {
 
   // Use toFixed to round to the first significant decimal place
   return Number(num.toFixed(decimalPlaces))
+}
+
+type FormatNumberOptions = {
+  compact?: boolean
+  precision?: number
+  trim?: boolean
+}
+
+export function formatNumber(amount: number | bigint | string, options: FormatNumberOptions = {}) {
+  const { compact = false, precision = 0, trim = true } = options
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
+
+  let formatted = new Big(numAmount).toFixed(precision)
+  const parts = formatted.split('.')
+
+  if (trim && parts.length === 2) {
+    parts[1] = parts[1].replace(/\.?0+$/, '')
+
+    if (parts[1] === '') {
+      formatted = parts[0]
+    } else {
+      formatted = parts.join('.')
+    }
+  }
+
+  if (compact) {
+    return formatWithPrecision(parseFloat(formatted), precision)
+  }
+
+  return (parts[0] = new Intl.NumberFormat().format(parseFloat(parts[0])))
 }

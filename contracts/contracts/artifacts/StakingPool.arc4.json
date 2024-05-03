@@ -70,13 +70,18 @@
       ],
       "returns": {
         "type": "uint64",
-        "desc": "{uint64}new 'entry time' in seconds of stake add."
+        "desc": "{uint64}new 'entry round' round number of stake add"
       }
     },
     {
       "name": "removeStake",
       "desc": "Removes stake on behalf of caller (removing own stake).  If any token rewards exist, those are always sent infull. Also notifies the validator contract for this pools validator of the staker / balance changes.",
       "args": [
+        {
+          "name": "staker",
+          "type": "address",
+          "desc": "account to remove.  normally same as sender, but the validator owner or manager can also callthis to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This isso a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longermeet the gating requirements (determined by the node daemon)."
+        },
         {
           "name": "amountToUnstake",
           "type": "uint64",
@@ -160,6 +165,11 @@
       "name": "goOnline",
       "desc": "Registers a staking pool key online against a participation key.[ ONLY OWNER OR MANAGER CAN CALL ]",
       "args": [
+        {
+          "name": "feePayment",
+          "type": "pay",
+          "desc": "payment to cover extra fee of going online if offline - or 0 if not renewal"
+        },
         {
           "name": "votePK",
           "type": "byte[]",

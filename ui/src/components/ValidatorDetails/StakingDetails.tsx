@@ -1,11 +1,13 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { Link } from '@tanstack/react-router'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Copy } from 'lucide-react'
+import { Ban, Copy, Signpost } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -21,8 +23,15 @@ import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
 import { useStakersChartData } from '@/hooks/useStakersChartData'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
-import { isStakingDisabled, isUnstakingDisabled } from '@/utils/contracts'
+import {
+  isMigrationSet,
+  isStakingDisabled,
+  isSunsetted,
+  isSunsetting,
+  isUnstakingDisabled,
+} from '@/utils/contracts'
 import { copyToClipboard } from '@/utils/copyToClipboard'
+import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
 import { convertFromBaseUnits, roundToFirstNonZeroDecimal } from '@/utils/format'
@@ -227,7 +236,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                     href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="hover:underline"
+                    className="text-link"
                   >
                     {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
                   </a>
@@ -332,6 +341,43 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
             <div className="flex items-center">{renderPoolInfo()}</div>
           </div>
 
+          {isSunsetting(validator) && (
+            <div className="flex flex-col gap-4 md:flex-row">
+              <div className="w-full md:flex-1">
+                <Alert className="bg-background/50 pb-4">
+                  <Ban className="h-5 w-5 -mt-[3px] text-muted-foreground" />
+                  <AlertTitle className="leading-normal">Sunset Notice</AlertTitle>
+                  <AlertDescription className="max-w-[60ch]">
+                    Adding stake{' '}
+                    {isSunsetted(validator) ? 'was disabled as of' : 'will be disabled on'}{' '}
+                    {dayjs.unix(validator.config.sunsettingOn).format('ll')}. Stakers may still
+                    withdraw stake and rewards.
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              {isMigrationSet(validator) && (
+                <div className="w-full md:flex-1">
+                  <Alert className="bg-background/50 pb-4">
+                    <Signpost className="h-5 w-5 -mt-[3px] text-muted-foreground" />
+                    <AlertTitle className="leading-normal">Migration Notice</AlertTitle>
+                    <AlertDescription className="max-w-[60ch]">
+                      The validator owner has indicated stakers should migrate to{' '}
+                      <Link
+                        to="/validators/$validatorId"
+                        params={{ validatorId: String(validator.config.sunsettingTo) }}
+                        className="whitespace-nowrap font-semibold text-link"
+                      >
+                        Validator {validator.config.sunsettingTo}
+                      </Link>
+                      .
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+            </div>
+          )}
+
           {stakersChartData.length > 0 && (
             <ScrollArea
               className={cn('rounded-lg border', {
@@ -343,17 +389,19 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 <BarList
                   data={stakersChartData}
                   valueFormatter={valueFormatter}
-                  className="font-mono"
+                  className="font-mono underline-offset-4"
                   showAnimation
                 />
               </div>
             </ScrollArea>
           )}
         </CardContent>
-        <CardFooter className="mt-4 flex justify-end gap-x-2">
-          <Button onClick={() => setAddStakeValidator(validator)} disabled={stakingDisabled}>
-            Add Stake
-          </Button>
+        <CardFooter className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-end mt-4">
+          {!isSunsetted(validator) && (
+            <Button onClick={() => setAddStakeValidator(validator)} disabled={stakingDisabled}>
+              Add Stake
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => setUnstakeValidator(validator)}
