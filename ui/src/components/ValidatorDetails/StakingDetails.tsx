@@ -347,7 +347,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 <Alert className="bg-background/50 pb-4">
                   <Ban className="h-5 w-5 -mt-[3px] text-muted-foreground" />
                   <AlertTitle className="leading-normal">Sunset Notice</AlertTitle>
-                  <AlertDescription className="max-w-xl space-y-2">
+                  <AlertDescription className="max-w-[60ch]">
                     Adding stake{' '}
                     {isSunsetted(validator) ? 'was disabled as of' : 'will be disabled on'}{' '}
                     {dayjs.unix(validator.config.sunsettingOn).format('ll')}. Stakers may still
@@ -361,7 +361,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                   <Alert className="bg-background/50 pb-4">
                     <Signpost className="h-5 w-5 -mt-[3px] text-muted-foreground" />
                     <AlertTitle className="leading-normal">Migration Notice</AlertTitle>
-                    <AlertDescription>
+                    <AlertDescription className="max-w-[60ch]">
                       The validator owner has indicated stakers should migrate to{' '}
                       <Link
                         to="/validators/$validatorId"
