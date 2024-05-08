@@ -1,11 +1,11 @@
-import { AxiosRequestConfig } from 'axios'
+import { CacheRequestConfig } from 'axios-cache-interceptor'
 import { Nfd, NfdGetNFDParams, NfdSearchV2Params, NfdV2SearchRecords } from '@/interfaces/nfd'
 import axios from '@/lib/axios'
 
 export async function fetchNfd(
   nameOrID: string | number,
   params?: NfdGetNFDParams,
-  options?: AxiosRequestConfig,
+  options?: CacheRequestConfig,
 ): Promise<Nfd> {
   const { data: nfd } = await axios.get<Nfd>(`/nfd/${nameOrID}`, {
     ...options,
@@ -21,7 +21,7 @@ export async function fetchNfd(
 
 export async function fetchNfdSearch(
   params: NfdSearchV2Params,
-  options?: AxiosRequestConfig,
+  options?: CacheRequestConfig,
 ): Promise<NfdV2SearchRecords> {
   const { data: result } = await axios.get<NfdV2SearchRecords>(`/nfd/v2/search`, {
     ...options,
