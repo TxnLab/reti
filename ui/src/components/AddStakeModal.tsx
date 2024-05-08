@@ -39,14 +39,13 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { GatingType } from '@/constants/gating'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   calculateMaxAvailableToStake,
-  fetchGatingAssets,
-  findQualifiedGatingAssetId,
-  hasQualifiedGatingAsset,
+  fetchValueToVerify,
   setValidatorQueriesData,
 } from '@/utils/contracts'
 import { formatAlgoAmount } from '@/utils/format'
@@ -93,20 +92,24 @@ export function AddStakeModal({
 
   const availableBalance = Math.max(0, amount - minBalance)
 
-  const gatingAssetsQuery = useQuery({
-    queryKey: ['gating-assets', validator?.id],
-    queryFn: () => fetchGatingAssets(validator, activeAddress),
-    enabled: !!validator,
+  const heldGatingAssetQuery = useQuery({
+    queryKey: ['held-gating-asset', validator?.id, activeAddress],
+    queryFn: () => fetchValueToVerify(validator, activeAddress, heldAssets),
+    enabled: !!validator && !!accountInfoQuery.data,
   })
-  const gatingAssets = gatingAssetsQuery.data || []
+  const valueToVerify = heldGatingAssetQuery.data || 0
 
-  const isLoading = accountInfoQuery.isLoading || gatingAssetsQuery.isLoading
+  const isLoading = accountInfoQuery.isLoading || heldGatingAssetQuery.isLoading
 
-  const hasGatingAccess = hasQualifiedGatingAsset(
-    heldAssets,
-    gatingAssets,
-    Number(validator?.config.gatingAssetMinBalance),
-  )
+  const hasGatingAccess = () => {
+    if (!validator) return false
+
+    if (validator.config.entryGatingType === GatingType.None) {
+      return true
+    }
+
+    return valueToVerify > 0
+  }
 
   // @todo: make this a custom hook, call from higher up and pass down as prop
   const mbrQuery = useQuery(mbrQueryOptions)
@@ -277,15 +280,7 @@ export function AddStakeModal({
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
       const totalAmount = mbrRequired ? amountToStake + stakerMbr : amountToStake
 
-      const { entryGatingType, gatingAssetMinBalance } = validator.config
-
-      const valueToVerify = findQualifiedGatingAssetId(
-        heldAssets,
-        gatingAssets,
-        Number(gatingAssetMinBalance),
-      )
-
-      if (entryGatingType > 0 && !valueToVerify) {
+      if (!hasGatingAccess()) {
         throw new Error('Staker does not meet gating asset requirements')
       }
 
@@ -359,13 +354,13 @@ export function AddStakeModal({
       )
     }
 
-    if (gatingAssetsQuery.error) {
+    if (heldGatingAssetQuery.error) {
       return (
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-left">Error</DialogTitle>
             <DialogDescription className="text-left">
-              {gatingAssetsQuery.error.message || 'Failed to fetch gating assets'}
+              {heldGatingAssetQuery.error.message || 'Failed to fetch gating assets'}
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
@@ -373,7 +368,7 @@ export function AddStakeModal({
     }
 
     // @todo: Show gating type and required asset or creator address
-    if (!hasGatingAccess) {
+    if (!hasGatingAccess()) {
       return (
         <DialogContent>
           <DialogHeader>
