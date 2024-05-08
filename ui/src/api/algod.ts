@@ -10,7 +10,6 @@ import {
   Exclude,
   NodeStatusResponse,
 } from '@/interfaces/algod'
-import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -106,11 +105,11 @@ export async function fetchAssetCreatorHoldings(
 }
 
 /**
- * Fetches the average time between blocks over a specified number of rounds.
- * @param {number} numRounds - The number of rounds to fetch.
- * @return {number} The average time between blocks in milliseconds.
+ * Fetches timestamps for the last `numRounds` blocks
+ * @param {number} numRounds - The number of rounds to fetch
+ * @return {number[]} - An array of timestamps for each block
  */
-export async function fetchAverageBlockTime(numRounds: number = 10): Promise<number> {
+export async function fetchBlockTimes(numRounds: number = 10): Promise<number[]> {
   try {
     const status = (await algodClient.status().do()) as NodeStatusResponse
     if (!status) {
@@ -119,29 +118,18 @@ export async function fetchAverageBlockTime(numRounds: number = 10): Promise<num
 
     const lastRound = Number(status['last-round'])
 
-    const blockTimes: dayjs.Dayjs[] = []
+    const blockTimes: number[] = []
     for (let round = lastRound - numRounds; round < lastRound; round++) {
       try {
         const blockResponse = (await algodClient.block(round).do()) as BlockResponse
         const block = blockResponse.block
-        blockTimes.push(dayjs.unix(block.ts))
+        blockTimes.push(block.ts)
       } catch (error) {
         throw new Error(`Unable to fetch block for round ${round}: ${error}`)
       }
     }
 
-    if (blockTimes.length < 2) {
-      throw new Error('Not enough blocks to calculate time')
-    }
-
-    let totalBlockTime = 0
-    for (let i = 1; i < blockTimes.length; i++) {
-      const duration = blockTimes[i].diff(blockTimes[i - 1]) // Calculate ms between blocks
-      totalBlockTime += duration // Sum the durations
-    }
-
-    const averageBlockTime = totalBlockTime / (blockTimes.length - 1) // Calculate average
-    return averageBlockTime
+    return blockTimes
   } catch (error) {
     throw new Error(`An error occurred during block time calculation: ${error}`)
   }
