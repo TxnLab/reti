@@ -10,7 +10,6 @@ import {
   Exclude,
   NodeStatusResponse,
 } from '@/interfaces/algod'
-import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
