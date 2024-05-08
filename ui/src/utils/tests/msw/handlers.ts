@@ -2,15 +2,67 @@ import * as msgpack from 'algo-msgpack-with-bigint'
 import { ABIMethod, ABIType, getMethodByName } from 'algosdk'
 import { HttpResponse, http } from 'msw'
 import { APP_SPEC as ValidatorRegistrySpec } from '@/contracts/ValidatorRegistryClient'
+import { BlockHeader } from '@/interfaces/algod'
 import { SimulateRequest, SimulateResponse } from '@/interfaces/simulate'
 import { concatUint8Arrays } from '@/utils/bytes'
 import { MethodCallParams } from '@/utils/tests/abi'
-import { LAST_ROUND, RETURN_PREFIX } from '@/utils/tests/constants'
+import {
+  AVG_BLOCK_TIME_MS,
+  CURRENT_TIME_MS,
+  LAST_ROUND,
+  RETURN_PREFIX,
+} from '@/utils/tests/constants'
 import { boxFixtures } from '@/utils/tests/fixtures/boxes'
 import { methodFixtures } from '@/utils/tests/fixtures/methods'
 import { parseBoxName } from '@/utils/tests/utils'
 
 const handlers = [
+  http.get('http://localhost:4001/v2/blocks/:block', async ({ params, request }) => {
+    try {
+      /* Parse request URL */
+      const url = new URL(request.url)
+      const format = url.searchParams.get('format')
+
+      if (format !== 'msgpack') {
+        throw new Error('Unknown format')
+      }
+
+      // console.log(`Captured a "GET ${url.pathname}?format=${format}" request`)
+
+      const blockNum = Number(params.block)
+
+      // Ensure block number is within a valid range
+      if (blockNum > LAST_ROUND) {
+        throw new Error(`Invalid block number: ${blockNum}`)
+      }
+
+      const offset = (LAST_ROUND - blockNum) * AVG_BLOCK_TIME_MS
+
+      const mockBlockHeader: Partial<BlockHeader> = {
+        ts: Math.round((CURRENT_TIME_MS - offset) / 1000),
+      }
+
+      const responseBuffer = msgpack.encode({
+        block: mockBlockHeader,
+      })
+
+      return HttpResponse.arrayBuffer(responseBuffer, {
+        headers: {
+          'Content-Type': 'application/msgpack',
+        },
+      })
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      return HttpResponse.error()
+    }
+  }),
+  http.get('http://localhost:4001/v2/status', async () => {
+    // console.log('Captured a "GET /v2/status" request')
+
+    return HttpResponse.json({
+      'last-round': LAST_ROUND,
+    })
+  }),
   http.get('http://localhost:4001/v2/transactions/params', async () => {
     // console.log('Captured a "GET /v2/transactions/params" request')
 
