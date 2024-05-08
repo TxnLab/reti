@@ -1,9 +1,9 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useRouter } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { ArrowUpRight, MessageCircleWarning } from 'lucide-react'
+import { ArrowUpRight, MessageCircleWarning, RefreshCcw } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -19,6 +19,7 @@ import {
 import { mbrQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,7 +49,9 @@ import {
   fetchValueToVerify,
   setValidatorQueriesData,
 } from '@/utils/contracts'
-import { formatAlgoAmount } from '@/utils/format'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
+import { ExplorerLink } from '@/utils/explorer'
+import { formatAlgoAmount, formatNumber } from '@/utils/format'
 
 interface AddStakeModalProps {
   validator: Validator | null
@@ -99,7 +102,7 @@ export function AddStakeModal({
   })
   const valueToVerify = heldGatingAssetQuery.data || 0
 
-  const isLoading = accountInfoQuery.isLoading || heldGatingAssetQuery.isLoading
+  const isLoading = accountInfoQuery.isFetching || heldGatingAssetQuery.isFetching
 
   const hasGatingAccess = () => {
     if (!validator) return false
@@ -330,7 +333,94 @@ export function AddStakeModal({
     }
   }
 
+  const handleRefetchGatingAsset = async () => {
+    await accountInfoQuery.refetch()
+    await heldGatingAssetQuery.refetch()
+  }
+
+  const renderEntryGatingAsset = () => {
+    if (!validator) {
+      return null
+    }
+
+    const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
+
+    switch (entryGatingType) {
+      case GatingType.None:
+        return 'None'
+      case GatingType.CreatorAccount:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
+            <a
+              href={ExplorerLink.account(entryGatingAddress)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 font-mono whitespace-nowrap hover:underline"
+            >
+              {ellipseAddressJsx(entryGatingAddress)}
+            </a>
+          </>
+        )
+      case GatingType.AssetId:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Asset ID</strong>
+            <ul className="mt-1 list-none list-inside">
+              {entryGatingAssets
+                .filter((assetId) => assetId !== 0)
+                .map((assetId) => (
+                  <li key={assetId}>
+                    <a
+                      href={ExplorerLink.asset(assetId)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono hover:underline"
+                    >
+                      {assetId}
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          </>
+        )
+      case GatingType.CreatorNfd:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
+            <div>
+              <NfdThumbnail nameOrId={entryGatingAssets[0]} link />
+            </div>
+          </>
+        )
+      case GatingType.SegmentNfd:
+        return (
+          <>
+            <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
+            <div className="flex">
+              <NfdThumbnail nameOrId={entryGatingAssets[0]} link />
+            </div>
+          </>
+        )
+      default:
+        return null
+    }
+  }
+
   const renderDialogContent = () => {
+    if (!validator) {
+      return (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-left">Error</DialogTitle>
+            <DialogDescription className="text-left">Missing validator data.</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      )
+    }
+
+    const { entryGatingType, gatingAssetMinBalance } = validator.config
+
     if (isLoading) {
       return (
         <DialogContent>
@@ -367,7 +457,6 @@ export function AddStakeModal({
       )
     }
 
-    // @todo: Show gating type and required asset or creator address
     if (!hasGatingAccess()) {
       return (
         <DialogContent>
@@ -377,11 +466,23 @@ export function AddStakeModal({
               You do not hold a qualified gating asset to stake with this validator
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button size="sm" asChild>
-              <Link to="/validators/$validatorId" params={{ validatorId: String(validator?.id) }}>
-                Validator details
-              </Link>
+          <div className="text-sm space-y-1 border-l-2 pl-4">
+            {renderEntryGatingAsset()}
+
+            {![GatingType.None, GatingType.SegmentNfd].includes(entryGatingType) && (
+              <div className="pt-4">
+                <strong className="font-medium text-muted-foreground">Minimum Balance:</strong>{' '}
+                <span className="font-mono">{formatNumber(gatingAssetMinBalance.toString())}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="secondary" size="sm" onClick={() => handleOpenChange(false)}>
+              Close
+            </Button>
+            <Button size="sm" onClick={handleRefetchGatingAsset}>
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Check again
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -380,7 +380,7 @@ export async function fetchValueToVerify(
       }
 
       try {
-        const result = await fetchNfdSearch(params)
+        const result = await fetchNfdSearch(params, { cache: false })
 
         if (result.nfds.length === 0) {
           return 0
