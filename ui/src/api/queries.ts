@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
-import { fetchAssetHoldings, fetchAverageBlockTime, fetchBalance } from '@/api/algod'
+import { fetchAssetHoldings, fetchBalance, fetchBlockTimes } from '@/api/algod'
 import {
   fetchMbrAmounts,
   fetchNodePoolAssignments,
@@ -97,7 +97,7 @@ export const stakesQueryOptions = (staker: string | null) =>
   })
 
 export const blockTimeQueryOptions = queryOptions({
-  queryKey: ['block-time'],
-  queryFn: () => fetchAverageBlockTime(),
+  queryKey: ['block-times'],
+  queryFn: () => fetchBlockTimes(),
   staleTime: 1000 * 60 * 30, // every 30 mins
 })

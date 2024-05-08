@@ -95,32 +95,57 @@ export function roundToFirstNonZeroDecimal(num: number): number {
   return Number(num.toFixed(decimalPlaces))
 }
 
+/**
+ * Format a BigInt with commas
+ * @param {bigint} value - The BigInt value
+ * @returns {string} - The formatted BigInt value with commas
+ */
+export function formatBigIntWithCommas(value: bigint): string {
+  const valueStr = value.toString()
+  const regex = /\B(?=(\d{3})+(?!\d))/g
+  return valueStr.replace(regex, ',')
+}
+
 type FormatNumberOptions = {
   compact?: boolean
   precision?: number
   trim?: boolean
 }
 
-export function formatNumber(amount: number | bigint | string, options: FormatNumberOptions = {}) {
+/**
+ * Format a number with commas and optional decimal places
+ * @param {number | bigint | string} amount - The number to format
+ * @param {FormatNumberOptions} options - Options for formatting the number
+ * @returns {string} - The formatted number
+ */
+export function formatNumber(
+  amount: number | bigint | string,
+  options: FormatNumberOptions = {},
+): string {
   const { compact = false, precision = 0, trim = true } = options
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
 
-  let formatted = new Big(numAmount).toFixed(precision)
-  const parts = formatted.split('.')
-
-  if (trim && parts.length === 2) {
-    parts[1] = parts[1].replace(/\.?0+$/, '')
-
-    if (parts[1] === '') {
-      formatted = parts[0]
-    } else {
-      formatted = parts.join('.')
-    }
+  // Handle BigInt separately to preserve precision
+  if (typeof amount === 'bigint') {
+    const formattedBigInt = formatBigIntWithCommas(amount)
+    return formattedBigInt
   }
+
+  const numericAmount = parseFloat(String(amount))
 
   if (compact) {
-    return formatWithPrecision(parseFloat(formatted), precision)
+    return formatWithPrecision(numericAmount, precision)
   }
 
-  return (parts[0] = new Intl.NumberFormat().format(parseFloat(parts[0])))
+  const bigAmount = new Big(numericAmount).toFixed(precision)
+  const parts = bigAmount.split('.')
+
+  // Add commas to the integer part
+  parts[0] = new Intl.NumberFormat().format(parseInt(parts[0], 10))
+
+  // Handle decimal trimming
+  if (trim && parts.length === 2) {
+    parts[1] = parts[1].replace(/\.?0+$/, '') // Trim trailing zeros
+  }
+
+  return parts.length === 1 ? parts[0] : parts.join('.')
 }
