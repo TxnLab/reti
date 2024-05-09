@@ -18,8 +18,15 @@ export function useStakersChartData({ selectedPool, validatorId }: UseChartDataP
   })
 
   const isLoading = poolsInfoQuery.isLoading || allStakedInfo.some((query) => query.isLoading)
-  const isError = poolsInfoQuery.isError || allStakedInfo.some((query) => query.isError)
   const isSuccess = poolsInfoQuery.isSuccess && allStakedInfo.every((query) => query.isSuccess)
+  const isError = poolsInfoQuery.isError || allStakedInfo.some((query) => query.isError)
+
+  const defaultMessage = isError ? 'An error occurred while loading staking data.' : undefined
+
+  const errorMessage =
+    poolsInfoQuery.error?.message ||
+    allStakedInfo.find((query) => query.error)?.error?.message ||
+    defaultMessage
 
   const stakersChartData = React.useMemo(() => {
     if (!allStakedInfo) {
@@ -64,6 +71,7 @@ export function useStakersChartData({ selectedPool, validatorId }: UseChartDataP
     poolsInfo,
     isLoading,
     isError,
+    errorMessage,
     isSuccess,
   }
 }

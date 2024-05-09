@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
+import { CacheRequestConfig } from 'axios-cache-interceptor'
 import { fetchAssetHoldings, fetchBalance, fetchBlockTimes } from '@/api/algod'
 import {
   fetchMbrAmounts,
@@ -66,10 +67,11 @@ export const assetHoldingQueryOptions = (address: string | null) =>
 export const nfdQueryOptions = (
   nameOrId: string | number,
   params: NfdGetNFDParams = { view: 'brief' },
+  options: CacheRequestConfig = {},
 ) =>
   queryOptions({
     queryKey: ['nfd', String(nameOrId), params],
-    queryFn: () => fetchNfd(String(nameOrId), params),
+    queryFn: () => fetchNfd(String(nameOrId), params, options),
     enabled: !!nameOrId,
   })
 

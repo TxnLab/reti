@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
-import { blockTimeQueryOptions, constraintsQueryOptions } from '@/api/queries'
+import { blockTimeQueryOptions, constraintsQueryOptions, mbrQueryOptions } from '@/api/queries'
 import { Layout } from '@/components/Layout'
 
 export const Route = createRootRouteWithContext<{
@@ -13,19 +13,27 @@ export const Route = createRootRouteWithContext<{
     return {
       blockTimeQueryOptions,
       constraintsQueryOptions,
+      mbrQueryOptions,
     }
   },
-  loader: ({ context: { queryClient, blockTimeQueryOptions, constraintsQueryOptions } }) => {
+  loader: ({
+    context: { queryClient, blockTimeQueryOptions, constraintsQueryOptions, mbrQueryOptions },
+  }) => {
     queryClient.ensureQueryData(blockTimeQueryOptions)
     queryClient.ensureQueryData(constraintsQueryOptions)
+    queryClient.ensureQueryData(mbrQueryOptions)
   },
   component: () => (
     <>
       <Layout>
         <Outlet />
       </Layout>
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools position="bottom-right" />
+      {import.meta.env.DEV && (
+        <>
+          <ReactQueryDevtools buttonPosition="top-right" />
+          <TanStackRouterDevtools position="bottom-right" />
+        </>
+      )}
     </>
   ),
   notFoundComponent: () => {
