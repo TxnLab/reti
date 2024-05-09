@@ -174,9 +174,18 @@ export const validatorSchemas = {
       .refine((val) => val !== '', {
         message: 'Required field',
       })
-      .refine((val) => !isNaN(Number(val)) && Number.isInteger(Number(val)) && Number(val) > 0, {
-        message: 'Must be a positive integer',
+      .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+        message: 'Must be a positive number',
       })
+      .refine(
+        (val) => {
+          const match = val.match(/^\d+(\.\d{1,6})?$/)
+          return match !== null
+        },
+        {
+          message: 'Cannot have more than 6 decimal places',
+        },
+      )
       .refine((val) => AlgoAmount.Algos(Number(val)).microAlgos >= constraints.minEntryStake, {
         message: `Must be at least ${AlgoAmount.MicroAlgos(Number(constraints.minEntryStake)).algos} ALGO`,
       })
