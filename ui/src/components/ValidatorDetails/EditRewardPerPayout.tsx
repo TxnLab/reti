@@ -142,7 +142,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
               )}
             />
           </div>
-          <DialogFooter className="mt-4 gap-y-2">
+          <DialogFooter className="mt-4">
             <Button
               variant="outline"
               onClick={(e) => {

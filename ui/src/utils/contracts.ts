@@ -320,15 +320,17 @@ export function canManageValidator(activeAddress: string | null, validator: Vali
   return owner === activeAddress || manager === activeAddress
 }
 
-export async function fetchGatingAssets(
+export async function fetchValueToVerify(
   validator: Validator | null,
   activeAddress: string | null,
-): Promise<number[]> {
+  heldAssets: AssetHolding[],
+): Promise<number> {
   if (!validator || !activeAddress) {
-    return []
+    throw new Error('Validator or active address not found')
   }
 
   const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
+  const minBalance = Number(validator.config.gatingAssetMinBalance)
 
   if (entryGatingType === GatingType.CreatorAccount) {
     const creatorAddress = entryGatingAddress
@@ -336,12 +338,13 @@ export async function fetchGatingAssets(
 
     if (accountInfo['created-assets']) {
       const assetIds = accountInfo['created-assets'].map((asset) => asset.index)
-      return assetIds
+      return findValueToVerify(heldAssets, assetIds, minBalance)
     }
   }
 
   if (entryGatingType === GatingType.AssetId) {
-    return entryGatingAssets.filter((asset) => asset !== 0)
+    const assetIds = entryGatingAssets.filter((asset) => asset !== 0)
+    return findValueToVerify(heldAssets, assetIds, minBalance)
   }
 
   if (entryGatingType === GatingType.CreatorNfd) {
@@ -357,7 +360,7 @@ export async function fetchGatingAssets(
       .filter((asset) => !!asset)
       .map((asset) => asset!.index)
 
-    return assetIds
+    return findValueToVerify(heldAssets, assetIds, minBalance)
   }
 
   if (entryGatingType === GatingType.SegmentNfd) {
@@ -366,8 +369,6 @@ export async function fetchGatingAssets(
     let offset = 0
     const limit = 20
     let hasMoreRecords = true
-
-    const assetIds: number[] = []
 
     while (hasMoreRecords) {
       const params: NfdSearchV2Params = {
@@ -379,10 +380,19 @@ export async function fetchGatingAssets(
       }
 
       try {
-        const result = await fetchNfdSearch(params)
+        const result = await fetchNfdSearch(params, { cache: false })
 
-        const ids = result.nfds.map((nfd) => nfd.asaID!)
-        assetIds.push(...ids)
+        if (result.nfds.length === 0) {
+          return 0
+        }
+
+        const nfdSegment = result.nfds.find((nfd) =>
+          heldAssets.some((asset) => asset['asset-id'] === nfd.asaID),
+        )
+
+        if (nfdSegment) {
+          return nfdSegment.appID || 0
+        }
 
         if (result.nfds.length < limit) {
           hasMoreRecords = false
@@ -395,27 +405,13 @@ export async function fetchGatingAssets(
       }
     }
 
-    return assetIds
+    return 0
   }
 
-  return []
+  return 0
 }
 
-export function hasQualifiedGatingAsset(
-  heldAssets: AssetHolding[],
-  gatingAssets: number[],
-  minBalance: number,
-): boolean {
-  if (gatingAssets.length == 0) {
-    return true
-  }
-
-  return heldAssets.some(
-    (asset) => gatingAssets.includes(asset['asset-id']) && asset.amount >= minBalance,
-  )
-}
-
-export function findQualifiedGatingAssetId(
+export function findValueToVerify(
   heldAssets: AssetHolding[],
   gatingAssets: number[],
   minBalance: number,
