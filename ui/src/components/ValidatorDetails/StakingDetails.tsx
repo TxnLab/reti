@@ -253,6 +253,18 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 </dd>
               </div>
             )}
+
+            {!!selectedPoolInfo.algodVersion && (
+              <div className="py-4 grid grid-cols-2 gap-4">
+                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                  Algod version
+                </dt>
+                <dd className="flex items-center gap-x-2 text-sm font-mono leading-6">
+                  {selectedPoolInfo.algodVersion}
+                </dd>
+              </div>
+            )}
+
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
@@ -326,7 +338,10 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         </CardHeader>
         <CardContent className="mt-2.5 space-y-6">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div ref={poolsChartContainerRef} className="flex items-center justify-center">
+            <div
+              ref={poolsChartContainerRef}
+              className="self-start py-2 flex items-center justify-center"
+            >
               {poolData.filter((data) => data.value > 0.000001).length > 0 ? (
                 <PoolsChart
                   data={poolData}

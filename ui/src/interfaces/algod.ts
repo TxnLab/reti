@@ -238,3 +238,95 @@ export interface BlockHeader {
    */
   spt: Map<number, Uint8Array>
 }
+
+/**
+ * Application index and its parameters
+ */
+export interface Application {
+  /**
+   * (appidx) application index.
+   */
+  id: number | bigint
+  /**
+   * (appparams) application parameters.
+   */
+  params: ApplicationParams
+}
+
+/**
+ * Stores the global information associated with an application.
+ */
+export interface ApplicationParams {
+  /**
+   * (approv) approval program.
+   */
+  'approval-program': Uint8Array
+  /**
+   * (clearp) approval program.
+   */
+  'clear-state-program': Uint8Array
+  /**
+   * The address that created this application. This is the address where the
+   * parameters and global state for this application can be found.
+   */
+  creator: string
+  /**
+   * (epp) the amount of extra program pages available to this app.
+   */
+  'extra-program-pages'?: number | bigint
+  /**
+   * (gs) global state
+   */
+  'global-state'?: TealKeyValue[]
+  /**
+   * (gsch) global schema
+   */
+  'global-state-schema'?: ApplicationStateSchema
+  /**
+   * (lsch) local schema
+   */
+  'local-state-schema'?: ApplicationStateSchema
+}
+
+/**
+ * Represents a key-value pair in an application store.
+ */
+export interface TealKeyValue {
+  key: string
+  /**
+   * Represents a TEAL value.
+   */
+  value: TealValue
+}
+
+/**
+ * Represents a TEAL value.
+ */
+export interface TealValue {
+  /**
+   * (tt) value type. Value `1` refers to **bytes**, value `2` refers to **uint**
+   */
+  type: number | bigint
+  /**
+   * (tb) bytes value.
+   */
+  bytes: string
+  /**
+   * (ui) uint value.
+   */
+  uint: number | bigint
+}
+
+/**
+ * Specifies maximums on the number of each type that may be stored.
+ */
+export interface ApplicationStateSchema {
+  /**
+   * (nui) num of uints.
+   */
+  'num-uint': number | bigint
+  /**
+   * (nbs) num of byte slices.
+   */
+  'num-byte-slice': number | bigint
+}

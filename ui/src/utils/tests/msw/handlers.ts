@@ -2,7 +2,7 @@ import * as msgpack from 'algo-msgpack-with-bigint'
 import { ABIMethod, ABIType, getMethodByName } from 'algosdk'
 import { HttpResponse, http } from 'msw'
 import { APP_SPEC as ValidatorRegistrySpec } from '@/contracts/ValidatorRegistryClient'
-import { BlockHeader } from '@/interfaces/algod'
+import { Application, BlockHeader } from '@/interfaces/algod'
 import { SimulateRequest, SimulateResponse } from '@/interfaces/simulate'
 import { concatUint8Arrays } from '@/utils/bytes'
 import { MethodCallParams } from '@/utils/tests/abi'
@@ -12,6 +12,7 @@ import {
   LAST_ROUND,
   RETURN_PREFIX,
 } from '@/utils/tests/constants'
+import { appFixtures } from '@/utils/tests/fixtures/applications'
 import { boxFixtures } from '@/utils/tests/fixtures/boxes'
 import { methodFixtures } from '@/utils/tests/fixtures/methods'
 import { parseBoxName } from '@/utils/tests/utils'
@@ -76,6 +77,21 @@ const handlers = [
     }
 
     return HttpResponse.json(response)
+  }),
+  http.get('http://localhost:4001/v2/applications/:appId', async ({ params }) => {
+    try {
+      /* Parse request URL */
+      // const url = new URL(request.url)
+      // console.log(`Captured a "GET ${url.pathname}" request`)
+
+      const appId = Number(params.appId)
+      const response: Application = appFixtures[appId]
+
+      return HttpResponse.json(response)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      return HttpResponse.error()
+    }
   }),
   http.post<never, Uint8Array>(
     'http://localhost:4001/v2/transactions/simulate',
