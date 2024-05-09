@@ -12,7 +12,7 @@ export async function fetchNfd(
     params: { ...params, ...options?.params },
   })
 
-  if (!nfd || !nfd.appID || !nfd.name) {
+  if (!nfd || !nfd.name) {
     throw new Error('NFD not found')
   }
 
