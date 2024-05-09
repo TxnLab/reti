@@ -73,3 +73,37 @@
     url('/fonts/Algo.woff') format('woff'),
     url('/fonts/Algo.ttf') format('truetype');
 }
+
+.\[\&\>div\>label\]\:step > div > label {
+  counter-increment: step;
+}
+
+.\[\&\>div\>label\]\:step > div > label:before {
+  position: absolute;
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border-width: 4px;
+  border-color: hsl(var(--background));
+  background-color: hsl(var(--muted));
+  text-align: center;
+  text-indent: -1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 400;
+  margin-left: -50px;
+  margin-top: -4px;
+  content: counter(step);
+}
+
+.\[\&\>div\>label\]\:step > div.completed > label:before {
+  background-color: theme(colors.green.900);
+  color: theme(colors.green.500);
+  content: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMyMmM1NWUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHlsZT0ibWFyZ2luLXRvcDogMnB4OyI+PHBhdGggZD0iTTIwIDYgOSAxN2wtNS01Ii8+PC9zdmc+');
+  font-size: 1.25rem;
+}
