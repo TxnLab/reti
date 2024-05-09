@@ -940,12 +940,18 @@ export async function fetchValidatorPools(
     const poolsInfo = result.returns![0]
 
     const poolAddresses: string[] = []
+    const poolAlgodVersions: string[] = []
 
     for (const poolInfo of poolsInfo) {
       const stakingPoolClient = await getSimulateStakingPoolClient(poolInfo[0])
+
       const poolAppRef = await stakingPoolClient.appClient.getAppReference()
       const poolAddress = poolAppRef.appAddress
       poolAddresses.push(poolAddress)
+
+      const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
+      const algodVersion = String(stakingPoolGS.algodVer.value)
+      poolAlgodVersions.push(algodVersion)
     }
 
     return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked], i) => ({
@@ -953,6 +959,7 @@ export async function fetchValidatorPools(
       totalStakers: Number(totalStakers),
       totalAlgoStaked,
       poolAddress: poolAddresses[i],
+      algodVersion: poolAlgodVersions[i],
     }))
   } catch (error) {
     console.error(error)
