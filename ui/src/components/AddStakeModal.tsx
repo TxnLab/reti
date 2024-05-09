@@ -114,7 +114,6 @@ export function AddStakeModal({
     return valueToVerify > 0
   }
 
-  // @todo: make this a custom hook, call from higher up and pass down as prop
   const mbrQuery = useQuery(mbrQueryOptions)
   const stakerMbr = mbrQuery.data?.stakerMbr || 0
 

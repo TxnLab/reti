@@ -6,6 +6,7 @@ import { Ban, Copy, Signpost } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { ErrorAlert } from '@/components/ErrorAlert'
 import { Loading } from '@/components/Loading'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -60,7 +61,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
       value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
     })) || []
 
-  const { stakersChartData, poolsInfo, isLoading, isError } = useStakersChartData({
+  const { stakersChartData, poolsInfo, isLoading, errorMessage } = useStakersChartData({
     selectedPool,
     validatorId: validator.id,
   })
@@ -296,8 +297,8 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     return <Loading />
   }
 
-  if (isError) {
-    return <div>Error</div>
+  if (errorMessage) {
+    return <ErrorAlert title="Failed to load staking data" message={errorMessage} />
   }
 
   return (
