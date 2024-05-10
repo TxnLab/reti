@@ -940,7 +940,7 @@ export async function fetchValidatorPools(
     const poolsInfo = result.returns![0]
 
     const poolAddresses: string[] = []
-    const poolAlgodVersions: string[] = []
+    const poolAlgodVersions: (string | undefined)[] = []
 
     for (const poolInfo of poolsInfo) {
       const stakingPoolClient = await getSimulateStakingPoolClient(poolInfo[0])
@@ -950,7 +950,7 @@ export async function fetchValidatorPools(
       poolAddresses.push(poolAddress)
 
       const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
-      const algodVersion = String(stakingPoolGS.algodVer.value)
+      const algodVersion = stakingPoolGS.algodVer?.value as string | undefined
       poolAlgodVersions.push(algodVersion)
     }
 
