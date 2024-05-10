@@ -229,30 +229,34 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         </div>
         <div className="border-t border-foreground-muted">
           <dl className="divide-y divide-foreground-muted">
-            {!!selectedPoolInfo.poolAddress && (
-              <div className="py-4 grid grid-cols-2 gap-4">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">Address</dt>
-                <dd className="flex items-center gap-x-2 text-sm font-mono leading-6">
-                  <a
-                    href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-link"
-                  >
-                    {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
-                  </a>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="group h-8 w-8 -my-1"
-                    data-clipboard-text={selectedPoolInfo.poolAddress}
-                    onClick={copyToClipboard}
-                  >
-                    <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
-                  </Button>
-                </dd>
-              </div>
-            )}
+            <div className="py-4 grid grid-cols-2 gap-4">
+              <dt className="text-sm font-medium leading-6 text-muted-foreground">Address</dt>
+              <dd className="flex items-center gap-x-2 text-sm">
+                {selectedPoolInfo.poolAddress ? (
+                  <>
+                    <a
+                      href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-link font-mono whitespace-nowrap"
+                    >
+                      {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group h-8 w-8 -my-1"
+                      data-clipboard-text={selectedPoolInfo.poolAddress}
+                      onClick={copyToClipboard}
+                    >
+                      <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">--</span>
+                )}
+              </dd>
+            </div>
 
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Algod version</dt>
@@ -264,12 +268,14 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 )}
               </dd>
             </div>
+
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
                 {selectedPoolInfo.totalStakers}
               </dd>
             </div>
+
             <div className="px-4 py-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Staked</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
