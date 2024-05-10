@@ -254,17 +254,16 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
               </div>
             )}
 
-            {!!selectedPoolInfo.algodVersion && (
-              <div className="py-4 grid grid-cols-2 gap-4">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">
-                  Algod version
-                </dt>
-                <dd className="flex items-center gap-x-2 text-sm font-mono leading-6">
-                  {selectedPoolInfo.algodVersion}
-                </dd>
-              </div>
-            )}
-
+            <div className="py-4 grid grid-cols-2 gap-4">
+              <dt className="text-sm font-medium leading-6 text-muted-foreground">Algod version</dt>
+              <dd className="flex items-center gap-x-2 text-sm">
+                {selectedPoolInfo.algodVersion ? (
+                  <span className="font-mono">{selectedPoolInfo.algodVersion}</span>
+                ) : (
+                  <span className="text-muted-foreground">--</span>
+                )}
+              </dd>
+            </div>
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
