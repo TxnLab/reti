@@ -1,4 +1,3 @@
-import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { fetchAccountInformation } from '@/api/algod'
@@ -25,6 +24,11 @@ import {
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 
+/**
+ * Transform raw validator configuration data (from `callGetValidatorConfig`) into a structured object
+ * @param {RawValidatorConfig} rawConfig - Raw validator configuration data
+ * @returns {ValidatorConfig} Structured validator configuration object
+ */
 export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
   return {
     id: Number(rawConfig[0]),
@@ -48,6 +52,11 @@ export function transformValidatorConfig(rawConfig: RawValidatorConfig): Validat
   }
 }
 
+/**
+ * Transform raw validator state data (from `callGetValidatorState`) into a structured object
+ * @param {RawValidatorState} rawState - Raw validator state data
+ * @returns {ValidatorState} Structured validator state object
+ */
 export function transformValidatorState(rawState: RawValidatorState): ValidatorState {
   return {
     numPools: Number(rawState[0]),
@@ -57,6 +66,11 @@ export function transformValidatorState(rawState: RawValidatorState): ValidatorS
   }
 }
 
+/**
+ * Transform raw staking pool data (from `callGetPools`) into structured objects
+ * @param {RawPoolsInfo} rawPoolsInfo - Raw staking pool data
+ * @returns {PoolInfo[]} Structured pool info objects
+ */
 export function transformPoolsInfo(rawPoolsInfo: RawPoolsInfo): PoolInfo[] {
   return rawPoolsInfo.map((poolInfo) => ({
     poolAppId: Number(poolInfo[0]),
@@ -65,12 +79,22 @@ export function transformPoolsInfo(rawPoolsInfo: RawPoolsInfo): PoolInfo[] {
   }))
 }
 
+/**
+ * Transform raw node pool assignment configuration data (from `callGetNodePoolAssignments`) into a flat array
+ * @param {RawNodePoolAssignmentConfig} rawConfig - Raw node pool assignment configuration data
+ * @returns {NodePoolAssignmentConfig} Flattened array of `NodeConfig` objects
+ */
 export function transformNodePoolAssignment(
   rawConfig: RawNodePoolAssignmentConfig,
 ): NodePoolAssignmentConfig {
   return rawConfig[0].flat()
 }
 
+/**
+ * Transform raw pool token payout ratio data (from `callGetTokenPayoutRatio`) into a flat array of payout ratios
+ * @param {RawPoolTokenPayoutRatios} rawData - Raw pool token payout ratio data
+ * @returns {number[]} Array of pool token payout ratios
+ */
 export function transformPoolTokenPayoutRatio(rawData: RawPoolTokenPayoutRatios): number[] {
   const [poolPctOfWhole, updatedForPayout] = rawData
 
@@ -82,6 +106,15 @@ export function transformPoolTokenPayoutRatio(rawData: RawPoolTokenPayoutRatios)
   return poolTokenPayoutRatio.poolPctOfWhole
 }
 
+/**
+ * Transform raw validator data from multiple ABI method calls into a structured `Validator` object
+ * @param {RawValidatorConfig} rawConfig - Raw validator configuration data
+ * @param {RawValidatorState} rawState - Raw validator state data
+ * @param {RawPoolsInfo} rawPoolsInfo - Raw staking pool data
+ * @param {RawPoolTokenPayoutRatios} rawPoolTokenPayoutRatios - Raw pool token payout ratio data
+ * @param {RawNodePoolAssignmentConfig} rawNodePoolAssignment - Raw node pool assignment configuration data
+ * @returns {Validator} Structured validator object
+ */
 export function transformValidatorData(
   rawConfig: RawValidatorConfig,
   rawState: RawValidatorState,
@@ -105,6 +138,11 @@ export function transformValidatorData(
   }
 }
 
+/**
+ * Transform raw staked info byte data from box storage into a structured `StakedInfo` object
+ * @param {Uint8Array} data - Raw staked info data (in a 64-byte chunk)
+ * @returns {StakedInfo} Structured staked info object
+ */
 export function transformStakedInfo(data: Uint8Array): StakedInfo {
   return {
     account: algosdk.encodeAddress(data.slice(0, 32)),
@@ -115,6 +153,12 @@ export function transformStakedInfo(data: Uint8Array): StakedInfo {
   }
 }
 
+/**
+ * Process node pool assignment configuration data into an array with each node's available slot count
+ * @param {NodePoolAssignmentConfig} nodes - Node pool assignment configuration data
+ * @param {number} poolsPerNode - Number of pools per node
+ * @returns {NodeInfo[]} Array of objects containing node `index` and `availableSlots`
+ */
 export function processNodePoolAssignment(
   nodes: NodePoolAssignmentConfig,
   poolsPerNode: number,
@@ -131,6 +175,12 @@ export function processNodePoolAssignment(
   })
 }
 
+/**
+ * Check if a validator has available slots for more pools
+ * @param {NodePoolAssignmentConfig} nodePoolAssignmentConfig - Ordered array of single `NodeConfig` arrays per pool
+ * @param {number} poolsPerNode - Number of pools per node
+ * @returns {boolean} Whether the validator has available slots
+ */
 export function validatorHasAvailableSlots(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
   poolsPerNode: number,
@@ -141,6 +191,12 @@ export function validatorHasAvailableSlots(
   })
 }
 
+/**
+ * Find the first available node with a slot for a new pool
+ * @param {NodePoolAssignmentConfig} nodePoolAssignmentConfig - Node pool assignment configuration data
+ * @param {number} poolsPerNode - Number of pools per node
+ * @returns {number | null} Node index with available slot, or null if no available slots found
+ */
 export function findFirstAvailableNode(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
   poolsPerNode: number,
@@ -154,6 +210,13 @@ export function findFirstAvailableNode(
   return null // No available slot found
 }
 
+/**
+ * Returns the number of blocks in a given timeframe based on the average block time
+ * @param {string} value - User provided value for epoch length
+ * @param {string} epochTimeframe - Selected epoch timeframe unit ('blocks', 'minutes', 'hours', 'days')
+ * @param {number} averageBlockTime - Average block time in milliseconds
+ * @returns {number} Number of blocks in the given timeframe
+ */
 export function getEpochLengthBlocks(
   value: string,
   epochTimeframe: string,
@@ -182,6 +245,14 @@ export function getEpochLengthBlocks(
   }
 }
 
+/**
+ * Transform entry gating assets into a fixed length array of asset IDs
+ * @param {string} type - Entry gating type
+ * @param {Array<{ value: string }>} assets - Entry gating assets
+ * @param {number} nfdCreatorAppId - NFD creator app ID
+ * @param {number} nfdParentAppId - NFD parent app ID
+ * @returns {string[]} Fixed length array of asset IDs
+ */
 export function transformEntryGatingAssets(
   type: string,
   assets: Array<{ value: string }>,
@@ -205,33 +276,32 @@ export function transformEntryGatingAssets(
   }
 }
 
-export function calculateMaxStake(
-  validator: Validator,
-  constraints?: Constraints,
-  algos = false,
-): number {
-  const { numPools } = validator.state
-  if (numPools === 0 || !constraints) {
-    return 0
-  }
-  const hardMaxDividedBetweenPools = constraints.maxAlgoPerValidator / BigInt(numPools)
-  let { maxAlgoPerPool } = validator.config
-  if (maxAlgoPerPool === 0n) {
-    maxAlgoPerPool = constraints.maxAlgoPerPool
-  }
-  if (hardMaxDividedBetweenPools < maxAlgoPerPool) {
-    maxAlgoPerPool = hardMaxDividedBetweenPools
+/**
+ * Calculate the maximum total stake based on the validator's configuration and protocol constraints
+ * @param {Validator} validator - Validator object
+ * @param {Constraints} constraints - Protocol constraints object
+ * @returns {bigint} Maximum total stake
+ */
+export function calculateMaxStake(validator: Validator, constraints?: Constraints): bigint {
+  if (validator.state.numPools === 0 || !constraints) {
+    return BigInt(0)
   }
 
-  const maxStake = Number(maxAlgoPerPool) * numPools
+  const protocolMaxStake = constraints.maxAlgoPerValidator
 
-  if (algos) {
-    return AlgoAmount.MicroAlgos(maxStake).algos
-  }
+  const numPools = BigInt(validator.state.numPools)
+  const maxAlgoPerPool = validator.config.maxAlgoPerPool || constraints.maxAlgoPerPool
+  const maxStake = maxAlgoPerPool * numPools
 
-  return maxStake
+  return maxStake < protocolMaxStake ? maxStake : protocolMaxStake
 }
 
+/**
+ * Calculate the maximum number of stakers based on the validator's configuration and protocol constraints
+ * @param {Validator} validator - Validator object
+ * @param {Constraints} constraints - Protocol constraints object
+ * @returns {number} Maximum number of stakers
+ */
 export function calculateMaxStakers(validator: Validator, constraints?: Constraints): number {
   const maxStakersPerPool = constraints?.maxStakersPerPool || 0
   const maxStakers = maxStakersPerPool * validator.state.numPools
@@ -239,6 +309,13 @@ export function calculateMaxStakers(validator: Validator, constraints?: Constrai
   return maxStakers
 }
 
+/**
+ * Check if staking is disabled based on the validator's state and protocol constraints
+ * @param {string | null} activeAddress - Active wallet address
+ * @param {Validator} validator - Validator object
+ * @param {Constraints} constraints - Protocol constraints object
+ * @returns {boolean} Whether staking is disabled
+ */
 export function isStakingDisabled(
   activeAddress: string | null,
   validator: Validator,
@@ -249,24 +326,25 @@ export function isStakingDisabled(
   }
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
 
-  let { maxAlgoPerPool } = validator.config
+  const noPools = numPools === 0
 
-  if (maxAlgoPerPool === 0n && !!constraints) {
-    maxAlgoPerPool = constraints.maxAlgoPerPool
-  }
+  const maxStake = calculateMaxStake(validator, constraints)
+  const maxStakeReached = Number(totalAlgoStaked) >= Number(maxStake)
 
   const maxStakersPerPool = constraints?.maxStakersPerPool || 0
-
   const maxStakers = maxStakersPerPool * numPools
-  const maxStake = Number(maxAlgoPerPool) * numPools
-
-  const noPools = numPools === 0
   const maxStakersReached = totalStakers >= maxStakers
-  const maxStakeReached = Number(totalAlgoStaked) >= maxStake
 
   return noPools || maxStakersReached || maxStakeReached || isSunsetted(validator)
 }
 
+/**
+ * Check if unstaking is disabled based on the validator's state and staking data
+ * @param {string | null} activeAddress - Active wallet address
+ * @param {Validator} validator - Validator object
+ * @param {StakerValidatorData[]} stakesByValidator - Staking data for the active address
+ * @returns {boolean} Whether unstaking is disabled
+ */
 export function isUnstakingDisabled(
   activeAddress: string | null,
   validator: Validator,
@@ -281,6 +359,13 @@ export function isUnstakingDisabled(
   return noPools || !validatorHasStake
 }
 
+/**
+ * Check if adding a pool is disabled based on the validator's state and protocol constraints
+ * @param {string | null} activeAddress - Active wallet address
+ * @param {Validator} validator - Validator object
+ * @param {Constraints} constraints - Protocol constraints object
+ * @returns {boolean} Whether adding a pool is disabled
+ */
 export function isAddingPoolDisabled(
   activeAddress: string | null,
   validator: Validator,
@@ -298,20 +383,41 @@ export function isAddingPoolDisabled(
   return !hasAvailableSlots || isSunsetted(validator)
 }
 
+/**
+ * Check if a validator is sunsetting or has sunsetted
+ * @param {Validator} validator - Validator object
+ * @returns {boolean} Whether the validator is sunsetting or has sunsetted
+ */
 export function isSunsetting(validator: Validator): boolean {
   return validator.config.sunsettingOn > 0
 }
 
+/**
+ * Check if a validator has sunsetted
+ * @param {Validator} validator - Validator object
+ * @returns {boolean} Whether the validator has sunsetted
+ */
 export function isSunsetted(validator: Validator): boolean {
   return validator.config.sunsettingOn > 0
     ? dayjs.unix(validator.config.sunsettingOn).isBefore(dayjs())
     : false
 }
 
+/**
+ * Check if a validator has a migration set
+ * @param {Validator} validator - Validator object
+ * @returns {boolean} Whether the validator has a migration set
+ */
 export function isMigrationSet(validator: Validator): boolean {
   return validator.config.sunsettingTo > 0
 }
 
+/**
+ * Check if the active address can manage a validator
+ * @param {string | null} activeAddress - Active wallet address
+ * @param {Validator} validator - Validator object
+ * @returns {boolean} Whether the active address can manage the provided validator
+ */
 export function canManageValidator(activeAddress: string | null, validator: Validator): boolean {
   if (!activeAddress) {
     return false
@@ -320,6 +426,14 @@ export function canManageValidator(activeAddress: string | null, validator: Vali
   return owner === activeAddress || manager === activeAddress
 }
 
+/**
+ * Returns the entry gating value to verify when adding stake.
+ * Depending on the gating type, network requests may be required to fetch additional data.
+ * @param {Validator | null} validator - Validator object
+ * @param {string | null} activeAddress - Active wallet address
+ * @param {AssetHolding[]} heldAssets - Assets held by the active address
+ * @returns {number} Entry gating value to verify, or 0 if none found
+ */
 export async function fetchValueToVerify(
   validator: Validator | null,
   activeAddress: string | null,
@@ -411,6 +525,13 @@ export async function fetchValueToVerify(
   return 0
 }
 
+/**
+ * Find the first gating asset held by the active address that meets the minimum balance requirement
+ * @param {AssetHolding[]} heldAssets - Assets held by the active address
+ * @param {number[]} gatingAssets - Array of gating assets
+ * @param {number} minBalance - Minimum balance required for gating assets
+ * @returns {number} Gating asset ID that meets the minimum balance requirement or 0 if not found
+ */
 export function findValueToVerify(
   heldAssets: AssetHolding[],
   gatingAssets: number[],
@@ -422,7 +543,16 @@ export function findValueToVerify(
   return asset?.['asset-id'] || 0
 }
 
-export function calculateMaxAvailableToStake(validator: Validator, constraints?: Constraints) {
+/**
+ * Calculate the maximum amount of algo that can be staked based on the validator's configuration
+ * @param {Validator} validator - Validator object
+ * @param {Constraints} constraints - Protocol constraints object
+ * @returns {number} Maximum amount of algo that can be staked
+ */
+export function calculateMaxAvailableToStake(
+  validator: Validator,
+  constraints?: Constraints,
+): number {
   let { maxAlgoPerPool } = validator.config
 
   if (maxAlgoPerPool === 0n) {
@@ -442,11 +572,10 @@ export function calculateMaxAvailableToStake(validator: Validator, constraints?:
 }
 
 /**
- * Calculate rewards eligibility percentage for a staker based on their entry time and last pool payout time
- *
- * @param {number} epochRoundLength Validator payout frequency in rounds
- * @param {number} lastPoolPayoutRound Last pool payout round number
- * @param {number} entryRound Staker entry time in Unix timestamp (15 min postdated)
+ * Calculate rewards eligibility percentage for a staker based on their entry round and last pool payout round.
+ * @param {number} epochRoundLength - Validator payout frequency in rounds
+ * @param {number} lastPoolPayoutRound - Last pool payout round number
+ * @param {number} entryRound - Staker entry round
  * @returns {number | null} Rewards eligibility percentage, or null if any input parameters are zero/undefined
  */
 export function calculateRewardEligibility(
@@ -454,28 +583,30 @@ export function calculateRewardEligibility(
   lastPoolPayoutRound: number = 0,
   entryRound: number = 0,
 ): number | null {
-  if (epochRoundLength == 0 || entryRound == 0 || lastPoolPayoutRound == 0) {
+  if (epochRoundLength === 0 || lastPoolPayoutRound === 0 || entryRound === 0) {
     return null
   }
 
-  // Calc next payout round
-  const nextEpoch =
-    lastPoolPayoutRound - (lastPoolPayoutRound % epochRoundLength) + epochRoundLength
+  // Calculate the next payout round
+  const currentEpochStartRound = lastPoolPayoutRound - (lastPoolPayoutRound % epochRoundLength)
+  const nextPayoutRound = currentEpochStartRound + epochRoundLength
 
-  // If the next payout time is in the past (i.e., no rewards last payout), there can't be a reward
-  if (nextEpoch < entryRound) {
+  // If the entry round is greater than or equal to the next epoch, eligibility is 0%
+  if (entryRound >= nextPayoutRound) {
     return 0
   }
-  // Calculate rewards eligibility as a percentage entry round vs epoch beginning
-  const timeInEpoch = nextEpoch - entryRound
-  let eligibilityPercent = (timeInEpoch / epochRoundLength) * 100
 
-  // Ensure eligibility falls within 0-100% range
-  // If eligibility is negative, it means they're past the epoch (entry time + 320 rounds, ~16 mins)
-  eligibilityPercent = Math.max(0, Math.min(eligibilityPercent, 100))
+  // Calculate the effective rounds staked within the current epoch starting from the last payout
+  const roundsInEpoch = Math.max(0, lastPoolPayoutRound - entryRound)
 
-  // Round down to nearest integer
-  return Math.floor(eligibilityPercent)
+  // Calculate eligibility as a percentage of the epoch length
+  const eligibilePercent = (roundsInEpoch / epochRoundLength) * 100
+
+  // Ensure eligibility is within 0-100% range
+  const rewardEligibility = Math.max(0, Math.min(eligibilePercent, 100))
+
+  // Round down to the nearest integer
+  return Math.floor(rewardEligibility)
 }
 
 /**
