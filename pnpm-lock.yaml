@@ -19,7 +19,7 @@ importers:
     devDependencies:
       '@algorandfoundation/algokit-client-generator':
         specifier: ^3.0.2
-        version: 3.0.2
+        version: 3.0.3
       '@algorandfoundation/tealscript':
         specifier: '=0.92.0'
         version: 0.92.0
@@ -344,8 +344,8 @@ packages:
     resolution: {integrity: sha512-rE0Pygv0sEZ4vBWHlAgJLGDU7Pm8xoO6p3wsEceb7GYAjScrOHpEo8KK/eVkAcnSM+slAEtXjA2JpdjLp4fJQQ==}
     dev: true
 
-  /@algorandfoundation/algokit-client-generator@3.0.2:
-    resolution: {integrity: sha512-0/x2/szFPTXfJ21m3OlohfnMUM/qpz5vkPsFz06U2BQ8iHmtwFoIz94JLj9Z9mzYeTZBnVKvDgSqMNMkJRzldg==}
+  /@algorandfoundation/algokit-client-generator@3.0.3:
+    resolution: {integrity: sha512-yfTfLEm+pgXn7Ik87wzYZL/mgbDzdNdxyMR6A2neLCt9OivIN20km28L524yCGBdwutpJJFPIoeYS7mDgFVFZg==}
     engines: {node: '>=18.0'}
     hasBin: true
     dependencies:
