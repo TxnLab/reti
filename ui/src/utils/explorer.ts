@@ -7,24 +7,24 @@ export class ExplorerLink {
   private config: ExplorerConfig
   private identifier: string
 
-  constructor(identifier: string) {
+  private constructor(identifier: string) {
     this.config = getExplorerConfigFromViteEnvironment()
     this.identifier = identifier
   }
 
-  accountUrl() {
+  private accountUrl() {
     return `${this.config.accountUrl}/${this.identifier}`
   }
 
-  transactionUrl() {
+  private transactionUrl() {
     return `${this.config.transactionUrl}/${this.identifier}`
   }
 
-  assetUrl() {
+  private assetUrl() {
     return `${this.config.assetUrl}/${this.identifier}`
   }
 
-  appUrl() {
+  private appUrl() {
     return `${this.config.appUrl}/${this.identifier}`
   }
 
