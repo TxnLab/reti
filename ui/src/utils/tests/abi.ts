@@ -1,4 +1,4 @@
-import { ABITupleType, ABIValue } from 'algosdk'
+import { ABIValue } from 'algosdk'
 import { StakingPoolSig } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistrySig } from '@/contracts/ValidatorRegistryClient'
 
@@ -7,6 +7,16 @@ export interface MethodCallParams {
   args?: Record<string, ABIValue>
 }
 
+/**
+ * Encodes an ABI method call's parameters (name and args) into a Uint8Array.
+ * It is used to pass the parameters in the note field of its transaction.
+ * In testing, a MSW endpoint handler can parse these parameters to return the correct mock response.
+ * @param {string} method - The method name
+ * @param {Record<string, ABIValue>} args - The method arguments
+ * @returns {Uint8Array} The encoded method call parameters
+ * @example
+ * encodeCallParams('getPools', { validatorId: 1 })
+ */
 export function encodeCallParams(
   method: ValidatorRegistrySig | StakingPoolSig,
   args: MethodCallParams['args'],
@@ -14,46 +24,4 @@ export function encodeCallParams(
   const methodName = method.split('(', 1)[0]
   const callParams: MethodCallParams = { method: methodName, ...(args ? { args } : {}) }
   return new Uint8Array(Buffer.from(JSON.stringify(callParams)))
-}
-
-export function parseMethodSignature(signature: string): {
-  name: string
-  args: string[]
-  returns: string
-} {
-  const argsStart = signature.indexOf('(')
-  if (argsStart === -1) {
-    throw new Error(`Invalid method signature: ${signature}`)
-  }
-
-  let argsEnd = -1
-  let depth = 0
-  for (let i = argsStart; i < signature.length; i++) {
-    const char = signature[i]
-
-    if (char === '(') {
-      depth += 1
-    } else if (char === ')') {
-      if (depth === 0) {
-        // unpaired parenthesis
-        break
-      }
-
-      depth -= 1
-      if (depth === 0) {
-        argsEnd = i
-        break
-      }
-    }
-  }
-
-  if (argsEnd === -1) {
-    throw new Error(`Invalid method signature: ${signature}`)
-  }
-
-  return {
-    name: signature.slice(0, argsStart),
-    args: ABITupleType.parseTupleContent(signature.slice(argsStart + 1, argsEnd)),
-    returns: signature.slice(argsEnd + 1),
-  }
 }

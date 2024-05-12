@@ -3,7 +3,9 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FixtureFunction = (args: any) => any[]
 
-// Map containing each ABI method's corresponding fixture function
+/**
+ * Map containing each ABI method's mock response
+ */
 export const methodFixtures: Record<string, FixtureFunction> = {
   getPools: ({ validatorId }: { validatorId: number | bigint }) => {
     const pool1 = {
