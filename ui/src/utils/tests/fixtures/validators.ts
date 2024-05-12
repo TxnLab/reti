@@ -71,7 +71,7 @@ export const MOCK_VALIDATOR_1_POOL_ASSIGNMENT: NodeConfig[] = createStaticArray<
 )
 
 export const MOCK_VALIDATOR_2_CONFIG: ValidatorConfig = {
-  id: 1,
+  id: 2,
   owner: ACCOUNT_4,
   manager: ACCOUNT_4,
   nfdForInfo: 0,
