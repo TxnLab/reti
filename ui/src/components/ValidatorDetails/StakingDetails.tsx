@@ -6,6 +6,7 @@ import { Ban, Copy, Signpost } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { ErrorAlert } from '@/components/ErrorAlert'
 import { Loading } from '@/components/Loading'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -60,7 +61,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
       value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
     })) || []
 
-  const { stakersChartData, poolsInfo, isLoading, isError } = useStakersChartData({
+  const { stakersChartData, poolsInfo, isLoading, errorMessage } = useStakersChartData({
     selectedPool,
     validatorId: validator.id,
   })
@@ -228,36 +229,53 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         </div>
         <div className="border-t border-foreground-muted">
           <dl className="divide-y divide-foreground-muted">
-            {!!selectedPoolInfo.poolAddress && (
-              <div className="py-4 grid grid-cols-2 gap-4">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">Address</dt>
-                <dd className="flex items-center gap-x-2 text-sm font-mono leading-6">
-                  <a
-                    href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-link"
-                  >
-                    {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
-                  </a>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="group h-8 w-8 -my-1"
-                    data-clipboard-text={selectedPoolInfo.poolAddress}
-                    onClick={copyToClipboard}
-                  >
-                    <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
-                  </Button>
-                </dd>
-              </div>
-            )}
+            <div className="py-4 grid grid-cols-2 gap-4">
+              <dt className="text-sm font-medium leading-6 text-muted-foreground">Address</dt>
+              <dd className="flex items-center gap-x-2 text-sm">
+                {selectedPoolInfo.poolAddress ? (
+                  <>
+                    <a
+                      href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-link font-mono whitespace-nowrap"
+                    >
+                      {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="group h-8 w-8 -my-1"
+                      data-clipboard-text={selectedPoolInfo.poolAddress}
+                      onClick={copyToClipboard}
+                    >
+                      <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">--</span>
+                )}
+              </dd>
+            </div>
+
+            <div className="py-4 grid grid-cols-2 gap-4">
+              <dt className="text-sm font-medium leading-6 text-muted-foreground">Algod version</dt>
+              <dd className="flex items-center gap-x-2 text-sm">
+                {selectedPoolInfo.algodVersion ? (
+                  <span className="font-mono">{selectedPoolInfo.algodVersion}</span>
+                ) : (
+                  <span className="text-muted-foreground">--</span>
+                )}
+              </dd>
+            </div>
+
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
                 {selectedPoolInfo.totalStakers}
               </dd>
             </div>
+
             <div className="px-4 py-4 sm:px-0">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Staked</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
@@ -296,8 +314,8 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     return <Loading />
   }
 
-  if (isError) {
-    return <div>Error</div>
+  if (errorMessage) {
+    return <ErrorAlert title="Failed to load staking data" message={errorMessage} />
   }
 
   return (
@@ -325,7 +343,10 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         </CardHeader>
         <CardContent className="mt-2.5 space-y-6">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div ref={poolsChartContainerRef} className="flex items-center justify-center">
+            <div
+              ref={poolsChartContainerRef}
+              className="self-start py-2 flex items-center justify-center"
+            >
               {poolData.filter((data) => data.value > 0.000001).length > 0 ? (
                 <PoolsChart
                   data={poolData}

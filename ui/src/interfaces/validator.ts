@@ -66,6 +66,7 @@ export interface PoolInfo {
   totalStakers: number
   totalAlgoStaked: bigint
   poolAddress?: string
+  algodVersion?: string
 }
 
 export type RawPoolTokenPayoutRatios = [[bigint, ...bigint[]], bigint]

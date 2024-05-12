@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
-import { fetchAssetHoldings, fetchAverageBlockTime, fetchBalance } from '@/api/algod'
+import { CacheRequestConfig } from 'axios-cache-interceptor'
+import { fetchAssetHoldings, fetchBalance, fetchBlockTimes } from '@/api/algod'
 import {
   fetchMbrAmounts,
   fetchNodePoolAssignments,
@@ -66,10 +67,11 @@ export const assetHoldingQueryOptions = (address: string | null) =>
 export const nfdQueryOptions = (
   nameOrId: string | number,
   params: NfdGetNFDParams = { view: 'brief' },
+  options: CacheRequestConfig = {},
 ) =>
   queryOptions({
     queryKey: ['nfd', String(nameOrId), params],
-    queryFn: () => fetchNfd(String(nameOrId), params),
+    queryFn: () => fetchNfd(String(nameOrId), params, options),
     enabled: !!nameOrId,
   })
 
@@ -97,7 +99,7 @@ export const stakesQueryOptions = (staker: string | null) =>
   })
 
 export const blockTimeQueryOptions = queryOptions({
-  queryKey: ['block-time'],
-  queryFn: () => fetchAverageBlockTime(),
+  queryKey: ['block-times'],
+  queryFn: () => fetchBlockTimes(),
   staleTime: 1000 * 60 * 30, // every 30 mins
 })
