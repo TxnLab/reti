@@ -271,7 +271,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	return nil
 }
 
-func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, offlineToOnline bool, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
+func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, needsIncentiveFeePaid bool, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
 	var err error
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
@@ -286,11 +286,11 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, offlineToOnline 
 	params.Fee = transaction.MinTxnFee * 3
 
 	var goOnlineFee uint64 = 0
-	if true {
-		// TODO - this is temporary - need to wait until AVM has opcode which can detect if acount is offline
-		// otherwise we always have to pay it
-		//if offlineToOnline {
-		// if going offline to online - pay extra 2 algo so the account is payouts eligible !
+	// if going offline to online - pay extra 2 algo so the account is payouts eligible !
+	if needsIncentiveFeePaid {
+		// TODO - this is temporary - need to wait until AVM has opcode which can detect if account isn't currently
+		// eligible for incentives and only then to pay the extra fee
+		// account return will also have IncentiveEligible property which caller will use when calling us.
 		r.Logger.Info("paying extra fee for offline->online transition")
 		goOnlineFee = 2e6
 	}
@@ -382,5 +382,9 @@ func (r *Reti) PoolBalance(poolAppID uint64) uint64 {
 
 func (r *Reti) PoolAvailableRewards(poolAppID uint64, totalAlgoStaked uint64) uint64 {
 	acctInfo, _ := algo.GetBareAccount(context.Background(), r.algoClient, crypto.GetApplicationAddress(poolAppID).String())
+	if acctInfo.Amount < acctInfo.MinBalance {
+		// pool isn't properly initialized yet - so don't underflow on 'reward amount'
+		return 0
+	}
 	return acctInfo.Amount - totalAlgoStaked - acctInfo.MinBalance
 }
