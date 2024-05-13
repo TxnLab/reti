@@ -1346,9 +1346,9 @@ export class ValidatorRegistry extends Contract {
                 "provided nfd for entry isn't owned or linked to the staker",
             )
 
-            // We at least know it's a real NFD - now.. is it a segment of the root NFD the validator defined ?
+            // We at least know it's a real NFD - now... is it a segment of the root NFD the validator defined ?
             assert(
-                (AppID.fromUint64(config.entryGatingAssets[0]).globalState('i.parentAppID') as uint64) ===
+                (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) ===
                     config.entryGatingAssets[0],
                 'specified nfd must be a segment of the nfd the validator specified as a requirement',
             )

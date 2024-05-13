@@ -1070,7 +1070,7 @@ export class StakingPoolClient {
        * @param params Any additional parameters for the call
        * @returns The create result
        */
-      async createApplication(args: MethodArgs<'createApplication(uint64,uint64,uint64,uint64)void'>, params: AppClientCallCoreParams & AppClientCompilationParams & IncludeSchema & (OnCompleteNoOp) = {}) {
+      async createApplication(args: MethodArgs<'createApplication(uint64,uint64,uint64,uint64)void'>, params: AppClientCallCoreParams & AppClientCompilationParams & IncludeSchema & CoreAppCallArgs & (OnCompleteNoOp) = {}) {
         return $this.mapReturnValue<MethodReturn<'createApplication(uint64,uint64,uint64,uint64)void'>, AppCreateCallTransactionResult>(await $this.appClient.create(StakingPoolCallFactory.create.createApplication(args, params)))
       },
     }
