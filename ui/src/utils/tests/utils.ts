@@ -1,11 +1,10 @@
 /**
  * Creates an array containing unique values followed by duplicates of a default value.
- *
- * @template T The type of the elements in the array.
- * @param {T[]} values - An array of unique values to start the array.
- * @param {T} defaultValue - The default value to fill the rest of the array.
- * @param {number} length - The total desired length of the array.
- * @returns {T[]} - An array of elements of type T.
+ * @template T The type of the elements in the array
+ * @param {T[]} values - An array of unique values to start the array
+ * @param {T} defaultValue - The default value to fill the rest of the array
+ * @param {number} length - The total desired length of the array
+ * @returns {T[]} An array of elements of type T
  */
 export function createStaticArray<T>(values: T[], defaultValue: T, length: number): T[] {
   const resultArray: T[] = [...values]
@@ -23,8 +22,8 @@ export function createStaticArray<T>(values: T[], defaultValue: T, length: numbe
 
 /**
  * Parses a box name string into encoding and value, decoding if necessary.
- * @param {string} nameParam - The name parameter in the format 'encoding:value'.
- * @returns {[string, string]} - A tuple containing the encoding and the (possibly decoded) value.
+ * @param {string} nameParam - The name parameter in the format 'encoding:value'
+ * @returns {[string, string]} A tuple containing the encoding and the (possibly decoded) value
  */
 export function parseBoxName(nameParam: string): [string, string] {
   const [encoding, value] = nameParam.split(':', 2)

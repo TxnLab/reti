@@ -42,7 +42,9 @@ interface FixtureData {
   }
 }
 
-// Map containing each app's corresponding box fixture data
+/**
+ * Map containing each application's corresponding box fixture data
+ */
 export const boxFixtures: FixtureData = {
   '1010': {
     // Staking pool appId 1010
@@ -58,9 +60,8 @@ export const boxFixtures: FixtureData = {
 
 /**
  * Encodes staker information into a base64 string.
- *
  * @param {StakedInfo[]} stakers - Array of staker information.
- * @returns {string} - The base64 encoded string of stakers' data.
+ * @returns {string} The base64 encoded string of stakers' data.
  */
 export function encodeStakersToBase64(stakers: StakedInfo[]): string {
   const bytesPerStaker = 64

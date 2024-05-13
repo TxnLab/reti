@@ -1,9 +1,9 @@
 import { dayjs } from '@/utils/dayjs'
 
 /**
- * Calculate the average time between blocks
+ * Calculate the average time between Algorand blocks.
  * @param {number[]} timestamps - Block times, UNIX timestamps (in seconds)
- * @returns {number} - Average time between blocks (in ms)
+ * @returns {number} Average time between blocks (in ms)
  */
 export function calculateAverageBlockTime(timestamps: number[]): number {
   if (timestamps.length < 2) {
