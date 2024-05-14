@@ -3,6 +3,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import {
   AccountBalance,
   AccountInformation,
+  AlgodHttpError,
   Asset,
   AssetCreatorHolding,
   AssetHolding,
@@ -11,7 +12,6 @@ import {
   NodeStatusResponse,
 } from '@/interfaces/algod'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import { HttpError } from '@/utils/http'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -78,8 +78,23 @@ export async function fetchAccountAssetInformation(
   if (!assetId) {
     throw new Error('No assetId provided')
   }
-  const assetHolding = await algodClient.accountAssetInformation(address, assetId).do()
-  return assetHolding as AssetHolding
+  try {
+    const assetHolding = await algodClient.accountAssetInformation(address, assetId).do()
+    return assetHolding as AssetHolding
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    if (error.status && error.body?.message) {
+      throw new AlgodHttpError({
+        status: error.status,
+        body: error.body,
+        headers: error.headers,
+        ok: error.ok,
+        text: error.text,
+      })
+    } else {
+      throw error
+    }
+  }
 }
 
 export async function isOptedInToAsset(address: string | null, assetId: number): Promise<boolean> {
@@ -87,7 +102,7 @@ export async function isOptedInToAsset(address: string | null, assetId: number):
     await fetchAccountAssetInformation(address, assetId)
     return true
   } catch (error: unknown) {
-    if (error instanceof HttpError && error.status === 404) {
+    if (error instanceof AlgodHttpError && error.status === 404) {
       return false
     } else {
       throw error

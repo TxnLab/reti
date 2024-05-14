@@ -40,6 +40,32 @@ export interface Asset {
   params: AssetParams
 }
 
+export class AlgodHttpError extends Error {
+  public status: number
+  public body: {
+    message: string
+  }
+  public headers: Record<string, string>
+  public ok: boolean
+  public text: string
+
+  constructor(response: {
+    status: number
+    body: { message: string }
+    headers: Record<string, string>
+    ok: boolean
+    text: string
+  }) {
+    super(response.body.message)
+    this.name = 'AlgodHttpError'
+    this.status = response.status
+    this.body = response.body
+    this.headers = response.headers
+    this.ok = response.ok
+    this.text = response.text
+  }
+}
+
 export interface NodeStatusResponse {
   /**
    * CatchupTime in nanoseconds
