@@ -820,17 +820,30 @@ export async function fetchProtocolConstraints(
 export async function removeStake(
   poolAppId: number | bigint,
   amountToUnstake: number,
+  rewardTokenId: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
   authAddr?: string,
 ) {
+  const suggestedParams = await ParamsCache.getSuggestedParams()
+
+  const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    to: activeAddress,
+    amount: 0,
+    assetIndex: rewardTokenId,
+    suggestedParams,
+  })
+
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const stakingPoolSimulateClient = await getSimulateStakingPoolClient(
     poolAppId,
     activeAddress,
     authAddr,
   )
 
-  const simulateResult = await stakingPoolSimulateClient
+  const simulateComposer = stakingPoolSimulateClient
     .compose()
     .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
@@ -841,7 +854,15 @@ export async function removeStake(
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  if (needsOptInTxn) {
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
+
+  const simulateResult = await simulateComposer.simulate({
+    allowEmptySignatures: true,
+    allowUnnamedResources: true,
+  })
 
   // @todo: switch to Joe's new method(s)
   const feesAmount = AlgoAmount.MicroAlgos(
@@ -853,7 +874,7 @@ export async function removeStake(
 
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
-  await stakingPoolClient
+  const composer = stakingPoolClient
     .compose()
     .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
@@ -864,7 +885,12 @@ export async function removeStake(
       },
       { sendParams: { fee: feesAmount } },
     )
-    .execute({ populateAppCallResources: true })
+
+  if (needsOptInTxn) {
+    composer.addTransaction(rewardTokenOptInTxn)
+  }
+
+  await composer.execute({ populateAppCallResources: true })
 }
 
 export async function epochBalanceUpdate(
