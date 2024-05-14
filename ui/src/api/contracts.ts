@@ -579,7 +579,7 @@ export async function addStake(
   rewardTokenOptInTxn.group = undefined
 
   // @todo: switch to Joe's new method(s)
-  const feesAmount = AlgoAmount.MicroAlgos(
+  const feeAmount = AlgoAmount.MicroAlgos(
     2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
 
@@ -595,7 +595,7 @@ export async function addStake(
         validatorId,
         valueToVerify,
       },
-      { sendParams: { fee: feesAmount } },
+      { sendParams: { fee: feeAmount } },
     )
 
   if (needsOptInTxn) {
@@ -866,7 +866,7 @@ export async function removeStake(
   })
 
   // @todo: switch to Joe's new method(s)
-  const feesAmount = AlgoAmount.MicroAlgos(
+  const feeAmount = AlgoAmount.MicroAlgos(
     1000 *
       Math.floor(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
@@ -886,7 +886,7 @@ export async function removeStake(
         staker: activeAddress,
         amountToUnstake,
       },
-      { sendParams: { fee: feesAmount } },
+      { sendParams: { fee: feeAmount } },
     )
 
   if (needsOptInTxn) {
@@ -917,7 +917,7 @@ export async function epochBalanceUpdate(
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
     // @todo: switch to Joe's new method(s)
-    const feesAmount = AlgoAmount.MicroAlgos(
+    const feeAmount = AlgoAmount.MicroAlgos(
       3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
     )
 
@@ -927,7 +927,7 @@ export async function epochBalanceUpdate(
       .compose()
       .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
       .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-      .epochBalanceUpdate({}, { sendParams: { fee: feesAmount } })
+      .epochBalanceUpdate({}, { sendParams: { fee: feeAmount } })
       .execute({ populateAppCallResources: true })
   } catch (error) {
     console.error(error)
@@ -1046,7 +1046,7 @@ export async function claimTokens(
   )
 
   // @todo: switch to Joe's new method(s)
-  const feesAmount = AlgoAmount.MicroAlgos(
+  const feeAmount = AlgoAmount.MicroAlgos(
     1000 *
       Math.floor(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
@@ -1059,7 +1059,7 @@ export async function claimTokens(
     const client = await getStakingPoolClient(pool.poolAppId, signer, activeAddress)
     await client.gas({}, { note: '1', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
     await client.gas({}, { note: '2', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
-    await client.claimTokens({}, { sendParams: { atc: atc2, fee: feesAmount } })
+    await client.claimTokens({}, { sendParams: { atc: atc2, fee: feeAmount } })
   }
 
   await algokit.sendAtomicTransactionComposer(
