@@ -5,6 +5,11 @@ import { GatingType } from '@/constants/gating'
 import { Constraints } from '@/interfaces/validator'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
+/**
+ * Validator schema definitions for form validation
+ * @see {@link https://zod.dev}
+ * @see {@link https://github.com/react-hook-form/resolvers#zod}
+ */
 export const validatorSchemas = {
   owner: () => {
     return z
@@ -222,6 +227,11 @@ export const validatorSchemas = {
   },
 }
 
+/**
+ * Validator schema refinement for entry gating
+ * @param {any} data - The form data
+ * @param {RefinementCtx} ctx - The refinement context
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
   const {

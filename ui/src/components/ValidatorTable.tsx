@@ -177,15 +177,18 @@ export function ValidatorTable({
 
         if (validator.state.numPools === 0) return '--'
 
-        const currentStake = AlgoAmount.MicroAlgos(Number(validator.state.totalAlgoStaked)).algos
+        const currentStakeAlgos = AlgoAmount.MicroAlgos(
+          Number(validator.state.totalAlgoStaked),
+        ).algos
         const currentStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
-        }).format(currentStake)
+        }).format(currentStakeAlgos)
 
-        const maxStake = calculateMaxStake(validator, constraints, true)
+        const maxStake = calculateMaxStake(validator, constraints)
+        const maxStakeAlgos = AlgoAmount.MicroAlgos(Number(maxStake)).algos
         const maxStakeCompact = new Intl.NumberFormat(undefined, {
           notation: 'compact',
-        }).format(maxStake)
+        }).format(maxStakeAlgos)
 
         return (
           <span className="whitespace-nowrap">
