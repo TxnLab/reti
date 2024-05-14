@@ -67,6 +67,14 @@ export async function fetchAssetHoldings(address: string | null): Promise<AssetH
   return assets
 }
 
+export async function isOptedInToAsset(address: string | null, assetId: number): Promise<boolean> {
+  if (!address) {
+    throw new Error('No address provided')
+  }
+  const assetHoldings = await fetchAssetHoldings(address)
+  return assetHoldings.some((asset) => asset['asset-id'] === assetId)
+}
+
 export async function fetchAssetCreatorHoldings(
   address: string | null,
 ): Promise<AssetCreatorHolding[]> {
