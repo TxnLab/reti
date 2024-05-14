@@ -173,9 +173,17 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		newParams.Fee = 0
 
 		extraApps := []uint64{}
+		extraAssets := []uint64{}
 
 		if r.info.Config.NFDForInfo != 0 {
 			extraApps = append(extraApps, r.info.Config.NFDForInfo)
+		}
+		if r.info.Config.RewardTokenId != 0 {
+			extraAssets = append(extraAssets, r.info.Config.RewardTokenId)
+			if poolID != 1 {
+				// If not pool 1 then we need to add reference for pool 1, so it can be called to update the pool token payout ratio
+				extraApps = append(extraApps, r.info.Pools[0].PoolAppId)
+			}
 		}
 
 		// we need to stack up references in these two gas methods for resource pooling
@@ -201,9 +209,10 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 			return atc, err
 		}
 		err = atc.AddMethodCall(transaction.AddMethodCallParams{
-			AppID:       poolAppID,
-			Method:      gasMethod,
-			ForeignApps: extraApps,
+			AppID:         poolAppID,
+			Method:        gasMethod,
+			ForeignAssets: extraAssets,
+			ForeignApps:   extraApps,
 			ForeignAccounts: []string{
 				info.Config.ValidatorCommissionAddress,
 				r.info.Config.Manager,
