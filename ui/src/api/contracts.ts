@@ -576,6 +576,7 @@ export async function addStake(
   })
 
   stakeTransferPayment.group = undefined
+  rewardTokenOptInTxn.group = undefined
 
   // @todo: switch to Joe's new method(s)
   const feesAmount = AlgoAmount.MicroAlgos(
@@ -871,6 +872,8 @@ export async function removeStake(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
       ),
   )
+
+  rewardTokenOptInTxn.group = undefined
 
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
