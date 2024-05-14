@@ -5,6 +5,13 @@ import localizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(duration)
 dayjs.extend(localizedFormat)
 
+/**
+ * Format a duration in milliseconds as a human-readable string.
+ * @param {number} milliseconds - The duration in milliseconds
+ * @returns {string} The formatted duration
+ * @example
+ * formatDuration(123456789) // '1d 10h 17m 36s'
+ */
 export function formatDuration(milliseconds: number): string {
   const dur = dayjs.duration(milliseconds)
 

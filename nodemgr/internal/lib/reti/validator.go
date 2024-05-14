@@ -996,14 +996,18 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	if err != nil {
 		return err
 	}
+	poolInitMbr := mbrs.PoolInitMbr
+	if r.Info().Config.RewardTokenId != 0 && poolKey.PoolId == 1 {
+		poolInitMbr += 100_000 // cover MBR of reward token asset
+	}
 
 	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
 	gasMethod, _ := r.poolContract.GetMethodByName("gas")
 	initStorageMethod, _ := r.poolContract.GetMethodByName("initStorage")
 
-	misc.Infof(r.Logger, "initializing staking pool storage, mbr payment to pool:%s", algo.FormattedAlgoAmount(mbrs.PoolInitMbr))
+	misc.Infof(r.Logger, "initializing staking pool storage, mbr payment to pool:%s", algo.FormattedAlgoAmount(poolInitMbr))
 	atc := transaction.AtomicTransactionComposer{}
-	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppId).String(), mbrs.PoolInitMbr, nil, "", params)
+	paymentTxn, err := transaction.MakePaymentTxn(managerAddr.String(), crypto.GetApplicationAddress(poolKey.PoolAppId).String(), poolInitMbr, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, managerAddr.String()),
