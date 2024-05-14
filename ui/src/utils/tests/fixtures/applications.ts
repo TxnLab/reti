@@ -5,7 +5,9 @@ interface FixtureData {
   [appId: string]: Application
 }
 
-// Map containing each app's corresponding application fixture data
+/**
+ * Map containing each application's fixture data
+ */
 export const appFixtures: FixtureData = {
   '1010': {
     // Staking pool appId 1010
