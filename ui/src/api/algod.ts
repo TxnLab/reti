@@ -11,6 +11,7 @@ import {
   NodeStatusResponse,
 } from '@/interfaces/algod'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import { HttpError } from '@/utils/http'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -67,12 +68,31 @@ export async function fetchAssetHoldings(address: string | null): Promise<AssetH
   return assets
 }
 
-export async function isOptedInToAsset(address: string | null, assetId: number): Promise<boolean> {
+export async function fetchAccountAssetInformation(
+  address: string | null,
+  assetId: number,
+): Promise<AssetHolding> {
   if (!address) {
     throw new Error('No address provided')
   }
-  const assetHoldings = await fetchAssetHoldings(address)
-  return assetHoldings.some((asset) => asset['asset-id'] === assetId)
+  if (!assetId) {
+    throw new Error('No assetId provided')
+  }
+  const assetHolding = await algodClient.accountAssetInformation(address, assetId).do()
+  return assetHolding as AssetHolding
+}
+
+export async function isOptedInToAsset(address: string | null, assetId: number): Promise<boolean> {
+  try {
+    await fetchAccountAssetInformation(address, assetId)
+    return true
+  } catch (error: unknown) {
+    if (error instanceof HttpError && error.status === 404) {
+      return false
+    } else {
+      throw error
+    }
+  }
 }
 
 export async function fetchAssetCreatorHoldings(
