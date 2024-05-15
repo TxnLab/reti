@@ -265,7 +265,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
           <h4 className="text-xl font-semibold leading-none tracking-tight whitespace-nowrap">
             {selectedPoolName}
           </h4>
-          <span className="h-9 w-px bg-white/10" />
+          <span className="h-9 w-px bg-stone-900/15 dark:bg-white/15" />
           {renderPoolNfd()}
         </div>
         <div className="border-t border-foreground-muted">
