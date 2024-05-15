@@ -1188,10 +1188,13 @@ export async function linkPoolToNfd(
     const nfdAppAddress = algosdk.getApplicationAddress(nfdAppId)
     const poolAppAddress = algosdk.getApplicationAddress(poolAppId)
 
-    const payBoxStorageMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const boxStorageMbrAmount = AlgoAmount.MicroAlgos(20500)
+    const feeAmount = AlgoAmount.MicroAlgos(5000)
+
+    const payBoxStorageMbrTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       from: activeAddress,
       to: nfdAppAddress,
-      amount: 20500,
+      amount: boxStorageMbrAmount.microAlgos,
       suggestedParams: await ParamsCache.getSuggestedParams(),
     })
 
@@ -1205,8 +1208,8 @@ export async function linkPoolToNfd(
           new TextEncoder().encode('u.cav.algo.a'),
           algosdk.decodeAddress(poolAppAddress).publicKey,
         ],
-        assets: [NFD_ADMIN_ASSET_ID],
         apps: [NFD_REGISTRY_APP_ID],
+        assets: [NFD_ADMIN_ASSET_ID],
         boxes: [
           {
             appIndex: NFD_REGISTRY_APP_ID,
@@ -1214,7 +1217,7 @@ export async function linkPoolToNfd(
           },
           {
             appIndex: NFD_REGISTRY_APP_ID,
-            name: new TextEncoder().encode(''),
+            name: new TextEncoder().encode(''), // Increase box storage availability
           },
           {
             appIndex: NFD_REGISTRY_APP_ID,
@@ -1236,13 +1239,13 @@ export async function linkPoolToNfd(
 
     await stakingPoolClient
       .compose()
-      .addTransaction(payBoxStorageMbr)
+      .addTransaction(payBoxStorageMbrTxn)
       .addTransaction(updateNfdAppCall)
       .linkToNfd(
         { nfdAppId, nfdName },
         {
           sendParams: {
-            fee: AlgoAmount.MicroAlgos(5000),
+            fee: feeAmount,
           },
         },
       )
