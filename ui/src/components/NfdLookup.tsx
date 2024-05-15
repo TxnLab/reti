@@ -1,4 +1,4 @@
-import { isAxiosError } from 'axios'
+import { AxiosError } from 'axios'
 import { ArrowUpRight, Check } from 'lucide-react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useDebouncedCallback } from 'use-debounce'
@@ -13,6 +13,7 @@ import { cn } from '@/utils/ui'
 const ERROR_NOT_FOUND = 'NFD not found'
 const ERROR_NOT_OWNED = 'NFD not owned by active address'
 const ERROR_FAILED = 'Failed to fetch NFD'
+const ERROR_UNKNOWN = 'An unknown error occurred'
 
 const NFD_APP_URL = getNfdAppFromViteEnvironment()
 
@@ -57,20 +58,24 @@ export function NfdLookup<
 
       form.clearErrors(name)
       setNfdAppId(nfd.appID!)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       let message: string
-      if (isAxiosError(error) && error.response) {
+      if (error instanceof AxiosError && error.response) {
+        // Handle HTTP errors
         if (error.response.status === 404) {
           message = ERROR_NOT_FOUND
         } else {
           console.error(error)
           message = ERROR_FAILED
         }
-      } else {
+      } else if (error instanceof Error) {
         // Handle non-HTTP errors
         console.error(error)
         message = error.message
+      } else {
+        // Handle unknown errors
+        console.error(error)
+        message = ERROR_UNKNOWN
       }
       form.setError(name, { type: 'manual', message })
     } finally {
