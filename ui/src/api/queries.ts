@@ -77,9 +77,9 @@ export const nfdQueryOptions = (
     staleTime: 1000 * 60 * 5, // 5 mins
     retry: (failureCount, error) => {
       if (error instanceof AxiosError) {
-        return error.response?.status !== 404 && failureCount <= 3
+        return error.response?.status !== 404 && failureCount < 3
       }
-      return failureCount > 3
+      return false
     },
   })
 
@@ -95,9 +95,9 @@ export const nfdLookupQueryOptions = (
     staleTime: 1000 * 60 * 5, // 5 mins
     retry: (failureCount, error) => {
       if (error instanceof AxiosError) {
-        return error.response?.status !== 404 && failureCount <= 3
+        return error.response?.status !== 404 && failureCount < 3
       }
-      return failureCount > 3
+      return false
     },
   })
 
