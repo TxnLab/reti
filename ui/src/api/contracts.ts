@@ -40,8 +40,16 @@ import {
 } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
+import {
+  getNfdAdminAssetFromViteEnvironment,
+  getNfdRegistryFromViteEnvironment,
+} from '@/utils/network/getNfdConfig'
+import { getRegistryBoxNameForAddress, getRegistryBoxNameForNFD } from '@/utils/nfd'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
+
+const NFD_REGISTRY_APP_ID = getNfdRegistryFromViteEnvironment()
+const NFD_ADMIN_ASSET_ID = getNfdAdminAssetFromViteEnvironment()
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -1111,4 +1119,80 @@ export async function changeValidatorRewardInfo(
       rewardPerPayout,
     })
     .execute({ populateAppCallResources: true })
+}
+
+export async function linkPoolToNfd(
+  poolAppId: number,
+  nfdName: string,
+  nfdAppId: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  try {
+    const nfdAppAddress = algosdk.getApplicationAddress(nfdAppId)
+    const poolAppAddress = algosdk.getApplicationAddress(poolAppId)
+
+    const payBoxStorageMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: nfdAppAddress,
+      amount: 20500,
+      suggestedParams: await ParamsCache.getSuggestedParams(),
+    })
+
+    const updateNfdAppCall = algosdk.makeApplicationNoOpTxnFromObject({
+      appIndex: nfdAppId,
+      from: activeAddress,
+      suggestedParams: await ParamsCache.getSuggestedParams(),
+      ...algokit.getAppArgsForTransaction({
+        appArgs: [
+          new TextEncoder().encode('update_field'),
+          new TextEncoder().encode('u.cav.algo.a'),
+          algosdk.decodeAddress(poolAppAddress).publicKey,
+        ],
+        assets: [NFD_ADMIN_ASSET_ID],
+        apps: [NFD_REGISTRY_APP_ID],
+        boxes: [
+          {
+            appIndex: NFD_REGISTRY_APP_ID,
+            name: await getRegistryBoxNameForAddress(poolAppAddress),
+          },
+          {
+            appIndex: NFD_REGISTRY_APP_ID,
+            name: new TextEncoder().encode(''),
+          },
+          {
+            appIndex: NFD_REGISTRY_APP_ID,
+            name: await getRegistryBoxNameForNFD(nfdName),
+          },
+          {
+            appIndex: nfdAppId,
+            name: new TextEncoder().encode('u.cav.algo'),
+          },
+          {
+            appIndex: nfdAppId,
+            name: new TextEncoder().encode('v.caAlgo.0.as'),
+          },
+        ],
+      }),
+    })
+
+    const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
+
+    await stakingPoolClient
+      .compose()
+      .addTransaction(payBoxStorageMbr)
+      .addTransaction(updateNfdAppCall)
+      .linkToNfd(
+        { nfdAppId, nfdName },
+        {
+          sendParams: {
+            fee: AlgoAmount.MicroAlgos(5000),
+          },
+        },
+      )
+      .execute({ populateAppCallResources: true })
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
 }
