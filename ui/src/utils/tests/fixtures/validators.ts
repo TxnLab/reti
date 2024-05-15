@@ -46,6 +46,7 @@ export const MOCK_VALIDATOR_1_STATE: ValidatorState = {
 
 export const MOCK_VALIDATOR_1_POOLS: PoolInfo[] = [
   {
+    poolId: 1,
     poolAppId: 1010,
     totalStakers: 2,
     totalAlgoStaked: 70000000000000n,
@@ -53,6 +54,7 @@ export const MOCK_VALIDATOR_1_POOLS: PoolInfo[] = [
     algodVersion: '3.23.1 rel/stable [34171a94] : v0.8.0 [d346b13]',
   },
   {
+    poolId: 2,
     poolAppId: 1011,
     totalStakers: 2,
     totalAlgoStaked: 2000000000000n,
@@ -100,6 +102,7 @@ export const MOCK_VALIDATOR_2_STATE: ValidatorState = {
 
 export const MOCK_VALIDATOR_2_POOLS: PoolInfo[] = [
   {
+    poolId: 1,
     poolAppId: 1020,
     totalStakers: 1,
     totalAlgoStaked: 1000n,

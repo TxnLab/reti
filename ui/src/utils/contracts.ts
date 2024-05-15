@@ -72,7 +72,8 @@ export function transformValidatorState(rawState: RawValidatorState): ValidatorS
  * @returns {PoolInfo[]} Structured pool info objects
  */
 export function transformPoolsInfo(rawPoolsInfo: RawPoolsInfo): PoolInfo[] {
-  return rawPoolsInfo.map((poolInfo) => ({
+  return rawPoolsInfo.map((poolInfo, i) => ({
+    poolId: i + 1,
     poolAppId: Number(poolInfo[0]),
     totalStakers: Number(poolInfo[1]),
     totalAlgoStaked: poolInfo[2],
