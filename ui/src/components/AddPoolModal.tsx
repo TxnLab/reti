@@ -8,9 +8,15 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { fetchAccountInformation } from '@/api/algod'
-import { addStakingPool, fetchValidator, initStakingPoolStorage } from '@/api/contracts'
+import {
+  addStakingPool,
+  fetchValidator,
+  initStakingPoolStorage,
+  linkPoolToNfd,
+} from '@/api/contracts'
 import { mbrQueryOptions, poolAssignmentQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { NfdLookup } from '@/components/NfdLookup'
 import { NodeSelect } from '@/components/NodeSelect'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
@@ -37,6 +43,7 @@ import {
   setValidatorQueriesData,
 } from '@/utils/contracts'
 import { formatAlgoAmount } from '@/utils/format'
+import { isValidName } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
 
 interface AddPoolModalProps {
@@ -55,6 +62,8 @@ export function AddPoolModal({
   const [currentStep, setCurrentStep] = React.useState<number>(1)
   const [poolKey, setPoolKey] = React.useState<ValidatorPoolKey | null>(null)
   const [isInitMbrError, setIsInitMbrError] = React.useState<string | undefined>(undefined)
+  const [nfdToLinkAppId, setNfdToLinkAppId] = React.useState<number>(0)
+  const [isFetchingNfdToLink, setIsFetchingNfdToLink] = React.useState(false)
 
   const queryClient = useQueryClient()
   const { transactionSigner, activeAddress } = useWallet()
@@ -108,18 +117,25 @@ export function AddPoolModal({
           message: 'Node has no available slots',
         },
       ),
+    nfdToLink: z.string().refine((val) => val === '' || isValidName(val), {
+      message: 'NFD name is invalid',
+    }),
   })
+
+  const defaultValues = {
+    nodeNum: defaultNodeNum,
+    nfdToLink: '',
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      nodeNum: defaultNodeNum,
-    },
+    defaultValues,
   })
 
   const { errors } = form.formState
 
   const nodeNum = form.watch('nodeNum')
+  const nfdToLink = form.watch('nfdToLink')
 
   React.useEffect(() => {
     if (validator !== null && currentStep == 1 && nodeNum !== '' && !errors.nodeNum) {
@@ -132,7 +148,7 @@ export function AddPoolModal({
   }, [defaultNodeNum, form.setValue])
 
   const handleResetForm = () => {
-    form.reset({ nodeNum: defaultNodeNum })
+    form.reset(defaultValues)
     form.clearErrors()
     setProgress(0)
     setCurrentStep(1)
@@ -175,8 +191,6 @@ export function AddPoolModal({
         transactionSigner,
         activeAddress,
       )
-
-      setIsSigning(false)
       setPoolKey(stakingPoolKey)
 
       toast.success(`Staking pool ${stakingPoolKey.poolId} created!`, {
@@ -193,6 +207,8 @@ export function AddPoolModal({
       toast.error('Failed to create staking pool', { id: toastId })
       console.error(error)
       handleOpenChange(false)
+    } finally {
+      setIsSigning(false)
     }
   }
 
@@ -237,8 +253,6 @@ export function AddPoolModal({
         activeAddress,
       )
 
-      setIsSigning(false)
-
       toast.success(`Pool ${poolKey.poolId} MBR paid successfully!`, {
         id: toastId,
         duration: 5000,
@@ -255,6 +269,55 @@ export function AddPoolModal({
       toast.error('Minimum required balance payment failed', { id: toastId })
       console.error(error)
       setIsInitMbrError(error?.message)
+    } finally {
+      setIsSigning(false)
+    }
+  }
+
+  const handleLinkPoolToNfd = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+
+    const toastId = `${TOAST_ID}-link-nfd`
+
+    try {
+      if (!activeAddress) {
+        throw new Error('No active address')
+      }
+
+      if (!poolKey) {
+        throw new Error('No pool found')
+      }
+
+      if (nfdToLinkAppId === 0) {
+        throw new Error('NFD app ID not found')
+      }
+
+      toast.loading(`Sign transaction to link ${nfdToLink} to Pool ${poolKey.poolId}...`, {
+        id: toastId,
+      })
+
+      setIsSigning(true)
+
+      await linkPoolToNfd(
+        poolKey.poolAppId,
+        nfdToLink,
+        nfdToLinkAppId,
+        transactionSigner,
+        activeAddress,
+      )
+
+      toast.success(`Pool ${poolKey.poolId} successfully linked to ${nfdToLink}!`, {
+        id: toastId,
+        duration: 5000,
+      })
+
+      handleOpenChange(false)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      toast.error('Linking NFD to pool failed', { id: toastId })
+      console.error(error)
+    } finally {
+      setIsSigning(false)
     }
   }
 
@@ -313,8 +376,9 @@ export function AddPoolModal({
 
                 <Collapsible
                   open={currentStep == 2}
-                  className={cn('space-y-2', { completed: currentStep > 2 })}
+                  className={cn('relative pb-6 space-y-2', { completed: currentStep > 2 })}
                 >
+                  <span className="absolute -left-8 -translate-x-[1px] h-full w-px bg-muted" />
                   <FormLabel className={cn({ 'text-muted-foreground/50': currentStep < 2 })}>
                     Pay Minimum Required Balance
                   </FormLabel>
@@ -335,6 +399,27 @@ export function AddPoolModal({
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+
+                <Collapsible open={currentStep == 3} className="space-y-2">
+                  <FormLabel className={cn({ 'text-muted-foreground/50': currentStep < 3 })}>
+                    Link Pool to NFD
+                  </FormLabel>
+                  <CollapsibleContent className="space-y-2">
+                    <NfdLookup
+                      form={form}
+                      name="nfdToLink"
+                      nfdAppId={nfdToLinkAppId}
+                      setNfdAppId={setNfdToLinkAppId}
+                      isFetchingNfd={isFetchingNfdToLink}
+                      setIsFetchingNfd={setIsFetchingNfdToLink}
+                      watchValue={nfdToLink}
+                      errorMessage={errors.nfdToLink?.message}
+                      activeAddress={activeAddress}
+                      validateOwner
+                      warnVerified
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
               <DialogFooter className="my-6 sm:justify-start">
                 {currentStep == 1 && (
@@ -348,9 +433,14 @@ export function AddPoolModal({
                   </Button>
                 )}
                 {currentStep == 3 && (
-                  <Button variant="secondary" onClick={handleComplete} disabled={isSigning}>
-                    Finish (Close)
-                  </Button>
+                  <>
+                    <Button onClick={handleLinkPoolToNfd} disabled={isSigning}>
+                      Link to NFD
+                    </Button>
+                    <Button variant="secondary" onClick={handleComplete} disabled={isSigning}>
+                      Skip for now
+                    </Button>
+                  </>
                 )}
               </DialogFooter>
 
