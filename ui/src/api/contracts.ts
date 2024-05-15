@@ -915,6 +915,7 @@ export async function fetchPoolInfo(
     const poolAddress = poolAppRef.appAddress
 
     return {
+      poolId: poolKey.poolId,
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
       totalAlgoStaked,
@@ -963,6 +964,7 @@ export async function fetchValidatorPools(
     }
 
     return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked], i) => ({
+      poolId: i + 1,
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
       totalAlgoStaked,

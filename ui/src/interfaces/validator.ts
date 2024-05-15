@@ -62,6 +62,7 @@ export interface ValidatorState {
 export type RawPoolsInfo = [bigint, number, bigint][]
 
 export interface PoolInfo {
+  poolId: number
   poolAppId: number
   totalStakers: number
   totalAlgoStaked: bigint
