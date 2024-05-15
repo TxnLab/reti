@@ -72,13 +72,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
   const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
 
-  const poolNfdQuery = useQuery(
-    nfdLookupQueryOptions(
-      selectedPoolInfo?.poolAddress || null,
-      { view: 'thumbnail' },
-      { validateStatus: (status) => status === 200 },
-    ),
-  )
+  const poolNfdQuery = useQuery(nfdLookupQueryOptions(selectedPoolInfo?.poolAddress || null))
 
   const valueFormatter = (v: number) => (
     <AlgoDisplayAmount
