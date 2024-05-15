@@ -292,6 +292,7 @@ export function AddStakeModal({
         validator!.id,
         totalAmount,
         valueToVerify,
+        validator!.config.rewardTokenId,
         transactionSigner,
         activeAddress,
         authAddress,

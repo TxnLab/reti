@@ -2,6 +2,7 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
+import { isOptedInToAsset } from '@/api/algod'
 import {
   getSimulateStakingPoolClient,
   getSimulateValidatorClient,
@@ -529,6 +530,7 @@ export async function addStake(
   validatorId: number,
   stakeAmount: number, // microalgos
   valueToVerify: number,
+  rewardTokenId: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
   authAddr?: string,
@@ -545,9 +547,19 @@ export async function addStake(
     suggestedParams,
   })
 
+  const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    to: activeAddress,
+    amount: 0,
+    assetIndex: rewardTokenId,
+    suggestedParams,
+  })
+
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const simulateValidatorClient = await getSimulateValidatorClient(activeAddress, authAddr)
 
-  const simulateResults = await simulateValidatorClient
+  const simulateComposer = simulateValidatorClient
     .compose()
     .gas({})
     .addStake(
@@ -561,16 +573,25 @@ export async function addStake(
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  if (needsOptInTxn) {
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
+
+  const simulateResults = await simulateComposer.simulate({
+    allowEmptySignatures: true,
+    allowUnnamedResources: true,
+  })
 
   stakeTransferPayment.group = undefined
+  rewardTokenOptInTxn.group = undefined
 
   // @todo: switch to Joe's new method(s)
-  const feesAmount = AlgoAmount.MicroAlgos(
+  const feeAmount = AlgoAmount.MicroAlgos(
     2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
 
-  const results = await validatorClient
+  const composer = validatorClient
     .compose()
     .gas({})
     .addStake(
@@ -582,11 +603,16 @@ export async function addStake(
         validatorId,
         valueToVerify,
       },
-      { sendParams: { fee: feesAmount } },
+      { sendParams: { fee: feeAmount } },
     )
-    .execute({ populateAppCallResources: true })
 
-  const [valId, poolId, poolAppId] = results.returns![1]
+  if (needsOptInTxn) {
+    composer.addTransaction(rewardTokenOptInTxn)
+  }
+
+  const result = await composer.execute({ populateAppCallResources: true })
+
+  const [valId, poolId, poolAppId] = result.returns![1]
 
   return {
     poolId: Number(poolId),
@@ -803,17 +829,30 @@ export async function fetchProtocolConstraints(
 export async function removeStake(
   poolAppId: number | bigint,
   amountToUnstake: number,
+  rewardTokenId: number,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
   authAddr?: string,
 ) {
+  const suggestedParams = await ParamsCache.getSuggestedParams()
+
+  const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: activeAddress,
+    to: activeAddress,
+    amount: 0,
+    assetIndex: rewardTokenId,
+    suggestedParams,
+  })
+
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const stakingPoolSimulateClient = await getSimulateStakingPoolClient(
     poolAppId,
     activeAddress,
     authAddr,
   )
 
-  const simulateResult = await stakingPoolSimulateClient
+  const simulateComposer = stakingPoolSimulateClient
     .compose()
     .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
@@ -824,19 +863,29 @@ export async function removeStake(
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  if (needsOptInTxn) {
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
+
+  const simulateResult = await simulateComposer.simulate({
+    allowEmptySignatures: true,
+    allowUnnamedResources: true,
+  })
 
   // @todo: switch to Joe's new method(s)
-  const feesAmount = AlgoAmount.MicroAlgos(
+  const feeAmount = AlgoAmount.MicroAlgos(
     1000 *
       Math.floor(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
       ),
   )
 
+  rewardTokenOptInTxn.group = undefined
+
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
-  await stakingPoolClient
+  const composer = stakingPoolClient
     .compose()
     .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
@@ -845,9 +894,14 @@ export async function removeStake(
         staker: activeAddress,
         amountToUnstake,
       },
-      { sendParams: { fee: feesAmount } },
+      { sendParams: { fee: feeAmount } },
     )
-    .execute({ populateAppCallResources: true })
+
+  if (needsOptInTxn) {
+    composer.addTransaction(rewardTokenOptInTxn)
+  }
+
+  await composer.execute({ populateAppCallResources: true })
 }
 
 export async function epochBalanceUpdate(
@@ -871,7 +925,7 @@ export async function epochBalanceUpdate(
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
     // @todo: switch to Joe's new method(s)
-    const feesAmount = AlgoAmount.MicroAlgos(
+    const feeAmount = AlgoAmount.MicroAlgos(
       3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
     )
 
@@ -881,7 +935,7 @@ export async function epochBalanceUpdate(
       .compose()
       .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
       .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
-      .epochBalanceUpdate({}, { sendParams: { fee: feesAmount } })
+      .epochBalanceUpdate({}, { sendParams: { fee: feeAmount } })
       .execute({ populateAppCallResources: true })
   } catch (error) {
     console.error(error)
@@ -1002,7 +1056,7 @@ export async function claimTokens(
   )
 
   // @todo: switch to Joe's new method(s)
-  const feesAmount = AlgoAmount.MicroAlgos(
+  const feeAmount = AlgoAmount.MicroAlgos(
     1000 *
       Math.floor(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
@@ -1015,7 +1069,7 @@ export async function claimTokens(
     const client = await getStakingPoolClient(pool.poolAppId, signer, activeAddress)
     await client.gas({}, { note: '1', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
     await client.gas({}, { note: '2', sendParams: { atc: atc2, fee: AlgoAmount.MicroAlgos(0) } })
-    await client.claimTokens({}, { sendParams: { atc: atc2, fee: feesAmount } })
+    await client.claimTokens({}, { sendParams: { atc: atc2, fee: feeAmount } })
   }
 
   await algokit.sendAtomicTransactionComposer(
