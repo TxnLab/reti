@@ -11,6 +11,7 @@ import {
     addStakingPool,
     addValidator,
     ALGORAND_ZERO_ADDRESS_STRING,
+    bigIntFromBytes,
     claimTokens,
     createAsset,
     createValidatorConfig,
@@ -1958,6 +1959,153 @@ describe('StakeWTokenWRewards', () => {
     })
 })
 
+describe('StakeUnstakeAccumTests', () => {
+    beforeEach(fixture.beforeEach)
+    beforeEach(logs.beforeEach)
+    afterEach(logs.afterEach)
+
+    let validatorId: number
+    let validatorOwnerAccount: Account
+    const stakerAccounts: Account[] = []
+    let poolAppId: bigint
+    let firstPoolKey: ValidatorPoolKey
+    let firstPoolClient: StakingPoolClient
+
+    const PctToValidator = 5
+    const epochRoundLength = 8
+
+    // add validator and 1 pool for subsequent stake tests
+    beforeAll(async () => {
+        // Fund a 'validator account' that will be the validator owner.
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
+
+        const config = createValidatorConfig({
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: PctToValidator * 10000,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            epochRoundLength,
+        })
+        validatorId = await addValidator(
+            fixture.context,
+            validatorMasterClient,
+            validatorOwnerAccount,
+            config,
+            validatorMbr,
+        )
+
+        firstPoolKey = await addStakingPool(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            1,
+            validatorOwnerAccount,
+            poolMbr,
+            poolInitMbr,
+        )
+        // should be [validator id, pool id (1 based)]
+        expect(firstPoolKey.id).toEqual(BigInt(validatorId))
+        expect(firstPoolKey.poolId).toEqual(1n)
+
+        firstPoolClient = new StakingPoolClient(
+            { sender: validatorOwnerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+
+        // get the app id via contract call - it should match what we just got back in poolKey[2]
+        poolAppId = (
+            await validatorMasterClient.getPoolAppId(
+                { validatorId: firstPoolKey.id, poolId: firstPoolKey.poolId },
+                { sendParams: { populateAppCallResources: true } },
+            )
+        ).return!
+        expect(firstPoolKey.poolAppId).toEqual(poolAppId)
+
+        const stateData = await getValidatorState(validatorMasterClient, validatorId)
+        expect(stateData.numPools).toEqual(1)
+        expect(stateData.totalAlgoStaked).toEqual(0n)
+        expect(stateData.totalStakers).toEqual(0n)
+
+        const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        expect(poolInfo.poolAppId).toEqual(BigInt(poolAppId))
+        expect(poolInfo.totalStakers).toEqual(0)
+        expect(poolInfo.totalAlgoStaked).toEqual(0n)
+    })
+
+    // Dummy staker - add 3000 algo - and then we'll slowly remove stake to see if we can trigger remove stake bug
+    test('stakeAccumTests', async () => {
+        // Fund a 'staker account' that will be the new 'staker'
+        const stakerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        stakerAccounts.push(stakerAccount)
+
+        const stakeAmount1 = AlgoAmount.MicroAlgos(
+            AlgoAmount.Algos(2000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos,
+        )
+        const [stakedPoolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            stakerAccount,
+            stakeAmount1,
+            0n,
+        )
+        const params = await fixture.context.algod.status().do()
+        let lastBlock = params['last-round']
+
+        // should match info from first staking pool
+        expect(stakedPoolKey.id).toEqual(firstPoolKey.id)
+        expect(stakedPoolKey.poolId).toEqual(firstPoolKey.poolId)
+        expect(stakedPoolKey.poolAppId).toEqual(firstPoolKey.poolAppId)
+
+        const poolInfo = await getPoolInfo(validatorMasterClient, firstPoolKey)
+        expect(poolInfo.totalStakers).toEqual(1)
+        expect(poolInfo.totalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos - Number(stakerMbr)))
+
+        expect((await getValidatorState(validatorMasterClient, validatorId)).totalStakers).toEqual(1n)
+
+        firstPoolClient = new StakingPoolClient(
+            { sender: validatorOwnerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
+            fixture.context.algod,
+        )
+        const AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)
+        let poolGS = await firstPoolClient.getGlobalState()
+        const binRoundStart = poolGS.binRoundStart!.asBigInt()
+        let roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+        consoleLogger.info(`bin start:${binRoundStart}, rounds remaining in bin:${roundsRemaining}`)
+        const stakeAccum = bigIntFromBytes(poolGS.stakeAccumulator!.asByteArray())
+        expect(stakeAccum).toEqual(roundsRemaining * BigInt(stakeAmount1.microAlgos - Number(stakerMbr)))
+
+        // remove bits of stake
+        await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(50))
+        lastBlock = (await fixture.context.algod.status().do())['last-round']
+        roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+        poolGS = await firstPoolClient.getGlobalState()
+        const newStakeAccum = bigIntFromBytes(poolGS.stakeAccumulator!.asByteArray())
+        expect(newStakeAccum).toEqual(stakeAccum - BigInt(roundsRemaining) * BigInt(AlgoAmount.Algos(50).microAlgos))
+
+        // remove bits of stake
+        await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(50))
+        lastBlock = (await fixture.context.algod.status().do())['last-round']
+        roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+        poolGS = await firstPoolClient.getGlobalState()
+        const thirdStakeAccum = bigIntFromBytes(poolGS.stakeAccumulator!.asByteArray())
+        expect(thirdStakeAccum).toEqual(
+            newStakeAccum - BigInt(roundsRemaining) * BigInt(AlgoAmount.Algos(50).microAlgos),
+        )
+    })
+})
+
 describe('TokenRewardOnlyTokens', () => {
     beforeEach(fixture.beforeEach)
     beforeEach(logs.beforeEach)
@@ -3370,6 +3518,130 @@ describe('StakeAddRemoveBugVerify', () => {
         expect(stakerData[1].balance).toEqual(0n)
         expect(stakerData[2].balance).toEqual(1500n * 1000000n)
         expect(stakerData[3].balance).toEqual(0n)
+    })
+})
+
+describe('StakerMultiPoolAddRemoveBugVerify', () => {
+    beforeEach(fixture.beforeEach)
+    beforeEach(logs.beforeEach)
+    afterEach(logs.afterEach)
+
+    const validatorIds: number[] = []
+    const poolKeys: ValidatorPoolKey[] = []
+    let validatorOwnerAccount: Account
+
+    beforeAll(async () => {
+        validatorOwnerAccount = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        const config = createValidatorConfig({
+            owner: validatorOwnerAccount.addr,
+            manager: validatorOwnerAccount.addr,
+            validatorCommissionAddress: validatorOwnerAccount.addr,
+            minEntryStake: BigInt(AlgoAmount.Algos(1).microAlgos),
+            maxAlgoPerPool: BigInt(MaxAlgoPerPool), // this comes into play in later tests !!
+            percentToValidator: 50000, // 5%
+            poolsPerNode: MaxPoolsPerNode,
+        })
+        validatorIds.push(
+            await addValidator(fixture.context, validatorMasterClient, validatorOwnerAccount, config, validatorMbr),
+        )
+        poolKeys.push(
+            await addStakingPool(
+                fixture.context,
+                validatorMasterClient,
+                validatorIds[0],
+                1,
+                validatorOwnerAccount,
+                poolMbr,
+                poolInitMbr,
+            ),
+        )
+        validatorIds.push(
+            await addValidator(fixture.context, validatorMasterClient, validatorOwnerAccount, config, validatorMbr),
+        )
+        poolKeys.push(
+            await addStakingPool(
+                fixture.context,
+                validatorMasterClient,
+                validatorIds[1],
+                1,
+                validatorOwnerAccount,
+                poolMbr,
+                poolInitMbr,
+            ),
+        )
+    })
+
+    // Stake to validator 1, then stake to validator 2, then unstake all from validator 1 then stake again to
+    // validator 2.  With bug present, validator 2 will be listed twice in staker pool set and should fail this test
+    test('stakeUnstakeReproduce', async () => {
+        const stakerAccount = await getTestAccount(
+            {
+                initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
+                suppressLog: true,
+            },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        const stakeAmt = AlgoAmount.MicroAlgos(
+            AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos,
+        )
+        let [poolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorIds[0],
+            stakerAccount,
+            stakeAmt,
+            0n,
+        )
+        expect(poolKey.id).toEqual(poolKeys[0].id)
+        ;[poolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorIds[1],
+            stakerAccount,
+            stakeAmt,
+            0n,
+        )
+        expect(poolKey.id).toEqual(poolKeys[1].id)
+
+        let stakerPools = await getStakedPoolsForAccount(validatorMasterClient, stakerAccount)
+        expect(stakerPools).toHaveLength(2)
+        expect(stakerPools[0].id).toEqual(poolKeys[0].id)
+        expect(stakerPools[1].id).toEqual(poolKeys[1].id)
+
+        expect(stakerPools[0].poolAppId).toEqual(poolKeys[0].poolAppId)
+        expect(stakerPools[1].poolAppId).toEqual(poolKeys[1].poolAppId)
+
+        // now unstake all from validator 1
+        const val1Pool = new StakingPoolClient(
+            { sender: stakerAccount, resolveBy: 'id', id: poolKeys[0].poolAppId },
+            fixture.context.algod,
+        )
+
+        await removeStake(val1Pool, stakerAccount, AlgoAmount.Algos(0))
+        stakerPools = await getStakedPoolsForAccount(validatorMasterClient, stakerAccount)
+        expect(stakerPools).toHaveLength(1)
+        expect(stakerPools[0].id).toEqual(poolKeys[1].id)
+
+        // stake more - but to validator 2 - prior bug would add 'new' entry in first internal slot
+        ;[poolKey] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorIds[1],
+            stakerAccount,
+            stakeAmt,
+            0n,
+        )
+        expect(poolKey.id).toEqual(poolKeys[1].id)
+
+        // with prior bug this will fail because validator 2 would be added 'again' in first internal slot
+        stakerPools = await getStakedPoolsForAccount(validatorMasterClient, stakerAccount)
+        expect(stakerPools).toHaveLength(1)
+        expect(stakerPools[0].id).toEqual(poolKeys[1].id)
     })
 })
 

@@ -1114,3 +1114,11 @@ export async function incrementRoundNumberBy(context: AlgorandTestAutomationCont
     params = await context.algod.getTransactionParams().do()
     console.log('block AFTER incrementRoundNumberBy:', params.firstRound)
 }
+
+export function bigIntFromBytes(bytes: Uint8Array): bigint {
+    let result = BigInt(0)
+    bytes.forEach((byte) => {
+        result = (result << BigInt(8)) | BigInt(byte)
+    })
+    return result
+}

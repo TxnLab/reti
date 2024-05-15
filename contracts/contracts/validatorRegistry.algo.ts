@@ -1212,17 +1212,20 @@ export class ValidatorRegistry extends Contract {
         assert(this.stakerPoolSet(staker).exists)
 
         const poolSet = clone(this.stakerPoolSet(staker).value)
+        let firstEmpty = 0
         for (let i = 0; i < this.stakerPoolSet(staker).value.length; i += 1) {
             if (poolSet[i] === poolKey) {
-                // already in pool set
+                // all bytes compare - already in pool set
                 return
             }
-            if (poolSet[i].id === 0) {
-                this.stakerPoolSet(staker).value[i] = poolKey
-                return
+            if (firstEmpty === 0 && poolSet[i].id === 0) {
+                firstEmpty = i + 1
             }
         }
-        throw Error('No empty slot available in the staker pool set')
+        if (firstEmpty === 0) {
+            throw Error('No empty slot available in the staker pool set')
+        }
+        this.stakerPoolSet(staker).value[firstEmpty - 1] = poolKey
     }
 
     /**
