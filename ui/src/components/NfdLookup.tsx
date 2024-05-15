@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
-import { ArrowUpRight, Check } from 'lucide-react'
+import { ArrowUpRight, Check, TriangleAlert } from 'lucide-react'
+import * as React from 'react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useDebouncedCallback } from 'use-debounce'
 import { fetchNfd } from '@/api/nfd'
@@ -14,6 +15,7 @@ const ERROR_NOT_FOUND = 'NFD not found'
 const ERROR_NOT_OWNED = 'NFD not owned by active address'
 const ERROR_FAILED = 'Failed to fetch NFD'
 const ERROR_UNKNOWN = 'An unknown error occurred'
+const WARNING_VERIFIED = 'NFD already has a verified address'
 
 const NFD_APP_URL = getNfdAppFromViteEnvironment()
 
@@ -30,7 +32,8 @@ interface NfdLookupProps<
   watchValue: string
   errorMessage?: string
   activeAddress: string | null
-  requireOwner?: boolean
+  validateOwner?: boolean
+  warnVerified?: boolean
 }
 
 export function NfdLookup<
@@ -46,14 +49,21 @@ export function NfdLookup<
   watchValue,
   errorMessage,
   activeAddress,
-  requireOwner = false,
+  validateOwner = false,
+  warnVerified = false,
 }: NfdLookupProps<TFieldValues, TName>) {
+  const [warningMessage, setWarningMessage] = React.useState('')
+
   const fetchNfdAppId = async (value: string) => {
     try {
       const nfd = await fetchNfd(value, { view: 'brief' })
 
-      if (requireOwner && nfd.owner !== activeAddress) {
+      if (validateOwner && nfd.owner !== activeAddress) {
         throw new Error(ERROR_NOT_OWNED)
+      }
+
+      if (warnVerified && nfd.caAlgo?.length) {
+        setWarningMessage(WARNING_VERIFIED)
       }
 
       form.clearErrors(name)
@@ -105,6 +115,23 @@ export function NfdLookup<
     return showPrimary ? `${NFD_APP_URL}/mint?q=${trimExtension(name)}` : `${NFD_APP_URL}/mint`
   }
 
+  const renderMessage = () => {
+    if (errorMessage) {
+      return errorMessage
+    }
+
+    if (warningMessage) {
+      return (
+        <span className="inline-flex items-center gap-x-1.5 text-amber-600 dark:text-amber-500">
+          <TriangleAlert className="h-4 w-4" />
+          {warningMessage}
+        </span>
+      )
+    }
+
+    return null
+  }
+
   return (
     <FormField
       control={form.control}
@@ -123,6 +150,7 @@ export function NfdLookup<
                   onChange={(e) => {
                     field.onChange(e) // Inform react-hook-form of the change
                     setNfdAppId(0) // Reset NFD app ID
+                    setWarningMessage('') // Reset verified warning
                     setIsFetchingNfd(true) // Set fetching state
                     debouncedFetchNfd(e.target.value) // Perform debounced validation
                   }}
@@ -177,7 +205,7 @@ export function NfdLookup<
               </a>
             </Button>
           </div>
-          <FormMessage>{errorMessage}</FormMessage>
+          <FormMessage>{renderMessage()}</FormMessage>
         </FormItem>
       )}
     />

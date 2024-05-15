@@ -55,6 +55,7 @@ export function LinkPoolToNfdModal({ poolId, poolAppId, className = '' }: LinkPo
     form.reset(defaultValues)
     form.clearErrors()
     setIsSigning(false)
+    setNfdAppId(0)
   }
 
   const handleOpenChange = (open: boolean) => {
@@ -126,7 +127,8 @@ export function LinkPoolToNfdModal({ poolId, poolAppId, className = '' }: LinkPo
                 watchValue={$nfdName}
                 errorMessage={errors.nfdName?.message}
                 activeAddress={activeAddress}
-                requireOwner
+                validateOwner
+                warnVerified
               />
 
               <DialogFooter className="mt-4">
