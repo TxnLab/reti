@@ -655,7 +655,12 @@ export async function fetchStakedPoolsForAccount(staker: string): Promise<Valida
 
     const stakedPools = result.returns![0]
 
-    return stakedPools.map(([validatorId, poolId, poolAppId]) => ({
+    // Filter out potential duplicates (temporary UI fix for duplicate staked pools bug)
+    const uniqueStakedPools = Array.from(
+      new Set(stakedPools.map((sp) => JSON.stringify(sp.map((v) => Number(v))))),
+    ).map((sp) => JSON.parse(sp) as (typeof stakedPools)[0])
+
+    return uniqueStakedPools.map(([validatorId, poolId, poolAppId]) => ({
       validatorId: Number(validatorId),
       poolId: Number(poolId),
       poolAppId: Number(poolAppId),
