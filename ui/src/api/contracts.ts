@@ -539,16 +539,6 @@ export async function addStake(
     suggestedParams,
   })
 
-  const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: activeAddress,
-    to: activeAddress,
-    amount: 0,
-    assetIndex: rewardTokenId,
-    suggestedParams,
-  })
-
-  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
-
   const simulateValidatorClient = await getSimulateValidatorClient(activeAddress, authAddr)
 
   const simulateComposer = simulateValidatorClient
@@ -566,22 +556,19 @@ export async function addStake(
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
 
-  if (needsOptInTxn) {
-    simulateComposer.addTransaction(rewardTokenOptInTxn)
-  }
-
   const simulateResults = await simulateComposer.simulate({
     allowEmptySignatures: true,
     allowUnnamedResources: true,
   })
 
   stakeTransferPayment.group = undefined
-  rewardTokenOptInTxn.group = undefined
 
   // @todo: switch to Joe's new method(s)
   const feeAmount = AlgoAmount.MicroAlgos(
     2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
+
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
 
   const composer = validatorClient
     .compose()
@@ -599,6 +586,14 @@ export async function addStake(
     )
 
   if (needsOptInTxn) {
+    const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: activeAddress,
+      amount: 0,
+      assetIndex: rewardTokenId,
+      suggestedParams,
+    })
+
     composer.addTransaction(rewardTokenOptInTxn)
   }
 
@@ -833,16 +828,6 @@ export async function removeStake(
 ) {
   const suggestedParams = await ParamsCache.getSuggestedParams()
 
-  const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: activeAddress,
-    to: activeAddress,
-    amount: 0,
-    assetIndex: rewardTokenId,
-    suggestedParams,
-  })
-
-  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
-
   const stakingPoolSimulateClient = await getSimulateStakingPoolClient(
     poolAppId,
     activeAddress,
@@ -861,10 +846,6 @@ export async function removeStake(
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
 
-  if (needsOptInTxn) {
-    simulateComposer.addTransaction(rewardTokenOptInTxn)
-  }
-
   const simulateResult = await simulateComposer.simulate({
     allowEmptySignatures: true,
     allowUnnamedResources: true,
@@ -878,7 +859,7 @@ export async function removeStake(
       ),
   )
 
-  rewardTokenOptInTxn.group = undefined
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
 
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
@@ -895,6 +876,14 @@ export async function removeStake(
     )
 
   if (needsOptInTxn) {
+    const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: activeAddress,
+      amount: 0,
+      assetIndex: rewardTokenId,
+      suggestedParams,
+    })
+
     composer.addTransaction(rewardTokenOptInTxn)
   }
 
