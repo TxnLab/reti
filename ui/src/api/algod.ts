@@ -83,14 +83,8 @@ export async function fetchAccountAssetInformation(
     return assetHolding as AssetHolding
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    if (error.status && error.body?.message) {
-      throw new AlgodHttpError({
-        status: error.status,
-        body: error.body,
-        headers: error.headers,
-        ok: error.ok,
-        text: error.text,
-      })
+    if (error.message && error.response) {
+      throw new AlgodHttpError(error.message, error.response)
     } else {
       throw error
     }
@@ -102,7 +96,7 @@ export async function isOptedInToAsset(address: string | null, assetId: number):
     await fetchAccountAssetInformation(address, assetId)
     return true
   } catch (error: unknown) {
-    if (error instanceof AlgodHttpError && error.status === 404) {
+    if (error instanceof AlgodHttpError && error.response.status === 404) {
       return false
     } else {
       throw error
