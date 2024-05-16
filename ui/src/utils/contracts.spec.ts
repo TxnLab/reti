@@ -261,10 +261,10 @@ describe('calculateRewardEligibility', () => {
     expect(calculateRewardEligibility(10, 1000, undefined)).toBeNull()
   })
 
-  it('should calculate correct percentage when entry round and payout are in the past', () => {
+  it('should calculate correct percentage when entry round is halfway through an epoch', () => {
     const epochRoundLength = 100
     const lastPoolPayoutRound = 900
-    const entryRound = 850
+    const entryRound = 950
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(50)
   })
 
@@ -290,23 +290,23 @@ describe('calculateRewardEligibility', () => {
   })
 
   it('should round down to the nearest integer', () => {
-    const epochRoundLength = 100
-    const lastPoolPayoutRound = 300
-    const entryRound = 251 // Exact eligibility is 49%
-    expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(49)
+    const epochRoundLength = 200
+    const lastPoolPayoutRound = 600
+    const entryRound = 651 // Exact eligibility is 74.5%
+    expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(74)
   })
 
   it('should never return more than 100%', () => {
     const epochRoundLength = 100
     const lastPoolPayoutRound = 300
-    const entryRound = 200
+    const entryRound = 200 // Calculated eligibility is 200%
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(100)
   })
 
   it('should never return less than 0%', () => {
     const epochRoundLength = 100
     const lastPoolPayoutRound = 100
-    const entryRound = 200 // Future round beyond the current epoch
+    const entryRound = 250 // Future round beyond the current epoch
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(0)
   })
 })
