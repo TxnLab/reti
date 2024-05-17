@@ -187,6 +187,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       await removeStake(
         pool.poolKey.poolAppId,
         amountToUnstake,
+        validator!.config.rewardTokenId,
         transactionSigner,
         activeAddress,
         authAddress,

@@ -3,6 +3,7 @@ import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import {
   AccountBalance,
   AccountInformation,
+  AlgodHttpError,
   Asset,
   AssetCreatorHolding,
   AssetHolding,
@@ -65,6 +66,42 @@ export async function fetchAssetHoldings(address: string | null): Promise<AssetH
   const accountInfo = await fetchAccountInformation(address)
   const assets = accountInfo.assets || []
   return assets
+}
+
+export async function fetchAccountAssetInformation(
+  address: string | null,
+  assetId: number,
+): Promise<AssetHolding> {
+  if (!address) {
+    throw new Error('No address provided')
+  }
+  if (!assetId) {
+    throw new Error('No assetId provided')
+  }
+  try {
+    const assetHolding = await algodClient.accountAssetInformation(address, assetId).do()
+    return assetHolding as AssetHolding
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    if (error.message && error.response) {
+      throw new AlgodHttpError(error.message, error.response)
+    } else {
+      throw error
+    }
+  }
+}
+
+export async function isOptedInToAsset(address: string | null, assetId: number): Promise<boolean> {
+  try {
+    await fetchAccountAssetInformation(address, assetId)
+    return true
+  } catch (error: unknown) {
+    if (error instanceof AlgodHttpError && error.response.status === 404) {
+      return false
+    } else {
+      throw error
+    }
+  }
 }
 
 export async function fetchAssetCreatorHoldings(

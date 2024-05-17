@@ -1,5 +1,6 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { AssetParams } from '@algorandfoundation/algokit-utils/types/indexer'
+import { BaseHTTPClientError, BaseHTTPClientResponse } from 'algosdk'
 
 export interface AssetHolding {
   amount: number
@@ -38,6 +39,17 @@ export type Exclude =
 export interface Asset {
   index: number
   params: AssetParams
+}
+
+export class AlgodHttpError extends Error implements BaseHTTPClientError {
+  constructor(
+    message: string,
+    public response: BaseHTTPClientResponse,
+  ) {
+    super(message)
+    this.name = 'AlgodHttpError'
+    this.response = response
+  }
 }
 
 export interface NodeStatusResponse {
