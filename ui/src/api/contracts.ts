@@ -24,7 +24,6 @@ import {
   RawConstraints,
   RawNodePoolAssignmentConfig,
   RawPoolsInfo,
-  RawPoolTokenPayoutRatios,
   RawValidatorConfig,
   RawValidatorState,
   Validator,
@@ -85,28 +84,19 @@ export async function fetchValidator(
   try {
     const validatorClient = client || (await getSimulateValidatorClient())
 
-    const [config, state, validatorPoolData, poolTokenPayoutRatios, nodePoolAssignments] =
-      await Promise.all([
-        callGetValidatorConfig(Number(validatorId), validatorClient),
-        callGetValidatorState(Number(validatorId), validatorClient),
-        callGetPools(Number(validatorId), validatorClient),
-        callGetTokenPayoutRatio(Number(validatorId), validatorClient),
-        callGetNodePoolAssignments(Number(validatorId), validatorClient),
-      ])
+    const [config, state, validatorPoolData, nodePoolAssignments] = await Promise.all([
+      callGetValidatorConfig(Number(validatorId), validatorClient),
+      callGetValidatorState(Number(validatorId), validatorClient),
+      callGetPools(Number(validatorId), validatorClient),
+      callGetNodePoolAssignments(Number(validatorId), validatorClient),
+    ])
 
     const rawConfig = config.returns?.[0] as RawValidatorConfig
     const rawState = state.returns?.[0] as RawValidatorState
     const rawPoolsInfo = validatorPoolData.returns?.[0] as RawPoolsInfo
-    const rawPoolTokenPayoutRatios = poolTokenPayoutRatios.returns?.[0] as RawPoolTokenPayoutRatios
     const rawNodePoolAssignment = nodePoolAssignments.returns?.[0] as RawNodePoolAssignmentConfig
 
-    if (
-      !rawConfig ||
-      !rawState ||
-      !rawPoolsInfo ||
-      !rawPoolTokenPayoutRatios ||
-      !rawNodePoolAssignment
-    ) {
+    if (!rawConfig || !rawState || !rawPoolsInfo || !rawNodePoolAssignment) {
       throw new ValidatorNotFoundError(`Validator with id "${Number(validatorId)}" not found!`)
     }
 
@@ -115,7 +105,6 @@ export async function fetchValidator(
       rawConfig,
       rawState,
       rawPoolsInfo,
-      rawPoolTokenPayoutRatios,
       rawNodePoolAssignment,
     )
 
@@ -312,29 +301,6 @@ export async function fetchNodePoolAssignments(
 
     const nodePoolAssignmentConfig = transformNodePoolAssignment(rawNodePoolAssignmentConfig)
     return nodePoolAssignmentConfig
-  } catch (error) {
-    console.error(error)
-    throw error
-  }
-}
-
-export function callGetTokenPayoutRatio(
-  validatorId: number | bigint,
-  validatorClient: ValidatorRegistryClient,
-) {
-  return validatorClient
-    .compose()
-    .getTokenPayoutRatio({ validatorId })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
-}
-
-export async function fetchTokenPayoutRatio(validatorId: string | number | bigint) {
-  try {
-    const validatorClient = await getSimulateValidatorClient()
-
-    const result = await callGetTokenPayoutRatio(Number(validatorId), validatorClient)
-
-    return result.returns![0]
   } catch (error) {
     console.error(error)
     throw error

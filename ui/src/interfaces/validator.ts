@@ -69,13 +69,6 @@ export interface PoolInfo {
   algodVersion?: string
 }
 
-export type RawPoolTokenPayoutRatios = [[bigint, ...bigint[]], bigint]
-
-export interface PoolTokenPayoutRatio {
-  poolPctOfWhole: number[]
-  updatedForPayout: number
-}
-
 export type NodeConfig = [bigint, ...bigint[]]
 export type RawNodePoolAssignmentConfig = [[NodeConfig][]]
 export type NodePoolAssignmentConfig = NodeConfig[]
@@ -90,7 +83,6 @@ export type Validator = {
   config: Omit<ValidatorConfig, 'id'>
   state: ValidatorState
   pools: PoolInfo[]
-  tokenPayoutRatio: number[]
   nodePoolAssignment: NodePoolAssignmentConfig
   nfd?: Nfd
 }
