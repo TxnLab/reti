@@ -539,6 +539,8 @@ export async function addStake(
     suggestedParams,
   })
 
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const simulateValidatorClient = await getSimulateValidatorClient(activeAddress, authAddr)
 
   const simulateComposer = simulateValidatorClient
@@ -556,6 +558,18 @@ export async function addStake(
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
 
+  if (needsOptInTxn) {
+    const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: activeAddress,
+      amount: 0,
+      assetIndex: rewardTokenId,
+      suggestedParams,
+    })
+
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
+
   const simulateResults = await simulateComposer.simulate({
     allowEmptySignatures: true,
     allowUnnamedResources: true,
@@ -567,8 +581,6 @@ export async function addStake(
   const feeAmount = AlgoAmount.MicroAlgos(
     2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
-
-  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
 
   const composer = validatorClient
     .compose()
@@ -834,6 +846,8 @@ export async function removeStake(
     authAddr,
   )
 
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const simulateComposer = stakingPoolSimulateClient
     .compose()
     .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
@@ -845,6 +859,18 @@ export async function removeStake(
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
+
+  if (needsOptInTxn) {
+    const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: activeAddress,
+      amount: 0,
+      assetIndex: rewardTokenId,
+      suggestedParams,
+    })
+
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
 
   const simulateResult = await simulateComposer.simulate({
     allowEmptySignatures: true,
@@ -858,8 +884,6 @@ export async function removeStake(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
       ),
   )
-
-  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
 
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
