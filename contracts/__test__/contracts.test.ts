@@ -4,6 +4,7 @@ import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { Account, decodeAddress, encodeAddress, getApplicationAddress } from 'algosdk'
 import { assetOptIn, transferAlgos, transferAsset } from '@algorandfoundation/algokit-utils'
+import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 import {
@@ -35,8 +36,7 @@ import {
     StakedInfo,
     ValidatorConfig,
     ValidatorPoolKey,
-    verifyRewardAmounts,
-} from './helpers'
+} from '../helpers/helpers'
 
 const FEE_SINK_ADDR = 'Y76M3MSY6DKBRHBL7C3NNDXGS5IIMQVQVUAB6MP4XEMMGVF2QWNPL226CA'
 
@@ -899,6 +899,127 @@ describe('StakeAddWMixedRemove', () => {
         expect(postRemovePoolInfo.totalAlgoStaked).toEqual(preRemovePoolInfo.totalAlgoStaked - BigInt(amountStaked))
     })
 })
+
+export async function verifyRewardAmounts(
+    context: AlgorandTestAutomationContext,
+    algoRewardedAmount: bigint,
+    tokenRewardedAmount: bigint,
+    stakersPriorToReward: StakedInfo[],
+    stakersAfterReward: StakedInfo[],
+    epochRoundLength: number,
+): Promise<void> {
+    // iterate stakersPriorToReward and total the 'balance' value to get a 'total amount'
+    // then determine if the stakersAfterReward version's balance incremented in accordance w/ their percentage of
+    // the 'total' - where they get that percentage of the rewardedAmount.
+    const totalAmount = stakersPriorToReward.reduce((total, staker) => BigInt(total) + staker.balance, BigInt(0))
+
+    // Figure out the timestamp of prior block and use that as the 'current time' for purposes
+    // of matching the epoch payout calculations in the contract
+    const curStatus = await context.algod.status().do()
+    const lastBlock = curStatus['last-round']
+    const thisEpochBegin = lastBlock - (lastBlock % epochRoundLength)
+
+    consoleLogger.info(
+        `verifyRewardAmounts checking ${stakersPriorToReward.length} stakers. ` +
+            `reward:${algoRewardedAmount}, totalAmount:${totalAmount}, ` +
+            `epochBegin:${thisEpochBegin}, epochLength:${epochRoundLength}`,
+    )
+    // Iterate all stakers - determine which haven't been for entire epoch - pay them proportionally less for having
+    // less time in pool.  We keep track of their stake and then will later reduce the effective 'total staked' amount
+    // by that so that the remaining stakers get the remaining reward + excess based on their % of stake against
+    // remaining participants.
+    let partialStakeAmount: bigint = BigInt(0)
+    let algoRewardsAvail: bigint = algoRewardedAmount
+    let tokenRewardsAvail: bigint = tokenRewardedAmount
+
+    for (let i = 0; i < stakersPriorToReward.length; i += 1) {
+        if (encodeAddress(stakersPriorToReward[i].staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
+            continue
+        }
+        if (stakersPriorToReward[i].entryRound >= thisEpochBegin) {
+            consoleLogger.info(`staker:${i}, Entry:${stakersPriorToReward[i].entryRound} - after epoch - continuing`)
+            continue
+        }
+        const origBalance = stakersPriorToReward[i].balance
+        const origRwdTokenBal = stakersPriorToReward[i].rewardTokenBalance
+        const timeInPool: bigint = BigInt(thisEpochBegin) - stakersPriorToReward[i].entryRound
+        const timePercentage: bigint = (BigInt(timeInPool) * BigInt(1000)) / BigInt(epochRoundLength) // 34.7% becomes 347
+        if (timePercentage < BigInt(1000)) {
+            // partial staker
+            const expectedReward =
+                (BigInt(origBalance) * algoRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000))
+            consoleLogger.info(
+                `staker:${i}, Entry:${stakersPriorToReward[i].entryRound} TimePct:${timePercentage}, ` +
+                    `PctTotal:${Number((origBalance * BigInt(1000)) / totalAmount) / 10} ` +
+                    `ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].balance - origBalance} ` +
+                    `${encodeAddress(stakersPriorToReward[i].staker.publicKey)}`,
+            )
+
+            if (origBalance + expectedReward !== stakersAfterReward[i].balance) {
+                consoleLogger.warn(
+                    `staker:${i} expected: ${origBalance + expectedReward} reward but got: ${stakersAfterReward[i].balance}`,
+                )
+                expect(stakersAfterReward[i].balance).toBe(origBalance + expectedReward)
+            }
+            const expectedTokenReward =
+                (BigInt(origBalance) * tokenRewardedAmount * BigInt(timePercentage)) / (totalAmount * BigInt(1000))
+            consoleLogger.info(
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].rewardTokenBalance - origRwdTokenBal}`,
+            )
+
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].rewardTokenBalance) {
+                consoleLogger.warn(
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].rewardTokenBalance}`,
+                )
+                expect(stakersAfterReward[i].rewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward)
+            }
+
+            partialStakeAmount += origBalance
+
+            algoRewardsAvail -= expectedReward
+            tokenRewardsAvail -= expectedTokenReward
+        }
+    }
+    const newPoolTotalStake = totalAmount - partialStakeAmount
+
+    // now go through again and only worry about full 100% time-in-epoch stakers
+    for (let i = 0; i < stakersPriorToReward.length; i += 1) {
+        if (encodeAddress(stakersPriorToReward[i].staker.publicKey) === ALGORAND_ZERO_ADDRESS_STRING) {
+            continue
+        }
+        if (stakersPriorToReward[i].entryRound >= thisEpochBegin) {
+            consoleLogger.info(
+                `staker:${i}, ${encodeAddress(stakersPriorToReward[i].staker.publicKey)} SKIPPED because entry is newer at:${stakersPriorToReward[i].entryRound}`,
+            )
+        } else {
+            const origBalance = stakersPriorToReward[i].balance
+            const origRwdTokenBal = stakersPriorToReward[i].rewardTokenBalance
+            const timeInPool: bigint = BigInt(thisEpochBegin) - stakersPriorToReward[i].entryRound
+            let timePercentage: bigint = (BigInt(timeInPool) * BigInt(1000)) / BigInt(epochRoundLength) // 34.7% becomes 347
+            if (timePercentage < BigInt(1000)) {
+                continue
+            }
+            if (timePercentage > BigInt(1000)) {
+                timePercentage = BigInt(1000)
+            }
+            const expectedReward = (BigInt(origBalance) * algoRewardsAvail) / newPoolTotalStake
+            consoleLogger.info(
+                `staker:${i}, TimePct:${timePercentage}, PctTotal:${Number((origBalance * BigInt(1000)) / newPoolTotalStake) / 10} ExpReward:${expectedReward}, ActReward:${stakersAfterReward[i].balance - origBalance} ${encodeAddress(stakersPriorToReward[i].staker.publicKey)}`,
+            )
+            const expectedTokenReward = (BigInt(origBalance) * tokenRewardsAvail) / newPoolTotalStake
+            consoleLogger.info(
+                `staker:${i}, ExpTokenReward:${expectedTokenReward}, ActTokenReward:${stakersAfterReward[i].rewardTokenBalance - origRwdTokenBal}`,
+            )
+
+            if (origRwdTokenBal + expectedTokenReward !== stakersAfterReward[i].rewardTokenBalance) {
+                consoleLogger.warn(
+                    `staker:${i} expected: ${origRwdTokenBal + expectedTokenReward} reward but got: ${stakersAfterReward[i].rewardTokenBalance}`,
+                )
+                expect(stakersAfterReward[i].rewardTokenBalance).toBe(origRwdTokenBal + expectedTokenReward)
+            }
+        }
+    }
+}
 
 describe('StakeWRewards', () => {
     beforeEach(fixture.beforeEach)

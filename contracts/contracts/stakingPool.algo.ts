@@ -86,6 +86,12 @@ export class StakingPool extends Contract {
 
     feeSinkAddr = TemplateVar<Address>()
 
+    // TODO - TEMPORARY!  just want these upgradeable until prior to final release so users don't have to keep
+    // resetting every validator, and refund every staker.
+    updateApplication(): void {
+        assert(this.txn.sender === Address.fromAddress('LZ4V2IRVLCXFJK4REJV4TAGEKEYTA2GMR6TC2344OB3L3AF3MWXZ6ZAFIQ'))
+    }
+
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
      * @param {uint64} creatingContractId - id of contract that constructed us - the validator application (single global instance)

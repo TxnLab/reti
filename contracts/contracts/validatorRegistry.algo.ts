@@ -193,6 +193,15 @@ export class ValidatorRegistry extends Contract {
     // ======
     // PUBLIC CONTRACT METHODS
     // ======
+    // TODO - TEMPORARY!  just want these upgradeable until prior to final release so users don't have to keep
+    // resetting every validator, and refund every staker.
+    updateApplication(): void {
+        assert(this.txn.sender === Address.fromAddress('LZ4V2IRVLCXFJK4REJV4TAGEKEYTA2GMR6TC2344OB3L3AF3MWXZ6ZAFIQ'))
+        // reset our stored staking pool code as well so the new version can be loaded into box storage
+        this.stakingPoolApprovalProgram.delete()
+        this.stakingPoolInitialized.value = false
+    }
+
     createApplication(): void {
         this.stakingPoolInitialized.value = false
         this.numValidators.value = 0

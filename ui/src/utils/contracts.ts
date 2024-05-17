@@ -597,7 +597,7 @@ export function calculateRewardEligibility(
   }
 
   // Calculate the effective rounds staked within the current epoch starting from the last payout
-  const roundsInEpoch = Math.max(0, lastPoolPayoutRound - entryRound)
+  const roundsInEpoch = Math.max(0, nextPayoutRound - entryRound)
 
   // Calculate eligibility as a percentage of the epoch length
   const eligibilePercent = (roundsInEpoch / epochRoundLength) * 100
