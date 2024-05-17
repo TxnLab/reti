@@ -114,8 +114,6 @@ export const MOCK_VALIDATOR_2_POOL_ASSIGNMENT: NodeConfig[] = createStaticArray<
   8,
 )
 
-export const MOCK_TOKEN_PAYOUT_RATIO = new Array(24).fill(0)
-
 const { id: validator1Id, ...validator1Config } = MOCK_VALIDATOR_1_CONFIG
 
 export const MOCK_VALIDATOR_1: Validator = {
@@ -123,7 +121,6 @@ export const MOCK_VALIDATOR_1: Validator = {
   config: validator1Config,
   state: MOCK_VALIDATOR_1_STATE,
   pools: MOCK_VALIDATOR_1_POOLS,
-  tokenPayoutRatio: MOCK_TOKEN_PAYOUT_RATIO,
   nodePoolAssignment: MOCK_VALIDATOR_1_POOL_ASSIGNMENT,
 }
 
@@ -134,7 +131,6 @@ export const MOCK_VALIDATOR_2: Validator = {
   config: validator2Config,
   state: MOCK_VALIDATOR_2_STATE,
   pools: MOCK_VALIDATOR_2_POOLS,
-  tokenPayoutRatio: MOCK_TOKEN_PAYOUT_RATIO,
   nodePoolAssignment: MOCK_VALIDATOR_2_POOL_ASSIGNMENT,
 }
 
