@@ -231,10 +231,35 @@ export const validatorSchemas = {
  * Validator schema refinement for reward token
  * @param {any} data - The form data
  * @param {RefinementCtx} ctx - The refinement context
+ * @param {number | bigint} decimals - The reward token's decimals value
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const rewardTokenRefinement = (data: any, ctx: RefinementCtx) => {
+export const rewardTokenRefinement = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any,
+  ctx: RefinementCtx,
+  decimals?: number | bigint,
+) => {
   const { rewardTokenId, rewardPerPayout } = data
+
+  if (Number(rewardTokenId) > 0) {
+    if (rewardPerPayout === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['rewardPerPayout'],
+        message: 'Required field',
+      })
+    } else if (decimals) {
+      const regex = new RegExp(`^\\d+(\\.\\d{1,${Number(decimals)}})?$`)
+
+      if (!regex.test(rewardPerPayout)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['rewardPerPayout'],
+          message: `Cannot have more than ${decimals} decimal places`,
+        })
+      }
+    }
+  }
 
   if (Number(rewardTokenId) > 0 && rewardPerPayout === '') {
     ctx.addIssue({

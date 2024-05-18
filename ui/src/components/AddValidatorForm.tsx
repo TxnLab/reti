@@ -45,6 +45,7 @@ import {
   transformEntryGatingAssets,
 } from '@/utils/contracts'
 // import { validatorAutoFill } from '@/utils/development'
+import { convertToBaseUnits } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
@@ -94,7 +95,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       minEntryStake: validatorSchemas.minEntryStake(constraints),
       poolsPerNode: validatorSchemas.poolsPerNode(constraints),
     })
-    .superRefine((data, ctx) => rewardTokenRefinement(data, ctx))
+    .superRefine((data, ctx) => rewardTokenRefinement(data, ctx, rewardToken?.params.decimals))
     .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
 
   type FormValues = z.infer<typeof formSchema>
@@ -250,6 +251,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
+      const rewardPerPayout = convertToBaseUnits(
+        Number(values.rewardPerPayout),
+        Number(rewardToken?.params.decimals || 0),
+      )
+
       const epochRoundLength = getEpochLengthBlocks(
         values.epochRoundLength,
         epochTimeframe,
@@ -265,6 +271,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const newValues = {
         ...values,
+        rewardPerPayout: String(rewardPerPayout),
         epochRoundLength: String(epochRoundLength),
         entryGatingAssets,
       }
