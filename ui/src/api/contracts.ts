@@ -2,7 +2,7 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
-import { isOptedInToAsset } from '@/api/algod'
+import { fetchAsset, isOptedInToAsset } from '@/api/algod'
 import {
   getSimulateStakingPoolClient,
   getSimulateValidatorClient,
@@ -107,6 +107,11 @@ export async function fetchValidator(
       rawPoolsInfo,
       rawNodePoolAssignment,
     )
+
+    if (validator.config.rewardTokenId > 0) {
+      const rewardToken = await fetchAsset(validator.config.rewardTokenId)
+      validator.rewardToken = rewardToken
+    }
 
     if (validator.config.nfdForInfo > 0) {
       const nfd = await fetchNfd(validator.config.nfdForInfo, { view: 'full' })

@@ -1,3 +1,4 @@
+import { Asset } from '@/interfaces/algod'
 import { Nfd } from '@/interfaces/nfd'
 import { ToStringTypes } from '@/interfaces/utils'
 
@@ -84,6 +85,7 @@ export type Validator = {
   state: ValidatorState
   pools: PoolInfo[]
   nodePoolAssignment: NodePoolAssignmentConfig
+  rewardToken?: Asset
   nfd?: Nfd
 }
 
