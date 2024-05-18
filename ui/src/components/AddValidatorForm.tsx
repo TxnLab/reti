@@ -48,7 +48,7 @@ import {
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
-import { entryGatingRefinement, validatorSchemas } from '@/utils/validation'
+import { entryGatingRefinement, rewardTokenRefinement, validatorSchemas } from '@/utils/validation'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -94,6 +94,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       minEntryStake: validatorSchemas.minEntryStake(constraints),
       poolsPerNode: validatorSchemas.poolsPerNode(constraints),
     })
+    .superRefine((data, ctx) => rewardTokenRefinement(data, ctx))
     .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
 
   type FormValues = z.infer<typeof formSchema>

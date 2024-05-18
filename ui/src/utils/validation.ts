@@ -228,6 +228,24 @@ export const validatorSchemas = {
 }
 
 /**
+ * Validator schema refinement for reward token
+ * @param {any} data - The form data
+ * @param {RefinementCtx} ctx - The refinement context
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const rewardTokenRefinement = (data: any, ctx: RefinementCtx) => {
+  const { rewardTokenId, rewardPerPayout } = data
+
+  if (Number(rewardTokenId) > 0 && rewardPerPayout === '') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['rewardPerPayout'],
+      message: 'Reward per payout must be set when reward token is enabled',
+    })
+  }
+}
+
+/**
  * Validator schema refinement for entry gating
  * @param {any} data - The form data
  * @param {RefinementCtx} ctx - The refinement context
