@@ -28,6 +28,36 @@ export function Details({ validator }: DetailsProps) {
 
   const isOwner = activeAddress === validator.config.owner
 
+  const renderRewardToken = () => {
+    if (validator.config.rewardTokenId === 0) {
+      return null
+    }
+
+    const { rewardToken } = validator
+
+    if (!rewardToken) {
+      return validator.config.rewardTokenId
+    }
+
+    const { name, 'unit-name': unitName } = rewardToken.params
+
+    if (name) {
+      return unitName ? (
+        <>
+          {name} (<span className="font-mono">{unitName}</span>)
+        </>
+      ) : (
+        name
+      )
+    }
+
+    if (unitName) {
+      return <span className="font-mono">{unitName}</span>
+    }
+
+    return validator.config.rewardTokenId
+  }
+
   const renderEntryGating = () => {
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
@@ -228,7 +258,14 @@ export function Details({ validator }: DetailsProps) {
                       {validator.config.rewardTokenId === 0 ? (
                         <span className="text-muted-foreground">--</span>
                       ) : (
-                        validator.config.rewardTokenId
+                        <a
+                          href={ExplorerLink.asset(validator.config.rewardTokenId)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-link"
+                        >
+                          {renderRewardToken()}
+                        </a>
                       )}
                     </dd>
                   </div>
