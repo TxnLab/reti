@@ -38,8 +38,17 @@ export async function fetchAccountBalance(
 }
 
 export async function fetchAsset(assetId: number): Promise<Asset> {
-  const asset = await algodClient.getAssetByID(assetId).do()
-  return asset as Asset
+  try {
+    const asset = await algodClient.getAssetByID(assetId).do()
+    return asset as Asset
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    if (error.message && error.response) {
+      throw new AlgodHttpError(error.message, error.response)
+    } else {
+      throw error
+    }
+  }
 }
 
 export async function fetchBalance(address: string | null): Promise<AccountBalance> {

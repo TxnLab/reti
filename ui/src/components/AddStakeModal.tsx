@@ -321,6 +321,7 @@ export function AddStakeModal({
       // Invalidate other queries to update UI
       queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
       queryClient.invalidateQueries({ queryKey: ['staked-info'] })
+      queryClient.invalidateQueries({ queryKey: ['pools-info'] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to add stake to pool', { id: toastId })

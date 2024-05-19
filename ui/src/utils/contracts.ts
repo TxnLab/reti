@@ -12,10 +12,8 @@ import {
   NodeInfo,
   NodePoolAssignmentConfig,
   PoolInfo,
-  PoolTokenPayoutRatio,
   RawNodePoolAssignmentConfig,
   RawPoolsInfo,
-  RawPoolTokenPayoutRatios,
   RawValidatorConfig,
   RawValidatorState,
   Validator,
@@ -91,27 +89,10 @@ export function transformNodePoolAssignment(
 }
 
 /**
- * Transform raw pool token payout ratio data (from `callGetTokenPayoutRatio`) into a flat array of payout ratios
- * @param {RawPoolTokenPayoutRatios} rawData - Raw pool token payout ratio data
- * @returns {number[]} Array of pool token payout ratios
- */
-export function transformPoolTokenPayoutRatio(rawData: RawPoolTokenPayoutRatios): number[] {
-  const [poolPctOfWhole, updatedForPayout] = rawData
-
-  const poolTokenPayoutRatio: PoolTokenPayoutRatio = {
-    poolPctOfWhole: poolPctOfWhole.map((poolPct) => Number(poolPct)),
-    updatedForPayout: Number(updatedForPayout),
-  }
-
-  return poolTokenPayoutRatio.poolPctOfWhole
-}
-
-/**
  * Transform raw validator data from multiple ABI method calls into a structured `Validator` object
  * @param {RawValidatorConfig} rawConfig - Raw validator configuration data
  * @param {RawValidatorState} rawState - Raw validator state data
  * @param {RawPoolsInfo} rawPoolsInfo - Raw staking pool data
- * @param {RawPoolTokenPayoutRatios} rawPoolTokenPayoutRatios - Raw pool token payout ratio data
  * @param {RawNodePoolAssignmentConfig} rawNodePoolAssignment - Raw node pool assignment configuration data
  * @returns {Validator} Structured validator object
  */
@@ -119,13 +100,11 @@ export function transformValidatorData(
   rawConfig: RawValidatorConfig,
   rawState: RawValidatorState,
   rawPoolsInfo: RawPoolsInfo,
-  rawPoolTokenPayoutRatios: RawPoolTokenPayoutRatios,
   rawNodePoolAssignment: RawNodePoolAssignmentConfig,
 ): Validator {
   const { id, ...config } = transformValidatorConfig(rawConfig)
   const state = transformValidatorState(rawState)
   const pools = transformPoolsInfo(rawPoolsInfo)
-  const tokenPayoutRatio = transformPoolTokenPayoutRatio(rawPoolTokenPayoutRatios)
   const nodePoolAssignment = transformNodePoolAssignment(rawNodePoolAssignment)
 
   return {
@@ -133,7 +112,6 @@ export function transformValidatorData(
     config,
     state,
     pools,
-    tokenPayoutRatio,
     nodePoolAssignment,
   }
 }
