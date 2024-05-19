@@ -210,7 +210,7 @@ export function formatNumber(
   amount: number | bigint | string,
   options: FormatNumberOptions = {},
 ): string {
-  const { compact = false, precision = 0, trim = true } = options
+  const { compact = false, precision, trim = true } = options
 
   // Handle BigInt separately to preserve precision
   if (typeof amount === 'bigint') {
@@ -221,7 +221,7 @@ export function formatNumber(
   const numericAmount = parseFloat(String(amount))
 
   if (compact) {
-    return formatWithPrecision(numericAmount, precision)
+    return formatWithPrecision(numericAmount, precision || 0)
   }
 
   const bigAmount = new Big(numericAmount).toFixed(precision)

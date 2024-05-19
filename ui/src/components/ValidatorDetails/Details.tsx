@@ -14,7 +14,7 @@ import { Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { formatAssetAmount, formatNumber } from '@/utils/format'
+import { convertFromBaseUnits, formatAssetAmount, formatNumber } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
@@ -27,6 +27,59 @@ export function Details({ validator }: DetailsProps) {
   const { activeAddress } = useWallet()
 
   const isOwner = activeAddress === validator.config.owner
+
+  const renderRewardToken = () => {
+    if (validator.config.rewardTokenId === 0) {
+      return null
+    }
+
+    const { rewardToken } = validator
+
+    if (!rewardToken) {
+      return validator.config.rewardTokenId
+    }
+
+    const { name, 'unit-name': unitName } = rewardToken.params
+
+    if (name) {
+      return unitName ? (
+        <>
+          {name} (<span className="font-mono">{unitName}</span>)
+        </>
+      ) : (
+        name
+      )
+    }
+
+    if (unitName) {
+      return <span className="font-mono">{unitName}</span>
+    }
+
+    return validator.config.rewardTokenId
+  }
+
+  const renderRewardPerPayout = () => {
+    if (validator.config.rewardPerPayout === 0n) {
+      return <span className="text-muted-foreground">--</span>
+    }
+
+    if (!validator.rewardToken) {
+      return (
+        <em className="text-muted-foreground italic">{Number(validator.config.rewardPerPayout)}</em>
+      )
+    }
+
+    const convertedAmount = convertFromBaseUnits(
+      Number(validator.config.rewardPerPayout),
+      Number(validator.rewardToken.params.decimals),
+    )
+
+    return (
+      <span className="font-mono">
+        {formatNumber(convertedAmount)} {validator.rewardToken.params['unit-name']}
+      </span>
+    )
+  }
 
   const renderEntryGating = () => {
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
@@ -228,7 +281,14 @@ export function Details({ validator }: DetailsProps) {
                       {validator.config.rewardTokenId === 0 ? (
                         <span className="text-muted-foreground">--</span>
                       ) : (
-                        validator.config.rewardTokenId
+                        <a
+                          href={ExplorerLink.asset(validator.config.rewardTokenId)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-link"
+                        >
+                          {renderRewardToken()}
+                        </a>
                       )}
                     </dd>
                   </div>
@@ -237,11 +297,7 @@ export function Details({ validator }: DetailsProps) {
                       Reward Per Payout
                     </dt>
                     <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
-                      {Number(validator.config.rewardPerPayout) === 0 ? (
-                        <span className="text-muted-foreground">--</span>
-                      ) : (
-                        Number(validator.config.rewardPerPayout)
-                      )}
+                      {renderRewardPerPayout()}
                       {isOwner && validator.config.rewardTokenId > 0 && (
                         <EditRewardPerPayout validator={validator} />
                       )}

@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { addValidator, fetchValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { AlgoSymbol } from '@/components/AlgoSymbol'
+import { AssetLookup } from '@/components/AssetLookup'
 import { InfoPopover } from '@/components/InfoPopover'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,6 +36,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { GatingType } from '@/constants/gating'
 import { useBlockTime } from '@/hooks/useBlockTime'
+import { Asset } from '@/interfaces/algod'
 import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
@@ -43,10 +45,11 @@ import {
   transformEntryGatingAssets,
 } from '@/utils/contracts'
 // import { validatorAutoFill } from '@/utils/development'
+import { convertToBaseUnits } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
-import { entryGatingRefinement, validatorSchemas } from '@/utils/validation'
+import { entryGatingRefinement, rewardTokenRefinement, validatorSchemas } from '@/utils/validation'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -61,6 +64,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
   const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
+  const [rewardToken, setRewardToken] = React.useState<Asset | null>(null)
+  const [isFetchingRewardToken, setIsFetchingRewardToken] = React.useState(false)
   const [epochTimeframe, setEpochTimeframe] = React.useState('blocks')
   const [isSigning, setIsSigning] = React.useState(false)
 
@@ -90,6 +95,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       minEntryStake: validatorSchemas.minEntryStake(constraints),
       poolsPerNode: validatorSchemas.poolsPerNode(constraints),
     })
+    .superRefine((data, ctx) => rewardTokenRefinement(data, ctx, rewardToken?.params.decimals))
     .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
 
   type FormValues = z.infer<typeof formSchema>
@@ -122,6 +128,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
     control: form.control,
     name: 'entryGatingAssets',
   })
+
+  const $rewardTokenId = form.watch('rewardTokenId')
+  const isRewardTokenInvalid = Number($rewardTokenId) > 0 && (isFetchingRewardToken || !rewardToken)
 
   const $entryGatingType = form.watch('entryGatingType')
 
@@ -242,6 +251,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
+      const rewardPerPayout = convertToBaseUnits(
+        Number(values.rewardPerPayout),
+        Number(rewardToken?.params.decimals || 0),
+      )
+
       const epochRoundLength = getEpochLengthBlocks(
         values.epochRoundLength,
         epochTimeframe,
@@ -257,6 +271,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       const newValues = {
         ...values,
+        rewardPerPayout: String(rewardPerPayout),
         epochRoundLength: String(epochRoundLength),
         entryGatingAssets,
       }
@@ -672,18 +687,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               <p className="sm:col-span-2 text-sm text-muted-foreground">
                 Reward token to be paid out to stakers (optional)
               </p>
-              <FormField
-                control={form.control}
+              <AssetLookup
+                form={form}
                 name="rewardTokenId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Asset ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="" autoComplete="new-password" {...field} />
-                    </FormControl>
-                    <FormMessage>{errors.rewardTokenId?.message}</FormMessage>
-                  </FormItem>
-                )}
+                label="Asset ID"
+                asset={rewardToken}
+                setAsset={setRewardToken}
+                isFetching={isFetchingRewardToken}
+                setIsFetching={setIsFetchingRewardToken}
+                errorMessage={errors.rewardTokenId?.message}
               />
 
               <FormField
@@ -1098,7 +1110,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               size="lg"
               className="w-full text-base sm:w-auto"
               disabled={
-                isSigning || isFetchingNfdForInfo || isFetchingNfdCreator || isFetchingNfdParent
+                isSigning ||
+                isRewardTokenInvalid ||
+                isFetchingNfdForInfo ||
+                isFetchingNfdCreator ||
+                isFetchingNfdParent
               }
             >
               <Monitor className="mr-2 h-5 w-5" />

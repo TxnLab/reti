@@ -99,6 +99,11 @@ describe('formatNumber', () => {
     expect(result).toBe('12,345.68')
   })
 
+  it('should include all decimal places if precision is undefined', () => {
+    const result = formatNumber(12345.6789)
+    expect(result).toBe('12,345.6789')
+  })
+
   it('should format a number in compact notation with precision', () => {
     const result = formatNumber(1234567, { compact: true, precision: 2 })
     expect(result).toBe('1.23M')

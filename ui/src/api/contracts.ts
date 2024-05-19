@@ -2,7 +2,7 @@ import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
-import { isOptedInToAsset } from '@/api/algod'
+import { fetchAsset, isOptedInToAsset } from '@/api/algod'
 import {
   getSimulateStakingPoolClient,
   getSimulateValidatorClient,
@@ -24,7 +24,6 @@ import {
   RawConstraints,
   RawNodePoolAssignmentConfig,
   RawPoolsInfo,
-  RawPoolTokenPayoutRatios,
   RawValidatorConfig,
   RawValidatorState,
   Validator,
@@ -85,28 +84,19 @@ export async function fetchValidator(
   try {
     const validatorClient = client || (await getSimulateValidatorClient())
 
-    const [config, state, validatorPoolData, poolTokenPayoutRatios, nodePoolAssignments] =
-      await Promise.all([
-        callGetValidatorConfig(Number(validatorId), validatorClient),
-        callGetValidatorState(Number(validatorId), validatorClient),
-        callGetPools(Number(validatorId), validatorClient),
-        callGetTokenPayoutRatio(Number(validatorId), validatorClient),
-        callGetNodePoolAssignments(Number(validatorId), validatorClient),
-      ])
+    const [config, state, validatorPoolData, nodePoolAssignments] = await Promise.all([
+      callGetValidatorConfig(Number(validatorId), validatorClient),
+      callGetValidatorState(Number(validatorId), validatorClient),
+      callGetPools(Number(validatorId), validatorClient),
+      callGetNodePoolAssignments(Number(validatorId), validatorClient),
+    ])
 
     const rawConfig = config.returns?.[0] as RawValidatorConfig
     const rawState = state.returns?.[0] as RawValidatorState
     const rawPoolsInfo = validatorPoolData.returns?.[0] as RawPoolsInfo
-    const rawPoolTokenPayoutRatios = poolTokenPayoutRatios.returns?.[0] as RawPoolTokenPayoutRatios
     const rawNodePoolAssignment = nodePoolAssignments.returns?.[0] as RawNodePoolAssignmentConfig
 
-    if (
-      !rawConfig ||
-      !rawState ||
-      !rawPoolsInfo ||
-      !rawPoolTokenPayoutRatios ||
-      !rawNodePoolAssignment
-    ) {
+    if (!rawConfig || !rawState || !rawPoolsInfo || !rawNodePoolAssignment) {
       throw new ValidatorNotFoundError(`Validator with id "${Number(validatorId)}" not found!`)
     }
 
@@ -115,9 +105,13 @@ export async function fetchValidator(
       rawConfig,
       rawState,
       rawPoolsInfo,
-      rawPoolTokenPayoutRatios,
       rawNodePoolAssignment,
     )
+
+    if (validator.config.rewardTokenId > 0) {
+      const rewardToken = await fetchAsset(validator.config.rewardTokenId)
+      validator.rewardToken = rewardToken
+    }
 
     if (validator.config.nfdForInfo > 0) {
       const nfd = await fetchNfd(validator.config.nfdForInfo, { view: 'full' })
@@ -312,29 +306,6 @@ export async function fetchNodePoolAssignments(
 
     const nodePoolAssignmentConfig = transformNodePoolAssignment(rawNodePoolAssignmentConfig)
     return nodePoolAssignmentConfig
-  } catch (error) {
-    console.error(error)
-    throw error
-  }
-}
-
-export function callGetTokenPayoutRatio(
-  validatorId: number | bigint,
-  validatorClient: ValidatorRegistryClient,
-) {
-  return validatorClient
-    .compose()
-    .getTokenPayoutRatio({ validatorId })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
-}
-
-export async function fetchTokenPayoutRatio(validatorId: string | number | bigint) {
-  try {
-    const validatorClient = await getSimulateValidatorClient()
-
-    const result = await callGetTokenPayoutRatio(Number(validatorId), validatorClient)
-
-    return result.returns![0]
   } catch (error) {
     console.error(error)
     throw error
@@ -539,6 +510,8 @@ export async function addStake(
     suggestedParams,
   })
 
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const simulateValidatorClient = await getSimulateValidatorClient(activeAddress, authAddr)
 
   const simulateComposer = simulateValidatorClient
@@ -556,6 +529,18 @@ export async function addStake(
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
 
+  if (needsOptInTxn) {
+    const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: activeAddress,
+      amount: 0,
+      assetIndex: rewardTokenId,
+      suggestedParams,
+    })
+
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
+
   const simulateResults = await simulateComposer.simulate({
     allowEmptySignatures: true,
     allowUnnamedResources: true,
@@ -567,8 +552,6 @@ export async function addStake(
   const feeAmount = AlgoAmount.MicroAlgos(
     2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
-
-  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
 
   const composer = validatorClient
     .compose()
@@ -834,6 +817,8 @@ export async function removeStake(
     authAddr,
   )
 
+  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
+
   const simulateComposer = stakingPoolSimulateClient
     .compose()
     .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
@@ -845,6 +830,18 @@ export async function removeStake(
       },
       { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
     )
+
+  if (needsOptInTxn) {
+    const rewardTokenOptInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: activeAddress,
+      amount: 0,
+      assetIndex: rewardTokenId,
+      suggestedParams,
+    })
+
+    simulateComposer.addTransaction(rewardTokenOptInTxn)
+  }
 
   const simulateResult = await simulateComposer.simulate({
     allowEmptySignatures: true,
@@ -858,8 +855,6 @@ export async function removeStake(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
       ),
   )
-
-  const needsOptInTxn = rewardTokenId > 0 && !(await isOptedInToAsset(activeAddress, rewardTokenId))
 
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
