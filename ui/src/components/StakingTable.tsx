@@ -251,7 +251,7 @@ export function StakingTable({
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                       <DropdownMenuItem
-                        onClick={async () =>
+                        onClick={async () => {
                           await simulateEpoch(
                             validator,
                             row.original.pools,
@@ -262,7 +262,7 @@ export function StakingTable({
                             queryClient,
                             router,
                           )
-                        }
+                        }}
                         disabled={unstakingDisabled}
                       >
                         <FlaskConical className="h-4 w-4 mr-2 text-muted-foreground" />
