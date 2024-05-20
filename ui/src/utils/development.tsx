@@ -47,7 +47,7 @@ export async function incrementRoundNumberBy(rounds: number) {
     return result
   }
 
-  console.log(`Increment round number start: ${result.startRound}`)
+  // console.log(`Increment round number start: ${result.startRound}`)
 
   const testAccount = await getTestAccount(
     { initialFunds: AlgoAmount.Algos(10), suppressLog: true },
@@ -78,7 +78,7 @@ export async function incrementRoundNumberBy(rounds: number) {
     ...result,
     resultRound: resultParams.firstRound,
   }
-  console.log(`Increment round number result: ${result.resultRound}`)
+  // console.log(`Increment round number result: ${result.resultRound}`)
 
   return result
 }
@@ -195,7 +195,7 @@ export async function simulateEpoch(
         <span className="text-foreground">
           Simulated {data.rounds} rounds:{' '}
           <span className="whitespace-nowrap">
-            {data.startRound} &raquo; {data.resultRound}
+            {data.startRound} &rarr; {data.resultRound}
           </span>
         </span>
       ),
