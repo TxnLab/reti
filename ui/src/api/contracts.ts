@@ -1208,36 +1208,36 @@ export async function linkPoolToNfd(
           new TextEncoder().encode('u.cav.algo.a'),
           algosdk.decodeAddress(poolAppAddress).publicKey,
         ],
-        apps: [NFD_REGISTRY_APP_ID],
-        assets: [NFD_ADMIN_ASSET_ID],
-        boxes: [
-          {
-            appIndex: NFD_REGISTRY_APP_ID,
-            name: await getRegistryBoxNameForAddress(poolAppAddress),
-          },
-          {
-            appIndex: NFD_REGISTRY_APP_ID,
-            name: new TextEncoder().encode(''), // Increase box storage availability
-          },
-          {
-            appIndex: NFD_REGISTRY_APP_ID,
-            name: await getRegistryBoxNameForNFD(nfdName),
-          },
-          {
-            appIndex: nfdAppId,
-            name: new TextEncoder().encode('u.cav.algo'),
-          },
-          {
-            appIndex: nfdAppId,
-            name: new TextEncoder().encode('v.caAlgo.0.as'),
-          },
-        ],
+        // apps: [NFD_REGISTRY_APP_ID],
+        // assets: [NFD_ADMIN_ASSET_ID],
+        // boxes: [
+        //   {
+        //     appIndex: NFD_REGISTRY_APP_ID,
+        //     name: await getRegistryBoxNameForAddress(poolAppAddress),
+        //   },
+        //   {
+        //     appIndex: NFD_REGISTRY_APP_ID,
+        //     name: new TextEncoder().encode(''), // Increase box storage availability
+        //   },
+        //   {
+        //     appIndex: NFD_REGISTRY_APP_ID,
+        //     name: await getRegistryBoxNameForNFD(nfdName),
+        //   },
+        //   {
+        //     appIndex: nfdAppId,
+        //     name: new TextEncoder().encode('u.cav.algo'),
+        //   },
+        //   {
+        //     appIndex: nfdAppId,
+        //     name: new TextEncoder().encode('v.caAlgo.0.as'),
+        //   },
+        // ],
       }),
     })
 
     const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
 
-    await stakingPoolClient
+    const composer = stakingPoolClient
       .compose()
       .addTransaction(payBoxStorageMbrTxn)
       .addTransaction(updateNfdAppCall)
@@ -1249,9 +1249,361 @@ export async function linkPoolToNfd(
           },
         },
       )
-      .execute({ populateAppCallResources: true })
+
+    const simRes = await composer.simulate({ allowUnnamedResources: true })
+
+    console.log(simRes.simulateResponse.txnGroups[0].unnamedResourcesAccessed)
+
+    simRes.simulateResponse.txnGroups[0].txnResults.forEach((txn, i) => {
+      console.log(i)
+      console.log(txn.unnamedResourcesAccessed)
+    })
+
+    const algorand = algokit.AlgorandClient.testNet()
+    const atc = await composer.atc()
+    const populated = await populateAppCallResources(atc, algorand.client.algod)
+
+    populated.buildGroup().forEach((txn, i) => {
+      console.log('assets', i, txn.txn.appForeignAssets)
+    })
+
+    await algokit.sendAtomicTransactionComposer({ atc: populated }, algorand.client.algod)
   } catch (error) {
     console.error(error)
     throw error
   }
+}
+
+// TODO: Merge this into algokit utils and delete from here
+export const MAX_TRANSACTION_GROUP_SIZE = 16
+export const MAX_APP_CALL_FOREIGN_REFERENCES = 8
+export const MAX_APP_CALL_ACCOUNT_REFERENCES = 4
+
+/**
+ * Get all of the unamed resources used by the group in the given ATC
+ *
+ * @param algod The algod client to use for the simulation
+ * @param atc The ATC containing the txn group
+ * @returns The unnamed resources accessed by the group and by each transaction in the group
+ */
+async function getUnnamedAppCallResourcesAccessed(
+  atc: algosdk.AtomicTransactionComposer,
+  algod: algosdk.Algodv2,
+) {
+  const simReq = new algosdk.modelsv2.SimulateRequest({
+    txnGroups: [],
+    allowUnnamedResources: true,
+    allowEmptySignatures: true,
+  })
+
+  const emptySignerAtc = atc.clone()
+  emptySignerAtc['transactions'].forEach((t: algosdk.TransactionWithSigner) => {
+    t.signer = algosdk.makeEmptyTransactionSigner()
+  })
+
+  const result = await emptySignerAtc.simulate(algod, simReq)
+
+  const groupResponse = result.simulateResponse.txnGroups[0]
+
+  if (groupResponse.failureMessage) {
+    throw Error(
+      `Error during resource population simulation in transaction ${groupResponse.failedAt}: ${groupResponse.failureMessage}`,
+    )
+  }
+
+  return {
+    group: groupResponse.unnamedResourcesAccessed,
+    txns: groupResponse.txnResults.map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (t: any) => t.unnamedResourcesAccessed,
+    ) as algosdk.modelsv2.SimulateUnnamedResourcesAccessed[],
+  }
+}
+
+/**
+ * Take an existing Atomic Transaction Composer and return a new one with the required
+ *  app call resources packed into it
+ *
+ * @param algod The algod client to use for the simulation
+ * @param atc The ATC containing the txn group
+ * @returns A new ATC with the resources packed into the transactions
+ *
+ * @privateRemarks
+ *
+ * This entire function will eventually be implemented in simulate upstream in algod. The simulate endpoint will return
+ * an array of refference arrays for each transaction, so this eventually will eventually just call simulate and set the
+ * reference arrays in the transactions to the reference arrays returned by simulate.
+ *
+ * See https://github.com/algorand/go-algorand/pull/5684
+ *
+ */
+export async function populateAppCallResources(
+  atc: algosdk.AtomicTransactionComposer,
+  algod: algosdk.Algodv2,
+) {
+  const unnamedResourcesAccessed = await getUnnamedAppCallResourcesAccessed(atc, algod)
+  const group = atc.buildGroup()
+
+  unnamedResourcesAccessed.txns.forEach((r, i) => {
+    if (r === undefined) return
+
+    if (r.boxes || r.extraBoxRefs) throw Error('Unexpected boxes at the transaction level')
+    if (r.appLocals) throw Error('Unexpected app local at the transaction level')
+    if (r.assetHoldings) throw Error('Unexpected asset holding at the transaction level')
+
+    // Do accounts first because the account limit is 4
+    r.accounts?.forEach((a) => {
+      group[i].txn.appAccounts = [...(group[i].txn.appAccounts ?? []), algosdk.decodeAddress(a)]
+    })
+
+    r.apps?.forEach((a) => {
+      group[i].txn.appForeignApps = [...(group[i].txn.appForeignApps ?? []), Number(a)]
+    })
+
+    r.assets?.forEach((a) => {
+      group[i].txn.appForeignAssets = [...(group[i].txn.appForeignAssets ?? []), Number(a)]
+    })
+
+    const accounts = group[i].txn.appAccounts?.length || 0
+    if (accounts > MAX_APP_CALL_ACCOUNT_REFERENCES)
+      throw Error(
+        `Account reference limit of ${MAX_APP_CALL_ACCOUNT_REFERENCES} exceeded in transaction ${i}`,
+      )
+
+    const assets = group[i].txn.appForeignAssets?.length || 0
+    const apps = group[i].txn.appForeignApps?.length || 0
+    const boxes = group[i].txn.boxes?.length || 0
+
+    if (accounts + assets + apps + boxes > MAX_APP_CALL_FOREIGN_REFERENCES) {
+      throw Error(
+        `Resource reference limit of ${MAX_APP_CALL_FOREIGN_REFERENCES} exceeded in transaction ${i}`,
+      )
+    }
+  })
+
+  const populateGroupResource = (
+    txns: algosdk.TransactionWithSigner[],
+    reference:
+      | string
+      | algosdk.modelsv2.BoxReference
+      | algosdk.modelsv2.ApplicationLocalReference
+      | algosdk.modelsv2.AssetHoldingReference
+      | bigint
+      | number,
+    type: 'account' | 'assetHolding' | 'appLocal' | 'app' | 'box' | 'asset',
+  ): void => {
+    // If this is a asset holding or app local, first try to find a transaction that already has the account available
+    if (type === 'assetHolding' || type === 'appLocal') {
+      const { account } = reference as
+        | algosdk.modelsv2.ApplicationLocalReference
+        | algosdk.modelsv2.AssetHoldingReference
+
+      const isApplBelowLimit = (t: algosdk.TransactionWithSigner) => {
+        if (t.txn.type !== algosdk.TransactionType.appl) return false
+
+        const accounts = t.txn.appAccounts?.length || 0
+        const assets = t.txn.appForeignAssets?.length || 0
+        const apps = t.txn.appForeignApps?.length || 0
+        const boxes = t.txn.boxes?.length || 0
+
+        return accounts + assets + apps + boxes < MAX_APP_CALL_FOREIGN_REFERENCES
+      }
+
+      let txnIndex = txns.findIndex((t) => {
+        if (!isApplBelowLimit(t)) return false
+
+        return (
+          // account is in the foreign accounts array
+          t.txn.appAccounts?.map((a) => algosdk.encodeAddress(a.publicKey)).includes(account) ||
+          // account is available as an app account
+          t.txn.appForeignApps?.map((a) => algosdk.getApplicationAddress(a)).includes(account) ||
+          // account is available since it's in one of the fields
+          Object.values(t.txn)
+            .map((f) => JSON.stringify(f))
+            .includes(JSON.stringify(algosdk.decodeAddress(account)))
+        )
+      })
+
+      if (txnIndex > -1) {
+        if (type === 'assetHolding') {
+          const { asset } = reference as algosdk.modelsv2.AssetHoldingReference
+          txns[txnIndex].txn.appForeignAssets = [
+            ...(txns[txnIndex].txn.appForeignAssets ?? []),
+            Number(asset),
+          ]
+        } else {
+          const { app } = reference as algosdk.modelsv2.ApplicationLocalReference
+          txns[txnIndex].txn.appForeignApps = [
+            ...(txns[txnIndex].txn.appForeignApps ?? []),
+            Number(app),
+          ]
+        }
+        return
+      }
+
+      // Now try to find a txn that already has that app or asset available
+      txnIndex = txns.findIndex((t) => {
+        if (!isApplBelowLimit(t)) return false
+
+        // check if there is space in the accounts array
+        if ((t.txn.appAccounts?.length || 0) >= MAX_APP_CALL_ACCOUNT_REFERENCES) return false
+
+        if (type === 'assetHolding') {
+          const { asset } = reference as algosdk.modelsv2.AssetHoldingReference
+          return t.txn.appForeignAssets?.includes(Number(asset))
+        } else {
+          const { app } = reference as algosdk.modelsv2.ApplicationLocalReference
+          return t.txn.appForeignApps?.includes(Number(app)) || t.txn.appIndex === Number(app)
+        }
+      })
+
+      if (txnIndex > -1) {
+        const { account } = reference as
+          | algosdk.modelsv2.AssetHoldingReference
+          | algosdk.modelsv2.ApplicationLocalReference
+
+        txns[txnIndex].txn.appAccounts = [
+          ...(txns[txnIndex].txn.appAccounts ?? []),
+          algosdk.decodeAddress(account),
+        ]
+
+        return
+      }
+    }
+
+    const txnIndex = txns.findIndex((t) => {
+      if (t.txn.type !== algosdk.TransactionType.appl) return false
+
+      const accounts = t.txn.appAccounts?.length || 0
+      if (type === 'account') return accounts < MAX_APP_CALL_ACCOUNT_REFERENCES
+
+      const assets = t.txn.appForeignAssets?.length || 0
+      const apps = t.txn.appForeignApps?.length || 0
+      const boxes = t.txn.boxes?.length || 0
+
+      if (type === 'assetHolding' || type === 'appLocal') {
+        return (
+          accounts + assets + apps + boxes < MAX_APP_CALL_FOREIGN_REFERENCES - 1 &&
+          accounts < MAX_APP_CALL_ACCOUNT_REFERENCES
+        )
+      }
+
+      return accounts + assets + apps + boxes < MAX_APP_CALL_FOREIGN_REFERENCES
+    })
+
+    if (txnIndex === -1) {
+      throw Error('No more transactions below reference limit. Add another app call to the group.')
+    }
+
+    if (type === 'account') {
+      txns[txnIndex].txn.appAccounts = [
+        ...(txns[txnIndex].txn.appAccounts ?? []),
+        algosdk.decodeAddress(reference as string),
+      ]
+    } else if (type === 'app') {
+      txns[txnIndex].txn.appForeignApps = [
+        ...(txns[txnIndex].txn.appForeignApps ?? []),
+        Number(reference),
+      ]
+    } else if (type === 'box') {
+      const { app, name } = reference as algosdk.modelsv2.BoxReference
+      txns[txnIndex].txn.boxes = [
+        ...(txns[txnIndex].txn.boxes ?? []),
+        { appIndex: Number(app), name },
+      ]
+
+      // Add the app if it is not already available
+      let appAlreadyAvailable = false
+      txns.forEach((t) => {
+        if (t.txn.appIndex === Number(reference)) appAlreadyAvailable = true
+        if (t.txn.appForeignApps?.includes(Number(reference))) appAlreadyAvailable = true
+      })
+      if (!appAlreadyAvailable) populateGroupResource(txns, app, 'app')
+    } else if (type === 'assetHolding') {
+      const { asset, account } = reference as algosdk.modelsv2.AssetHoldingReference
+      txns[txnIndex].txn.appForeignAssets = [
+        ...(txns[txnIndex].txn.appForeignAssets ?? []),
+        Number(asset),
+      ]
+      txns[txnIndex].txn.appAccounts = [
+        ...(txns[txnIndex].txn.appAccounts ?? []),
+        algosdk.decodeAddress(account),
+      ]
+    } else if (type === 'appLocal') {
+      const { app, account } = reference as algosdk.modelsv2.ApplicationLocalReference
+      txns[txnIndex].txn.appAccounts = [
+        ...(txns[txnIndex].txn.appAccounts ?? []),
+        algosdk.decodeAddress(account),
+      ]
+      txns[txnIndex].txn.appForeignApps = [
+        ...(txns[txnIndex].txn.appForeignApps ?? []),
+        Number(app),
+      ]
+    } else if (type === 'asset') {
+      txns[txnIndex].txn.appForeignAssets = [
+        ...(txns[txnIndex].txn.appForeignAssets ?? []),
+        Number(reference),
+      ]
+    }
+  }
+
+  const g = unnamedResourcesAccessed.group
+
+  if (g) {
+    // Do cross-reference resources first because they are the most restrictive in terms
+    // of which transactions can be used
+    g.appLocals?.forEach((a) => {
+      populateGroupResource(group, a, 'appLocal')
+
+      // Remove resources from the group if we're adding them here
+      g.accounts = g.accounts?.filter((acc) => acc !== a.account)
+      g.apps = g.apps?.filter((app) => BigInt(app) !== BigInt(a.app))
+    })
+
+    g.assetHoldings?.forEach((a) => {
+      populateGroupResource(group, a, 'assetHolding')
+
+      // Remove resources from the group if we're adding them here
+      g.accounts = g.accounts?.filter((acc) => acc !== a.account)
+      g.assets = g.assets?.filter((asset) => BigInt(asset) !== BigInt(a.asset))
+    })
+
+    // Do accounts next because the account limit is 4
+    g.accounts?.forEach((a) => {
+      populateGroupResource(group, a, 'account')
+    })
+
+    g.boxes?.forEach((b) => {
+      populateGroupResource(group, b, 'box')
+
+      // Remove resources from the group if we're adding them here
+      g.apps = g.apps?.filter((app) => BigInt(app) !== BigInt(b.app))
+    })
+
+    g.assets?.forEach((a) => {
+      populateGroupResource(group, a, 'asset')
+    })
+
+    g.apps?.forEach((a) => {
+      populateGroupResource(group, a, 'app')
+    })
+
+    if (g.extraBoxRefs) {
+      for (let i = 0; i < g.extraBoxRefs; i += 1) {
+        const ref = new algosdk.modelsv2.BoxReference({ app: 0, name: new Uint8Array(0) })
+        populateGroupResource(group, ref, 'box')
+      }
+    }
+  }
+
+  const newAtc = new algosdk.AtomicTransactionComposer()
+
+  group.forEach((t) => {
+    // eslint-disable-next-line no-param-reassign
+    t.txn.group = undefined
+    newAtc.addTransaction(t)
+  })
+
+  newAtc['methodCalls'] = atc['methodCalls']
+  return newAtc
 }
