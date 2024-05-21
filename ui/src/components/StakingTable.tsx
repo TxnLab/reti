@@ -16,6 +16,7 @@ import { Ban, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { ClaimTokens } from '@/components/ClaimTokens'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Tooltip } from '@/components/Tooltip'
@@ -51,6 +52,7 @@ import {
 import { dayjs } from '@/utils/dayjs'
 import { simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
+import { formatAssetAmount } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -119,7 +121,9 @@ export function StakingTable({
               {nfdAppId > 0 ? (
                 <NfdThumbnail nameOrId={nfdAppId} />
               ) : (
-                <span className="font-mono">{ellipseAddressJsx(validator.config.owner)}</span>
+                <span className="font-mono whitespace-nowrap">
+                  {ellipseAddressJsx(validator.config.owner)}
+                </span>
               )}
             </Link>
           </div>
@@ -152,15 +156,19 @@ export function StakingTable({
     },
     {
       accessorKey: 'rewardTokenBalance',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Reward Token Balance" />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Token Balance" />,
       cell: ({ row }) => {
         const validator = validators.find((v) => v.id === row.original.validatorId)
-        const { rewardTokenId } = validator?.config || {}
-        if (!rewardTokenId || Number(rewardTokenId) === 0)
+        if (!validator?.rewardToken) {
           return <span className="text-muted-foreground">--</span>
-        return <span className="font-mono">{Number(row.original.rewardTokenBalance) || 0}</span>
+        }
+        return (
+          <span className="font-mono">
+            {formatAssetAmount(validator.rewardToken, row.original.rewardTokenBalance, {
+              unitName: true,
+            })}
+          </span>
+        )
       },
     },
     {
@@ -244,6 +252,13 @@ export function StakingTable({
                   >
                     Unstake
                   </DropdownMenuItem>
+
+                  {validator.rewardToken && (
+                    <ClaimTokens
+                      validator={validator}
+                      rewardTokenBalance={row.original.rewardTokenBalance}
+                    />
+                  )}
                 </DropdownMenuGroup>
 
                 {canSimulateEpoch && (

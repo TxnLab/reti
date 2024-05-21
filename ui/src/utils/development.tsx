@@ -259,11 +259,7 @@ export async function sendRewardTokensToPool(
     const poolAccountInfo = await fetchAccountInformation(poolAddress)
     const assetHolding = poolAccountInfo.assets?.find((a) => a['asset-id'] === tokenId)
 
-    const balanceStr = formatAssetAmount(
-      assetHolding?.amount || 0,
-      true,
-      Number(asset.params.decimals),
-    )
+    const balanceStr = formatAssetAmount(asset, assetHolding?.amount || 0)
     const balanceMsg = assetHolding?.amount ? `${balanceStr} ${unitName}` : 'unknown'
 
     toast.success(`Success! New Balance: ${balanceMsg}`, {

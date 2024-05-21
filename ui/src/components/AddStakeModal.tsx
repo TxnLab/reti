@@ -51,7 +51,7 @@ import {
 } from '@/utils/contracts'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { formatAlgoAmount, formatNumber } from '@/utils/format'
+import { formatAlgoAmount, formatAmount } from '@/utils/format'
 
 interface AddStakeModalProps {
   validator: Validator | null
@@ -161,7 +161,7 @@ export function AddStakeModal({
               minimum: minimumStake,
               type: 'number',
               inclusive: true,
-              message: `Minimum entry stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+              message: `Minimum entry stake is ${formatAlgoAmount(minimumStake)} ALGO`,
             })
           }
 
@@ -473,7 +473,7 @@ export function AddStakeModal({
             {![GatingType.None, GatingType.SegmentNfd].includes(entryGatingType) && (
               <div className="pt-4">
                 <strong className="font-medium text-muted-foreground">Minimum Balance:</strong>{' '}
-                <span className="font-mono">{formatNumber(gatingAssetMinBalance.toString())}</span>
+                <span className="font-mono">{formatAmount(gatingAssetMinBalance.toString())}</span>
               </div>
             )}
           </div>
