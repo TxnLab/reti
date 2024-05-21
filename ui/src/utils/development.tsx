@@ -1,4 +1,5 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
+import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { QueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
@@ -21,6 +22,120 @@ const algodClient = algokit.getAlgoClient({
   token: algodConfig.token,
 })
 
+const kmdClient = algokit.getAlgoKmdClient({
+  server: algodConfig.server,
+  port: algodConfig.port,
+  token: algodConfig.token,
+})
+
+async function wait(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+export async function incrementRoundNumberBy(rounds: number) {
+  const startParams = await algodClient.getTransactionParams().do()
+
+  let result = {
+    rounds,
+    startRound: startParams.firstRound,
+    resultRound: startParams.firstRound,
+  }
+
+  if (rounds === 0) {
+    return result
+  }
+
+  // console.log(`Increment round number start: ${result.startRound}`)
+
+  const testAccount = await getTestAccount(
+    { initialFunds: AlgoAmount.Algos(10), suppressLog: true },
+    algodClient,
+    kmdClient,
+  )
+
+  let txnId = ''
+  for (let i = 0; i < rounds; i++) {
+    const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: testAccount.addr,
+      to: testAccount.addr,
+      amount: 0,
+      note: new TextEncoder().encode(`${i}`),
+      suggestedParams: startParams,
+    })
+
+    const signedTransaction = await algokit.signTransaction(txn, testAccount)
+    const { txId } = await algodClient.sendRawTransaction(signedTransaction).do()
+    txnId = txId
+  }
+
+  await algokit.waitForConfirmation(txnId, rounds + 1, algodClient)
+
+  const resultParams = await algodClient.getTransactionParams().do()
+
+  result = {
+    ...result,
+    resultRound: resultParams.firstRound,
+  }
+  // console.log(`Increment round number result: ${result.resultRound}`)
+
+  return result
+}
+
+export async function triggerPoolPayouts(
+  pools: StakerPoolData[],
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+  authAddr: string | undefined,
+) {
+  function createNextItemPromise(): [Promise<void>, () => void] {
+    let resolveNextItem: () => void
+    const nextItemPromise = new Promise<void>((resolve) => {
+      resolveNextItem = resolve
+    })
+    return [nextItemPromise, resolveNextItem!]
+  }
+
+  for (let i = 0; i < pools.length; i++) {
+    const pool = pools[i]
+    const poolAppId = pool.poolKey.poolAppId
+    const poolId = pool.poolKey.poolId
+
+    const isLastPool = i === pools.length - 1
+
+    const promiseFunction = epochBalanceUpdate(poolAppId, signer, activeAddress, authAddr)
+
+    const [nextItemPromise, resolveNextItem] = createNextItemPromise()
+
+    toast.promise(promiseFunction, {
+      loading: `Sign for Pool ${poolId} payout`,
+      success: () =>
+        !isLastPool ? (
+          <div className="flex items-center justify-between w-full">
+            Pool {i + 1}/{pools.length} payout complete!
+            <button
+              data-button
+              className="group-[.toast]:bg-primary group-[.toast]:text-primary-foreground"
+              onClick={() => resolveNextItem()}
+            >
+              Next pool
+            </button>
+          </div>
+        ) : (
+          'Epoch balance update complete!'
+        ),
+      error: `Error triggering Pool ${poolId} payout`,
+    })
+
+    await promiseFunction
+
+    if (!isLastPool) {
+      await nextItemPromise
+    }
+  }
+}
+
 export async function simulateEpoch(
   validator: Validator,
   pools: StakerPoolData[],
@@ -38,9 +153,6 @@ export async function simulateEpoch(
       throw new Error('No active wallet found')
     }
 
-    // Set block time to payout frequency (in seconds)
-    await algodClient.setBlockOffsetTimestamp(validator.config.epochRoundLength * 60).do()
-
     toast.loading(
       `Sign to send ${AlgoAmount.Algos(rewardAmount).algos} ALGO reward to ` +
         `${`${pools.length} pool${pools.length > 1 ? 's' : ''}`}`,
@@ -48,8 +160,9 @@ export async function simulateEpoch(
     )
 
     const atc = new algosdk.AtomicTransactionComposer()
-    const suggestedParams = await ParamsCache.getSuggestedParams()
+    const suggestedParams = await algodClient.getTransactionParams().do()
 
+    // Create atomic transaction to send rewards to each pool
     for (const pool of pools) {
       const poolKey = pool.poolKey
 
@@ -63,19 +176,40 @@ export async function simulateEpoch(
       atc.addTransaction({ txn: paymentTxn, signer })
     }
 
+    // Send rewards to each pool
     await atc.execute(algodClient, 4)
 
-    // Reset block time
-    await algodClient.setBlockOffsetTimestamp(0).do()
+    toast.success('ALGO rewards sent to pools!', { id: toastId, duration: 3000 })
 
-    for (const pool of pools) {
-      const poolKey = pool.poolKey
-      toast.loading(`Sign for Pool ${poolKey.poolId} epoch balance update`, { id: toastId })
+    await wait(3000)
 
-      await epochBalanceUpdate(poolKey.poolAppId, signer, activeAddress, authAddr)
-    }
+    // Calculate the number of rounds to simulate an epoch
+    const { epochRoundLength } = validator.config
+    const numRounds = Math.ceil(320 + epochRoundLength + epochRoundLength / 2)
 
-    toast.success('Epoch balance update complete!', { id: toastId })
+    // Pass promise to toast.promise to handle loading, success, and error states
+    const incrementPromise = incrementRoundNumberBy(numRounds)
+    toast.promise(incrementPromise, {
+      loading: 'Simulating epoch...',
+      success: (data) => (
+        <span className="text-foreground">
+          Simulated {data.rounds} rounds:{' '}
+          <span className="whitespace-nowrap">
+            {data.startRound} &rarr; {data.resultRound}
+          </span>
+        </span>
+      ),
+      error: 'Error simulating epoch',
+      duration: 3000,
+    })
+
+    // Simulate the epoch
+    await incrementPromise
+
+    await wait(3000)
+
+    // Trigger payouts by calling epochBalanceUpdate, starting with first pool (will iterate through all pools)
+    await triggerPoolPayouts(pools, signer, activeAddress, authAddr)
 
     queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
     router.invalidate()
@@ -84,8 +218,6 @@ export async function simulateEpoch(
 
     console.error(error)
     throw error
-  } finally {
-    await algodClient.setBlockOffsetTimestamp(0).do()
   }
 }
 
