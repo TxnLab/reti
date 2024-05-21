@@ -45,7 +45,10 @@ export function ClaimTokens({ validator, rewardTokenBalance }: ClaimTokensProps)
       toast.success(
         <div className="flex items-center gap-x-2">
           <ArrowDownLeft className="h-5 w-5 text-foreground" />
-          <span>Claimed {formatAssetAmount(validator.rewardToken, rewardTokenBalance)}</span>
+          <span>
+            Claimed{' '}
+            {formatAssetAmount(validator.rewardToken, rewardTokenBalance, { unitName: true })}
+          </span>
         </div>,
         {
           id: toastId,
