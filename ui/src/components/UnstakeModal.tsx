@@ -112,7 +112,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                 maximum: currentBalance - minimumStake,
                 type: 'number',
                 inclusive: true,
-                message: `Minimum stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+                message: `Minimum stake is ${formatAlgoAmount(minimumStake)} ALGO`,
               })
             }
           }
