@@ -4,7 +4,7 @@ import {
   convertToBaseUnits,
   formatAlgoAmount,
   formatAssetAmount,
-  formatNumber,
+  formatAmount,
   formatWithPrecision,
   roundToFirstNonZeroDecimal,
 } from '@/utils/format'
@@ -69,79 +69,79 @@ describe('convertToBaseUnits', () => {
   })
 })
 
-describe('formatNumber', () => {
+describe('formatAmount', () => {
   it('should format a large number with commas', () => {
-    const result = formatNumber(1234567890)
+    const result = formatAmount(1234567890)
     expect(result).toBe('1,234,567,890')
   })
 
   it('should format a number with a specified precision', () => {
-    const result = formatNumber(12345.6789, { precision: 2 })
+    const result = formatAmount(12345.6789, { precision: 2 })
     expect(result).toBe('12,345.68')
   })
 
   it('should include all decimal places if precision is undefined', () => {
-    const result = formatNumber(12345.6789)
+    const result = formatAmount(12345.6789)
     expect(result).toBe('12,345.6789')
   })
 
   it('should format a number in compact notation with precision', () => {
-    const result = formatNumber(1234567, { compact: true, precision: 2 })
+    const result = formatAmount(1234567, { compact: true, precision: 2 })
     expect(result).toBe('1.23M')
   })
 
   it('should format Number.MAX_SAFE_INTEGER correctly', () => {
-    const result = formatNumber(Number.MAX_SAFE_INTEGER)
+    const result = formatAmount(Number.MAX_SAFE_INTEGER)
     expect(result).toBe('9007.2T')
   })
 
   it('should format a bigint correctly', () => {
-    const result = formatNumber(1234567n)
+    const result = formatAmount(1234567n)
     expect(result).toBe('1,234,567')
 
-    const compactResult = formatNumber(1234567890123456n)
+    const compactResult = formatAmount(1234567890123456n)
     expect(compactResult).toBe('1234.6T')
 
-    const expoResult = formatNumber(12345678901234567890n)
+    const expoResult = formatAmount(12345678901234567890n)
     expect(expoResult).toBe('1.23e+19')
   })
 
   it('should format a string representation of a number', () => {
-    const result = formatNumber('987654321.1234', { precision: 3 })
+    const result = formatAmount('987654321.1234', { precision: 3 })
     expect(result).toBe('987,654,321.123')
   })
 
   it('should remove trailing zeros if trim is true', () => {
-    const result = formatNumber(100.5, { precision: 3, trim: true })
+    const result = formatAmount(100.5, { precision: 3, trim: true })
     expect(result).toBe('100.5')
   })
 
   it('should retain trailing zeros if trim is false', () => {
-    const result = formatNumber(100.5, { precision: 3, trim: false })
+    const result = formatAmount(100.5, { precision: 3, trim: false })
     expect(result).toBe('100.500')
   })
 
   it('should handle negative numbers correctly', () => {
-    const result = formatNumber(-9876543.21, { precision: 2 })
+    const result = formatAmount(-9876543.21, { precision: 2 })
     expect(result).toBe('-9,876,543.21')
   })
 
   it('should format a number using the decimals option', () => {
-    const result = formatNumber(1234567890, { decimals: 2 })
+    const result = formatAmount(1234567890, { decimals: 2 })
     expect(result).toBe('12,345,678.9')
 
-    const bigIntResult = formatNumber(12345678901234n, { decimals: 6 })
+    const bigIntResult = formatAmount(12345678901234n, { decimals: 6 })
     expect(bigIntResult).toBe('12,345,678.901234')
   })
 
   it('should format a number with maxLength option', () => {
-    const result = formatNumber(1234567890, { maxLength: 5 })
+    const result = formatAmount(1234567890, { maxLength: 5 })
     expect(result).toBe('1.2B')
 
-    const preciseResult = formatNumber(1234567890.12345, { maxLength: 16 })
+    const preciseResult = formatAmount(1234567890.12345, { maxLength: 16 })
     expect(preciseResult).toBe('1,234,567,890.12345')
 
-    const compactResult = formatNumber(1234567890.12345, { maxLength: 15 })
+    const compactResult = formatAmount(1234567890.12345, { maxLength: 15 })
     expect(compactResult).toBe('1.2B')
   })
 })

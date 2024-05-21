@@ -47,7 +47,7 @@ export function convertToBaseUnits(
   }
 }
 
-type FormatNumberOptions = {
+type FormatAmountOptions = {
   compact?: boolean
   precision?: number
   trim?: boolean
@@ -56,25 +56,25 @@ type FormatNumberOptions = {
 }
 
 /**
- * Format a number with commas and optional decimal places
+ * Format an amount with options for base unit conversion, precision, compact notation, and trimming
  * @param {number | bigint | string} amount - The number to format
- * @param {FormatNumberOptions} options - Options for formatting the number
+ * @param {FormatAmountOptions} options - Options for formatting the number
  * @param {boolean} options.compact - Whether to format the number in compact notation
  * @param {number} options.precision - The number of decimal places
  * @param {boolean} options.trim - Whether to trim trailing zeros
  * @returns {string} The formatted number
  * @example
- * formatNumber(1234567890) // '1,234,567,890'
- * formatNumber(12345.6789, { precision: 2 }) // '12,345.68'
- * formatNumber(1234567, { compact: true, precision: 2 }) // '1.23M'
- * formatNumber('987654321.1234', { precision: 3 }) // '987,654,321.123'
- * formatNumber(100.5, { precision: 3, trim: true }) // '100.5'
- * formatNumber(100.5, { precision: 3, trim: false }) // '100.500'
- * formatNumber(-9876543.21, { precision: 2 }) // '-9,876,543.21'
+ * formatAmount(1234567890) // '1,234,567,890'
+ * formatAmount(12345.6789, { precision: 2 }) // '12,345.68'
+ * formatAmount(1234567, { compact: true, precision: 2 }) // '1.23M'
+ * formatAmount('987654321.1234', { precision: 3 }) // '987,654,321.123'
+ * formatAmount(100.5, { precision: 3, trim: true }) // '100.5'
+ * formatAmount(100.5, { precision: 3, trim: false }) // '100.500'
+ * formatAmount(-9876543.21, { precision: 2 }) // '-9,876,543.21'
  */
-export function formatNumber(
+export function formatAmount(
   amount: number | bigint | string,
-  options: FormatNumberOptions = {},
+  options: FormatAmountOptions = {},
 ): string {
   const { compact = false, precision, trim = true, maxLength = 15, decimals } = options
 
@@ -163,12 +163,12 @@ export function formatWithPrecision(num: number | string, precision: number): st
   return formattedNumber + suffix
 }
 
-type FormatAssetAmountOptions = Omit<FormatNumberOptions, 'decimals'>
+type FormatAssetAmountOptions = Omit<FormatAmountOptions, 'decimals'>
 
 /**
  * Format an asset base unit amount for display in whole units.
  * Expects the asset with AssetParams fetched from `/v2/assets/{asset-id}`.
- * Passes the amount to formatNumber with the appropriate options.
+ * Passes the amount to formatAmount with the appropriate options.
  * @param {Asset} asset - The asset to format the amount for
  * @param {number | bigint | string} amount - The asset amount to format
  * @param {FormatAssetAmountOptions} options - Options for formatting the amount
@@ -187,7 +187,7 @@ type FormatAssetAmountOptions = Omit<FormatNumberOptions, 'decimals'>
  * formatAssetAmount(asset, 1234567890, { compact: true, precision: 2 }) // '1.23K'
  * formatAssetAmount(asset, 1234567890n) // '1,234.56789'
  * formatAssetAmount(asset, '1234567890') // '1,234.56789'
- * @see {@link formatNumber}
+ * @see {@link formatAmount}
  */
 export function formatAssetAmount(
   asset: Asset,
@@ -199,12 +199,12 @@ export function formatAssetAmount(
 
   const formatOptions = { precision, trim, maxLength, compact, decimals }
 
-  return formatNumber(amount, formatOptions)
+  return formatAmount(amount, formatOptions)
 }
 
 /**
  * Format a MicroAlgos amount for display in Algos.
- * Passes the amount to formatNumber with the appropriate options.
+ * Passes the amount to formatAmount with the appropriate options.
  * @param {number | bigint | string} amount - The MicroAlgos amount to format
  * @param {FormatAssetAmountOptions} options - Options for formatting the amount
  * @returns {string} The formatted Algo amount
@@ -214,7 +214,7 @@ export function formatAssetAmount(
  * formatAlgoAmount(1234567890, { compact: true, precision: 2 }) // '1.23K'
  * formatAlgoAmount(1234567890n) // '1,234.56789'
  * formatAlgoAmount('1234567890') // '1,234.56789'
- * @see {@link formatNumber}
+ * @see {@link formatAmount}
  */
 export function formatAlgoAmount(
   amount: number | bigint | string,
@@ -224,7 +224,7 @@ export function formatAlgoAmount(
 
   const formatOptions = { precision, trim, maxLength, compact, decimals: 6 }
 
-  return formatNumber(amount, formatOptions)
+  return formatAmount(amount, formatOptions)
 }
 
 /**

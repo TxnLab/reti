@@ -60,7 +60,7 @@ import {
 import { dayjs, formatDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
-import { formatNumber } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
 interface ValidatorTableProps {
@@ -262,7 +262,7 @@ export function ValidatorTable({
       cell: ({ row }) => {
         const validator = row.original
         const epochLength = validator.config.epochRoundLength
-        const numRounds = formatNumber(epochLength)
+        const numRounds = formatAmount(epochLength)
         const durationEstimate = epochLength * blockTime.ms
 
         return (
