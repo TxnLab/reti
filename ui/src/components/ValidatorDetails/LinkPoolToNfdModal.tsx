@@ -1,5 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -37,6 +39,7 @@ export function LinkPoolToNfdModal({
   const [isFetchingNfd, setIsFetchingNfd] = React.useState(false)
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
+  const queryClient = useQueryClient()
   const { transactionSigner, activeAddress } = useWallet()
 
   const formSchema = z.object({
@@ -100,6 +103,11 @@ export function LinkPoolToNfdModal({
         id: toastId,
         duration: 5000,
       })
+
+      const poolAppAddress = algosdk.getApplicationAddress(poolAppId)
+      queryClient.invalidateQueries({ queryKey: ['nfd-lookup', poolAppAddress] })
+
+      handleOpenChange(false)
     } catch (error) {
       toast.error('Linking NFD to pool failed', { id: toastId })
       console.error(error)
