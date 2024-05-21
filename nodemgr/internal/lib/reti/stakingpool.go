@@ -296,7 +296,8 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, needsIncentiveFe
 
 	var goOnlineFee uint64 = 0
 	// if going offline to online - pay extra 2 algo so the account is payouts eligible !
-	if needsIncentiveFeePaid {
+	//if needsIncentiveFeePaid {
+	if true {
 		// TODO - this is temporary - need to wait until AVM has opcode which can detect if account isn't currently
 		// eligible for incentives and only then to pay the extra fee
 		// account return will also have IncentiveEligible property which caller will use when calling us.
