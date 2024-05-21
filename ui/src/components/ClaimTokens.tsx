@@ -55,6 +55,7 @@ export function ClaimTokens({ validator, rewardTokenBalance }: ClaimTokensProps)
 
       queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
     } catch (error) {
+      toast.error('Failed to claim tokens', { id: toastId })
       console.error(error)
     }
   }
