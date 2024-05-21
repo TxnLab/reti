@@ -1202,6 +1202,25 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, stake
 		return err
 	}
 
+	extraApps := []uint64{}
+	extraAssets := []uint64{}
+
+	config, err := r.GetValidatorConfig(poolKey.ID)
+	if err != nil {
+		return fmt.Errorf("get validator config err:%w", err)
+	}
+	pools, err := r.GetValidatorPools(poolKey.ID)
+	if err != nil {
+		return fmt.Errorf("unable to GetValidatorPools: %w", err)
+	}
+
+	if config.RewardTokenId != 0 {
+		extraAssets = append(extraAssets, config.RewardTokenId)
+		if poolKey.PoolId != 1 {
+			// If not pool 1 then we need to add reference for pool 1, so it can be called to update the pool token payout ratio
+			extraApps = append(extraApps, pools[0].PoolAppId)
+		}
+	}
 	getAtc := func(feesToUse uint64) (transaction.AtomicTransactionComposer, error) {
 		atc := transaction.AtomicTransactionComposer{}
 		gasMethod, _ := r.validatorContract.GetMethodByName("gas")
@@ -1231,6 +1250,18 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, stake
 		})
 		if err != nil {
 			return atc, err
+		}
+		if len(extraAssets) > 0 || len(extraApps) > 0 {
+			err = atc.AddMethodCall(transaction.AddMethodCallParams{
+				AppID:           poolKey.PoolAppId,
+				Method:          gasMethod,
+				ForeignAssets:   extraAssets,
+				ForeignApps:     extraApps,
+				SuggestedParams: params,
+				OnComplete:      types.NoOpOC,
+				Sender:          signer,
+				Signer:          algo.SignWithAccountForATC(r.signer, signer.String()),
+			})
 		}
 		if feesToUse == 0 {
 			// we're simulating so go with super high budget
