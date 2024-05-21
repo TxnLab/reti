@@ -826,7 +826,7 @@ export class StakingPool extends Contract {
         // We've paid out the validator and updated the stakers new balances to reflect the rewards, now update
         // our 'total staked' value as well based on what we paid to validator and updated in staker balances as we
         // determined stake increases
-        const roundsLeftInBin = this.binRoundStart.value + AVG_ROUNDS_PER_DAY - globals.round
+        const roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
         this.totalAlgoStaked.value += increasedStake
         this.stakeAccumulator.value =
             this.stakeAccumulator.value + (increasedStake as uint128) * (roundsLeftInBin as uint128)
