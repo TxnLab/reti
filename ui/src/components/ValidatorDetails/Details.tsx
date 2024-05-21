@@ -14,7 +14,7 @@ import { Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { convertFromBaseUnits, formatAssetAmount, formatNumber } from '@/utils/format'
+import { convertFromBaseUnits, formatNumber } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
@@ -70,8 +70,8 @@ export function Details({ validator }: DetailsProps) {
     }
 
     const convertedAmount = convertFromBaseUnits(
-      Number(validator.config.rewardPerPayout),
-      Number(validator.rewardToken.params.decimals),
+      validator.config.rewardPerPayout,
+      validator.rewardToken.params.decimals,
     )
 
     return (
@@ -101,6 +101,7 @@ export function Details({ validator }: DetailsProps) {
             </a>
           </>
         )
+      // @todo: Fetch gating assets and display unit names
       case GatingType.AssetId:
         return (
           <>
@@ -322,6 +323,7 @@ export function Details({ validator }: DetailsProps) {
                     </dd>
                   </div>
 
+                  {/* @todo: convertFromBaseUnits each asset's min balance and display unit name */}
                   {![GatingType.None, GatingType.SegmentNfd].includes(
                     validator.config.entryGatingType,
                   ) && (
@@ -330,7 +332,7 @@ export function Details({ validator }: DetailsProps) {
                         Gating Asset Minimum Balance
                       </dt>
                       <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-6">
-                        {formatAssetAmount(validator.config.gatingAssetMinBalance.toString())}
+                        {formatNumber(validator.config.gatingAssetMinBalance.toString())}
                       </dd>
                     </div>
                   )}

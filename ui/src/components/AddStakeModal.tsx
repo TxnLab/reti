@@ -161,7 +161,7 @@ export function AddStakeModal({
               minimum: minimumStake,
               type: 'number',
               inclusive: true,
-              message: `Minimum entry stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+              message: `Minimum entry stake is ${formatAlgoAmount(minimumStake)} ALGO`,
             })
           }
 
