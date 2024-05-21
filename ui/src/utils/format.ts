@@ -62,6 +62,8 @@ type FormatAmountOptions = {
  * @param {boolean} options.compact - Whether to format the number in compact notation
  * @param {number} options.precision - The number of decimal places
  * @param {boolean} options.trim - Whether to trim trailing zeros
+ * @param {number} options.maxLength - The maximum length of the formatted number
+ * @param {number} options.decimals - The number of decimal places for base unit conversion
  * @returns {string} The formatted number
  * @example
  * formatAmount(1234567890) // '1,234,567,890'
@@ -70,7 +72,7 @@ type FormatAmountOptions = {
  * formatAmount('987654321.1234', { precision: 3 }) // '987,654,321.123'
  * formatAmount(100.5, { precision: 3, trim: true }) // '100.5'
  * formatAmount(100.5, { precision: 3, trim: false }) // '100.500'
- * formatAmount(-9876543.21, { precision: 2 }) // '-9,876,543.21'
+ * formatAmount(123456789, { decimals: 2 }) // '1,234,567.89'
  */
 export function formatAmount(
   amount: number | bigint | string,
