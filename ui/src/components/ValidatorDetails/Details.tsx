@@ -14,7 +14,7 @@ import { Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { convertFromBaseUnits, formatAmount } from '@/utils/format'
+import { formatAmount, formatAssetAmount } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
@@ -69,14 +69,11 @@ export function Details({ validator }: DetailsProps) {
       )
     }
 
-    const convertedAmount = convertFromBaseUnits(
-      validator.config.rewardPerPayout,
-      validator.rewardToken.params.decimals,
-    )
-
     return (
       <span className="font-mono">
-        {formatAmount(convertedAmount)} {validator.rewardToken.params['unit-name']}
+        {formatAssetAmount(validator.rewardToken, validator.config.rewardPerPayout, {
+          unitName: true,
+        })}
       </span>
     )
   }

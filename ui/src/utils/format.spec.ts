@@ -207,6 +207,11 @@ describe('formatAssetAmount', () => {
     const result = formatAssetAmount(asset, 'invalid')
     expect(result).toBe('NaN')
   })
+
+  it('should include the asset unit name', () => {
+    const result = formatAssetAmount(asset, 1234567890, { unitName: true })
+    expect(result).toBe('1,234.56789 TEST')
+  })
 })
 
 describe('formatAlgoAmount', () => {

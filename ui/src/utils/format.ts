@@ -165,7 +165,9 @@ export function formatWithPrecision(num: number | string, precision: number): st
   return formattedNumber + suffix
 }
 
-type FormatAssetAmountOptions = Omit<FormatAmountOptions, 'decimals'>
+type FormatAssetAmountOptions = Omit<FormatAmountOptions, 'decimals'> & {
+  unitName?: boolean
+}
 
 /**
  * Format an asset base unit amount for display in whole units.
@@ -174,12 +176,14 @@ type FormatAssetAmountOptions = Omit<FormatAmountOptions, 'decimals'>
  * @param {Asset} asset - The asset to format the amount for
  * @param {number | bigint | string} amount - The asset amount to format
  * @param {FormatAssetAmountOptions} options - Options for formatting the amount
+ * @param {boolean} options.unitName - Whether to append the asset unit name in the formatted amount
  * @returns {string} The formatted asset amount
  * @example
  * const asset: Asset = {
  *   index: 12345,
  *   params: {
  *     decimals: 6,
+ *     'unit-name': 'TEST',
  *     // ...
  *   },
  * }
@@ -189,6 +193,7 @@ type FormatAssetAmountOptions = Omit<FormatAmountOptions, 'decimals'>
  * formatAssetAmount(asset, 1234567890, { compact: true, precision: 2 }) // '1.23K'
  * formatAssetAmount(asset, 1234567890n) // '1,234.56789'
  * formatAssetAmount(asset, '1234567890') // '1,234.56789'
+ * formatAssetAmount(asset, 1234567890, { unitName: true }) // '1,234.56789 TEST'
  * @see {@link formatAmount}
  */
 export function formatAssetAmount(
@@ -196,12 +201,19 @@ export function formatAssetAmount(
   amount: number | bigint | string,
   options: FormatAssetAmountOptions = {},
 ): string {
-  const { precision, trim, maxLength, compact } = options
+  const { precision, trim, maxLength, compact, unitName } = options
   const decimals = Number(asset.params.decimals)
+  const assetUnitName = unitName ? asset.params['unit-name'] : ''
 
   const formatOptions = { precision, trim, maxLength, compact, decimals }
 
-  return formatAmount(amount, formatOptions)
+  const result = formatAmount(amount, formatOptions)
+
+  if (assetUnitName) {
+    return `${result} ${assetUnitName}`
+  }
+
+  return result
 }
 
 /**
