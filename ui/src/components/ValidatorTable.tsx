@@ -1,5 +1,6 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -47,6 +48,7 @@ import { useBlockTime } from '@/hooks/useBlockTime'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
+import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   calculateMaxStake,
   calculateMaxStakers,
@@ -58,9 +60,9 @@ import {
   isUnstakingDisabled,
 } from '@/utils/contracts'
 import { dayjs, formatDuration } from '@/utils/dayjs'
-import { sendRewardTokensToPool } from '@/utils/development'
+import { sendRewardTokensToPool, simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
-import { formatNumber } from '@/utils/format'
+import { formatAmount, formatAssetAmount } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
 interface ValidatorTableProps {
@@ -82,8 +84,11 @@ export function ValidatorTable({
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
 
   const { transactionSigner, activeAddress } = useWallet()
-  const navigate = useNavigate()
+  const { authAddress } = useAuthAddress()
 
+  const router = useRouter()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const blockTime = useBlockTime()
 
   const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [
@@ -246,9 +251,32 @@ export function ValidatorTable({
       },
     },
     {
-      id: 'commission',
+      id: 'token',
+      accessorFn: (row) => row.state.totalStakers,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Token" />,
+      cell: ({ row }) => {
+        const validator = row.original
+        if (!validator.rewardToken) return '--'
+
+        const perEpochAmount = formatAssetAmount(
+          validator.rewardToken,
+          validator.config.rewardPerPayout,
+          { unitName: true },
+        )
+
+        const tooltipContent = `${perEpochAmount} per epoch`
+
+        return (
+          <Tooltip content={tooltipContent}>
+            <span className="font-mono">{validator.rewardToken.params['unit-name']}</span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      id: 'fee',
       accessorFn: (row) => row.config.percentToValidator,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Commission" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Fee" />,
       cell: ({ row }) => {
         const validator = row.original
         const percent = validator.config.percentToValidator / 10000
@@ -262,7 +290,7 @@ export function ValidatorTable({
       cell: ({ row }) => {
         const validator = row.original
         const epochLength = validator.config.epochRoundLength
-        const numRounds = formatNumber(epochLength)
+        const numRounds = formatAmount(epochLength)
         const durationEstimate = epochLength * blockTime.ms
 
         return (
@@ -285,6 +313,12 @@ export function ValidatorTable({
         const hasRewardToken = validator.config.rewardTokenId > 0
         const canSendRewardTokens = isDevelopment && canManage && hasRewardToken
         const sendRewardTokensDisabled = validator.state.numPools === 0
+
+        const stakerValidatorData = stakesByValidator.find(
+          (data) => data.validatorId === validator.id,
+        )
+        const stakerPoolData = stakerValidatorData?.pools
+        const canSimulateEpoch = isDevelopment && canManage && !!stakerPoolData
 
         return (
           <div className="flex items-center justify-end gap-x-2">
@@ -353,6 +387,33 @@ export function ValidatorTable({
                     >
                       Add Staking Pool
                     </DropdownMenuItem>
+                  )}
+
+                  {canSimulateEpoch && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            await simulateEpoch(
+                              validator,
+                              stakerPoolData,
+                              100,
+                              transactionSigner,
+                              activeAddress!,
+                              authAddress,
+                              queryClient,
+                              router,
+                            )
+                          }}
+                          disabled={unstakingDisabled}
+                        >
+                          <FlaskConical className="h-4 w-4 mr-2 text-muted-foreground" />
+                          Simulate Epoch
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </>
                   )}
 
                   {canSendRewardTokens && (

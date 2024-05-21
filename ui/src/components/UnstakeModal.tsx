@@ -112,7 +112,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                 maximum: currentBalance - minimumStake,
                 type: 'number',
                 inclusive: true,
-                message: `Minimum stake is ${formatAlgoAmount(AlgoAmount.MicroAlgos(minimumStake).algos)} ALGO`,
+                message: `Minimum stake is ${formatAlgoAmount(minimumStake)} ALGO`,
               })
             }
           }
@@ -216,6 +216,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       // Invalidate other queries to update UI
       queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
       queryClient.invalidateQueries({ queryKey: ['staked-info'] })
+      queryClient.invalidateQueries({ queryKey: ['pools-info'] })
       router.invalidate()
     } catch (error) {
       toast.error('Failed to remove stake from pool', { id: toastId })
