@@ -64,6 +64,8 @@ export function AddPoolModal({
   const [nfdToLinkAppId, setNfdToLinkAppId] = React.useState<number>(0)
   const [isFetchingNfdToLink, setIsFetchingNfdToLink] = React.useState(false)
 
+  const isDevelopment = process.env.NODE_ENV === 'development'
+
   const queryClient = useQueryClient()
   const { transactionSigner, activeAddress } = useWallet()
 
@@ -431,7 +433,7 @@ export function AddPoolModal({
                 )}
                 {currentStep == 3 && (
                   <>
-                    <Button onClick={handleLinkPoolToNfd} disabled={isSigning}>
+                    <Button onClick={handleLinkPoolToNfd} disabled={isDevelopment || isSigning}>
                       Link to NFD
                     </Button>
                     <Button variant="secondary" onClick={handleComplete} disabled={isSigning}>

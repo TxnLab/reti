@@ -22,10 +22,16 @@ import { isValidName } from '@/utils/nfd'
 interface LinkPoolToNfdModalProps {
   poolId: number
   poolAppId: number
+  disabled?: boolean
   className?: string
 }
 
-export function LinkPoolToNfdModal({ poolId, poolAppId, className = '' }: LinkPoolToNfdModalProps) {
+export function LinkPoolToNfdModal({
+  poolId,
+  poolAppId,
+  disabled = false,
+  className = '',
+}: LinkPoolToNfdModalProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [nfdAppId, setNfdAppId] = React.useState<number>(0)
   const [isFetchingNfd, setIsFetchingNfd] = React.useState(false)
@@ -105,7 +111,7 @@ export function LinkPoolToNfdModal({ poolId, poolAppId, className = '' }: LinkPo
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm" className={className}>
+        <Button size="sm" className={className} disabled={disabled}>
           Link NFD
         </Button>
       </DialogTrigger>
