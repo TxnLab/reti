@@ -275,7 +275,7 @@ importers:
         specifier: 6.2.2
         version: 6.2.2
       '@types/node':
-        specifier: 20.12.11
+        specifier: 20.12.12
         version: 20.12.12
       '@types/react':
         specifier: 18.3.1

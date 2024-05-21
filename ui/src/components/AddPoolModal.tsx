@@ -1,4 +1,3 @@
-import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ProgressBar } from '@tremor/react'
@@ -97,7 +96,7 @@ export function AddPoolModal({
         message: 'Required field',
       })
       .refine(() => availableBalance >= poolMbr, {
-        message: `Insufficient balance: ${formatAlgoAmount(AlgoAmount.MicroAlgos(poolMbr).algos)} ALGO required`,
+        message: `Insufficient balance: ${formatAlgoAmount(poolMbr)} ALGO required`,
       })
       .refine(
         (val) => {
@@ -215,9 +214,7 @@ export function AddPoolModal({
       }
 
       if (availableBalance < poolInitMbr) {
-        throw new Error(
-          `Insufficient balance: ${formatAlgoAmount(AlgoAmount.MicroAlgos(poolInitMbr).algos)} ALGO required`,
-        )
+        throw new Error(`Insufficient balance: ${formatAlgoAmount(poolInitMbr)} ALGO required`)
       }
 
       toast.loading(`Sign transaction to pay MBR for pool ${poolKey.poolId}...`, {
