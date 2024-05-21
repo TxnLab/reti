@@ -1,40 +1,135 @@
 import Big from 'big.js'
+import { Asset } from '@/interfaces/algod'
 
 /**
  * Convert an asset amount from base units to whole units
- * @param {number} amount - The amount in base units
- * @param {number} decimals - The number of decimal places
+ * @param {number | bigint | string} amount - The amount in base units
+ * @param {number | bigint} decimals - The number of decimal places
  * @returns {number} The amount in whole units
  * @example
  * convertFromBaseUnits(12345, 0) // 12345
  * convertFromBaseUnits(12345, 6) // 0.012345
  * convertFromBaseUnits(1000000, 6) // 1
  */
-export function convertFromBaseUnits(amount: number, decimals: number = 0): number {
-  if (decimals === 0) return amount
-  const divisor = new Big(10).pow(decimals)
-  return new Big(amount).div(divisor).toNumber()
+export function convertFromBaseUnits(
+  amount: number | bigint | string,
+  decimals: number | bigint = 0,
+): number {
+  try {
+    const divisor = decimals ? new Big(10).pow(Number(decimals)) : new Big(1)
+    const bigAmount = typeof amount === 'bigint' ? new Big(amount.toString()) : new Big(amount)
+    return bigAmount.div(divisor).toNumber()
+  } catch (error) {
+    return NaN
+  }
 }
 
 /**
  * Convert an asset amount from whole units to base units
- * @param {number} amount - The amount in whole units
- * @param {number} decimals - The number of decimal places
+ * @param {number | bigint | string} amount - The amount in whole units
+ * @param {number | bigint} decimals - The number of decimal places
  * @returns {number} The amount in base units
  * @example
  * convertToBaseUnits(1, 6) // 1000000
  * convertToBaseUnits(0.012345, 6) // 12345
  * convertToBaseUnits(12345, 0) // 12345
  */
-export function convertToBaseUnits(amount: number, decimals: number = 0): number {
-  if (decimals === 0) return amount
-  const multiplier = new Big(10).pow(decimals)
-  return new Big(amount).times(multiplier).toNumber()
+export function convertToBaseUnits(
+  amount: number | bigint | string,
+  decimals: number | bigint = 0,
+): number {
+  try {
+    const multiplier = decimals ? new Big(10).pow(Number(decimals)) : new Big(1)
+    const bigAmount = typeof amount === 'bigint' ? new Big(amount.toString()) : new Big(amount)
+    return bigAmount.times(multiplier).toNumber()
+  } catch (error) {
+    return NaN
+  }
+}
+
+type FormatAmountOptions = {
+  compact?: boolean
+  precision?: number
+  trim?: boolean
+  maxLength?: number
+  decimals?: number
+}
+
+/**
+ * Format an amount with options for base unit conversion, precision, compact notation, and trimming
+ * @param {number | bigint | string} amount - The number to format
+ * @param {FormatAmountOptions} options - Options for formatting the number
+ * @param {boolean} options.compact - Whether to format the number in compact notation
+ * @param {number} options.precision - The number of decimal places
+ * @param {boolean} options.trim - Whether to trim trailing zeros
+ * @param {number} options.maxLength - The maximum length of the formatted number
+ * @param {number} options.decimals - The number of decimal places for base unit conversion
+ * @returns {string} The formatted number
+ * @example
+ * formatAmount(1234567890) // '1,234,567,890'
+ * formatAmount(12345.6789, { precision: 2 }) // '12,345.68'
+ * formatAmount(1234567, { compact: true, precision: 2 }) // '1.23M'
+ * formatAmount('987654321.1234', { precision: 3 }) // '987,654,321.123'
+ * formatAmount(100.5, { precision: 3, trim: true }) // '100.5'
+ * formatAmount(100.5, { precision: 3, trim: false }) // '100.500'
+ * formatAmount(123456789, { decimals: 2 }) // '1,234,567.89'
+ */
+export function formatAmount(
+  amount: number | bigint | string,
+  options: FormatAmountOptions = {},
+): string {
+  const { compact = false, precision, trim = true, maxLength = 15, decimals } = options
+
+  const divisor = decimals ? new Big(10).pow(decimals) : new Big(1)
+
+  let fixedAmount: string
+
+  try {
+    const bigAmount =
+      typeof amount === 'bigint'
+        ? new Big(amount.toString()).div(divisor)
+        : new Big(amount).div(divisor)
+
+    if (bigAmount.gt(Number.MAX_SAFE_INTEGER)) {
+      return bigAmount.toExponential(2)
+    }
+
+    if (compact) {
+      return formatWithPrecision(bigAmount.toNumber(), precision || 0)
+    }
+
+    if (bigAmount.round().toString().length > Math.min(maxLength, 15)) {
+      return formatWithPrecision(bigAmount.toNumber(), precision || 1)
+    }
+
+    fixedAmount = bigAmount.toFixed(precision)
+  } catch (error) {
+    return 'NaN'
+  }
+
+  if (maxLength && fixedAmount.length > maxLength) {
+    return formatWithPrecision(fixedAmount, 1)
+  }
+
+  // Split the number into integer and decimal parts
+  let [integerPart, decimalPart] = fixedAmount.split('.')
+
+  // Add commas to the integer part
+  integerPart = new Intl.NumberFormat().format(parseInt(integerPart, 10))
+
+  // Handle decimal trimming
+  if (trim && decimalPart) {
+    decimalPart = decimalPart.replace(/\.?0+$/, '') // Trim trailing zeros
+  }
+
+  const formatted = !decimalPart ? integerPart : [integerPart, decimalPart].join('.')
+
+  return formatted
 }
 
 /**
  * Format a number with precision and suffixes
- * @param {number} num - The number to format
+ * @param {number | string} num - The number to format (can be a number or a string)
  * @param {number} precision - The number of decimal places
  * @returns {string} The formatted number with precision and suffixes
  * @example
@@ -44,23 +139,24 @@ export function convertToBaseUnits(amount: number, decimals: number = 0): number
  * formatWithPrecision(4.56789e6, 3) // '4.568M'
  * formatWithPrecision(1234.567, 2) // '1.23K'
  */
-export function formatWithPrecision(num: number, precision: number): string {
-  let scaledNum = num
+export function formatWithPrecision(num: number | string, precision: number): string {
+  const bigNum = new Big(num)
+  let scaledNum = bigNum
   let suffix = ''
 
   // Determine the appropriate suffix and scale the number
-  if (num >= 1e12) {
+  if (bigNum.gte(1e12)) {
     suffix = 'T'
-    scaledNum = num / 1e12
-  } else if (num >= 1e9) {
+    scaledNum = bigNum.div(1e12)
+  } else if (bigNum.gte(1e9)) {
     suffix = 'B'
-    scaledNum = num / 1e9
-  } else if (num >= 1e6) {
+    scaledNum = bigNum.div(1e9)
+  } else if (bigNum.gte(1e6)) {
     suffix = 'M'
-    scaledNum = num / 1e6
-  } else if (num >= 1e3) {
+    scaledNum = bigNum.div(1e6)
+  } else if (bigNum.gte(1e3)) {
     suffix = 'K'
-    scaledNum = num / 1e3
+    scaledNum = bigNum.div(1e3)
   }
 
   // Format the number with precision and trim trailing zeros
@@ -69,81 +165,68 @@ export function formatWithPrecision(num: number, precision: number): string {
   return formattedNumber + suffix
 }
 
-// @todo: Convert options to an object
+type FormatAssetAmountOptions = Omit<FormatAmountOptions, 'decimals'>
+
 /**
- * Format an asset amount with commas and optional decimal places
- * @param {number | string} amount - The asset amount to format
- * @param {boolean} baseUnits - Whether the amount is in base units
- * @param {number} decimals - The number of decimal places
- * @param {boolean} trim - Whether to trim trailing zeros
- * @param {number} maxLength - The maximum length of the formatted string
+ * Format an asset base unit amount for display in whole units.
+ * Expects the asset with AssetParams fetched from `/v2/assets/{asset-id}`.
+ * Passes the amount to formatAmount with the appropriate options.
+ * @param {Asset} asset - The asset to format the amount for
+ * @param {number | bigint | string} amount - The asset amount to format
+ * @param {FormatAssetAmountOptions} options - Options for formatting the amount
  * @returns {string} The formatted asset amount
  * @example
- * formatAssetAmount(1234567, true, 6) // '1.234567'
- * formatAssetAmount(1000, false, 0) // '1,000'
- * formatAssetAmount(1234.56789, false, 6, true) // '1,234.56789'
- * formatAssetAmount(1000, false, 6, false) // '1,000.000000'
- * formatAssetAmount('abc', true, 6) // 'NaN'
- * formatAssetAmount(1234.56789, false, 6, true, 10) // '1.2K'
+ * const asset: Asset = {
+ *   index: 12345,
+ *   params: {
+ *     decimals: 6,
+ *     // ...
+ *   },
+ * }
+ * formatAssetAmount(asset, 1234567890) // '1,234.56789'
+ * formatAssetAmount(asset, 1234567890, { precision: 2 }) // '1,234.57'
+ * formatAssetAmount(asset, 1234560000, { precision: 6, trim: true }) // '1,234.56'
+ * formatAssetAmount(asset, 1234567890, { compact: true, precision: 2 }) // '1.23K'
+ * formatAssetAmount(asset, 1234567890n) // '1,234.56789'
+ * formatAssetAmount(asset, '1234567890') // '1,234.56789'
+ * @see {@link formatAmount}
  */
 export function formatAssetAmount(
-  amount: number | string,
-  baseUnits: boolean = false,
-  decimals: number = 6,
-  trim: boolean = true,
-  maxLength?: number,
+  asset: Asset,
+  amount: number | bigint | string,
+  options: FormatAssetAmountOptions = {},
 ): string {
-  // If amount is a string, parse it to a number
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
-  if (isNaN(numAmount)) return 'NaN'
+  const { precision, trim, maxLength, compact } = options
+  const decimals = Number(asset.params.decimals)
 
-  // Convert to string
-  // If amount is in base units, convert from base units
-  const formatted = baseUnits
-    ? convertFromBaseUnits(numAmount, decimals).toFixed(decimals)
-    : new Big(numAmount).toFixed(decimals)
+  const formatOptions = { precision, trim, maxLength, compact, decimals }
 
-  const parts = formatted.split('.')
-
-  if (trim && parts.length === 2) {
-    parts[1] = parts[1].replace(/\.?0+$/, '')
-  }
-
-  if (maxLength && parts.join('.').length > maxLength) {
-    return formatWithPrecision(parseFloat(formatted), 1)
-  }
-
-  // Format number with commas, but don't affect decimal places
-  parts[0] = new Intl.NumberFormat().format(parseFloat(parts[0]))
-
-  if (parts[1] === '') {
-    return parts[0]
-  }
-
-  return parts.join('.')
+  return formatAmount(amount, formatOptions)
 }
 
-// @todo: Convert options to an object
 /**
- * Format an Algo amount with commas and optional decimal places
- * @param {number | string} amount - The Algo amount to format
- * @param {boolean} microalgos - Whether the amount is in microalgos
- * @param {boolean} trim - Whether to trim trailing zeros
- * @param {number} maxLength - The maximum length of the formatted string
+ * Format a MicroAlgos amount for display in Algos.
+ * Passes the amount to formatAmount with the appropriate options.
+ * @param {number | bigint | string} amount - The MicroAlgos amount to format
+ * @param {FormatAssetAmountOptions} options - Options for formatting the amount
  * @returns {string} The formatted Algo amount
  * @example
- * formatAlgoAmount(1234567, true) // '1.234567'
- * formatAlgoAmount(1000, false) // '1,000'
- * formatAlgoAmount(1234.56789, false, true) // '1,234.56789'
- * formatAlgoAmount(1000, false, false) // '1,000.000000'
+ * formatAlgoAmount(1234567890) // '1,234.56789'
+ * formatAlgoAmount(1234567890, { precision: 2 }) // '1,234.57'
+ * formatAlgoAmount(1234567890, { compact: true, precision: 2 }) // '1.23K'
+ * formatAlgoAmount(1234567890n) // '1,234.56789'
+ * formatAlgoAmount('1234567890') // '1,234.56789'
+ * @see {@link formatAmount}
  */
 export function formatAlgoAmount(
-  amount: number | string,
-  microalgos: boolean = false,
-  trim: boolean = true,
-  maxLength?: number,
+  amount: number | bigint | string,
+  options: FormatAssetAmountOptions = {},
 ): string {
-  return formatAssetAmount(amount, microalgos, 6, trim, maxLength)
+  const { precision, trim, maxLength, compact } = options
+
+  const formatOptions = { precision, trim, maxLength, compact, decimals: 6 }
+
+  return formatAmount(amount, formatOptions)
 }
 
 /**
@@ -167,73 +250,4 @@ export function roundToFirstNonZeroDecimal(num: number): number {
 
   // Use toFixed to round to the first significant decimal place
   return Number(num.toFixed(decimalPlaces))
-}
-
-/**
- * Format a BigInt with commas
- * @param {bigint} value - The BigInt value
- * @returns {string} The formatted BigInt value with commas
- * @example
- * formatBigIntWithCommas(12345678901234567890n) // '12,345,678,901,234,567,890'
- */
-export function formatBigIntWithCommas(value: bigint): string {
-  const valueStr = value.toString()
-  const regex = /\B(?=(\d{3})+(?!\d))/g
-  return valueStr.replace(regex, ',')
-}
-
-type FormatNumberOptions = {
-  compact?: boolean
-  precision?: number
-  trim?: boolean
-}
-
-/**
- * Format a number with commas and optional decimal places
- * @param {number | bigint | string} amount - The number to format
- * @param {FormatNumberOptions} options - Options for formatting the number
- * @param {boolean} options.compact - Whether to format the number in compact notation
- * @param {number} options.precision - The number of decimal places
- * @param {boolean} options.trim - Whether to trim trailing zeros
- * @returns {string} The formatted number
- * @example
- * formatNumber(1234567890) // '1,234,567,890'
- * formatNumber(12345.6789, { precision: 2 }) // '12,345.68'
- * formatNumber(1234567, { compact: true, precision: 2 }) // '1.23M'
- * formatNumber(12345678901234567890n) // '12,345,678,901,234,567,890'
- * formatNumber('987654321.1234', { precision: 3 }) // '987,654,321.123'
- * formatNumber(100.5, { precision: 3, trim: true }) // '100.5'
- * formatNumber(100.5, { precision: 3, trim: false }) // '100.500'
- * formatNumber(-9876543.21, { precision: 2 }) // '-9,876,543.21'
- */
-export function formatNumber(
-  amount: number | bigint | string,
-  options: FormatNumberOptions = {},
-): string {
-  const { compact = false, precision, trim = true } = options
-
-  // Handle BigInt separately to preserve precision
-  if (typeof amount === 'bigint') {
-    const formattedBigInt = formatBigIntWithCommas(amount)
-    return formattedBigInt
-  }
-
-  const numericAmount = parseFloat(String(amount))
-
-  if (compact) {
-    return formatWithPrecision(numericAmount, precision || 0)
-  }
-
-  const bigAmount = new Big(numericAmount).toFixed(precision)
-  const parts = bigAmount.split('.')
-
-  // Add commas to the integer part
-  parts[0] = new Intl.NumberFormat().format(parseInt(parts[0], 10))
-
-  // Handle decimal trimming
-  if (trim && parts.length === 2) {
-    parts[1] = parts[1].replace(/\.?0+$/, '') // Trim trailing zeros
-  }
-
-  return parts.length === 1 ? parts[0] : parts.join('.')
 }
