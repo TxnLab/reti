@@ -40,16 +40,12 @@ import {
 } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import {
-  getNfdAdminAssetFromViteEnvironment,
-  getNfdRegistryFromViteEnvironment,
-} from '@/utils/network/getNfdConfig'
+import { getNfdRegistryFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { getRegistryBoxNameForAddress, getRegistryBoxNameForNFD } from '@/utils/nfd'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
 
 const NFD_REGISTRY_APP_ID = getNfdRegistryFromViteEnvironment()
-const NFD_ADMIN_ASSET_ID = getNfdAdminAssetFromViteEnvironment()
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -1198,7 +1194,6 @@ export async function linkPoolToNfd(
           algosdk.decodeAddress(poolAppAddress).publicKey,
         ],
         apps: [NFD_REGISTRY_APP_ID],
-        assets: [NFD_ADMIN_ASSET_ID],
         boxes: [
           {
             appIndex: NFD_REGISTRY_APP_ID,
