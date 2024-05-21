@@ -16,6 +16,7 @@ import { Ban, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
 import * as React from 'react'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { ClaimTokens } from '@/components/ClaimTokens'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Tooltip } from '@/components/Tooltip'
@@ -251,6 +252,13 @@ export function StakingTable({
                   >
                     Unstake
                   </DropdownMenuItem>
+
+                  {validator.rewardToken && (
+                    <ClaimTokens
+                      validator={validator}
+                      rewardTokenBalance={row.original.rewardTokenBalance}
+                    />
+                  )}
                 </DropdownMenuGroup>
 
                 {canSimulateEpoch && (
