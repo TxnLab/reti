@@ -22,12 +22,6 @@ const algodClient = algokit.getAlgoClient({
   token: algodConfig.token,
 })
 
-const kmdClient = algokit.getAlgoKmdClient({
-  server: algodConfig.server,
-  port: algodConfig.port,
-  token: algodConfig.token,
-})
-
 async function wait(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
@@ -35,6 +29,10 @@ async function wait(ms: number) {
 }
 
 export async function incrementRoundNumberBy(rounds: number) {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Increment round number is only available in development mode')
+  }
+
   const startParams = await algodClient.getTransactionParams().do()
 
   let result = {
@@ -48,6 +46,12 @@ export async function incrementRoundNumberBy(rounds: number) {
   }
 
   // console.log(`Increment round number start: ${result.startRound}`)
+
+  const kmdClient = algokit.getAlgoKmdClient({
+    server: algodConfig.server,
+    port: algodConfig.port,
+    token: algodConfig.token,
+  })
 
   const testAccount = await getTestAccount(
     { initialFunds: AlgoAmount.Algos(10), suppressLog: true },
@@ -89,6 +93,10 @@ export async function triggerPoolPayouts(
   activeAddress: string,
   authAddr: string | undefined,
 ) {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Triggering pool payouts is only available in development mode')
+  }
+
   function createNextItemPromise(): [Promise<void>, () => void] {
     let resolveNextItem: () => void
     const nextItemPromise = new Promise<void>((resolve) => {
@@ -149,6 +157,10 @@ export async function simulateEpoch(
   const toastId = 'simulate-epoch'
 
   try {
+    if (process.env.NODE_ENV !== 'development') {
+      throw new Error('Simulate epoch is only available in development mode')
+    }
+
     if (!activeAddress) {
       throw new Error('No active wallet found')
     }
