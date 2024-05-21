@@ -22,12 +22,6 @@ const algodClient = algokit.getAlgoClient({
   token: algodConfig.token,
 })
 
-const kmdClient = algokit.getAlgoKmdClient({
-  server: algodConfig.server,
-  port: algodConfig.port,
-  token: algodConfig.token,
-})
-
 async function wait(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
@@ -48,6 +42,12 @@ export async function incrementRoundNumberBy(rounds: number) {
   }
 
   // console.log(`Increment round number start: ${result.startRound}`)
+
+  const kmdClient = algokit.getAlgoKmdClient({
+    server: algodConfig.server,
+    port: algodConfig.port,
+    token: algodConfig.token,
+  })
 
   const testAccount = await getTestAccount(
     { initialFunds: AlgoAmount.Algos(10), suppressLog: true },
