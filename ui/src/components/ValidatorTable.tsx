@@ -60,7 +60,7 @@ import {
 import { dayjs, formatDuration } from '@/utils/dayjs'
 import { sendRewardTokensToPool } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatAssetAmount } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
 interface ValidatorTableProps {
@@ -246,9 +246,32 @@ export function ValidatorTable({
       },
     },
     {
-      id: 'commission',
+      id: 'token',
+      accessorFn: (row) => row.state.totalStakers,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Token" />,
+      cell: ({ row }) => {
+        const validator = row.original
+        if (!validator.rewardToken) return '--'
+
+        const perEpochAmount = formatAssetAmount(
+          validator.rewardToken,
+          validator.config.rewardPerPayout,
+          { unitName: true },
+        )
+
+        const tooltipContent = `${perEpochAmount} per epoch`
+
+        return (
+          <Tooltip content={tooltipContent}>
+            <span className="font-mono">{validator.rewardToken.params['unit-name']}</span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      id: 'fee',
       accessorFn: (row) => row.config.percentToValidator,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Commission" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Fee" />,
       cell: ({ row }) => {
         const validator = row.original
         const percent = validator.config.percentToValidator / 10000
