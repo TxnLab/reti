@@ -57,7 +57,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
   const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
   const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
-  const isDevelopment = process.env.NODE_ENV === 'development'
+  const isLocalnet = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
 
   // If pool has no stake, set value to 1 microalgo so it appears in the donut chart (as a 1px sliver)
   const poolData =
@@ -187,7 +187,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
         <LinkPoolToNfdModal
           poolId={selectedPoolInfo.poolId}
           poolAppId={selectedPoolInfo.poolAppId}
-          disabled={isDevelopment}
+          disabled={isLocalnet}
         />
       )
     }
