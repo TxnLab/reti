@@ -157,6 +157,7 @@ async function main() {
         },
         algod,
     )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let validatorApp: any
     if (!args.update) {
         console.log(`creating application`)

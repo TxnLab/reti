@@ -1005,6 +1005,7 @@ export async function incrementRoundNumberBy(context: AlgorandTestAutomationCont
 export function bigIntFromBytes(bytes: Uint8Array): bigint {
     let result = BigInt(0)
     bytes.forEach((byte) => {
+        // eslint-disable-next-line no-bitwise
         result = (result << BigInt(8)) | BigInt(byte)
     })
     return result
