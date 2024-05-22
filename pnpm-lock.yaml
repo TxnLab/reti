@@ -100,8 +100,8 @@ importers:
   ui:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 6.0.3
-        version: 6.0.3(algosdk@2.7.0)
+        specifier: 6.0.4-beta.1
+        version: 6.0.4-beta.1(algosdk@2.7.0)
       '@blockshake/defly-connect':
         specifier: 1.1.6
         version: 1.1.6(algosdk@2.7.0)
@@ -380,8 +380,8 @@ packages:
       buffer: 6.0.3
     dev: false
 
-  /@algorandfoundation/algokit-utils@6.0.3(algosdk@2.7.0):
-    resolution: {integrity: sha512-m5U/Oz19KOe/OurMCPxw+ltr45rdH0mkSj9y5DmyKfP9L+YfLVTB/E7/CHMJG1ugH8O+UlxVkIOQlcifcU4LVQ==}
+  /@algorandfoundation/algokit-utils@6.0.4-beta.1(algosdk@2.7.0):
+    resolution: {integrity: sha512-CZb1Dnci5c5qEVZmeTJeoobpn/3mcPfTBNXwINWbiQDIXY4x4z9nloI60g3xyvmVb2wDS8j1ExAUKdNtgkYiFg==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
