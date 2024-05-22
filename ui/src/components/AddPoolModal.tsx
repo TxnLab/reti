@@ -205,8 +205,6 @@ export function AddPoolModal({
         duration: 5000,
       })
 
-      queryClient.invalidateQueries({ queryKey: ['pools-info', validator.id] })
-
       // Refetch account info to get new available balance for MBR payment
       await accountInfoQuery.refetch()
 
@@ -229,6 +227,10 @@ export function AddPoolModal({
     try {
       if (!activeAddress) {
         throw new Error('No active address')
+      }
+
+      if (!validator) {
+        throw new Error('No validator found')
       }
 
       if (!poolKey) {
@@ -264,6 +266,8 @@ export function AddPoolModal({
         id: toastId,
         duration: 5000,
       })
+
+      queryClient.invalidateQueries({ queryKey: ['pools-info', validator.id] })
 
       // Refetch validator data
       const newData = await fetchValidator(validator!.id)
