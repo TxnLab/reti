@@ -241,7 +241,7 @@ export function ValidatorTable({
     },
     {
       id: 'reward',
-      accessorFn: (row) => row.state.totalStakers,
+      accessorFn: (row) => row.state.totalStakers, // @todo: fix this
       header: ({ column }) => <DataTableColumnHeader column={column} title="Avail. Rewards" />,
       cell: ({ row }) => {
         const validator = row.original
@@ -252,7 +252,7 @@ export function ValidatorTable({
     },
     {
       id: 'token',
-      accessorFn: (row) => row.state.totalStakers,
+      accessorFn: (row) => row.config.rewardTokenId,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Token" />,
       cell: ({ row }) => {
         const validator = row.original
