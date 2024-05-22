@@ -1,4 +1,3 @@
-import algosdk from 'algosdk'
 import { Nfd } from '@/interfaces/nfd'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
@@ -125,32 +124,4 @@ export const getNfdAvatarUrl = (nfd: Nfd): string => {
   }
 
   return url
-}
-
-/**
- * Generates the SHA-256 hash of the NFD registry box name for the provided NFD.
- * This can be used to define foreign box references for NFD registry app calls.
- * @see {@link https://api-docs.nf.domains/reference/integrators-guide/linking-an-application-to-an-nfd}
- * @param {string} nfdName - The NFD name to generate the registry box name for
- * @returns {Uint8Array} The SHA-256 hash of the NFD registry box name, in bytes
- */
-export async function getRegistryBoxNameForNFD(nfdName: string): Promise<Uint8Array> {
-  const data = new TextEncoder().encode(`name/${nfdName}`)
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  return new Uint8Array(hash)
-}
-
-/**
- * Generates the SHA-256 hash of the NFD registry box name for the provided Algorand address.
- * This can be used to define foreign box references for NFD registry app calls.
- * @see {@link https://api-docs.nf.domains/reference/integrators-guide/linking-an-application-to-an-nfd}
- * @param {string} algoAddress - The Algorand address to generate the registry box name for
- * @returns {Uint8Array} The SHA-256 hash of the NFD registry box name, in bytes
- */
-export async function getRegistryBoxNameForAddress(algoAddress: string): Promise<Uint8Array> {
-  const prefix = new TextEncoder().encode('addr/algo/')
-  const addressBytes = algosdk.decodeAddress(algoAddress).publicKey
-  const data = new Uint8Array([...prefix, ...addressBytes])
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  return new Uint8Array(hash)
 }

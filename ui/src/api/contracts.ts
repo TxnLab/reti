@@ -40,12 +40,8 @@ import {
 } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import { getNfdRegistryFromViteEnvironment } from '@/utils/network/getNfdConfig'
-import { getRegistryBoxNameForAddress, getRegistryBoxNameForNFD } from '@/utils/nfd'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
-
-const NFD_REGISTRY_APP_ID = getNfdRegistryFromViteEnvironment()
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 const algodClient = algokit.getAlgoClient({
@@ -1192,29 +1188,6 @@ export async function linkPoolToNfd(
           new TextEncoder().encode('update_field'),
           new TextEncoder().encode('u.cav.algo.a'),
           algosdk.decodeAddress(poolAppAddress).publicKey,
-        ],
-        apps: [NFD_REGISTRY_APP_ID],
-        boxes: [
-          {
-            appIndex: NFD_REGISTRY_APP_ID,
-            name: await getRegistryBoxNameForAddress(poolAppAddress),
-          },
-          {
-            appIndex: NFD_REGISTRY_APP_ID,
-            name: new TextEncoder().encode(''), // Increase box storage availability
-          },
-          {
-            appIndex: NFD_REGISTRY_APP_ID,
-            name: await getRegistryBoxNameForNFD(nfdName),
-          },
-          {
-            appIndex: nfdAppId,
-            name: new TextEncoder().encode('u.cav.algo'),
-          },
-          {
-            appIndex: nfdAppId,
-            name: new TextEncoder().encode('v.caAlgo.0.as'),
-          },
         ],
       }),
     })
