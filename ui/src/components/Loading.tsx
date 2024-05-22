@@ -2,10 +2,11 @@ import { cn } from '@/utils/ui'
 
 interface LoadingProps {
   size?: 'sm' | 'md' | 'lg'
+  inline?: boolean
   className?: string
 }
 
-export function Loading({ size, className = '' }: LoadingProps) {
+export function Loading({ size, className = '', inline = false }: LoadingProps) {
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
@@ -45,6 +46,10 @@ export function Loading({ size, className = '' }: LoadingProps) {
       />
     </svg>
   )
+
+  if (inline) {
+    return renderSpinner()
+  }
 
   return (
     <div className="grid min-h-[140px] w-full place-items-center overflow-x-scroll rounded-lg p-6 lg:overflow-visible">
