@@ -177,6 +177,10 @@ export function AddPoolModal({
         throw new Error('No active address')
       }
 
+      if (!validator) {
+        throw new Error('No validator found')
+      }
+
       if (!poolMbr) {
         throw new Error('No MBR data found')
       }
@@ -198,6 +202,8 @@ export function AddPoolModal({
         id: toastId,
         duration: 5000,
       })
+
+      queryClient.invalidateQueries({ queryKey: ['pools-info', validator.id] })
 
       // Refetch account info to get new available balance for MBR payment
       await accountInfoQuery.refetch()
