@@ -13,6 +13,7 @@ import { fetchNfd } from '@/api/nfd'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
+import { AlgodHttpError } from '@/interfaces/algod'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -1062,7 +1063,17 @@ export async function claimTokens(
 export async function fetchStakedInfoForPool(poolAppId: number): Promise<StakedInfo[]> {
   try {
     const stakingPoolClient = await getSimulateStakingPoolClient(poolAppId)
-    const boxValue = await stakingPoolClient.appClient.getBoxValue('stakers')
+
+    let boxValue: Uint8Array
+    try {
+      boxValue = await stakingPoolClient.appClient.getBoxValue('stakers')
+    } catch (error: unknown) {
+      if (error instanceof AlgodHttpError && error.response.status === 404) {
+        return []
+      } else {
+        throw error
+      }
+    }
 
     const stakersInfo = chunkBytes(boxValue)
       .map((stakerData) => transformStakedInfo(stakerData))
