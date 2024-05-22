@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
+import algosdk from 'algosdk'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -35,6 +36,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Nfd } from '@/interfaces/nfd'
 import { NodePoolAssignmentConfig, Validator, ValidatorPoolKey } from '@/interfaces/validator'
 import {
   findFirstAvailableNode,
@@ -61,7 +63,7 @@ export function AddPoolModal({
   const [currentStep, setCurrentStep] = React.useState<number>(1)
   const [poolKey, setPoolKey] = React.useState<ValidatorPoolKey | null>(null)
   const [isInitMbrError, setIsInitMbrError] = React.useState<string | undefined>(undefined)
-  const [nfdToLinkAppId, setNfdToLinkAppId] = React.useState<number>(0)
+  const [nfdToLink, setNfdToLink] = React.useState<Nfd | null>(null)
   const [isFetchingNfdToLink, setIsFetchingNfdToLink] = React.useState(false)
 
   const isLocalnet = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
@@ -136,7 +138,7 @@ export function AddPoolModal({
   const { errors } = form.formState
 
   const nodeNum = form.watch('nodeNum')
-  const nfdToLink = form.watch('nfdToLink')
+  const $nfdToLink = form.watch('nfdToLink')
 
   React.useEffect(() => {
     if (validator !== null && currentStep == 1 && nodeNum !== '' && !errors.nodeNum) {
@@ -293,11 +295,11 @@ export function AddPoolModal({
         throw new Error('No pool found')
       }
 
-      if (nfdToLinkAppId === 0) {
+      if (!nfdToLink?.appID) {
         throw new Error('NFD app ID not found')
       }
 
-      toast.loading(`Sign transaction to link ${nfdToLink} to Pool ${poolKey.poolId}...`, {
+      toast.loading(`Sign transaction to link ${$nfdToLink} to Pool ${poolKey.poolId}...`, {
         id: toastId,
       })
 
@@ -305,13 +307,16 @@ export function AddPoolModal({
 
       await linkPoolToNfd(
         poolKey.poolAppId,
-        nfdToLink,
-        nfdToLinkAppId,
+        $nfdToLink,
+        nfdToLink.appID,
         transactionSigner,
         activeAddress,
       )
 
-      toast.success(`Pool ${poolKey.poolId} successfully linked to ${nfdToLink}!`, {
+      const poolAppAddress = algosdk.getApplicationAddress(poolKey.poolAppId)
+      queryClient.setQueryData(['nfd-lookup', poolAppAddress, { view: 'thumbnail' }], nfdToLink)
+
+      toast.success(`Pool ${poolKey.poolId} successfully linked to ${$nfdToLink}!`, {
         id: toastId,
         duration: 5000,
       })
@@ -413,11 +418,11 @@ export function AddPoolModal({
                     <NfdLookup
                       form={form}
                       name="nfdToLink"
-                      nfdAppId={nfdToLinkAppId}
-                      setNfdAppId={setNfdToLinkAppId}
+                      nfd={nfdToLink}
+                      setNfd={setNfdToLink}
                       isFetchingNfd={isFetchingNfdToLink}
                       setIsFetchingNfd={setIsFetchingNfdToLink}
-                      watchValue={nfdToLink}
+                      watchValue={$nfdToLink}
                       errorMessage={errors.nfdToLink?.message}
                       activeAddress={activeAddress}
                       validateOwner

@@ -89,7 +89,7 @@ export const nfdLookupQueryOptions = (
   options: CacheRequestConfig = {},
 ) =>
   queryOptions<Nfd | null, AxiosError>({
-    queryKey: ['nfd-lookup', address],
+    queryKey: ['nfd-lookup', address, params],
     queryFn: () => fetchNfdReverseLookup(String(address), params, options),
     enabled: !!address,
     staleTime: 1000 * 60 * 5, // 5 mins

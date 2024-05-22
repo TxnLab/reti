@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Form } from '@/components/ui/form'
+import { Nfd } from '@/interfaces/nfd'
 import { isValidName } from '@/utils/nfd'
 
 interface LinkPoolToNfdModalProps {
@@ -35,7 +36,7 @@ export function LinkPoolToNfdModal({
   className = '',
 }: LinkPoolToNfdModalProps) {
   const [isOpen, setIsOpen] = React.useState(false)
-  const [nfdAppId, setNfdAppId] = React.useState<number>(0)
+  const [nfd, setNfd] = React.useState<Nfd | null>(null)
   const [isFetchingNfd, setIsFetchingNfd] = React.useState(false)
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
 
@@ -64,7 +65,7 @@ export function LinkPoolToNfdModal({
     form.reset(defaultValues)
     form.clearErrors()
     setIsSigning(false)
-    setNfdAppId(0)
+    setNfd(null)
   }
 
   const handleOpenChange = (open: boolean) => {
@@ -83,21 +84,25 @@ export function LinkPoolToNfdModal({
   const handleLinkNfd = async (data: z.infer<typeof formSchema>) => {
     const toastId = `${TOAST_ID}-link-nfd`
 
-    if (!activeAddress) {
-      throw new Error('No active address')
-    }
-
-    if (!poolId || !poolAppId) {
-      throw new Error('No pool found')
-    }
-
     try {
+      if (!activeAddress) {
+        throw new Error('No active address')
+      }
+
+      if (!poolId || !poolAppId) {
+        throw new Error('No pool found')
+      }
+
+      if (!nfd?.appID) {
+        throw new Error('NFD app ID not found')
+      }
+
       setIsSigning(true)
       toast.loading(`Sign transaction to link ${data.nfdName} to Pool ${poolId}...`, {
         id: toastId,
       })
 
-      await linkPoolToNfd(poolAppId, data.nfdName, nfdAppId, transactionSigner, activeAddress)
+      await linkPoolToNfd(poolAppId, data.nfdName, nfd.appID, transactionSigner, activeAddress)
 
       toast.success(`Pool ${poolId} successfully linked to ${data.nfdName}!`, {
         id: toastId,
@@ -105,7 +110,8 @@ export function LinkPoolToNfdModal({
       })
 
       const poolAppAddress = algosdk.getApplicationAddress(poolAppId)
-      queryClient.invalidateQueries({ queryKey: ['nfd-lookup', poolAppAddress] })
+      // queryClient.invalidateQueries({ queryKey: ['nfd-lookup', poolAppAddress] })
+      queryClient.setQueryData(['nfd-lookup', poolAppAddress, { view: 'thumbnail' }], nfd)
 
       handleOpenChange(false)
     } catch (error) {
@@ -134,8 +140,8 @@ export function LinkPoolToNfdModal({
               <NfdLookup
                 form={form}
                 name="nfdName"
-                nfdAppId={nfdAppId}
-                setNfdAppId={setNfdAppId}
+                nfd={nfd}
+                setNfd={setNfd}
                 isFetchingNfd={isFetchingNfd}
                 setIsFetchingNfd={setIsFetchingNfd}
                 watchValue={$nfdName}
