@@ -1,7 +1,6 @@
-/* eslint-disable import/no-relative-packages */
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils'
-import { Account, decodeAddress, secretKeyToMnemonic } from 'algosdk'
+import { Account, decodeAddress, Kmd, secretKeyToMnemonic } from 'algosdk'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
 import * as fs from 'fs'
@@ -10,6 +9,7 @@ import yargs from 'yargs'
 import prompts from 'prompts'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
+import { getPools } from '../helpers/helpers'
 
 function getNetworkConfig(network: string): [AlgoClientConfig, bigint, string] {
     let registryAppID: bigint
@@ -78,11 +78,14 @@ function createViteEnvFileForLocalnet(validatorAppId: number | bigint): void {
 }
 
 async function main() {
-    const args = await yargs.option('network', {
-        default: 'localnet',
-        choices: ['localnet', 'betanet', 'testnet', 'mainnet'],
-        demandOption: true,
-    }).argv
+    const args = await yargs
+        .option('network', {
+            default: 'localnet',
+            choices: ['localnet', 'betanet', 'testnet', 'mainnet'],
+            demandOption: true,
+        })
+        .option('update', { type: 'boolean', default: false })
+        .option('id', { type: 'number', default: 0 }).argv
 
     const [algodconfig, registryAppID, feeSink] = getNetworkConfig(args.network)
 
@@ -90,6 +93,7 @@ async function main() {
     const localConfig = algokit.getConfigFromEnvOrDefaults()
 
     let creatorAcct: Account
+    let kmd: Kmd
 
     // Confirm the network choice by prompting the user if they want to continue if !localnet
     if (args.network !== 'localnet') {
@@ -112,13 +116,19 @@ async function main() {
             return
         }
     } else {
-        const kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)
-        creatorAcct = await algokit.getDispenserAccount(algod, kmd)
+        kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)
+        if (!process.env.CREATOR_MNEMONIC) {
+            console.log('no creator account specified - using dispenser account as creator')
+            creatorAcct = await algokit.getDispenserAccount(algod, kmd)
+        } else {
+            creatorAcct = await mnemonicAccountFromEnvironment('CREATOR', algod)
+            console.log(`using ${creatorAcct.addr} as Reti creator.  MAKE SURE THIS IS CORRECT!`)
+        }
 
-        console.log(`Primary DISPENSER account is: ${creatorAcct.addr}`)
+        console.log(`Primary CREATOR (or DISPENSER) account is: ${creatorAcct.addr}`)
     }
 
-    // Generate staking pool template instance that the validator registry will reference
+    // Generate staking pool template instance that we load into the validator registry instance's box storage
     const poolClient = new StakingPoolClient(
         {
             sender: creatorAcct,
@@ -140,17 +150,51 @@ async function main() {
         {
             sender: creatorAcct,
             resolveBy: 'id',
-            id: 0,
+            id: args.id,
             deployTimeParams: {
                 nfdRegistryAppId: registryAppID,
             },
         },
         algod,
     )
-    const validatorApp = await validatorClient.create.createApplication({})
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let validatorApp: any
+    if (!args.update) {
+        console.log(`creating application`)
+        if (args.network === 'localnet') {
+            console.log(`funding ${creatorAcct.addr}`)
+            await algokit.ensureFunded(
+                {
+                    accountToFund: creatorAcct,
+                    fundingSource: await algokit.getDispenserAccount(algod, kmd!),
+                    minSpendingBalance: AlgoAmount.Algos(200),
+                },
+                algod,
+            )
+        }
+        validatorApp = await validatorClient.create.createApplication({})
 
-    // Fund the validator w/ 2 ALGO for contract mbr reqs.
-    await algokit.transferAlgos({ from: creatorAcct, to: validatorApp.appAddress, amount: AlgoAmount.Algos(2) }, algod)
+        // Fund the validator w/ 2 ALGO for contract mbr reqs.
+        await algokit.transferAlgos(
+            {
+                from: creatorAcct,
+                to: validatorApp.appAddress,
+                amount: AlgoAmount.Algos(2),
+            },
+            algod,
+        )
+    } else {
+        if (args.id === 0) {
+            // error -  id must be defined!
+            console.error('Error: id must be defined!')
+            process.exit(1)
+        }
+        console.log(`updating application ${args.id}`)
+        validatorApp = await validatorClient.update.updateApplication(
+            {},
+            { sendParams: { populateAppCallResources: true } },
+        )
+    }
 
     console.log(
         `loading the ${approvalCompiled.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
@@ -174,7 +218,7 @@ async function main() {
     console.log(`Validator registry app id is:${validatorApp.appId}`)
 
     if (args.network === 'localnet') {
-        const kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)
+        kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)
         // generate two dummy stakers - each w/ 100 million
         const staker1 = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true },
@@ -197,7 +241,33 @@ async function main() {
         console.log('Modified .env.sandbox in nodemgr directory with these values for testing')
 
         // Create a .env.localnet file in the ui directory with the validator app id
-        createViteEnvFileForLocalnet(validatorApp.appId)
+        createViteEnvFileForLocalnet(validatorApp.appId ?? args.id)
+    }
+
+    if (args.update) {
+        // Fetch all validators, and all their pools - updating all of them.
+        const numV = (await validatorClient.getGlobalState()).numV!.asNumber()
+        for (let valId = 1; valId <= numV; valId += 1) {
+            // const state = await getValidatorState(validatorClient, valId)
+            const pools = await getPools(validatorClient, valId)
+            for (const pool of pools) {
+                const updPoolClient = new StakingPoolClient(
+                    {
+                        sender: creatorAcct,
+                        resolveBy: 'id',
+                        id: pool.poolAppId,
+                        deployTimeParams: {
+                            nfdRegistryAppId: registryAppID,
+                            feeSinkAddr: decodeAddress(feeSink).publicKey,
+                        },
+                    },
+                    algod,
+                )
+                console.log(`updating validator:${valId}, pool appid: ${pool.poolAppId}`)
+                // eslint-disable-next-line no-await-in-loop
+                await updPoolClient.update.updateApplication({})
+            }
+        }
     }
 }
 

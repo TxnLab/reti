@@ -1,13 +1,16 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Ban, Copy, Signpost } from 'lucide-react'
 import * as React from 'react'
+import { nfdLookupQueryOptions } from '@/api/queries'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { Loading } from '@/components/Loading'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { LinkPoolToNfdModal } from '@/components/ValidatorDetails/LinkPoolToNfdModal'
 import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
 import { useStakersChartData } from '@/hooks/useStakersChartData'
 import { StakerValidatorData } from '@/interfaces/staking'
@@ -53,6 +57,8 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
   const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
   const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
+  const isOwner = validator.config.owner === activeAddress
+  const isLocalnet = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
 
   // If pool has no stake, set value to 1 microalgo so it appears in the donut chart (as a 1px sliver)
   const poolData =
@@ -65,6 +71,16 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     selectedPool,
     validatorId: validator.id,
   })
+
+  const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
+
+  const poolNfdQuery = useQuery(
+    nfdLookupQueryOptions(
+      selectedPoolInfo?.poolAddress || null,
+      { view: 'thumbnail' },
+      { cache: false },
+    ),
+  )
 
   const valueFormatter = (v: number) => (
     <AlgoDisplayAmount
@@ -135,8 +151,6 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     setSelectedPool(newValue)
   }
 
-  const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
-
   // @todo: clean this way up
   const numPools = validator.state.numPools
   const hardMaxDividedBetweenPools =
@@ -159,6 +173,55 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
   const totalPercent = roundToFirstNonZeroDecimal(
     (Number(validator.state.totalAlgoStaked) / Number(constraints.maxAlgoPerValidator)) * 100,
   )
+
+  const renderSeparator = () => {
+    if (!selectedPoolInfo) {
+      return null
+    }
+
+    // If pool has no NFD, show separator only if user is owner
+    if (poolNfdQuery.data === null && !isOwner) {
+      return null
+    }
+
+    return <span className="h-9 w-px bg-stone-900/15 dark:bg-white/15" />
+  }
+
+  const renderPoolNfd = () => {
+    if (!selectedPoolInfo) {
+      return null
+    }
+
+    const { data: poolNfd, isLoading, error } = poolNfdQuery
+
+    if (isLoading) {
+      return <Loading size="sm" className="mx-8" inline />
+    }
+
+    if (error) {
+      return <span className="text-destructive">Failed to load NFD</span>
+    }
+
+    if (!poolNfd) {
+      if (!isOwner) {
+        return null
+      }
+
+      return (
+        <LinkPoolToNfdModal
+          poolId={selectedPoolInfo.poolId}
+          poolAppId={selectedPoolInfo.poolAppId}
+          disabled={isLocalnet}
+        />
+      )
+    }
+
+    return (
+      <div className="truncate">
+        <NfdThumbnail nfd={poolNfd} truncate link />
+      </div>
+    )
+  }
 
   const renderPoolInfo = () => {
     if (!selectedPoolInfo) {
@@ -224,8 +287,12 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
     return (
       <div className="w-full">
-        <div className="py-6 px-4 sm:px-0">
-          <h4 className="text-xl font-semibold leading-none tracking-tight">{selectedPoolName}</h4>
+        <div className="flex items-center justify-center gap-x-4 h-9 my-4 sm:justify-start">
+          <h4 className="text-xl font-semibold leading-none tracking-tight whitespace-nowrap">
+            {selectedPoolName}
+          </h4>
+          {renderSeparator()}
+          {renderPoolNfd()}
         </div>
         <div className="border-t border-foreground-muted">
           <dl className="divide-y divide-foreground-muted">
@@ -276,7 +343,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
               </dd>
             </div>
 
-            <div className="px-4 py-4 sm:px-0">
+            <div className="py-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Staked</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
                 <div className="w-full mt-1">

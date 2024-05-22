@@ -1,6 +1,6 @@
 {
     "name": "reti-contracts",
-    "version": "0.8.10",
+    "version": "0.8.11",
     "license": "MIT",
     "scripts": {
         "generate-client": "algokit generate client contracts/artifacts/ --language typescript  --output contracts/clients/{contract_name}Client.ts && ./update_contract_artifacts.sh``",
@@ -16,8 +16,8 @@
         "prettier:fix": "npx prettier --write ."
     },
     "dependencies": {
-        "@algorandfoundation/algokit-utils": "^6.0.0",
-        "algosdk": "^2.7.0"
+        "@algorandfoundation/algokit-utils": "6.0.4",
+        "algosdk": "2.7.0"
     },
     "devDependencies": {
         "@algorandfoundation/algokit-client-generator": "^3.0.2",

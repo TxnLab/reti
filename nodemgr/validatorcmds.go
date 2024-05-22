@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/mailgun/holster/v4/syncutil"
@@ -70,6 +71,18 @@ func GetValidatorCmdOpts() *cli.Command {
 						Action: ChangeCommission,
 					},
 				},
+			},
+			{
+				Name:  "stakerData",
+				Usage: "Display pools a particular account is in",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "account",
+						Usage:    "The stakers address to get staking pool data for",
+						Required: true,
+					},
+				},
+				Action: DisplayStakerData,
 			},
 			{
 				Name:   "dumpAllStakers",
@@ -252,6 +265,29 @@ func DefineValidator() error {
 	info.Config.ID = validatorId
 	slog.Info("New Validator added, your Validator id is:", "id", info.Config.ID)
 	return App.retiClient.LoadState(context.Background())
+}
+
+func DisplayStakerData(ctx context.Context, command *cli.Command) error {
+	// account, amount, validator, pool
+	stakerAddr, err := types.DecodeAddress(command.String("account"))
+	if err != nil {
+		return err
+	}
+	// This staker must have staked something!
+	poolKeys, err := App.retiClient.GetStakedPoolsForAccount(stakerAddr)
+	if err != nil {
+		return err
+	}
+	out := new(strings.Builder)
+	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(tw, "Validator ID\tPool ID\tApp ID\t")
+
+	for _, key := range poolKeys {
+		fmt.Fprintf(tw, "%d\t%d\t%d\t\n", key.ID, key.PoolId, key.PoolAppId)
+	}
+	tw.Flush()
+	slog.Info(out.String())
+	return nil
 }
 
 func DumpAllStakers(ctx context.Context, command *cli.Command) error {
