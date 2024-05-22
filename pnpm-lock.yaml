@@ -11,10 +11,10 @@ importers:
   contracts:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: ^6.0.0
-        version: 6.0.2(algosdk@2.7.0)
+        specifier: 6.0.4
+        version: 6.0.4(algosdk@2.7.0)
       algosdk:
-        specifier: ^2.7.0
+        specifier: 2.7.0
         version: 2.7.0
     devDependencies:
       '@algorandfoundation/algokit-client-generator':
@@ -69,10 +69,10 @@ importers:
   contracts/bootstrap:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: ^6.0.0
-        version: 6.0.2(algosdk@2.7.0)
+        specifier: 6.0.4
+        version: 6.0.4(algosdk@2.7.0)
       algosdk:
-        specifier: ^2.7.0
+        specifier: 2.7.0
         version: 2.7.0
       prompts:
         specifier: ^2.4.2
@@ -369,16 +369,6 @@ packages:
       algosdk: 2.7.0
       buffer: 6.0.3
     dev: true
-
-  /@algorandfoundation/algokit-utils@6.0.2(algosdk@2.7.0):
-    resolution: {integrity: sha512-STieYEEPugfNveRj4Pug6ayW8gfBhwMmMKi5E6xyI4+ZceHcIlvEjCQv447yi5dMKRBRG6PehG+qirDl2Id91Q==}
-    engines: {node: '>=18.0'}
-    peerDependencies:
-      algosdk: ^2.7.0
-    dependencies:
-      algosdk: 2.7.0
-      buffer: 6.0.3
-    dev: false
 
   /@algorandfoundation/algokit-utils@6.0.4(algosdk@2.7.0):
     resolution: {integrity: sha512-Vk0OC6X3KaKw+tFkI2YZGF3DK2PZ/+eIfVBiF8pp5LLUegNc8yoHvifv0RM+t6loDY3q8agSdj4/lsL9FDhrgw==}
