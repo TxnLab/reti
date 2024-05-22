@@ -267,3 +267,29 @@ export interface NfdV2SearchRecords {
   /** total number of results, with data containing paged amount based on offset/limit */
   total: number
 }
+
+export type NfdGetLookupView = (typeof NfdGetLookupView)[keyof typeof NfdGetLookupView]
+
+export const NfdGetLookupView = {
+  tiny: 'tiny',
+  thumbnail: 'thumbnail',
+  brief: 'brief',
+  full: 'full',
+} as const
+
+export type NfdGetLookupParams = {
+  /**
+   * one or more addresses (algo or otherwise) to look up, maximum of 20 can be defined.  Specify the same query parameter multiple times for each address, ie: address=xxx&address=yyy&address=zzz
+   */
+  address: string[]
+  /**
+   * View of data to return, tiny (name, owner, caAlgo, unverifiedCaAlgo only [default]), thumbnail (tiny + avatar), brief, or full
+   */
+  view?: NfdGetLookupView
+  /**
+   * Whether to allow unverified addresses to match (and only if its only match).  Defaults to false
+   */
+  allowUnverified?: boolean
+}
+
+export type NfdGetLookup200 = { [key: string]: Nfd }
