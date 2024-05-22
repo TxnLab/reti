@@ -334,7 +334,10 @@ export class ValidatorRegistry extends Contract {
     // want to get staker list for an account.  The staking pool also uses it to get the app id of staking pool 1
     // (which contains reward tokens if being used) so that the amount available can be determined.
     getPoolAppId(validatorId: uint64, poolId: uint64): uint64 {
-        assert(poolId !== 0 && poolId <= this.validatorList(validatorId).value.pools.length)
+        assert(
+            poolId !== 0 && poolId <= this.validatorList(validatorId).value.pools.length,
+            'pool id must be between 1 and number of pools for this validator',
+        )
         return this.validatorList(validatorId).value.pools[poolId - 1].poolAppId
     }
 
@@ -406,7 +409,7 @@ export class ValidatorRegistry extends Contract {
 
     // @abi.readonly
     getNodePoolAssignments(validatorId: uint64): NodePoolAssignmentConfig {
-        assert(this.validatorList(validatorId).exists)
+        assert(this.validatorList(validatorId).exists, "the specified validator id doesn't exist")
 
         return this.validatorList(validatorId).value.nodePoolAssignments
     }
@@ -478,7 +481,10 @@ export class ValidatorRegistry extends Contract {
      * @param {Address} manager - The new manager address.
      */
     changeValidatorManager(validatorId: ValidatorIdType, manager: Address): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        assert(
+            this.txn.sender === this.validatorList(validatorId).value.config.owner,
+            'can only be called by validator owner',
+        )
         this.validatorList(validatorId).value.config.manager = manager
     }
 
@@ -491,7 +497,10 @@ export class ValidatorRegistry extends Contract {
      * @param {uint64} sunsettingTo - The new sunset to validator id.
      */
     changeValidatorSunsetInfo(validatorId: ValidatorIdType, sunsettingOn: uint64, sunsettingTo: ValidatorIdType): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        assert(
+            this.txn.sender === this.validatorList(validatorId).value.config.owner,
+            'can only be called by validator owner',
+        )
         this.validatorList(validatorId).value.config.sunsettingOn = sunsettingOn
         this.validatorList(validatorId).value.config.sunsettingTo = sunsettingTo
     }
@@ -506,7 +515,10 @@ export class ValidatorRegistry extends Contract {
      */
     changeValidatorNFD(validatorId: ValidatorIdType, nfdAppID: uint64, nfdName: string): void {
         // Must be called by the owner of the validator.
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        assert(
+            this.txn.sender === this.validatorList(validatorId).value.config.owner,
+            'can only be called by validator owner',
+        )
         // verify nfd is real, and owned by owner or manager
         sendAppCall({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
@@ -526,7 +538,10 @@ export class ValidatorRegistry extends Contract {
      [ ONLY OWNER CAN CHANGE ]
      */
     changeValidatorCommissionAddress(validatorId: ValidatorIdType, commissionAddress: Address): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        assert(
+            this.txn.sender === this.validatorList(validatorId).value.config.owner,
+            'can only be called by validator owner',
+        )
         assert(commissionAddress !== Address.zeroAddress)
         this.validatorList(validatorId).value.config.validatorCommissionAddress = commissionAddress
     }
@@ -543,7 +558,10 @@ export class ValidatorRegistry extends Contract {
         GatingAssetMinBalance: uint64,
         RewardPerPayout: uint64,
     ): void {
-        assert(this.txn.sender === this.validatorList(validatorId).value.config.owner)
+        assert(
+            this.txn.sender === this.validatorList(validatorId).value.config.owner,
+            'can only be called by validator owner',
+        )
 
         this.validatorList(validatorId).value.config.entryGatingType = EntryGatingType
         this.validatorList(validatorId).value.config.entryGatingAddress = EntryGatingAddress
@@ -568,12 +586,13 @@ export class ValidatorRegistry extends Contract {
         assert(
             this.txn.sender === this.validatorList(validatorId).value.config.owner ||
                 this.txn.sender === this.validatorList(validatorId).value.config.manager,
+            'can only be called by owner or manager of validator',
         )
 
         // must match MBR exactly
         verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addPoolMbr, receiver: this.app.address })
 
-        assert(this.validatorList(validatorId).exists)
+        assert(this.validatorList(validatorId).exists, "specified validator id isn't valid")
 
         let numPools: uint64 = this.validatorList(validatorId).value.state.numPools as uint64
         if ((numPools as uint64) >= MAX_POOLS) {
@@ -631,7 +650,7 @@ export class ValidatorRegistry extends Contract {
      * * @returns {ValidatorPoolKey} - The key of the validator pool.
      */
     addStake(stakedAmountPayment: PayTxn, validatorId: ValidatorIdType, valueToVerify: uint64): ValidatorPoolKey {
-        assert(this.validatorList(validatorId).exists)
+        assert(this.validatorList(validatorId).exists, "specified validator id isn't valid")
 
         // Ensure this validator hasn't reached its sunset date
         if (this.validatorList(validatorId).value.config.sunsettingOn > 0) {
@@ -829,7 +848,7 @@ export class ValidatorRegistry extends Contract {
 
         // Yup - we've been called by an official staking pool telling us about stake that was removed from it,
         // so we can update our validator's staking stats.
-        assert(amountRemoved > 0 || rewardRemoved > 0)
+        assert(amountRemoved > 0 || rewardRemoved > 0, 'should only be called if algo or reward was removed')
 
         // Remove the specified amount of stake - update pool stats, then total validator stats
         this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1].totalAlgoStaked -= amountRemoved
@@ -988,10 +1007,11 @@ export class ValidatorRegistry extends Contract {
         assert(
             this.txn.sender === this.validatorList(validatorId).value.config.owner ||
                 this.txn.sender === this.validatorList(validatorId).value.config.manager,
+            'can only be called by owner or manager of validator',
         )
 
         const nodePoolAssignments = clone(this.validatorList(validatorId).value.nodePoolAssignments)
-        assert(nodeNum >= 1 && nodeNum <= MAX_NODES)
+        assert(nodeNum >= 1 && nodeNum <= MAX_NODES, 'node number out of allowable range')
         // iterate  all the poolAppIds slots to find the specified poolAppId
         for (let srcNodeIdx = 0; srcNodeIdx < MAX_NODES; srcNodeIdx += 1) {
             for (let i = 0; i < MAX_POOLS_PER_NODE; i += 1) {
@@ -1109,9 +1129,12 @@ export class ValidatorRegistry extends Contract {
      * can't fake the ids and most importantly application id(!) of the caller that has to match.
      */
     private verifyPoolKeyCaller(poolKey: ValidatorPoolKey): void {
-        assert(this.validatorList(poolKey.id).exists)
-        assert((poolKey.poolId as uint64) < 2 ** 16) // since we limit max pools but keep the interface broad
-        assert(poolKey.poolId > 0 && (poolKey.poolId as uint16) <= this.validatorList(poolKey.id).value.state.numPools)
+        assert(this.validatorList(poolKey.id).exists, "the specified validator id isn't valid")
+        assert(poolKey.poolId <= MAX_POOLS, 'pool id not in valid range')
+        assert(
+            poolKey.poolId > 0 && (poolKey.poolId as uint16) <= this.validatorList(poolKey.id).value.state.numPools,
+            'pool id outside of range of pools created for this validator',
+        )
         // validator id, pool id, pool app id might still be kind of spoofed, but they can't spoof us verifying they called us from
         // the contract address of the pool app id they represent.
         assert(
@@ -1147,18 +1170,30 @@ export class ValidatorRegistry extends Contract {
 
     private validateConfig(config: ValidatorConfig): void {
         // Verify all the values in the ValidatorConfig are correct
-        assert(config.entryGatingType >= GATING_TYPE_NONE && config.entryGatingType <= GATING_TYPE_CONST_MAX)
-        assert(config.epochRoundLength >= MIN_EPOCH_LENGTH && config.epochRoundLength <= MAX_EPOCH_LENGTH)
-        assert(config.percentToValidator >= MIN_PCT_TO_VALIDATOR && config.percentToValidator <= MAX_PCT_TO_VALIDATOR)
+        assert(
+            config.entryGatingType >= GATING_TYPE_NONE && config.entryGatingType <= GATING_TYPE_CONST_MAX,
+            'gating type not valid',
+        )
+        assert(
+            config.epochRoundLength >= MIN_EPOCH_LENGTH && config.epochRoundLength <= MAX_EPOCH_LENGTH,
+            'epoch length not in allowable range',
+        )
+        assert(
+            config.percentToValidator >= MIN_PCT_TO_VALIDATOR && config.percentToValidator <= MAX_PCT_TO_VALIDATOR,
+            'commission percentage not valid',
+        )
         if (config.percentToValidator !== 0) {
             assert(
                 config.validatorCommissionAddress !== Address.zeroAddress,
                 'validatorCommissionAddress must be set if percent to validator is not 0',
             )
         }
-        assert(config.minEntryStake >= MIN_ALGO_STAKE_PER_POOL)
+        assert(config.minEntryStake >= MIN_ALGO_STAKE_PER_POOL, 'staking pool must have minimum entry of 1 algo')
         // we don't care about maxAlgoPerPool - if set to 0 it floats w/ network incentive values: maxAlgoAllowedPerPool()
-        assert(config.poolsPerNode > 0 && config.poolsPerNode <= MAX_POOLS_PER_NODE)
+        assert(
+            config.poolsPerNode > 0 && config.poolsPerNode <= MAX_POOLS_PER_NODE,
+            'number of pools per node exceeds allowed number',
+        )
         if (config.sunsettingOn !== 0) {
             assert(config.sunsettingOn > globals.latestTimestamp, 'sunsettingOn must be later than now if set')
         }
@@ -1278,7 +1313,7 @@ export class ValidatorRegistry extends Contract {
         const nodePoolAssignments = clone(this.validatorList(validatorId).value.nodePoolAssignments)
         const maxPoolsPerNodeForThisValidator = this.validatorList(validatorId).value.config.poolsPerNode as uint64
         // add the new staking pool to the specified node number - if there is room
-        assert(nodeNum >= 1 && nodeNum <= MAX_NODES)
+        assert(nodeNum >= 1 && nodeNum <= MAX_NODES, 'node number not in valid range')
         // iterate all the poolAppIds slots to see if any are free (appid of 0)
         for (let i = 0; i < maxPoolsPerNodeForThisValidator; i += 1) {
             if (nodePoolAssignments.nodes[nodeNum - 1].poolAppIds[i] === 0) {

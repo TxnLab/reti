@@ -89,7 +89,10 @@ export class StakingPool extends Contract {
     // TODO - TEMPORARY!  just want these upgradeable until prior to final release so users don't have to keep
     // resetting every validator, and refund every staker.
     updateApplication(): void {
-        assert(this.txn.sender === Address.fromAddress('LZ4V2IRVLCXFJK4REJV4TAGEKEYTA2GMR6TC2344OB3L3AF3MWXZ6ZAFIQ'))
+        assert(
+            this.txn.sender === Address.fromAddress('LZ4V2IRVLCXFJK4REJV4TAGEKEYTA2GMR6TC2344OB3L3AF3MWXZ6ZAFIQ'),
+            'Temporary: contract is upgradeable but only during testing and only from a development account',
+        )
     }
 
     /**
@@ -108,7 +111,7 @@ export class StakingPool extends Contract {
             assert(validatorId !== 0)
             assert(poolId !== 0)
         }
-        assert(minEntryStake >= MIN_ALGO_STAKE_PER_POOL)
+        assert(minEntryStake >= MIN_ALGO_STAKE_PER_POOL, 'staking pool must have minimum entry of 1 algo')
         this.creatingValidatorContractAppId.value = creatingContractId
         this.validatorId.value = validatorId
         this.poolId.value = poolId
@@ -184,10 +187,13 @@ export class StakingPool extends Contract {
      * @returns {uint64} new 'entry round' round number of stake add
      */
     addStake(stakedAmountPayment: PayTxn, staker: Address): uint64 {
-        assert(this.stakers.exists)
+        assert(this.stakers.exists, 'staking pool must be initialized first')
 
         // The contract account calling us has to be our creating validator contract
-        assert(this.txn.sender === AppID.fromUint64(this.creatingValidatorContractAppId.value).address)
+        assert(
+            this.txn.sender === AppID.fromUint64(this.creatingValidatorContractAppId.value).address,
+            'stake can only be added via the validator contract',
+        )
         assert(staker !== globals.zeroAddress)
 
         // Update APR data
@@ -467,7 +473,10 @@ export class StakingPool extends Contract {
      */
     payTokenReward(staker: Address, rewardToken: uint64, amountToSend: uint64): void {
         // account calling us has to be our creating validator contract
-        assert(this.txn.sender === AppID.fromUint64(this.creatingValidatorContractAppId.value).address)
+        assert(
+            this.txn.sender === AppID.fromUint64(this.creatingValidatorContractAppId.value).address,
+            'stake can only be added via the validator contract',
+        )
         assert(this.poolId.value === 1, 'must be pool 1 in order to be called to pay out token rewards')
         assert(rewardToken !== 0, 'can only claim token rewards from validator that has them')
 
@@ -489,7 +498,7 @@ export class StakingPool extends Contract {
      * @param {string} algodVer - string representing the algorand node daemon version (reti node daemon composes its own meta version)
      */
     updateAlgodVer(algodVer: string): void {
-        assert(this.isOwnerOrManagerCaller())
+        assert(this.isOwnerOrManagerCaller(), 'can only be called by owner or manager of validator')
         this.algodVer.value = algodVer
     }
 
@@ -870,7 +879,7 @@ export class StakingPool extends Contract {
         voteLast: uint64,
         voteKeyDilution: uint64,
     ): void {
-        assert(this.isOwnerOrManagerCaller())
+        assert(this.isOwnerOrManagerCaller(), 'can only be called by owner or manager of validator')
         const extraFee = this.getGoOnlineFee()
         verifyPayTxn(feePayment, { receiver: this.app.address, amount: extraFee })
         sendOnlineKeyRegistration({
@@ -893,7 +902,7 @@ export class StakingPool extends Contract {
         // we can be called by validator contract if we're being moved (which in turn only is allowed to be called
         // by validator owner or manager), but if not - must be owner or manager
         if (this.txn.sender !== AppID.fromUint64(this.creatingValidatorContractAppId.value).address) {
-            assert(this.isOwnerOrManagerCaller())
+            assert(this.isOwnerOrManagerCaller(), 'can only be called by owner or manager of validator')
         }
 
         sendOfflineKeyRegistration({})
@@ -903,7 +912,7 @@ export class StakingPool extends Contract {
     // the contract account address must already be set into the NFD's u.cav.algo.a field pending verification
     // [ ONLY OWNER OR MANAGER CAN CALL ]
     linkToNFD(nfdAppId: uint64, nfdName: string): void {
-        assert(this.isOwnerOrManagerCaller())
+        assert(this.isOwnerOrManagerCaller(), 'can only be called by owner or manager of validator')
 
         sendAppCall({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
