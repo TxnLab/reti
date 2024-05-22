@@ -57,6 +57,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
   const stakingDisabled = isStakingDisabled(activeAddress, validator, constraints)
   const unstakingDisabled = isUnstakingDisabled(activeAddress, validator, stakesByValidator)
+  const isOwner = validator.config.owner === activeAddress
   const isLocalnet = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
 
   // If pool has no stake, set value to 1 microalgo so it appears in the donut chart (as a 1px sliver)
@@ -167,6 +168,19 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     (Number(validator.state.totalAlgoStaked) / Number(constraints.maxAlgoPerValidator)) * 100,
   )
 
+  const renderSeparator = () => {
+    if (!selectedPoolInfo) {
+      return null
+    }
+
+    // If pool has no NFD, show separator only if user is owner
+    if (poolNfdQuery.data === null && !isOwner) {
+      return null
+    }
+
+    return <span className="h-9 w-px bg-stone-900/15 dark:bg-white/15" />
+  }
+
   const renderPoolNfd = () => {
     if (!selectedPoolInfo) {
       return null
@@ -183,6 +197,10 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     }
 
     if (!poolNfd) {
+      if (!isOwner) {
+        return null
+      }
+
       return (
         <LinkPoolToNfdModal
           poolId={selectedPoolInfo.poolId}
@@ -263,11 +281,11 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
     return (
       <div className="w-full">
-        <div className="flex items-center justify-center gap-x-4 py-6 sm:justify-start">
+        <div className="flex items-center justify-center gap-x-4 h-9 my-4 sm:justify-start">
           <h4 className="text-xl font-semibold leading-none tracking-tight whitespace-nowrap">
             {selectedPoolName}
           </h4>
-          <span className="h-9 w-px bg-stone-900/15 dark:bg-white/15" />
+          {renderSeparator()}
           {renderPoolNfd()}
         </div>
         <div className="border-t border-foreground-muted">
