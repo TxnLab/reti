@@ -76,8 +76,11 @@ jobs:
           python-version: '3.10'
           cache: 'poetry'
 
-      - name: Install Poetry
-        run: pipx install poetry
+      - name: Install Pipx
+        run: python3 -m pip install --user pipx
+
+      - name: Ensure Pipx is on PATH
+        run: python3 -m pipx ensurepath
 
       - name: Install Algokit
         run: pipx install algokit
