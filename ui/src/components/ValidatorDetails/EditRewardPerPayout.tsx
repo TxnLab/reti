@@ -12,6 +12,7 @@ import { DialogFooter } from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -152,6 +153,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
                   <FormControl>
                     <Input placeholder="" {...field} />
                   </FormControl>
+                  <FormDescription>Enter amount in whole units (not base units)</FormDescription>
                   <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
                 </FormItem>
               )}

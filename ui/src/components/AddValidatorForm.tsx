@@ -711,6 +711,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <Input placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>Enter amount in whole units (not base units)</FormDescription>
                     <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
                   </FormItem>
                 )}
