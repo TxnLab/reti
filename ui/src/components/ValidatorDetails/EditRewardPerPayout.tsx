@@ -96,7 +96,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         throw new Error('No reward token found')
       }
 
-      const rewardPerPayoutBaseUnits = convertToBaseUnits(
+      const newRewardPerPayoutBaseUnits = convertToBaseUnits(
         values.rewardPerPayout,
         validator.rewardToken.params.decimals,
       )
@@ -109,7 +109,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         entryGatingAddress,
         entryGatingAssets,
         gatingAssetMinBalance,
-        BigInt(rewardPerPayoutBaseUnits),
+        BigInt(newRewardPerPayoutBaseUnits),
         transactionSigner,
         activeAddress,
       )
