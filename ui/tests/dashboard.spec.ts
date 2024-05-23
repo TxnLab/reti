@@ -5,13 +5,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto('http://localhost:5173/')
 })
 
-test('has title', async ({ page }) => {
-  await expect(page).toHaveTitle('Réti Pooling')
+test('has correct page title', async ({ page }) => {
+  await expect(page).toHaveTitle('Réti Pooling | Dashboard')
 })
 
-// test('get started link', async ({ page }) => {
-//   await expect(page.getByTestId('getting-started')).toHaveText('Getting started')
-// })
+test('loads dashboard', async ({ page }) => {
+  await expect(page.getByTestId('page-title')).toHaveText('Staking Dashboard')
+})
 
 // test('authentication and dummy payment transaction', async ({ page }) => {
 //   page.on('dialog', async (dialog) => {
