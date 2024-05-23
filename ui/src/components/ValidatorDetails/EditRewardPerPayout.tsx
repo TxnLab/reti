@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
 import { setValidatorQueriesData } from '@/utils/contracts'
-import { convertToBaseUnits } from '@/utils/format'
+import { convertFromBaseUnits, convertToBaseUnits } from '@/utils/format'
 import { validatorSchemas } from '@/utils/validation'
 
 interface EditRewardPerPayoutProps {
@@ -47,8 +47,13 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
     rewardPerPayout,
   } = validator.config
 
+  const rewardPerPayoutWholeUnits = convertFromBaseUnits(
+    rewardPerPayout,
+    validator.rewardToken?.params.decimals,
+  )
+
   const defaultValues = {
-    rewardPerPayout: String(Number(rewardPerPayout) || ''),
+    rewardPerPayout: String(rewardPerPayoutWholeUnits || ''),
   }
 
   const form = useForm<z.infer<typeof formSchema>>({
