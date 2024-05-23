@@ -1110,12 +1110,28 @@ export async function changeValidatorNfd(
   nfdName: string,
   signer: algosdk.TransactionSigner,
   activeAddress: string,
+  authAddr?: string,
 ) {
+  const simulateValidatorClient = await getSimulateValidatorClient(activeAddress, authAddr)
+
+  const simulateResults = await simulateValidatorClient
+    .compose()
+    .changeValidatorNfd(
+      { validatorId, nfdAppId, nfdName },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(240_000) } },
+    )
+    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+
+  // @todo: switch to Joe's new method(s)
+  const feeAmount = AlgoAmount.MicroAlgos(
+    2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+  )
+
   const validatorClient = await getValidatorClient(signer, activeAddress)
 
   return validatorClient
     .compose()
-    .changeValidatorNfd({ validatorId, nfdAppId, nfdName })
+    .changeValidatorNfd({ validatorId, nfdAppId, nfdName }, { sendParams: { fee: feeAmount } })
     .execute({ populateAppCallResources: true })
 }
 
