@@ -97,13 +97,15 @@ jobs:
         run: pnpm --filter ./ui exec wait-on http://localhost:5173
 
       - name: Run Playwright tests
-        run: pnpm --filter ./ui exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        # run: pnpm --filter ./ui exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        run: pnpm --filter ./ui exec playwright test
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: blob-report-${{ matrix.shardIndex }}
+          # name: blob-report-${{ matrix.shardIndex }}
+          name: blob-report
           path: blob-report
           retention-days: 1
 
@@ -146,7 +148,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: all-blob-reports
-          pattern: blob-report-*
+          # pattern: blob-report-*
+          pattern: blob-report
           merge-multiple: true
 
       - name: Merge into HTML Report
