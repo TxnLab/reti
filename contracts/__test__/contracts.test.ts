@@ -2207,13 +2207,24 @@ describe('StakeUnstakeAccumTests', () => {
         const stakeAccum = bigIntFromBytes(poolGS.stakeAccumulator!.asByteArray())
         expect(stakeAccum).toEqual(roundsRemaining * BigInt(stakeAmount1.microAlgos - Number(stakerMbr)))
 
+        // Ok, now add 'more' stake - we're updating existing slot for pool - ensure accumulator is updated
+        const stakeAmount2 = AlgoAmount.Algos(1000)
+        await addStake(fixture.context, validatorMasterClient, validatorId, stakerAccount, stakeAmount2, 0n)
+        lastBlock = (await fixture.context.algod.status().do())['last-round']
+        roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+        poolGS = await firstPoolClient.getGlobalState()
+        const secondStakeAccum = bigIntFromBytes(poolGS.stakeAccumulator!.asByteArray())
+        expect(secondStakeAccum).toEqual(stakeAccum + BigInt(roundsRemaining) * BigInt(stakeAmount2.microAlgos))
+
         // remove bits of stake
         await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(50))
         lastBlock = (await fixture.context.algod.status().do())['last-round']
         roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
         poolGS = await firstPoolClient.getGlobalState()
         const newStakeAccum = bigIntFromBytes(poolGS.stakeAccumulator!.asByteArray())
-        expect(newStakeAccum).toEqual(stakeAccum - BigInt(roundsRemaining) * BigInt(AlgoAmount.Algos(50).microAlgos))
+        expect(newStakeAccum).toEqual(
+            secondStakeAccum - BigInt(roundsRemaining) * BigInt(AlgoAmount.Algos(50).microAlgos),
+        )
 
         // remove bits of stake
         await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(50))

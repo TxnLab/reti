@@ -579,21 +579,74 @@ addStake:
 	int 0
 	frame_bury 1 // firstEmpty: uint64
 
-	// contracts/stakingPool.algo.ts:217
+	// contracts/stakingPool.algo.ts:216
+	// this.totalAlgoStaked.value += stakedAmountPayment.amount
+	byte 0x7374616b6564 // "staked"
+	app_global_get
+	frame_dig -1 // stakedAmountPayment: PayTxn
+	gtxns Amount
+	+
+	byte 0x7374616b6564 // "staked"
+	swap
+	app_global_put
+
+	// contracts/stakingPool.algo.ts:218
+	// roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
+	byte 0x62696e526f756e645374617274 // "binRoundStart"
+	app_global_get
+	byte 0x726f756e6473506572446179 // "roundsPerDay"
+	app_global_get
+	+
+	global Round
+	-
+	frame_bury 2 // roundsLeftInBin: uint64
+
+	// contracts/stakingPool.algo.ts:219
+	// this.stakeAccumulator.value =
+	//             this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
+	byte 0x7374616b65416363756d756c61746f72 // "stakeAccumulator"
+	dup
+	app_global_get
+	frame_dig -1 // stakedAmountPayment: PayTxn
+	gtxns Amount
+	itob
+	frame_dig 2 // roundsLeftInBin: uint64
+	itob
+	b*
+	b+
+	dup
+	bitlen
+	int 128
+	<=
+
+	// this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128) overflowed 128 bits
+	assert
+	byte 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+	b&
+	dup
+	len
+	dup
+	int 16
+	-
+	swap
+	substring3
+	app_global_put
+
+	// contracts/stakingPool.algo.ts:223
 	// for (let i = 0; i < this.stakers.value.length; i += 1)
 	int 0
-	frame_bury 2 // i: uint64
+	frame_bury 3 // i: uint64
 
 *for_0:
-	// contracts/stakingPool.algo.ts:217
+	// contracts/stakingPool.algo.ts:223
 	// i < this.stakers.value.length
-	frame_dig 2 // i: uint64
+	frame_dig 3 // i: uint64
 	int 200
 	<
 	bz *for_0_end
 
 	// *if2_condition
-	// contracts/stakingPool.algo.ts:218
+	// contracts/stakingPool.algo.ts:224
 	// globals.opcodeBudget < 300
 	global OpcodeBudget
 	int 300
@@ -601,7 +654,7 @@ addStake:
 	bz *if2_end
 
 	// *if2_consequent
-	// contracts/stakingPool.algo.ts:219
+	// contracts/stakingPool.algo.ts:225
 	// increaseOpcodeBudget()
 	itxn_begin
 	int appl
@@ -617,32 +670,32 @@ addStake:
 	itxn_submit
 
 *if2_end:
-	// contracts/stakingPool.algo.ts:221
+	// contracts/stakingPool.algo.ts:227
 	// cmpStaker = clone(this.stakers.value[i])
-	frame_dig 2 // i: uint64
+	frame_dig 3 // i: uint64
 	int 64
 	* // acc * typeLength
 	int 64
 	byte 0x7374616b657273 // "stakers"
 	cover 2
 	box_extract
-	frame_bury 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_bury 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 
 	// *if3_condition
-	// contracts/stakingPool.algo.ts:222
+	// contracts/stakingPool.algo.ts:228
 	// cmpStaker.account === staker
-	frame_dig 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_dig 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 	extract 0 32
 	frame_dig -2 // staker: Address
 	==
 	bz *if3_end
 
 	// *if3_consequent
-	// contracts/stakingPool.algo.ts:224
+	// contracts/stakingPool.algo.ts:230
 	// cmpStaker.balance += stakedAmountPayment.amount
-	frame_dig 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_dig 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 	int 32 // headOffset
-	frame_dig 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_dig 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 	extract 32 8
 	btoi
 	frame_dig -1 // stakedAmountPayment: PayTxn
@@ -650,53 +703,42 @@ addStake:
 	+
 	itob
 	replace3
-	frame_bury 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_bury 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:225
+	// contracts/stakingPool.algo.ts:231
 	// cmpStaker.entryRound = entryRound
-	frame_dig 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_dig 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 	int 56 // headOffset
 	frame_dig 0 // entryRound: uint64
 	itob
 	replace3
-	frame_bury 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_bury 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 
-	// contracts/stakingPool.algo.ts:228
+	// contracts/stakingPool.algo.ts:234
 	// this.stakers.value[i] = cmpStaker
-	frame_dig 2 // i: uint64
+	frame_dig 3 // i: uint64
 	int 64
 	* // acc * typeLength
-	frame_dig 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_dig 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 	byte 0x7374616b657273 // "stakers"
 	cover 2
 	box_replace
 
-	// contracts/stakingPool.algo.ts:230
-	// this.totalAlgoStaked.value += stakedAmountPayment.amount
-	byte 0x7374616b6564 // "staked"
-	app_global_get
-	frame_dig -1 // stakedAmountPayment: PayTxn
-	gtxns Amount
-	+
-	byte 0x7374616b6564 // "staked"
-	swap
-	app_global_put
-
-	// contracts/stakingPool.algo.ts:231
+	// contracts/stakingPool.algo.ts:236
 	// return entryRound
 	frame_dig 0 // entryRound: uint64
 	b *addStake*return
 
 *if3_end:
 	// *if4_condition
-	// contracts/stakingPool.algo.ts:233
+	// contracts/stakingPool.algo.ts:238
 	// firstEmpty === 0 && cmpStaker.account === globals.zeroAddress
 	frame_dig 1 // firstEmpty: uint64
 	int 0
 	==
 	dup
 	bz *skip_and3
-	frame_dig 3 // cmpStaker: (address,uint64,uint64,uint64,uint64)
+	frame_dig 4 // cmpStaker: (address,uint64,uint64,uint64,uint64)
 	extract 0 32
 	global ZeroAddress
 	==
@@ -706,9 +748,9 @@ addStake:
 	bz *if4_end
 
 	// *if4_consequent
-	// contracts/stakingPool.algo.ts:234
+	// contracts/stakingPool.algo.ts:239
 	// firstEmpty = i + 1
-	frame_dig 2 // i: uint64
+	frame_dig 3 // i: uint64
 	int 1
 	+
 	frame_bury 1 // firstEmpty: uint64
@@ -716,17 +758,17 @@ addStake:
 *if4_end:
 
 *for_0_continue:
-	// contracts/stakingPool.algo.ts:217
+	// contracts/stakingPool.algo.ts:223
 	// i += 1
-	frame_dig 2 // i: uint64
+	frame_dig 3 // i: uint64
 	int 1
 	+
-	frame_bury 2 // i: uint64
+	frame_bury 3 // i: uint64
 	b *for_0
 
 *for_0_end:
 	// *if5_condition
-	// contracts/stakingPool.algo.ts:238
+	// contracts/stakingPool.algo.ts:243
 	// firstEmpty === 0
 	frame_dig 1 // firstEmpty: uint64
 	int 0
@@ -738,7 +780,7 @@ addStake:
 	err
 
 *if5_end:
-	// contracts/stakingPool.algo.ts:245
+	// contracts/stakingPool.algo.ts:250
 	// assert(stakedAmountPayment.amount >= this.minEntryStake.value, 'must stake at least the minimum for this pool')
 	frame_dig -1 // stakedAmountPayment: PayTxn
 	gtxns Amount
@@ -749,7 +791,7 @@ addStake:
 	// must stake at least the minimum for this pool
 	assert
 
-	// contracts/stakingPool.algo.ts:247
+	// contracts/stakingPool.algo.ts:252
 	// assert(this.stakers.value[firstEmpty - 1].account === globals.zeroAddress)
 	frame_dig 1 // firstEmpty: uint64
 	int 1
@@ -766,7 +808,7 @@ addStake:
 	==
 	assert
 
-	// contracts/stakingPool.algo.ts:248
+	// contracts/stakingPool.algo.ts:253
 	// this.stakers.value[firstEmpty - 1] = {
 	//             account: staker,
 	//             balance: stakedAmountPayment.amount,
@@ -795,7 +837,7 @@ addStake:
 	cover 2
 	box_replace
 
-	// contracts/stakingPool.algo.ts:255
+	// contracts/stakingPool.algo.ts:260
 	// this.numStakers.value += 1
 	byte 0x6e756d5374616b657273 // "numStakers"
 	app_global_get
@@ -803,59 +845,6 @@ addStake:
 	+
 	byte 0x6e756d5374616b657273 // "numStakers"
 	swap
-	app_global_put
-
-	// contracts/stakingPool.algo.ts:256
-	// this.totalAlgoStaked.value += stakedAmountPayment.amount
-	byte 0x7374616b6564 // "staked"
-	app_global_get
-	frame_dig -1 // stakedAmountPayment: PayTxn
-	gtxns Amount
-	+
-	byte 0x7374616b6564 // "staked"
-	swap
-	app_global_put
-
-	// contracts/stakingPool.algo.ts:258
-	// roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
-	byte 0x62696e526f756e645374617274 // "binRoundStart"
-	app_global_get
-	byte 0x726f756e6473506572446179 // "roundsPerDay"
-	app_global_get
-	+
-	global Round
-	-
-	frame_bury 4 // roundsLeftInBin: uint64
-
-	// contracts/stakingPool.algo.ts:259
-	// this.stakeAccumulator.value =
-	//             this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
-	byte 0x7374616b65416363756d756c61746f72 // "stakeAccumulator"
-	dup
-	app_global_get
-	frame_dig -1 // stakedAmountPayment: PayTxn
-	gtxns Amount
-	itob
-	frame_dig 4 // roundsLeftInBin: uint64
-	itob
-	b*
-	b+
-	dup
-	bitlen
-	int 128
-	<=
-
-	// this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128) overflowed 128 bits
-	assert
-	byte 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-	b&
-	dup
-	len
-	dup
-	int 16
-	-
-	swap
-	substring3
 	app_global_put
 
 	// contracts/stakingPool.algo.ts:261

@@ -213,6 +213,12 @@ export class StakingPool extends Contract {
         const entryRound = globals.round + ALGORAND_STAKING_BLOCK_DELAY
         let firstEmpty = 0
 
+        this.totalAlgoStaked.value += stakedAmountPayment.amount
+
+        const roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
+        this.stakeAccumulator.value =
+            this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
+
         // firstEmpty should represent 1-based index to first empty slot we find - 0 means none were found
         for (let i = 0; i < this.stakers.value.length; i += 1) {
             if (globals.opcodeBudget < 300) {
@@ -227,7 +233,6 @@ export class StakingPool extends Contract {
                 // Update the box w/ the new data
                 this.stakers.value[i] = cmpStaker
 
-                this.totalAlgoStaked.value += stakedAmountPayment.amount
                 return entryRound
             }
             if (firstEmpty === 0 && cmpStaker.account === globals.zeroAddress) {
@@ -253,11 +258,6 @@ export class StakingPool extends Contract {
             entryRound: entryRound,
         }
         this.numStakers.value += 1
-        this.totalAlgoStaked.value += stakedAmountPayment.amount
-
-        const roundsLeftInBin = this.binRoundStart.value + this.roundsPerDay.value - globals.round
-        this.stakeAccumulator.value =
-            this.stakeAccumulator.value + (stakedAmountPayment.amount as uint128) * (roundsLeftInBin as uint128)
         return entryRound
     }
 
