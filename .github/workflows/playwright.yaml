@@ -71,11 +71,3 @@ jobs:
 
       - name: Run Playwright tests
         run: pnpm --filter ./ui exec playwright test
-
-      - name: Upload HTML report to GitHub Actions Artifacts
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: html-report
-          path: playwright-report
-          retention-days: 14
