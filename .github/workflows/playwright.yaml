@@ -1,0 +1,158 @@
+name: Playwright Tests
+on:
+  push:
+    branches: 
+      - 'main'
+  pull_request:
+    branches: 
+      - 'main'
+      - 'dev'
+
+jobs:
+  playwright-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
+
+    # env:
+    #   VITE_ALGOD_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    #   VITE_ALGOD_SERVER: http://localhost
+    #   VITE_ALGOD_PORT: 4001
+    #   VITE_KMD_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    #   VITE_KMD_SERVER: http://localhost
+    #   VITE_KMD_PORT: 4002
+    #   VITE_KMD_WALLET: "unencrypted-default-wallet"
+    #   VITE_KMD_PASSWORD: ""
+    #   VITE_EXPLORER_ACCOUNT_URL: https://app.dappflow.org/setnetwork?name=sandbox&redirect=explorer/account
+    #   VITE_EXPLORER_TRANSACTION_URL: https://app.dappflow.org/setnetwork?name=sandbox&redirect=explorer/transaction
+    #   VITE_EXPLORER_ASSET_URL: https://app.dappflow.org/setnetwork?name=sandbox&redirect=explorer/asset
+    #   VITE_EXPLORER_APPLICATION_URL: https://app.dappflow.org/setnetwork?name=sandbox&redirect=explorer/application
+    #   VITE_NFD_API_URL: http://localhost:80
+    #   VITE_NFD_APP_URL: http://localhost:3000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Install Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'poetry'
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Install Algokit
+        run: pipx install algokit
+
+      - name: Start local Algorand network
+        run: algokit localnet start
+
+      - name: Bootstrap the validator
+        run: pnpm run bootstrap
+
+      - name: Start the UI server
+        run: pnpm run dev &
+
+      - name: Wait for the UI server to be up
+        run: npx wait-on http://localhost:5173
+
+      - name: Run Playwright tests
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+
+      - name: Upload blob report to GitHub Actions Artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shardIndex }}
+          path: blob-report
+          retention-days: 1
+
+  merge-reports:
+    if: ${{ !cancelled() }}
+    needs: [playwright-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download blob reports from GitHub Actions Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge into HTML Report
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report--attempt-${{ github.run_attempt }}
+          path: playwright-report
+          retention-days: 14
