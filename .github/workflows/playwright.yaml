@@ -68,7 +68,7 @@ jobs:
         run: pnpm install
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps
+        run: pnpm --filter ./ui exec playwright install --with-deps
 
       - name: Install Python 3.10
         uses: actions/setup-python@v4
@@ -92,10 +92,10 @@ jobs:
         run: pnpm run dev &
 
       - name: Wait for the UI server to be up
-        run: pnpm exec wait-on http://localhost:5173
+        run: pnpm --filter ./ui exec wait-on http://localhost:5173
 
       - name: Run Playwright tests
-        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        run: pnpm --filter ./ui exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
@@ -148,7 +148,7 @@ jobs:
           merge-multiple: true
 
       - name: Merge into HTML Report
-        run: pnpm exec playwright merge-reports --reporter html ./all-blob-reports
+        run: pnpm --filter ./ui exec playwright merge-reports --reporter html ./all-blob-reports
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
