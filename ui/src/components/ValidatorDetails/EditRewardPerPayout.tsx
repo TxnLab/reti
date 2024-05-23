@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
 import { setValidatorQueriesData } from '@/utils/contracts'
+import { convertToBaseUnits } from '@/utils/format'
 import { validatorSchemas } from '@/utils/validation'
 
 interface EditRewardPerPayoutProps {
@@ -85,6 +86,15 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         throw new Error('No active address')
       }
 
+      if (!validator.rewardToken) {
+        throw new Error('No reward token found')
+      }
+
+      const rewardPerPayoutBaseUnits = convertToBaseUnits(
+        values.rewardPerPayout,
+        validator.rewardToken.params.decimals,
+      )
+
       toast.loading('Sign transactions to update reward amount per payout...', { id: toastId })
 
       await changeValidatorRewardInfo(
@@ -93,7 +103,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         entryGatingAddress,
         entryGatingAssets,
         gatingAssetMinBalance,
-        BigInt(values.rewardPerPayout),
+        BigInt(rewardPerPayoutBaseUnits),
         transactionSigner,
         activeAddress,
       )
