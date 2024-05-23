@@ -24,7 +24,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
-import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import { setValidatorQueriesData } from '@/utils/contracts'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
@@ -47,8 +46,6 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
   const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(nfdForInfo)
 
   const { transactionSigner, activeAddress } = useWallet()
-  const { authAddress } = useAuthAddress()
-
   const queryClient = useQueryClient()
 
   const formSchema = z.object({
@@ -160,7 +157,6 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
         values.nfdForInfo,
         transactionSigner,
         activeAddress,
-        authAddress,
       )
 
       toast.success(`NFD updated!`, {
