@@ -90,12 +90,6 @@ jobs:
       - name: Bootstrap the validator
         run: pnpm run bootstrap
 
-      - name: Start the UI server
-        run: pnpm run dev &
-
-      - name: Wait for the UI server to be up
-        run: pnpm --filter ./ui exec wait-on http://localhost:5173
-
       - name: Run Playwright tests
         # run: pnpm --filter ./ui exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         run: pnpm --filter ./ui exec playwright test
