@@ -12,11 +12,11 @@ jobs:
   playwright-tests:
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     shardIndex: [1, 2, 3, 4]
+    #     shardTotal: [4]
 
     # env:
     #   VITE_ALGOD_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
