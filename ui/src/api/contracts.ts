@@ -1115,7 +1115,10 @@ export async function changeValidatorNfd(
 
   return validatorClient
     .compose()
-    .changeValidatorNfd({ validatorId, nfdAppId, nfdName })
+    .changeValidatorNfd(
+      { validatorId, nfdAppId, nfdName },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(2000) } },
+    )
     .execute({ populateAppCallResources: true })
 }
 
