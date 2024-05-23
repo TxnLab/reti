@@ -47,10 +47,10 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
     rewardPerPayout,
   } = validator.config
 
-  const rewardPerPayoutWholeUnits = convertFromBaseUnits(
-    rewardPerPayout,
-    validator.rewardToken?.params.decimals,
-  )
+  const tokenUnitName = validator.rewardToken?.params['unit-name']
+  const tokenDecimals = validator.rewardToken?.params.decimals
+
+  const rewardPerPayoutWholeUnits = convertFromBaseUnits(rewardPerPayout, tokenDecimals)
 
   const defaultValues = {
     rewardPerPayout: String(rewardPerPayoutWholeUnits || ''),
@@ -136,7 +136,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
   return (
     <EditValidatorModal
       title="Edit Reward Per Payout"
-      description={`Set the amount of reward tokens paid out each epoch for Validator ${validator.id}`}
+      description={`Set the amount of ${tokenUnitName || 'reward tokens'} paid out each epoch for Validator ${validator.id}`}
       open={isOpen}
       onOpenChange={handleOpenChange}
     >
