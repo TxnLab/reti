@@ -12,6 +12,7 @@ import { DialogFooter } from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
 import { setValidatorQueriesData } from '@/utils/contracts'
+import { convertFromBaseUnits, convertToBaseUnits } from '@/utils/format'
 import { validatorSchemas } from '@/utils/validation'
 
 interface EditRewardPerPayoutProps {
@@ -46,8 +48,13 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
     rewardPerPayout,
   } = validator.config
 
+  const tokenUnitName = validator.rewardToken?.params['unit-name']
+  const tokenDecimals = validator.rewardToken?.params.decimals
+
+  const rewardPerPayoutWholeUnits = convertFromBaseUnits(rewardPerPayout, tokenDecimals)
+
   const defaultValues = {
-    rewardPerPayout: String(Number(rewardPerPayout) || ''),
+    rewardPerPayout: String(rewardPerPayoutWholeUnits || ''),
   }
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -85,6 +92,15 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         throw new Error('No active address')
       }
 
+      if (!validator.rewardToken) {
+        throw new Error('No reward token found')
+      }
+
+      const newRewardPerPayoutBaseUnits = convertToBaseUnits(
+        values.rewardPerPayout,
+        validator.rewardToken.params.decimals,
+      )
+
       toast.loading('Sign transactions to update reward amount per payout...', { id: toastId })
 
       await changeValidatorRewardInfo(
@@ -93,7 +109,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
         entryGatingAddress,
         entryGatingAssets,
         gatingAssetMinBalance,
-        BigInt(values.rewardPerPayout),
+        BigInt(newRewardPerPayoutBaseUnits),
         transactionSigner,
         activeAddress,
       )
@@ -121,7 +137,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
   return (
     <EditValidatorModal
       title="Edit Reward Per Payout"
-      description={`Set the amount of reward tokens paid out each epoch for Validator ${validator.id}`}
+      description={`Set the amount of ${tokenUnitName || 'reward tokens'} paid out each epoch for Validator ${validator.id}`}
       open={isOpen}
       onOpenChange={handleOpenChange}
     >
@@ -137,6 +153,7 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
                   <FormControl>
                     <Input placeholder="" {...field} />
                   </FormControl>
+                  <FormDescription>Enter amount in whole units (not base units)</FormDescription>
                   <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
                 </FormItem>
               )}

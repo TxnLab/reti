@@ -1,4 +1,5 @@
 import { QueryClient, queryOptions } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import { CacheRequestConfig } from 'axios-cache-interceptor'
 import { fetchAssetHoldings, fetchBalance, fetchBlockTimes } from '@/api/algod'
 import {
@@ -12,8 +13,8 @@ import {
   fetchValidatorPools,
   fetchValidators,
 } from '@/api/contracts'
-import { fetchNfd } from '@/api/nfd'
-import { NfdGetNFDParams } from '@/interfaces/nfd'
+import { fetchNfd, fetchNfdReverseLookup } from '@/api/nfd'
+import { Nfd, NfdGetLookupParams, NfdGetNFDParams } from '@/interfaces/nfd'
 
 export const validatorsQueryOptions = (queryClient: QueryClient) =>
   queryOptions({
@@ -75,6 +76,31 @@ export const nfdQueryOptions = (
     queryKey: ['nfd', String(nameOrId), params],
     queryFn: () => fetchNfd(String(nameOrId), params, options),
     enabled: !!nameOrId,
+    staleTime: 1000 * 60 * 5, // 5 mins
+    retry: (failureCount, error) => {
+      if (error instanceof AxiosError) {
+        return error.response?.status !== 404 && failureCount < 3
+      }
+      return false
+    },
+  })
+
+export const nfdLookupQueryOptions = (
+  address: string | null,
+  params: Omit<NfdGetLookupParams, 'address'> = { view: 'thumbnail' },
+  options: CacheRequestConfig = {},
+) =>
+  queryOptions<Nfd | null, AxiosError>({
+    queryKey: ['nfd-lookup', address, params],
+    queryFn: () => fetchNfdReverseLookup(String(address), params, options),
+    enabled: !!address,
+    staleTime: 1000 * 60 * 5, // 5 mins
+    retry: (failureCount, error) => {
+      if (error instanceof AxiosError) {
+        return error.response?.status !== 404 && failureCount < 3
+      }
+      return false
+    },
   })
 
 export const validatorPoolsQueryOptions = (validatorId: number) =>
@@ -103,7 +129,7 @@ export const stakesQueryOptions = (staker: string | null) =>
 export const blockTimeQueryOptions = queryOptions({
   queryKey: ['block-times'],
   queryFn: () => fetchBlockTimes(),
-  staleTime: 1000 * 60 * 30, // every 30 mins
+  staleTime: 1000 * 60 * 30, // 30 mins
 })
 
 export const poolApyQueryOptions = (poolAppId: number, staleTime?: number) =>

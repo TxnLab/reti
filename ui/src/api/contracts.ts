@@ -975,6 +975,7 @@ export async function fetchPoolInfo(
     const poolAddress = poolAppRef.appAddress
 
     return {
+      poolId: poolKey.poolId,
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
       totalAlgoStaked,
@@ -1023,6 +1024,7 @@ export async function fetchValidatorPools(
     }
 
     return poolsInfo.map(([poolAppId, totalStakers, totalAlgoStaked], i) => ({
+      poolId: i + 1,
       poolAppId: Number(poolAppId),
       totalStakers: Number(totalStakers),
       totalAlgoStaked,
@@ -1138,7 +1140,10 @@ export async function changeValidatorNfd(
 
   return validatorClient
     .compose()
-    .changeValidatorNfd({ validatorId, nfdAppId, nfdName })
+    .changeValidatorNfd(
+      { validatorId, nfdAppId, nfdName },
+      { sendParams: { fee: AlgoAmount.MicroAlgos(2000) } },
+    )
     .execute({ populateAppCallResources: true })
 }
 
@@ -1197,6 +1202,61 @@ export async function fetchPoolApy(poolAppId: number): Promise<number> {
     const poolApy = Number(ewma) / 10000
 
     return poolApy
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+export async function linkPoolToNfd(
+  poolAppId: number,
+  nfdName: string,
+  nfdAppId: number,
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+) {
+  try {
+    const nfdAppAddress = algosdk.getApplicationAddress(nfdAppId)
+    const poolAppAddress = algosdk.getApplicationAddress(poolAppId)
+
+    const boxStorageMbrAmount = AlgoAmount.MicroAlgos(20500)
+    const feeAmount = AlgoAmount.MicroAlgos(5000)
+
+    const payBoxStorageMbrTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: activeAddress,
+      to: nfdAppAddress,
+      amount: boxStorageMbrAmount.microAlgos,
+      suggestedParams: await ParamsCache.getSuggestedParams(),
+    })
+
+    const updateNfdAppCall = algosdk.makeApplicationNoOpTxnFromObject({
+      appIndex: nfdAppId,
+      from: activeAddress,
+      suggestedParams: await ParamsCache.getSuggestedParams(),
+      ...algokit.getAppArgsForTransaction({
+        appArgs: [
+          new TextEncoder().encode('update_field'),
+          new TextEncoder().encode('u.cav.algo.a'),
+          algosdk.decodeAddress(poolAppAddress).publicKey,
+        ],
+      }),
+    })
+
+    const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
+
+    await stakingPoolClient
+      .compose()
+      .addTransaction(payBoxStorageMbrTxn)
+      .addTransaction(updateNfdAppCall)
+      .linkToNfd(
+        { nfdAppId, nfdName },
+        {
+          sendParams: {
+            fee: feeAmount,
+          },
+        },
+      )
+      .execute({ populateAppCallResources: true })
   } catch (error) {
     console.error(error)
     throw error

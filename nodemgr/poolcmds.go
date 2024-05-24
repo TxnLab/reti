@@ -47,16 +47,19 @@ func GetPoolCmdOpts() *cli.Command {
 				},
 			},
 			{
-				Name:    "ledger",
-				Aliases: []string{"l"},
-				Usage:   "List detailed ledger for a specific pool",
-				Action:  PoolLedger,
+				Name:   "ledger",
+				Usage:  "List detailed ledger for a specific pool",
+				Action: PoolLedger,
 				Flags: []cli.Flag{
 					&cli.UintFlag{
 						Name:     "pool",
 						Usage:    "Pool id (the number in 'pool list')",
 						Value:    1,
 						Required: true,
+					},
+					&cli.UintFlag{
+						Name:  "validator",
+						Usage: "validator id (if desired to view arbitrary validator)",
 					},
 					&cli.BoolFlag{
 						Name:  "nfd",
@@ -289,20 +292,33 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 }
 
 func PoolLedger(ctx context.Context, command *cli.Command) error {
-	var info = App.retiClient.Info()
+	var validatorId = App.retiValidatorID
+
+	if command.Uint("validator") != 0 {
+		validatorId = command.Uint("validator")
+	}
+	config, err := App.retiClient.GetValidatorConfig(validatorId)
+	if err != nil {
+		return fmt.Errorf("get validator config err:%w", err)
+	}
+	pools, err := App.retiClient.GetValidatorPools(validatorId)
+	if err != nil {
+		return fmt.Errorf("unable to GetValidatorPools: %w", err)
+	}
+
 	poolId := int(command.Uint("pool"))
 	if poolId == 0 {
 		return fmt.Errorf("pool numbers must start at 1.  See the pool list -all output for list")
 	}
-	if poolId > len(info.Pools) {
+	if poolId > len(pools) {
 		return fmt.Errorf("pool with id %d does not exist. See the pool list -all output for list", poolId)
 	}
 	params, _ := App.algoClient.SuggestedParams().Do(ctx)
 
-	lastPayout, err := App.retiClient.GetLastPayout(info.Pools[poolId-1].PoolAppId)
-	nextEpoch := lastPayout - (lastPayout % uint64(info.Config.EpochRoundLength)) + uint64(info.Config.EpochRoundLength)
+	lastPayout, err := App.retiClient.GetLastPayout(pools[poolId-1].PoolAppId)
+	nextEpoch := lastPayout - (lastPayout % uint64(config.EpochRoundLength)) + uint64(config.EpochRoundLength)
 	if nextEpoch < uint64(params.FirstRoundValid) {
-		nextEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(info.Config.EpochRoundLength))
+		nextEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(config.EpochRoundLength))
 	}
 	pctTimeInEpoch := func(stakerEntry uint64) int {
 		if nextEpoch == 0 {
@@ -311,7 +327,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		if nextEpoch < stakerEntry {
 			return 0
 		}
-		timeInEpoch := (nextEpoch - stakerEntry) * 1000 / uint64(info.Config.EpochRoundLength)
+		timeInEpoch := (nextEpoch - stakerEntry) * 1000 / uint64(config.EpochRoundLength)
 		if timeInEpoch < 0 {
 			timeInEpoch = 0
 		}
@@ -321,12 +337,12 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		return int(timeInEpoch / 10)
 	}
 
-	ledger, err := App.retiClient.GetLedgerForPool(info.Pools[poolId-1].PoolAppId)
+	ledger, err := App.retiClient.GetLedgerForPool(pools[poolId-1].PoolAppId)
 	if err != nil {
 		return fmt.Errorf("unable to GetLedgerForPool: %w", err)
 	}
 
-	rewardAvail := App.retiClient.PoolAvailableRewards(info.Pools[poolId-1].PoolAppId, info.Pools[poolId-1].TotalAlgoStaked)
+	rewardAvail := App.retiClient.PoolAvailableRewards(pools[poolId-1].PoolAppId, pools[poolId-1].TotalAlgoStaked)
 
 	var nfdLookup *nfdonchain.NfdApi
 	if command.Bool("nfd") {
@@ -338,7 +354,7 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(tw, "account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Round\t")
+	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Round\t")
 	for _, stakerData := range ledger {
 		if stakerData.Account == types.ZeroAddress {
 			continue
@@ -356,16 +372,16 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%d\t\n", stakerName, algo.FormattedAlgoAmount(stakerData.Balance), algo.FormattedAlgoAmount(stakerData.TotalRewarded),
 			stakerData.RewardTokenBalance, pctTimeInEpoch(stakerData.EntryRound), stakerData.EntryRound)
 	}
-	apr, _ := App.retiClient.GetAvgApr(info.Pools[poolId-1].PoolAppId)
+	apr, _ := App.retiClient.GetAvgApr(pools[poolId-1].PoolAppId)
 	fmt.Fprintf(tw, "Reward Avail: %s\t\n", algo.FormattedAlgoAmount(rewardAvail))
-	stakeAccum, _ := App.retiClient.GetStakeAccum(info.Pools[poolId-1].PoolAppId)
+	stakeAccum, _ := App.retiClient.GetStakeAccum(pools[poolId-1].PoolAppId)
 	stakeAccum.Div(stakeAccum, big.NewInt(30857))
 	stakeAccum.Div(stakeAccum, big.NewInt(1e6))
 	fmt.Fprintf(tw, "Avg Stake: %s\t\n", stakeAccum.String())
 	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
 	floatApr.Quo(floatApr, big.NewFloat(10000.0))
 	fmt.Fprintf(tw, "APR %%: %s\t\n", floatApr.String())
-	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(info.Config.EpochRoundLength)))
+	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(config.EpochRoundLength)))
 	fmt.Fprintf(tw, "Next Payout: %d\t\n", nextEpoch)
 	tw.Flush()
 	slog.Info(out.String())

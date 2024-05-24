@@ -249,11 +249,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         throw new Error('No active address')
       }
 
+      if (!rewardToken) {
+        throw new Error('No reward token entered')
+      }
+
       toast.loading('Sign transactions to add validator...', { id: toastId })
 
       const rewardPerPayout = convertToBaseUnits(
-        Number(values.rewardPerPayout),
-        Number(rewardToken?.params.decimals || 0),
+        values.rewardPerPayout,
+        rewardToken.params.decimals,
       )
 
       const epochRoundLength = getEpochLengthBlocks(
@@ -707,6 +711,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <Input placeholder="" {...field} />
                     </FormControl>
+                    <FormDescription>Enter amount in whole units (not base units)</FormDescription>
                     <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
                   </FormItem>
                 )}
