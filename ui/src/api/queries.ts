@@ -1,9 +1,10 @@
-import { queryOptions } from '@tanstack/react-query'
+import { QueryClient, queryOptions } from '@tanstack/react-query'
 import { CacheRequestConfig } from 'axios-cache-interceptor'
 import { fetchAssetHoldings, fetchBalance, fetchBlockTimes } from '@/api/algod'
 import {
   fetchMbrAmounts,
   fetchNodePoolAssignments,
+  fetchPoolApy,
   fetchProtocolConstraints,
   fetchStakedInfoForPool,
   fetchStakerValidatorData,
@@ -14,12 +15,13 @@ import {
 import { fetchNfd } from '@/api/nfd'
 import { NfdGetNFDParams } from '@/interfaces/nfd'
 
-export const validatorsQueryOptions = queryOptions({
-  queryKey: ['validators'],
-  queryFn: () => fetchValidators(),
-  // staleTime: Infinity,
-  retry: false,
-})
+export const validatorsQueryOptions = (queryClient: QueryClient) =>
+  queryOptions({
+    queryKey: ['validators'],
+    queryFn: () => fetchValidators(queryClient),
+    // staleTime: Infinity,
+    retry: false,
+  })
 
 export const validatorQueryOptions = (validatorId: number | string) =>
   queryOptions({
@@ -103,3 +105,11 @@ export const blockTimeQueryOptions = queryOptions({
   queryFn: () => fetchBlockTimes(),
   staleTime: 1000 * 60 * 30, // every 30 mins
 })
+
+export const poolApyQueryOptions = (poolAppId: number, staleTime?: number) =>
+  queryOptions({
+    queryKey: ['pool-apy', poolAppId],
+    queryFn: () => fetchPoolApy(poolAppId),
+    enabled: !!poolAppId,
+    staleTime: staleTime || 1000 * 60 * 60, // 1 hour
+  })

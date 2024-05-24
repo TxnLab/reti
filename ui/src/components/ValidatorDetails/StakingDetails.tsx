@@ -1,9 +1,11 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { BarList, EventProps, ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Ban, Copy, Signpost } from 'lucide-react'
 import * as React from 'react'
+import { poolApyQueryOptions } from '@/api/queries'
 import { AddStakeModal } from '@/components/AddStakeModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { ErrorAlert } from '@/components/ErrorAlert'
@@ -21,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
+import { useBlockTime } from '@/hooks/useBlockTime'
 import { useStakersChartData } from '@/hooks/useStakersChartData'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
@@ -65,6 +68,16 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     selectedPool,
     validatorId: validator.id,
   })
+
+  const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
+
+  // Set poolApyQuery staleTime to epoch length in ms
+  const blockTime = useBlockTime()
+  const staleTime = validator.config.epochRoundLength * blockTime.ms
+
+  // Fetch APY for selected pool (setting poolAppId to 0 disables query)
+  const poolApyQuery = useQuery(poolApyQueryOptions(selectedPoolInfo?.poolAppId || 0, staleTime))
+  const selectedPoolApy = poolApyQuery.data
 
   const valueFormatter = (v: number) => (
     <AlgoDisplayAmount
@@ -135,8 +148,6 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     setSelectedPool(newValue)
   }
 
-  const selectedPoolInfo = selectedPool === 'all' ? null : poolsInfo[Number(selectedPool)]
-
   // @todo: clean this way up
   const numPools = validator.state.numPools
   const hardMaxDividedBetweenPools =
@@ -173,6 +184,16 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Total Pools</dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">
                   {validator.state.numPools}
+                </dd>
+              </div>
+              <div className="py-4 grid grid-cols-2 gap-4">
+                <dt className="text-sm font-medium leading-6 text-muted-foreground">Avg APY</dt>
+                <dd className="flex items-center gap-x-2 text-sm leading-6">
+                  {validator.apy ? (
+                    `${validator.apy}%`
+                  ) : (
+                    <span className="text-muted-foreground">--</span>
+                  )}
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-2 gap-4">
@@ -263,6 +284,17 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
               <dd className="flex items-center gap-x-2 text-sm">
                 {selectedPoolInfo.algodVersion ? (
                   <span className="font-mono">{selectedPoolInfo.algodVersion}</span>
+                ) : (
+                  <span className="text-muted-foreground">--</span>
+                )}
+              </dd>
+            </div>
+
+            <div className="py-4 grid grid-cols-2 gap-4">
+              <dt className="text-sm font-medium leading-6 text-muted-foreground">APY</dt>
+              <dd className="flex items-center gap-x-2 text-sm leading-6">
+                {selectedPoolApy ? (
+                  `${selectedPoolApy}%`
                 ) : (
                   <span className="text-muted-foreground">--</span>
                 )}
