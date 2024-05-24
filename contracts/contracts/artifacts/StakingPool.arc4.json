@@ -124,7 +124,7 @@
     },
     {
       "name": "payTokenReward",
-      "desc": "[Internal protocol method] Remove a specified amount of 'community token' rewards for a staker.This can ONLY be called by our validator and only if we're pool 1 - with the token.",
+      "desc": "[Internal protocol method] Remove a specified amount of 'community token' rewards for a staker.This can ONLY be called by our validator and only if we're pool 1 - with the token.Note: this can also be called by validator as part of OWNER wanting to send the reward tokenssomewhere else (ie if they're sunsetting their validator and need the reward tokens back).It's up to the validator to ensure that the balance in rewardTokenHeldBack is honored.",
       "args": [
         {
           "name": "staker",

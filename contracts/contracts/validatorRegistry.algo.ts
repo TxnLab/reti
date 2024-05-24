@@ -1000,7 +1000,10 @@ export class ValidatorRegistry extends Contract {
      * new key goes online on new node soon after (320 rounds after it goes online)
      * No-op if success, asserts if not found or can't move  (no space in target)
      * [ ONLY OWNER OR MANAGER CAN CHANGE ]
-     * Only callable by owner or manager
+     *
+     * @param {ValidatorIdType} validatorId - The id of the validator.
+     * @param {uint64} poolAppId
+     * @param {uint64} nodeNum
      */
     movePoolToNode(validatorId: ValidatorIdType, poolAppId: uint64, nodeNum: uint64): void {
         // Must be called by the owner or manager of the validator.
@@ -1032,6 +1035,42 @@ export class ValidatorRegistry extends Contract {
             }
         }
         throw Error("couldn't find pool app id in nodes to move")
+    }
+
+    /**
+     * Sends the reward tokens held in pool 1 to specified receiver.
+     * This is intended to be used by the owner when they want to get reward tokens 'back' which they sent to
+     * the first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim will
+     * NOT be sent as they must be held back for stakers to later claim.
+     * [ ONLY OWNER CAN CALL]
+     *
+     * @param {ValidatorIdType} validatorId - The id of the validator.
+     * @param {Address} receiver - the account to send the tokens to (must already be opted-in to the reward token)
+     * @returns {uint64} the amount of reward token sent
+     */
+    emptyTokenRewards(validatorId: ValidatorIdType, receiver: Address): uint64 {
+        assert(
+            this.txn.sender === this.validatorList(validatorId).value.config.owner,
+            'can only be called by validator owner',
+        )
+        const rewardTokenId = this.validatorList(validatorId).value.config.rewardTokenId
+        const rewardTokenHeldBack = this.validatorList(validatorId).value.state.rewardTokenHeldBack
+        assert(rewardTokenId !== 0, "this validator doesn't have a reward token defined")
+        const poolOneAppId = AppID.fromUint64(this.validatorList(validatorId).value.pools[0].poolAppId)
+        // get reward token balance in pool 1 (excluding the hold back amount)
+        const tokenRewardBal =
+            poolOneAppId.address.assetBalance(AssetID.fromUint64(rewardTokenId)) - rewardTokenHeldBack
+
+        // call pool 1 to send the token (minus the amount reserved) to the receiver
+        sendMethodCall<typeof StakingPool.prototype.payTokenReward>({
+            applicationID: poolOneAppId,
+            methodArgs: [receiver, rewardTokenId, tokenRewardBal],
+        })
+        assert(
+            poolOneAppId.address.assetBalance(AssetID.fromUint64(rewardTokenId)) === rewardTokenHeldBack,
+            'balance of remaining reward tokens should match the held back amount',
+        )
+        return tokenRewardBal
     }
 
     // ======
