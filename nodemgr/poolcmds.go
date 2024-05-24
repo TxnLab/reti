@@ -47,10 +47,9 @@ func GetPoolCmdOpts() *cli.Command {
 				},
 			},
 			{
-				Name:    "ledger",
-				Aliases: []string{"l"},
-				Usage:   "List detailed ledger for a specific pool",
-				Action:  PoolLedger,
+				Name:   "ledger",
+				Usage:  "List detailed ledger for a specific pool",
+				Action: PoolLedger,
 				Flags: []cli.Flag{
 					&cli.UintFlag{
 						Name:     "pool",
