@@ -1749,6 +1749,7 @@ describe('StakeWTokenWRewards', () => {
 
     let validatorId: number
     let validatorOwnerAccount: Account
+    let tokenCreatorAccount: Account
     let validatorConfig: ValidatorConfig
     const stakerAccounts: Account[] = []
     let poolAppId: bigint
@@ -1764,7 +1765,7 @@ describe('StakeWTokenWRewards', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Create a reward token to pay out to stakers
-        const tokenCreatorAccount = await getTestAccount(
+        tokenCreatorAccount = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
             fixture.context.algod,
             fixture.context.kmd,
@@ -2076,6 +2077,57 @@ describe('StakeWTokenWRewards', () => {
             stakersPriorToReward,
             stakersAfterReward,
             epochRoundLength,
+        )
+
+        // DON'T claim!  we want some tokens remaining to be paid out left for following reclaimTokenRewards test
+    })
+
+    test('reclaimTokenRewards', async () => {
+        // as 'owner' get tokens back from reward pool - but we should only get back what's not held back
+        // so we verify some are held back and that we receive everything but that.
+        const pool1Address = getApplicationAddress(firstPoolKey.poolAppId)
+        const rewardTokenBalance = await fixture.context.algod
+            .accountAssetInformation(pool1Address, Number(rewardTokenID))
+            .do()
+
+        const validatorCurState = await getValidatorState(validatorMasterClient, validatorId)
+        const tokensHeldBack = validatorCurState.rewardTokenHeldBack
+        expect(tokensHeldBack).toBeGreaterThan(0n)
+
+        const ownerTokenBalPre = await fixture.context.algod
+            .accountAssetInformation(tokenCreatorAccount.addr, Number(rewardTokenID))
+            .do()
+
+        // should fail - not owner of validator
+        await expect(
+            validatorMasterClient.emptyTokenRewards(
+                { validatorId, receiver: tokenCreatorAccount.addr },
+                { sendParams: { fee: AlgoAmount.MicroAlgos(3000), populateAppCallResources: true } },
+            ),
+        ).rejects.toThrowError()
+        // now get client with our owner as caller
+        const valAppRef = await validatorMasterClient.appClient.getAppReference()
+        const validatorClient = new ValidatorRegistryClient(
+            {
+                sender: validatorOwnerAccount,
+                resolveBy: 'id',
+                id: valAppRef.appId,
+            },
+            fixture.context.algod,
+        )
+
+        const sentAmount = (
+            await validatorClient.emptyTokenRewards(
+                { validatorId, receiver: tokenCreatorAccount.addr },
+                { sendParams: { fee: AlgoAmount.MicroAlgos(3000), populateAppCallResources: true } },
+            )
+        ).return!
+        expect(sentAmount).toEqual(BigInt(rewardTokenBalance['asset-holding'].amount) - tokensHeldBack)
+        const ownerTokenBal = await fixture.context.algod
+            .accountAssetInformation(tokenCreatorAccount.addr, Number(rewardTokenID))
+            .do()
+        expect(ownerTokenBal['asset-holding'].amount).toEqual(
+            ownerTokenBalPre['asset-holding'].amount + Number(sentAmount),
         )
     })
 })

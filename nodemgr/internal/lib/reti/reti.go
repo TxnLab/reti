@@ -105,6 +105,13 @@ func (r *Reti) LoadState(ctx context.Context) error {
 
 	// Now load all the data from the chain for our validator, etc.
 	if r.ValidatorId != 0 {
+		numValidators, err := r.GetNumValidators()
+		if err != nil {
+			return fmt.Errorf("unable to GetNumValidators: %w", err)
+		}
+		if r.ValidatorId > numValidators {
+			return fmt.Errorf("validator id:%d is invalid, maximum is %d", r.ValidatorId, numValidators)
+		}
 		config, err := r.GetValidatorConfig(r.ValidatorId)
 		if err != nil {
 			return fmt.Errorf("unable to GetValidatorConfig: %w", err)
