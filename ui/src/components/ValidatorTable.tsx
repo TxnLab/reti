@@ -240,6 +240,15 @@ export function ValidatorTable({
       },
     },
     {
+      id: 'apy',
+      accessorFn: (row) => row.apy,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="APY" />,
+      cell: ({ row }) => {
+        if (!row.original.apy) return <span className="text-muted-foreground">--</span>
+        return <span>{formatAmount(row.original.apy, { precision: 3 })}%</span>
+      },
+    },
+    {
       id: 'reward',
       accessorFn: (row) => row.state.totalStakers, // @todo: fix this
       header: ({ column }) => <DataTableColumnHeader column={column} title="Avail. Rewards" />,

@@ -1,4 +1,4 @@
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { constraintsQueryOptions, stakesQueryOptions, validatorsQueryOptions } from '@/api/queries'
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/')({
     }
   },
   loader: ({ context: { queryClient, validatorsQueryOptions } }) => {
-    queryClient.ensureQueryData(validatorsQueryOptions)
+    queryClient.ensureQueryData(validatorsQueryOptions(queryClient))
   },
   component: Dashboard,
   pendingComponent: () => <Loading size="lg" className="opacity-50" />,
@@ -29,7 +29,8 @@ export const Route = createFileRoute('/')({
 })
 
 function Dashboard() {
-  const validatorsQuery = useSuspenseQuery(validatorsQueryOptions)
+  const queryClient = useQueryClient()
+  const validatorsQuery = useSuspenseQuery(validatorsQueryOptions(queryClient))
   const validators = validatorsQuery.data
 
   const constraintsQuery = useSuspenseQuery(constraintsQueryOptions)

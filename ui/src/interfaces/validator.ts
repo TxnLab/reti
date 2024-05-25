@@ -88,6 +88,7 @@ export type Validator = {
   nodePoolAssignment: NodePoolAssignmentConfig
   rewardToken?: Asset
   nfd?: Nfd
+  apy?: number
 }
 
 export interface ValidatorPoolKey {

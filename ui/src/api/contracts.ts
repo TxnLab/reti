@@ -1,6 +1,7 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { fetchAsset, isOptedInToAsset } from '@/api/algod'
 import {
@@ -77,12 +78,20 @@ export function callGetValidatorState(
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
+/**
+ * Fetches the validator's configuration, state, pools info, node pool assignments, reward token
+ * (if one is configured), NFD for info, and APY for all pools. When this is called by the
+ * `fetchValidators` function, the `queryClient` parameter is passed in to seed the query cache.
+ * @param {string | number} validatorId - The validator's ID.
+ * @param {QueryClient} queryClient - The query client to seed the query cache.
+ * @return {Promise<Validator>} The validator object.
+ */
 export async function fetchValidator(
-  validatorId: string | number | bigint,
-  client?: ValidatorRegistryClient,
-) {
+  validatorId: string | number,
+  queryClient?: QueryClient,
+): Promise<Validator> {
   try {
-    const validatorClient = client || (await getSimulateValidatorClient())
+    const validatorClient = await getSimulateValidatorClient()
 
     const [config, state, validatorPoolData, nodePoolAssignments] = await Promise.all([
       callGetValidatorConfig(Number(validatorId), validatorClient),
@@ -118,6 +127,22 @@ export async function fetchValidator(
       validator.nfd = nfd
     }
 
+    const poolApyPromises = validator.pools.map(async (pool) => {
+      const poolApy = await fetchPoolApy(pool.poolAppId)
+      // Seed the query cache with the pool APY data
+      queryClient?.setQueryData(['pool-apy', pool.poolAppId], poolApy)
+
+      return poolApy
+    })
+
+    const poolApys = await Promise.all(poolApyPromises)
+    const avgApy = poolApys.reduce((acc, apy) => acc + apy, 0) / (poolApys.length || 1)
+
+    validator.apy = avgApy
+
+    // Seed the query cache with the validator data
+    queryClient?.setQueryData(['validator', String(validatorId)], validator)
+
     return validator
   } catch (error) {
     console.error(error)
@@ -125,9 +150,9 @@ export async function fetchValidator(
   }
 }
 
-export async function fetchValidators(client?: ValidatorRegistryClient) {
+export async function fetchValidators(queryClient: QueryClient) {
   try {
-    const validatorClient = client || (await getSimulateValidatorClient())
+    const validatorClient = await getSimulateValidatorClient()
 
     // App call to fetch total number of validators
     const numValidatorsResponse = await callGetNumValidators(validatorClient)
@@ -146,7 +171,7 @@ export async function fetchValidators(client?: ValidatorRegistryClient) {
         { length: Math.min(batchSize, Number(numValidators) - i) },
         (_, index) => {
           const validatorId = i + index + 1
-          return fetchValidator(validatorId, validatorClient)
+          return fetchValidator(validatorId, queryClient)
         },
       )
 
@@ -1159,6 +1184,28 @@ export async function changeValidatorRewardInfo(
       rewardPerPayout,
     })
     .execute({ populateAppCallResources: true })
+}
+
+export async function fetchPoolApy(poolAppId: number): Promise<number> {
+  try {
+    const stakingPoolClient = await getSimulateStakingPoolClient(poolAppId)
+    const stakingPoolGS = await stakingPoolClient.getGlobalState()
+
+    const ewmaBytes = stakingPoolGS.ewma?.asByteArray()
+
+    if (!ewmaBytes) {
+      throw new Error(`Error fetching EWMA for pool ${poolAppId}`)
+    }
+
+    const ewma = algosdk.bytesToBigInt(ewmaBytes)
+
+    const poolApy = Number(ewma) / 10000
+
+    return poolApy
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
 }
 
 export async function linkPoolToNfd(
