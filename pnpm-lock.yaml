@@ -69,8 +69,8 @@ importers:
   contracts/bootstrap:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 6.0.5-beta.1
-        version: 6.0.5-beta.1(algosdk@2.7.0)
+        specifier: 6.0.5
+        version: 6.0.5(algosdk@2.7.0)
       algosdk:
         specifier: 2.7.0
         version: 2.7.0
