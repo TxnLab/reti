@@ -2650,7 +2650,7 @@ epochBalanceUpdate:
 	// *if31_condition
 	// contracts/stakingPool.algo.ts:678
 	// validatorConfig.manager !== validatorConfig.validatorCommissionAddress &&
-	//                     validatorConfig.manager.balance - validatorConfig.manager.minBalance < 1_000_000
+	//                     validatorConfig.manager.balance - validatorConfig.manager.minBalance < 2_100_000
 	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)
 	extract 40 32
 	frame_dig 0 // validatorConfig: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)
@@ -2667,7 +2667,7 @@ epochBalanceUpdate:
 	acct_params_get AcctMinBalance
 	pop
 	-
-	int 1_000_000
+	int 2_100_000
 	<
 	&&
 
@@ -2676,16 +2676,16 @@ epochBalanceUpdate:
 
 	// *if31_consequent
 	// contracts/stakingPool.algo.ts:681
-	// managerTopOff = validatorCommissionPaidOut < 1_000_000 ? validatorCommissionPaidOut : 1_000_000
+	// managerTopOff = validatorCommissionPaidOut < 2_100_000 ? validatorCommissionPaidOut : 2_100_000
 	frame_dig 16 // validatorCommissionPaidOut: uint64
-	int 1_000_000
+	int 2_100_000
 	<
 	bz *ternary2_false
 	frame_dig 16 // validatorCommissionPaidOut: uint64
 	b *ternary2_end
 
 *ternary2_false:
-	int 1_000_000
+	int 2_100_000
 
 *ternary2_end:
 	frame_bury 21 // managerTopOff: uint64
