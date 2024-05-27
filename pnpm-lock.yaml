@@ -11,8 +11,8 @@ importers:
   contracts:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 6.0.5-beta.1
-        version: 6.0.5-beta.1(algosdk@2.7.0)
+        specifier: 6.0.5
+        version: 6.0.5(algosdk@2.7.0)
       algosdk:
         specifier: 2.7.0
         version: 2.7.0
@@ -372,16 +372,6 @@ packages:
 
   /@algorandfoundation/algokit-utils@6.0.5(algosdk@2.7.0):
     resolution: {integrity: sha512-/a4pD62nQ58r6JnuNFZm9KAC9D8M7JNeAYTaIuA4TwmdLeypdUA9SD8BiaLAI8aR/GLaaPEILHnSbRSlPq9GPw==}
-    engines: {node: '>=18.0'}
-    peerDependencies:
-      algosdk: ^2.7.0
-    dependencies:
-      algosdk: 2.7.0
-      buffer: 6.0.3
-    dev: false
-
-  /@algorandfoundation/algokit-utils@6.0.5-beta.1(algosdk@2.7.0):
-    resolution: {integrity: sha512-5T2mOE8TBAJQCzw0hqoeiIYSDBmk10Wwx26axvI0aVhiRkgaPnOWW3lsQJZlCQl8INQifGHoDtvKg/TEKXONFQ==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
