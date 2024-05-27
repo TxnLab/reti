@@ -672,13 +672,13 @@ export class StakingPool extends Contract {
             // ---
             if (validatorCommissionPaidOut > 0) {
                 // Just to make sure the manager account (which triggers the epochBalanceUpdate calls!) doesn't
-                // run out of funds - we'll take up to 1 ALGO off our commission to keep it running.
+                // run out of funds - we'll take up to 2.1 ALGO off our commission to keep it running.
                 let managerTopOff = 0
                 if (
                     validatorConfig.manager !== validatorConfig.validatorCommissionAddress &&
-                    validatorConfig.manager.balance - validatorConfig.manager.minBalance < 1_000_000
+                    validatorConfig.manager.balance - validatorConfig.manager.minBalance < 2_100_000
                 ) {
-                    managerTopOff = validatorCommissionPaidOut < 1_000_000 ? validatorCommissionPaidOut : 1_000_000
+                    managerTopOff = validatorCommissionPaidOut < 2_100_000 ? validatorCommissionPaidOut : 2_100_000
                     sendPayment({
                         amount: managerTopOff,
                         receiver: validatorConfig.manager,
