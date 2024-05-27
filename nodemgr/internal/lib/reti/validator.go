@@ -990,7 +990,10 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 		return err
 	}
 
-	managerAddr, _ := types.DecodeAddress(r.Info().Config.Manager)
+	var (
+		foreignAssets  []uint64
+		managerAddr, _ = types.DecodeAddress(r.Info().Config.Manager)
+	)
 
 	mbrs, err := r.getMbrAmounts(managerAddr)
 	if err != nil {
@@ -999,6 +1002,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 	poolInitMbr := mbrs.PoolInitMbr
 	if r.Info().Config.RewardTokenId != 0 && poolKey.PoolId == 1 {
 		poolInitMbr += 100_000 // cover MBR of reward token asset
+		foreignAssets = append(foreignAssets, r.Info().Config.RewardTokenId)
 	}
 
 	// Now we have to pay MBR into the staking pool itself (!) and tell it to initialize itself
@@ -1025,6 +1029,7 @@ func (r *Reti) CheckAndInitStakingPoolStorage(poolKey *ValidatorPoolKey) error {
 			{AppID: 0, Name: nil}, // extra i/o
 		},
 		ForeignApps:     []uint64{r.RetiAppId},
+		ForeignAssets:   foreignAssets,
 		SuggestedParams: params,
 		OnComplete:      types.NoOpOC,
 		Sender:          managerAddr,
