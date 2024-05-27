@@ -16,7 +16,7 @@
         "prettier:fix": "npx prettier --write ."
     },
     "dependencies": {
-        "@algorandfoundation/algokit-utils": "6.0.5-beta.1",
+        "@algorandfoundation/algokit-utils": "6.0.5",
         "algosdk": "2.7.0"
     },
     "devDependencies": {
