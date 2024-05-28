@@ -302,6 +302,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                           <div className="relative">
                             <Input className="pr-16" {...field} />
                             <Button
+                              type="button"
                               size="sm"
                               variant="outline"
                               className="absolute inset-y-1 right-1.5 h-7 px-2 flex items-center text-muted-foreground text-xs uppercase"
