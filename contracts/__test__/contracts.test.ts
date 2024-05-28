@@ -93,7 +93,7 @@ beforeAll(async () => {
         algod,
     )
 
-    const validatorApp = await validatorMasterClient.create.createApplication({})
+    const validatorApp = await validatorMasterClient.create.createApplication({}, { schema: { extraPages: 3 } })
     // verify that the constructed validator contract is initialized as expected
     expect(validatorApp.appId).toBeDefined()
     expect(validatorApp.appAddress).toBeDefined()

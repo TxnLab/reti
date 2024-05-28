@@ -610,10 +610,7 @@ export class ValidatorRegistry extends Contract {
             clearStateProgram: StakingPool.clearProgram(),
             globalNumUint: StakingPool.schema.global.numUint,
             globalNumByteSlice: StakingPool.schema.global.numByteSlice,
-            // first page is included, we need 'extra' 2k pages, so normally we'd do
-            // size+2047/2048 to handle integer math rounding but instead we can just subtract 1
-            // to get equivalent (ignoring the first 2048)
-            extraProgramPages: (this.stakingPoolApprovalProgram.size - 1) / 2048,
+            extraProgramPages: 3,
             applicationArgs: [
                 // creatingContractID, validatorId, poolId, minEntryStake
                 method('createApplication(uint64,uint64,uint64,uint64)void'),
