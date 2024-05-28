@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
-import { fetchAccountInformation } from '@/api/algod'
+import { fetchAccountAssetInformation, fetchAccountInformation } from '@/api/algod'
 import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
 import { GatingType } from '@/constants/gating'
 import { AssetHolding } from '@/interfaces/algod'
@@ -616,4 +616,27 @@ export function setValidatorQueriesData(queryClient: QueryClient, data: Validato
     ['pool-assignments', String(id)],
     nodePoolAssignment,
   )
+}
+
+export async function fetchRemainingRewardsBalance(validator: Validator): Promise<bigint> {
+  const { rewardTokenId } = validator.config
+  const { rewardTokenHeldBack } = validator.state
+
+  if (!rewardTokenId) {
+    return BigInt(0)
+  }
+
+  const poolAppId = validator.pools[0].poolAppId
+  const poolAddress = algosdk.getApplicationAddress(poolAppId)
+
+  const accountAssetInfo = await fetchAccountAssetInformation(poolAddress, rewardTokenId)
+  const rewardTokenAmount = BigInt(accountAssetInfo['asset-holding'].amount)
+
+  const remainingBalance = rewardTokenAmount - rewardTokenHeldBack
+
+  if (remainingBalance < BigInt(0)) {
+    return BigInt(0)
+  }
+
+  return remainingBalance
 }

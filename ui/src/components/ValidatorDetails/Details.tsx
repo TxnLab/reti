@@ -1,5 +1,6 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { Loading } from '@/components/Loading'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Tooltip } from '@/components/Tooltip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +12,7 @@ import { EditRewardPerPayout } from '@/components/ValidatorDetails/EditRewardPer
 import { EditSunsettingInfo } from '@/components/ValidatorDetails/EditSunsettingInfo'
 import { GatingType } from '@/constants/gating'
 import { Validator } from '@/interfaces/validator'
+import { useRewardBalance } from '@/hooks/useRewardBalance'
 import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
@@ -25,8 +27,31 @@ interface DetailsProps {
 
 export function Details({ validator }: DetailsProps) {
   const { activeAddress } = useWallet()
-
   const isOwner = activeAddress === validator.config.owner
+
+  const rewardBalanceQuery = useRewardBalance(validator)
+
+  const renderRewardBalance = () => {
+    if (rewardBalanceQuery.isLoading) {
+      return <Loading inline />
+    }
+
+    if (rewardBalanceQuery.error || rewardBalanceQuery.data === undefined) {
+      return <span className="text-destructive">Error</span>
+    }
+
+    if (!validator.rewardToken) {
+      return <em className="text-muted-foreground italic">{Number(rewardBalanceQuery.data)}</em>
+    }
+
+    return (
+      <span className="font-mono">
+        {formatAssetAmount(validator.rewardToken, rewardBalanceQuery.data, {
+          unitName: true,
+        })}
+      </span>
+    )
+  }
 
   const renderRewardToken = () => {
     if (validator.config.rewardTokenId === 0) {
@@ -299,6 +324,14 @@ export function Details({ validator }: DetailsProps) {
                       {isOwner && validator.config.rewardTokenId > 0 && (
                         <EditRewardPerPayout validator={validator} />
                       )}
+                    </dd>
+                  </div>
+                  <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
+                    <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                      Reward Token Balance
+                    </dt>
+                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                      {renderRewardBalance()}
                     </dd>
                   </div>
                 </>
