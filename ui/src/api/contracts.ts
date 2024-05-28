@@ -218,10 +218,13 @@ export async function addValidator(
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
   ).returns![0]
 
-  const suggestedParams = await ParamsCache.getSuggestedParams()
+  const params = await ParamsCache.getSuggestedParams()
 
-  suggestedParams.flatFee = true
-  suggestedParams.fee = AlgoAmount.Algos(10.001).microAlgos
+  const suggestedParams = {
+    ...params,
+    flatFee: true,
+    fee: AlgoAmount.Algos(10.001).microAlgos,
+  }
 
   const payValidatorMbr = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     from: activeAddress,
