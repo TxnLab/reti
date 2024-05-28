@@ -43,18 +43,30 @@ const ValidatorsValidatorIdRoute = ValidatorsValidatorIdImport.update({
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
     '/add': {
+      id: '/add'
+      path: '/add'
+      fullPath: '/add'
       preLoaderRoute: typeof AddImport
       parentRoute: typeof rootRoute
     }
     '/validators': {
+      id: '/validators'
+      path: '/validators'
+      fullPath: '/validators'
       preLoaderRoute: typeof ValidatorsImport
       parentRoute: typeof rootRoute
     }
     '/validators/$validatorId': {
+      id: '/validators/$validatorId'
+      path: '/validators/$validatorId'
+      fullPath: '/validators/$validatorId'
       preLoaderRoute: typeof ValidatorsValidatorIdImport
       parentRoute: typeof rootRoute
     }
@@ -63,11 +75,39 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren({
   IndexRoute,
   AddRoute,
   ValidatorsRoute,
   ValidatorsValidatorIdRoute,
-])
+})
 
 /* prettier-ignore-end */
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/add",
+        "/validators",
+        "/validators/$validatorId"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/add": {
+      "filePath": "add.tsx"
+    },
+    "/validators": {
+      "filePath": "validators.tsx"
+    },
+    "/validators/$validatorId": {
+      "filePath": "validators_.$validatorId.tsx"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

@@ -172,7 +172,10 @@ async function main() {
                 algod,
             )
         }
-        validatorApp = await validatorClient.create.createApplication({})
+        validatorApp = await validatorClient.create.createApplication({}, { schema: { extraPages: 3 } })
+
+        console.log(`Validator registry app id is:${validatorApp.appId}`)
+        console.log(`Validator Contract HASH is:${validatorApp.compiledApproval.compiledHash}`)
 
         // Fund the validator w/ 2 ALGO for contract mbr reqs.
         await algokit.transferAlgos(
@@ -194,6 +197,7 @@ async function main() {
             {},
             { sendParams: { populateAppCallResources: true } },
         )
+        console.log(`application ${args.id} updated`)
     }
 
     console.log(
@@ -214,8 +218,6 @@ async function main() {
         })
     }
     await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true, suppressLog: true })
-
-    console.log(`Validator registry app id is:${validatorApp.appId}`)
 
     if (args.network === 'localnet') {
         kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)

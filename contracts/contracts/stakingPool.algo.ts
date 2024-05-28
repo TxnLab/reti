@@ -467,6 +467,9 @@ export class StakingPool extends Contract {
     /**
      * [Internal protocol method] Remove a specified amount of 'community token' rewards for a staker.
      * This can ONLY be called by our validator and only if we're pool 1 - with the token.
+     * Note: this can also be called by validator as part of OWNER wanting to send the reward tokens
+     * somewhere else (ie if they're sunsetting their validator and need the reward tokens back).
+     * It's up to the validator to ensure that the balance in rewardTokenHeldBack is honored.
      * @param staker - the staker account to send rewards to
      * @param rewardToken - id of reward token (to avoid re-entrancy in calling validator back to get id)
      * @param amountToSend - amount to send the staker (there is significant trust here(!) - also why only validator can call us
@@ -475,7 +478,7 @@ export class StakingPool extends Contract {
         // account calling us has to be our creating validator contract
         assert(
             this.txn.sender === AppID.fromUint64(this.creatingValidatorContractAppId.value).address,
-            'stake can only be added via the validator contract',
+            'this can only be called via the validator contract',
         )
         assert(this.poolId.value === 1, 'must be pool 1 in order to be called to pay out token rewards')
         assert(rewardToken !== 0, 'can only claim token rewards from validator that has them')
@@ -669,13 +672,13 @@ export class StakingPool extends Contract {
             // ---
             if (validatorCommissionPaidOut > 0) {
                 // Just to make sure the manager account (which triggers the epochBalanceUpdate calls!) doesn't
-                // run out of funds - we'll take up to 1 ALGO off our commission to keep it running.
+                // run out of funds - we'll take up to 2.1 ALGO off our commission to keep it running.
                 let managerTopOff = 0
                 if (
                     validatorConfig.manager !== validatorConfig.validatorCommissionAddress &&
-                    validatorConfig.manager.balance - validatorConfig.manager.minBalance < 1_000_000
+                    validatorConfig.manager.balance - validatorConfig.manager.minBalance < 2_100_000
                 ) {
-                    managerTopOff = validatorCommissionPaidOut < 1_000_000 ? validatorCommissionPaidOut : 1_000_000
+                    managerTopOff = validatorCommissionPaidOut < 2_100_000 ? validatorCommissionPaidOut : 2_100_000
                     sendPayment({
                         amount: managerTopOff,
                         receiver: validatorConfig.manager,
@@ -955,7 +958,7 @@ export class StakingPool extends Contract {
 
     private getFeeSink(): Address {
         return this.feeSinkAddr
-        // will be like: txn FirstValid; int 1; -; block BlkFeeSink
+        // TODO will be like: txn FirstValid; int 1; -; block BlkFeeSink
         // once available in AVM
     }
 

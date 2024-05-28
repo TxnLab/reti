@@ -85,14 +85,26 @@ func GetValidatorCmdOpts() *cli.Command {
 				Action: DisplayStakerData,
 			},
 			{
-				Name:   "dumpAllStakers",
-				Usage:  "Display info about the validator's current state from the chain",
-				Action: DumpAllStakers,
+				Name:   "exportAllStakers",
+				Usage:  "Exports info about ALL stakers to a .csv file",
+				Action: exportAllStakers,
 			},
 			{
 				Name:   "refundStakers",
 				Usage:  "Remove all stakers from all pools, sending them all their stake (may cost a lot in fees!)",
-				Action: RefundAllStakers,
+				Action: refundAllStakers,
+			},
+			{
+				Name:  "emptyTokenRewards",
+				Usage: "Return available token rewards in pool 1 to specified account.  Typicaly used when sunsetting validator",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "account",
+						Usage:    "The address to send the excess reward tokens to",
+						Required: true,
+					},
+				},
+				Action: emptyTokenRewards,
 			},
 		},
 	}
@@ -290,7 +302,7 @@ func DisplayStakerData(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func DumpAllStakers(ctx context.Context, command *cli.Command) error {
+func exportAllStakers(ctx context.Context, command *cli.Command) error {
 	if App.retiClient.RetiAppId == 0 {
 		return fmt.Errorf("validator not configured")
 	}
@@ -346,7 +358,7 @@ func DumpAllStakers(ctx context.Context, command *cli.Command) error {
 	return os.WriteFile("stakers.csv", []byte(csvData), 0644)
 }
 
-func RefundAllStakers(ctx context.Context, command *cli.Command) error {
+func refundAllStakers(ctx context.Context, command *cli.Command) error {
 	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info().Config.Owner, App.retiClient.Info().Config.Manager})
 	if err != nil {
 		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
@@ -394,6 +406,26 @@ func RefundAllStakers(ctx context.Context, command *cli.Command) error {
 		}, send)
 	}
 	fanOut.Wait()
+
+	return nil
+}
+
+func emptyTokenRewards(ctx context.Context, command *cli.Command) error {
+	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info().Config.Owner})
+	if err != nil {
+		return fmt.Errorf("owner address for your validator doesn't have local keys present")
+	}
+	receiverAddr, err := types.DecodeAddress(command.String("account"))
+	if err != nil {
+		return err
+	}
+	signerAddr, _ := types.DecodeAddress(signer)
+	info := App.retiClient.Info()
+
+	err = App.retiClient.EmptyTokenRewards(info.Config.ID, signerAddr, receiverAddr)
+	if err != nil {
+		misc.Errorf(App.logger, "error emptying token rewards, err:%v", err)
+	}
 
 	return nil
 }

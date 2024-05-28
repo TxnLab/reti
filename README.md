@@ -75,7 +75,7 @@ This section provides instructions for running the protocol and UI in a local Al
 ## Additional Resources
 
 - **TEALScript Contracts**: Explore the smart contracts that power the protocol. [Read more](./contracts/README.md)
-- **Node Daemon**: Learn about the CLI / service daemon which node runners will run as a background service. [Read more](./docs/technical-implementation/reti-node-daemon/README.md)
+- **Node Daemon**: Learn about the CLI / service daemon which node runners will run as a background service. [Read more](https://txnlab.gitbook.io/reti-open-pooling/technical-implementation/reti-node-daemon)
 - **Example UI**: A Vite React project that serves as a dashboard for staking and validator management. [Read more](./ui/README.md)
 
 ## Discord
