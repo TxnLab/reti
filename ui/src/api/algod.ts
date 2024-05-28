@@ -1,6 +1,7 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import {
+  AccountAssetInformation,
   AccountBalance,
   AccountInformation,
   AlgodHttpError,
@@ -80,7 +81,7 @@ export async function fetchAssetHoldings(address: string | null): Promise<AssetH
 export async function fetchAccountAssetInformation(
   address: string | null,
   assetId: number,
-): Promise<AssetHolding> {
+): Promise<AccountAssetInformation> {
   if (!address) {
     throw new Error('No address provided')
   }
@@ -88,8 +89,8 @@ export async function fetchAccountAssetInformation(
     throw new Error('No assetId provided')
   }
   try {
-    const assetHolding = await algodClient.accountAssetInformation(address, assetId).do()
-    return assetHolding as AssetHolding
+    const accountAssetInfo = await algodClient.accountAssetInformation(address, assetId).do()
+    return accountAssetInfo as AccountAssetInformation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.message && error.response) {
