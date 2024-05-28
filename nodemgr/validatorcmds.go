@@ -85,9 +85,9 @@ func GetValidatorCmdOpts() *cli.Command {
 				Action: DisplayStakerData,
 			},
 			{
-				Name:   "dumpAllStakers",
-				Usage:  "Display info about the validator's current state from the chain",
-				Action: DumpAllStakers,
+				Name:   "exportAllStakers",
+				Usage:  "Exports info about ALL stakers to a .csv file",
+				Action: exportAllStakers,
 			},
 			{
 				Name:   "refundStakers",
@@ -290,7 +290,7 @@ func DisplayStakerData(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func DumpAllStakers(ctx context.Context, command *cli.Command) error {
+func exportAllStakers(ctx context.Context, command *cli.Command) error {
 	if App.retiClient.RetiAppId == 0 {
 		return fmt.Errorf("validator not configured")
 	}
