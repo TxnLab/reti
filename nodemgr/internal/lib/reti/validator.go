@@ -1260,6 +1260,7 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, stake
 			err = atc.AddMethodCall(transaction.AddMethodCallParams{
 				AppID:           poolKey.PoolAppId,
 				Method:          gasMethod,
+				ForeignAccounts: []string{staker.String()}, // account MUST be referenced in same txn w/ foreign asset
 				ForeignAssets:   extraAssets,
 				ForeignApps:     extraApps,
 				SuggestedParams: params,
@@ -1321,6 +1322,68 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, stake
 	atc, err = getAtc(2*transaction.MinTxnFee + transaction.MinTxnFee*(simResult.SimulateResponse.TxnGroups[0].AppBudgetAdded/700))
 	if err != nil {
 		return err
+	}
+
+	_, err = atc.Execute(r.algoClient, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Reti) EmptyTokenRewards(id uint64, signer types.Address, receiver types.Address) error {
+	var err error
+
+	params, err := r.algoClient.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	extraApps := []uint64{}
+	extraAssets := []uint64{}
+
+	config, err := r.GetValidatorConfig(id)
+	if err != nil {
+		return fmt.Errorf("get validator config err:%w", err)
+	}
+	pools, err := r.GetValidatorPools(id)
+	if err != nil {
+		return fmt.Errorf("unable to GetValidatorPools: %w", err)
+	}
+
+	if config.RewardTokenId != 0 {
+		extraAssets = append(extraAssets, config.RewardTokenId)
+		// If not pool 1 then we need to add reference for pool 1, so it can be called to update the pool token payout ratio
+		extraApps = append(extraApps, pools[0].PoolAppId)
+	}
+	atc := transaction.AtomicTransactionComposer{}
+	emptyTokenRewards, _ := r.validatorContract.GetMethodByName("emptyTokenRewards")
+
+	err = atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:  r.RetiAppId,
+		Method: emptyTokenRewards,
+		MethodArgs: []any{
+			id,
+			receiver,
+		},
+		ForeignApps:   extraApps,
+		ForeignAssets: extraAssets,
+		BoxReferences: []types.AppBoxReference{
+			{AppID: r.RetiAppId, Name: GetValidatorListBoxName(id)},
+			{AppID: r.RetiAppId, Name: nil}, // extra i/o
+			{AppID: 0, Name: nil},           // extra i/o
+			{AppID: 0, Name: nil},           // extra i/o
+			{AppID: 0, Name: nil},           // extra i/o
+			{AppID: 0, Name: nil},           // extra i/o
+		},
+
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          signer,
+		Signer:          algo.SignWithAccountForATC(r.signer, signer.String()),
+	})
+	if err != nil {
+		return fmt.Errorf("ATC error in composing emptyTokenRewards err:%w", err)
 	}
 
 	_, err = atc.Execute(r.algoClient, context.Background(), 4)
