@@ -23,68 +23,64 @@ type NfdThumbnailProps = (
   className?: string
 }
 
-function NfdThumbnailBase({
-  nfd: nfdProp,
-  nameOrId,
-  link = false,
-  truncate = false,
-  tooltip = false,
-  className = '',
-}: NfdThumbnailProps) {
-  const { data: nfdData, isLoading, error } = useQuery(nfdQueryOptions(nameOrId || ''))
-  const nfd = nfdProp || nfdData
+const NfdThumbnailBase = React.memo(
+  ({
+    nfd: nfdProp,
+    nameOrId,
+    link = false,
+    truncate = false,
+    tooltip = false,
+    className = '',
+  }: NfdThumbnailProps) => {
+    const { data: nfdData, isLoading, error } = useQuery(nfdQueryOptions(nameOrId || ''))
+    const nfd = nfdProp || nfdData
 
-  if (isLoading) {
-    return <span className="text-sm">Loading...</span>
-  }
+    if (isLoading) {
+      return <span className="text-sm">Loading...</span>
+    }
 
-  if (error || !nfd) {
-    return <span className="text-sm text-red-500">Error fetching NFD</span>
-  }
+    if (error || !nfd) {
+      return <span className="text-sm text-red-500">Error fetching NFD</span>
+    }
 
-  const defaultClassName = 'flex items-center gap-x-1.5 text-sm font-semibold text-foreground'
+    const defaultClassName = 'flex items-center gap-x-1.5 text-sm font-semibold text-foreground'
 
-  const renderChildren = () => (
-    <>
-      <div className="flex-shrink-0">
-        <NfdAvatar nfd={nfd} className="h-6 w-6" />
-      </div>
-      <div className={cn({ truncate })}>{nfd.name}</div>
-    </>
-  )
+    const renderChildren = () => (
+      <>
+        <div className="flex-shrink-0">
+          <NfdAvatar nfd={nfd} className="h-6 w-6" />
+        </div>
+        <div className={cn({ truncate })}>{nfd.name}</div>
+      </>
+    )
 
-  const renderThumbnail = () => (
-    <div className={cn(defaultClassName, className)}>{renderChildren()}</div>
-  )
+    const renderThumbnail = () => (
+      <div className={cn(defaultClassName, className)}>{renderChildren()}</div>
+    )
 
-  const renderLink = () => (
-    <a
-      href={getNfdProfileUrl(nfd.name)}
-      target="_blank"
-      rel="noreferrer"
-      className={cn(defaultClassName, className)}
-    >
-      {renderChildren()}
-    </a>
-  )
+    const renderLink = () => (
+      <a
+        href={getNfdProfileUrl(nfd.name)}
+        target="_blank"
+        rel="noreferrer"
+        className={cn(defaultClassName, className)}
+      >
+        {renderChildren()}
+      </a>
+    )
 
-  const renderContent = () => (link ? renderLink() : renderThumbnail())
+    const renderContent = () => (link ? renderLink() : renderThumbnail())
 
-  if (tooltip) {
-    return <Tooltip content={nfd.name}>{renderContent()}</Tooltip>
-  }
+    if (tooltip) {
+      return <Tooltip content={nfd.name}>{renderContent()}</Tooltip>
+    }
 
-  return renderContent()
-}
+    return renderContent()
+  },
+)
 
 const NfdThumbnail = (props: NfdThumbnailProps) => {
-  const MemoizedNfdThumbnail = React.memo(NfdThumbnailBase)
-
-  if (props.nfd) {
-    return <MemoizedNfdThumbnail {...props} />
-  } else {
-    return <NfdThumbnailBase {...props} />
-  }
+  return <NfdThumbnailBase {...props} />
 }
 
 export { NfdThumbnail }

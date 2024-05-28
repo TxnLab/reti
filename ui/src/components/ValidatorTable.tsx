@@ -1,6 +1,6 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -9,12 +9,13 @@ import {
   VisibilityState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Ban, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
+import { Ban, ChevronRight, FlaskConical, MoreHorizontal, Sunset } from 'lucide-react'
 import * as React from 'react'
 import { AddPoolModal } from '@/components/AddPoolModal'
 import { AddStakeModal } from '@/components/AddStakeModal'
@@ -43,15 +44,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
+import { ValidatorInfoRow } from '@/components/ValidatorInfoRow'
 import { ValidatorRewards } from '@/components/ValidatorRewards'
-import { useBlockTime } from '@/hooks/useBlockTime'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   calculateMaxStake,
-  calculateMaxStakers,
   canManageValidator,
   isAddingPoolDisabled,
   isStakingDisabled,
@@ -59,7 +59,7 @@ import {
   isSunsetting,
   isUnstakingDisabled,
 } from '@/utils/contracts'
-import { dayjs, formatDuration } from '@/utils/dayjs'
+import { dayjs } from '@/utils/dayjs'
 import { sendRewardTokensToPool, simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAmount, formatAssetAmount } from '@/utils/format'
@@ -87,9 +87,7 @@ export function ValidatorTable({
   const { authAddress } = useAuthAddress()
 
   const router = useRouter()
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const blockTime = useBlockTime()
 
   const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [
     { id: 'stake', desc: true },
@@ -119,6 +117,25 @@ export function ValidatorTable({
 
   const columns: ColumnDef<Validator>[] = [
     {
+      id: 'expander',
+      header: () => null,
+      cell: ({ row }) => {
+        return row.getCanExpand() ? (
+          <button
+            data-state={row.getIsExpanded() ? 'open' : 'closed'}
+            className="m-0 p-2 cursor-pointer [&[data-state=open]>svg]:rotate-90"
+            {...{
+              onClick: row.getToggleExpandedHandler(),
+            }}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        ) : (
+          <>&nbsp;</>
+        )
+      },
+    },
+    {
       id: 'validator',
       accessorFn: (row) => row.nfd?.name || row.config.owner.toLowerCase(),
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
@@ -127,7 +144,7 @@ export function ValidatorTable({
         const nfd = validator.nfd
 
         return (
-          <div className="flex items-center gap-x-2 min-w-0 max-w-[10rem] xl:max-w-[14rem]">
+          <div className="flex items-center gap-x-2 min-w-0 max-w-[10rem] xl:max-w-[16rem]">
             {isSunsetted(validator) ? (
               <Tooltip
                 content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
@@ -147,7 +164,7 @@ export function ValidatorTable({
                 validatorId: String(validator.id),
               }}
               className="truncate hover:underline underline-offset-4"
-              onClick={(e) => e.stopPropagation()}
+              preload="intent"
             >
               {nfd ? (
                 <NfdThumbnail
@@ -204,42 +221,6 @@ export function ValidatorTable({
       },
     },
     {
-      id: 'pools',
-      accessorFn: (row) => row.state.numPools,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Pools" />,
-      cell: ({ row }) => {
-        const validator = row.original
-        const { poolsPerNode } = validator.config
-        const maxNodes = constraints.maxNodes
-
-        // if (validator.state.numPools === 0) return '--'
-        return (
-          <span className="whitespace-nowrap">
-            {validator.state.numPools} / {poolsPerNode * maxNodes}
-          </span>
-        )
-      },
-    },
-    {
-      id: 'stakers',
-      accessorFn: (row) => row.state.totalStakers,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Stakers" />,
-      cell: ({ row }) => {
-        const validator = row.original
-
-        if (validator.state.numPools == 0) return '--'
-
-        const totalStakers = validator.state.totalStakers
-        const maxStakers = calculateMaxStakers(validator, constraints)
-
-        return (
-          <span className="whitespace-nowrap">
-            {totalStakers} / {maxStakers}
-          </span>
-        )
-      },
-    },
-    {
       id: 'apy',
       accessorFn: (row) => row.apy,
       header: ({ column }) => <DataTableColumnHeader column={column} title="APY" />,
@@ -265,7 +246,9 @@ export function ValidatorTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Token" />,
       cell: ({ row }) => {
         const validator = row.original
-        if (!validator.rewardToken) return '--'
+        if (!validator.rewardToken) {
+          return <span className="text-muted-foreground">--</span>
+        }
 
         const perEpochAmount = formatAssetAmount(
           validator.rewardToken,
@@ -293,23 +276,6 @@ export function ValidatorTable({
       },
     },
     {
-      id: 'epoch',
-      accessorFn: (row) => row.config.epochRoundLength,
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Epoch" />,
-      cell: ({ row }) => {
-        const validator = row.original
-        const epochLength = validator.config.epochRoundLength
-        const numRounds = formatAmount(epochLength)
-        const durationEstimate = epochLength * blockTime.ms
-
-        return (
-          <Tooltip content={`Pays out every ~${formatDuration(durationEstimate)}`}>
-            <span className="capitalize">{numRounds} blocks</span>
-          </Tooltip>
-        )
-      },
-    },
-    {
       id: 'actions',
       cell: ({ row }) => {
         const validator = row.original
@@ -332,35 +298,21 @@ export function ValidatorTable({
         return (
           <div className="flex items-center justify-end gap-x-2">
             {isSunsetting(validator) && !unstakingDisabled ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setUnstakeValidator(validator)
-                }}
-              >
+              <Button size="sm" variant="secondary" onClick={() => setUnstakeValidator(validator)}>
                 Unstake
               </Button>
             ) : (
               <Button
                 size="sm"
                 className={cn({ hidden: stakingDisabled })}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setAddStakeValidator(validator)
-                }}
+                onClick={() => setAddStakeValidator(validator)}
               >
                 Stake
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-8 w-8 p-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <Button variant="ghost" className="h-8 w-8 p-0">
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -368,19 +320,13 @@ export function ValidatorTable({
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuGroup>
                   <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setAddStakeValidator(validator)
-                    }}
+                    onClick={() => setAddStakeValidator(validator)}
                     disabled={stakingDisabled}
                   >
                     Stake
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setUnstakeValidator(validator)
-                    }}
+                    onClick={() => setUnstakeValidator(validator)}
                     disabled={unstakingDisabled}
                   >
                     Unstake
@@ -388,10 +334,7 @@ export function ValidatorTable({
 
                   {canManage && (
                     <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setAddPoolValidator(validator)
-                      }}
+                      onClick={() => setAddPoolValidator(validator)}
                       disabled={addingPoolDisabled}
                     >
                       Add Staking Pool
@@ -403,8 +346,7 @@ export function ValidatorTable({
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
                         <DropdownMenuItem
-                          onClick={async (e) => {
-                            e.stopPropagation()
+                          onClick={async () => {
                             await simulateEpoch(
                               validator,
                               stakerPoolData,
@@ -430,8 +372,7 @@ export function ValidatorTable({
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
                         <DropdownMenuItem
-                          onClick={async (e) => {
-                            e.stopPropagation()
+                          onClick={async () => {
                             await sendRewardTokensToPool(
                               validator,
                               5000,
@@ -454,7 +395,7 @@ export function ValidatorTable({
                     <Link
                       to="/validators/$validatorId"
                       params={{ validatorId: validator.id.toString() }}
-                      onClick={(e) => e.stopPropagation()}
+                      preload="intent"
                     >
                       {canManage ? 'Manage' : 'View'}
                     </Link>
@@ -479,6 +420,8 @@ export function ValidatorTable({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: handleColumnVisibilityChange,
     onRowSelectionChange: setRowSelection,
+    getRowCanExpand: () => true,
+    getExpandedRowModel: getExpandedRowModel(),
     state: {
       sorting,
       columnFilters,
@@ -509,7 +452,7 @@ export function ValidatorTable({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} className={cn('first:px-4')}>
+                      <TableHead key={header.id} className="first:px-0 first:w-12">
                         {header.isPlaceholder
                           ? null
                           : flexRender(header.column.columnDef.header, header.getContext())}
@@ -522,25 +465,28 @@ export function ValidatorTable({
             <TableBody>
               {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                    className={cn({
-                      'text-foreground/50': isSunsetted(row.original),
-                    })}
-                    onClick={async () =>
-                      await navigate({
-                        to: `/validators/$validatorId`,
-                        params: { validatorId: row.original.id.toString() },
-                      })
-                    }
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={cn('cursor-pointer first:px-4')}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() && 'selected'}
+                      className={cn({
+                        'text-foreground/50': isSunsetted(row.original),
+                        'border-b-0 bg-muted/25': row.getIsExpanded(),
+                      })}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="first:pr-0">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {row.getIsExpanded() && (
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableCell colSpan={row.getVisibleCells().length} className="p-0">
+                          <ValidatorInfoRow validator={row.original} constraints={constraints} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))
               ) : (
                 <TableRow className="hover:bg-transparent">
