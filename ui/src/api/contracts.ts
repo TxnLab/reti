@@ -391,7 +391,8 @@ export async function addStakingPool(
   })
 
   // Check balance
-  const requiredBalance = Number(payValidatorAddPoolMbr.amount) + payValidatorAddPoolMbr.fee + 2000
+  const requiredBalance =
+    Number(payValidatorAddPoolMbr.amount) + payValidatorAddPoolMbr.fee + 1000 + 1000 + 2000
   await BalanceChecker.check(activeAddress, requiredBalance, 'Add staking pool')
 
   const addPoolResponse = await validatorClient
@@ -445,7 +446,8 @@ export async function initStakingPoolStorage(
   })
 
   // Check balance
-  const requiredBalance = Number(payPoolInitStorageMbr.amount) + payPoolInitStorageMbr.fee + 3000
+  const requiredBalance =
+    Number(payPoolInitStorageMbr.amount) + payPoolInitStorageMbr.fee + 1000 + 1000 + 3000
   await BalanceChecker.check(activeAddress, requiredBalance, 'Pool storage requirement payment')
 
   const stakingPoolClient = await getStakingPoolClient(poolAppId, signer, activeAddress)
@@ -595,7 +597,7 @@ export async function addStake(
   )
 
   let requiredBalance =
-    Number(stakeTransferPayment.amount) + stakeTransferPayment.fee + feeAmount.microAlgos
+    Number(stakeTransferPayment.amount) + stakeTransferPayment.fee + 1000 + feeAmount.microAlgos
 
   const composer = validatorClient
     .compose()
