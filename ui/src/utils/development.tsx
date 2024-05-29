@@ -10,6 +10,7 @@ import { epochBalanceUpdate } from '@/api/contracts'
 import { StakerPoolData } from '@/interfaces/staking'
 import { ToStringTypes } from '@/interfaces/utils'
 import { Validator, ValidatorConfig } from '@/interfaces/validator'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { convertToStringTypes } from '@/utils/convert'
 import { convertToBaseUnits, formatAssetAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
@@ -226,8 +227,15 @@ export async function simulateEpoch(
     queryClient.invalidateQueries({ queryKey: ['stakes', { staker: activeAddress }] })
     router.invalidate()
   } catch (error) {
-    toast.error('Error simulating epoch', { id: toastId })
-
+    if (error instanceof InsufficientBalanceError) {
+      toast.error('Insufficient balance', {
+        id: toastId,
+        description: error.toastMessage,
+        duration: 5000,
+      })
+    } else {
+      toast.error('Error simulating epoch', { id: toastId })
+    }
     console.error(error)
     throw error
   }

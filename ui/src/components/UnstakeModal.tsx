@@ -38,6 +38,7 @@ import {
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { setValidatorQueriesData } from '@/utils/contracts'
 import { formatAlgoAmount } from '@/utils/format'
 
@@ -219,7 +220,15 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       queryClient.invalidateQueries({ queryKey: ['pools-info'] })
       router.invalidate()
     } catch (error) {
-      toast.error('Failed to remove stake from pool', { id: toastId })
+      if (error instanceof InsufficientBalanceError) {
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+      } else {
+        toast.error('Failed to remove stake from pool', { id: toastId })
+      }
       console.error(error)
     } finally {
       setIsSigning(false)

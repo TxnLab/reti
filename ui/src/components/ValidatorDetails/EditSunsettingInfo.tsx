@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { setValidatorQueriesData } from '@/utils/contracts'
 import { dayjs } from '@/utils/dayjs'
 import { cn } from '@/utils/ui'
@@ -117,7 +118,15 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
       // Seed/update query cache with new data
       setValidatorQueriesData(queryClient, newData)
     } catch (error) {
-      toast.error('Failed to update sunsetting info', { id: toastId })
+      if (error instanceof InsufficientBalanceError) {
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+      } else {
+        toast.error('Failed to update sunsetting info', { id: toastId })
+      }
       console.error(error)
     } finally {
       setIsSigning(false)
