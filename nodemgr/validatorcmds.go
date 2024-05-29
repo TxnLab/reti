@@ -36,11 +36,23 @@ func GetValidatorCmdOpts() *cli.Command {
 				Name:   "info",
 				Usage:  "Display info about the validator from the chain",
 				Action: DisplayValidatorInfo,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:  "validator",
+						Usage: "validator id (if desired to view arbitrary validator)",
+					},
+				},
 			},
 			{
 				Name:   "state",
 				Usage:  "Display info about the validator's current state from the chain",
 				Action: DisplayValidatorState,
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:  "validator",
+						Usage: "validator id (if desired to view arbitrary validator)",
+					},
+				},
 			},
 			{
 				Name:  "change",
@@ -126,10 +138,20 @@ func InitValidator(ctx context.Context, cmd *cli.Command) error {
 }
 
 func DisplayValidatorInfo(ctx context.Context, command *cli.Command) error {
-	if !App.retiClient.IsConfigured() {
-		return fmt.Errorf("validator not configured")
+	var validatorId = App.retiValidatorID
+
+	if command.Uint("validator") != 0 {
+		validatorId = command.Uint("validator")
 	}
-	var config = App.retiClient.Info().Config
+	if validatorId == 0 {
+		if !App.retiClient.IsConfigured() {
+			return fmt.Errorf("validator not configured")
+		}
+	}
+	config, err := App.retiClient.GetValidatorConfig(validatorId)
+	if err != nil {
+		return fmt.Errorf("get validator config err:%w", err)
+	}
 	fmt.Println(config.String())
 	constraints, err := App.retiClient.GetProtocolConstraints()
 	if err != nil {
@@ -141,11 +163,18 @@ func DisplayValidatorInfo(ctx context.Context, command *cli.Command) error {
 }
 
 func DisplayValidatorState(ctx context.Context, command *cli.Command) error {
-	if !App.retiClient.IsConfigured() {
-		return fmt.Errorf("validator not configured")
+	var validatorId = App.retiValidatorID
+
+	if command.Uint("validator") != 0 {
+		validatorId = command.Uint("validator")
+	}
+	if validatorId == 0 {
+		if !App.retiClient.IsConfigured() {
+			return fmt.Errorf("validator not configured")
+		}
 	}
 	// Get information from the chain about the current state
-	state, err := App.retiClient.GetValidatorState(App.retiClient.Info().Config.ID)
+	state, err := App.retiClient.GetValidatorState(validatorId)
 	if err != nil {
 		return err
 	}
