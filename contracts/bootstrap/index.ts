@@ -198,6 +198,7 @@ async function main() {
             { sendParams: { populateAppCallResources: true } },
         )
         console.log(`application ${args.id} updated`)
+        console.log(`Validator Contract HASH is:${validatorApp.compiledApproval.compiledHash}`)
     }
 
     console.log(

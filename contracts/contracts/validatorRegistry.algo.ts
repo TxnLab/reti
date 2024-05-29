@@ -1431,7 +1431,7 @@ export class ValidatorRegistry extends Contract {
 
             // We at least know it's a real NFD - now... is it a segment of the root NFD the validator defined ?
             assert(
-                (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) ===
+                btoi(AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as bytes) ===
                     config.entryGatingAssets[0],
                 'specified nfd must be a segment of the nfd the validator specified as a requirement',
             )
