@@ -559,7 +559,8 @@ export async function addStake(
 
   const simulateComposer = simulateValidatorClient
     .compose()
-    .gas({})
+    .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+    .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .addStake(
       {
         stakedAmountPayment: {
@@ -593,7 +594,7 @@ export async function addStake(
 
   // @todo: switch to Joe's new method(s)
   const feeAmount = AlgoAmount.MicroAlgos(
-    2000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+    3000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
   )
 
   let requiredBalance =
@@ -601,7 +602,8 @@ export async function addStake(
 
   const composer = validatorClient
     .compose()
-    .gas({})
+    .gas({}, { note: '1', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
+    .gas({}, { note: '2', sendParams: { fee: AlgoAmount.MicroAlgos(0) } })
     .addStake(
       {
         stakedAmountPayment: {
@@ -633,7 +635,7 @@ export async function addStake(
 
   const result = await composer.execute({ populateAppCallResources: true })
 
-  const [valId, poolId, poolAppId] = result.returns![1]
+  const [valId, poolId, poolAppId] = result.returns![2]
 
   return {
     poolId: Number(poolId),
