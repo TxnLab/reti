@@ -232,11 +232,10 @@ export function AddPoolModal({
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Failed to create staking pool', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
       handleOpenChange(false)
     } finally {
       setIsSigning(false)
@@ -307,11 +306,10 @@ export function AddPoolModal({
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Pool storage requirement payment failed', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
       setIsInitMbrError(error?.message)
     } finally {
       setIsSigning(false)
@@ -367,11 +365,10 @@ export function AddPoolModal({
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Link pool to NFD failed', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
     } finally {
       setIsSigning(false)
     }

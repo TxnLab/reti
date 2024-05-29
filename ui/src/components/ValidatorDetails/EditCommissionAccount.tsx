@@ -108,11 +108,10 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Failed to update commission account', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
     } finally {
       setIsSigning(false)
       handleResetForm()

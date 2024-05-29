@@ -177,11 +177,10 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Failed to update validator NFD', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
     } finally {
       setIsSigning(false)
       handleResetForm()

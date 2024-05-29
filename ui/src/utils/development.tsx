@@ -233,11 +233,10 @@ export async function simulateEpoch(
         description: error.toastMessage,
         duration: 5000,
       })
-      console.error(error)
     } else {
       toast.error('Error simulating epoch', { id: toastId })
-      console.error(error)
     }
+    console.error(error)
     throw error
   }
 }

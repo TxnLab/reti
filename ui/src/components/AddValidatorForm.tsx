@@ -310,11 +310,10 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Failed to add validator', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
     } finally {
       setIsSigning(false)
     }

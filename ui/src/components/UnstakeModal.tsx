@@ -226,11 +226,10 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
           description: error.toastMessage,
           duration: 5000,
         })
-        console.error(error)
       } else {
         toast.error('Failed to remove stake from pool', { id: toastId })
-        console.error(error)
       }
+      console.error(error)
     } finally {
       setIsSigning(false)
       setValidator(null)
