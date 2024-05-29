@@ -227,8 +227,12 @@ export function AddPoolModal({
       setCurrentStep(2)
     } catch (error) {
       if (error instanceof InsufficientBalanceError) {
-        toast.error(error.message, { id: toastId })
-        console.error(error.message)
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+        console.error(error)
       } else {
         toast.error('Failed to create staking pool', { id: toastId })
         console.error(error)
@@ -298,8 +302,12 @@ export function AddPoolModal({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (error instanceof InsufficientBalanceError) {
-        toast.error(error.message, { id: toastId })
-        console.error(error.message)
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+        console.error(error)
       } else {
         toast.error('Pool storage requirement payment failed', { id: toastId })
         console.error(error)
@@ -354,8 +362,12 @@ export function AddPoolModal({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (error instanceof InsufficientBalanceError) {
-        toast.error(error.message, { id: toastId })
-        console.error(error.message)
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+        console.error(error)
       } else {
         toast.error('Link pool to NFD failed', { id: toastId })
         console.error(error)

@@ -4,10 +4,21 @@ import { formatAlgoAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 export class InsufficientBalanceError extends Error {
-  constructor(action: string, required: number, available: number) {
-    const message = `${action} failed: Required balance is ${formatAlgoAmount(required)} ALGO, but available balance is ${formatAlgoAmount(available)} ALGO.`
+  public toastMessage: string
+
+  constructor(
+    public required: number,
+    public available: number,
+    action?: string,
+  ) {
+    const message = action
+      ? `${action} failed, required balance is ${formatAlgoAmount(required)} ALGO`
+      : `Required balance is ${formatAlgoAmount(required)} ALGO`
     super(message)
     this.name = 'InsufficientBalanceError'
+    this.required = required
+    this.available = available
+    this.toastMessage = `${formatAlgoAmount(required)} ALGO required, ${formatAlgoAmount(available)} ALGO available`
   }
 }
 
@@ -32,17 +43,17 @@ export class BalanceChecker {
     return availableBalance
   }
 
-  private async checkAccountBalance(requiredBalance: number, action: string): Promise<void> {
+  private async checkAccountBalance(requiredBalance: number, action?: string): Promise<void> {
     const availableBalance = await this.getAvailableBalance()
     if (availableBalance < requiredBalance) {
-      throw new InsufficientBalanceError(action, requiredBalance, availableBalance)
+      throw new InsufficientBalanceError(requiredBalance, availableBalance, action)
     }
   }
 
   public static async check(
     address: string,
     requiredBalance: number,
-    action: string,
+    action?: string,
   ): Promise<void> {
     const checker = new BalanceChecker(address)
     await checker.checkAccountBalance(requiredBalance, action)

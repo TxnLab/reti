@@ -95,8 +95,12 @@ export function EditManagerAccount({ validator }: EditManagerAccountProps) {
       setValidatorQueriesData(queryClient, newData)
     } catch (error) {
       if (error instanceof InsufficientBalanceError) {
-        toast.error(error.message, { id: toastId })
-        console.error(error.message)
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+        console.error(error)
       } else {
         toast.error('Failed to update manager account', { id: toastId })
         console.error(error)

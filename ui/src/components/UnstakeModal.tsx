@@ -221,8 +221,12 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       router.invalidate()
     } catch (error) {
       if (error instanceof InsufficientBalanceError) {
-        toast.error(error.message, { id: toastId })
-        console.error(error.message)
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+        console.error(error)
       } else {
         toast.error('Failed to remove stake from pool', { id: toastId })
         console.error(error)
