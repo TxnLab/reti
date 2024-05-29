@@ -598,7 +598,7 @@ export async function addStake(
   )
 
   let requiredBalance =
-    Number(stakeTransferPayment.amount) + stakeTransferPayment.fee + 1000 + feeAmount.microAlgos
+    Number(stakeTransferPayment.amount) + stakeTransferPayment.fee + feeAmount.microAlgos
 
   const composer = validatorClient
     .compose()
