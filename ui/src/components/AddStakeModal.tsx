@@ -44,6 +44,7 @@ import { GatingType } from '@/constants/gating'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
   calculateMaxAvailableToStake,
   fetchValueToVerify,
@@ -324,8 +325,13 @@ export function AddStakeModal({
       queryClient.invalidateQueries({ queryKey: ['pools-info'] })
       router.invalidate()
     } catch (error) {
-      toast.error('Failed to add stake to pool', { id: toastId })
-      console.error(error)
+      if (error instanceof InsufficientBalanceError) {
+        toast.error(error.message, { id: toastId })
+        console.error(error.message)
+      } else {
+        toast.error('Failed to add stake to pool', { id: toastId })
+        console.error(error)
+      }
     } finally {
       setIsSigning(false)
       setValidator(null)

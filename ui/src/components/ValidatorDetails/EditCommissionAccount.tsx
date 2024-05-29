@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { Validator } from '@/interfaces/validator'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { setValidatorQueriesData } from '@/utils/contracts'
 import { validatorSchemas } from '@/utils/validation'
 
@@ -101,8 +102,13 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
       // Seed/update query cache with new data
       setValidatorQueriesData(queryClient, newData)
     } catch (error) {
-      toast.error('Failed to update commission account', { id: toastId })
-      console.error(error)
+      if (error instanceof InsufficientBalanceError) {
+        toast.error(error.message, { id: toastId })
+        console.error(error.message)
+      } else {
+        toast.error('Failed to update commission account', { id: toastId })
+        console.error(error)
+      }
     } finally {
       setIsSigning(false)
       handleResetForm()

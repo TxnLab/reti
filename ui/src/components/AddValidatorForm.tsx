@@ -39,6 +39,7 @@ import { useBlockTime } from '@/hooks/useBlockTime'
 import { Asset } from '@/interfaces/algod'
 import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
   getEpochLengthBlocks,
   setValidatorQueriesData,
@@ -303,8 +304,13 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       await navigate({ to: '/' })
     } catch (error) {
-      toast.error('Failed to create validator', { id: toastId })
-      console.error(error)
+      if (error instanceof InsufficientBalanceError) {
+        toast.error(error.message, { id: toastId })
+        console.error(error.message)
+      } else {
+        toast.error('Failed to add validator', { id: toastId })
+        console.error(error)
+      }
     } finally {
       setIsSigning(false)
     }

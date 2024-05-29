@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/form'
 import { Nfd } from '@/interfaces/nfd'
 import { NodePoolAssignmentConfig, Validator, ValidatorPoolKey } from '@/interfaces/validator'
+import { BalanceChecker, InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
   findFirstAvailableNode,
   processNodePoolAssignment,
@@ -187,6 +188,20 @@ export function AddPoolModal({
         throw new Error('No MBR data found')
       }
 
+      // Required balance for step 1
+      const createPoolRequiredBalance = poolMbr + 1000 + 2000
+
+      // Required balance for step 2
+      const mbrAmount =
+        validator.config.rewardTokenId !== 0 && validator.state.numPools === 0
+          ? poolInitMbr + 100_000
+          : poolInitMbr
+      const initStorageRequiredBalance = mbrAmount + 1000 + 3000
+
+      // Check balance for both steps
+      const requiredBalance = createPoolRequiredBalance + initStorageRequiredBalance
+      await BalanceChecker.check(activeAddress, requiredBalance, 'Add staking pool')
+
       toast.loading('Sign transactions to add staking pool...', { id: toastId })
 
       setIsSigning(true)
@@ -211,8 +226,13 @@ export function AddPoolModal({
       setProgress(68)
       setCurrentStep(2)
     } catch (error) {
-      toast.error('Failed to create staking pool', { id: toastId })
-      console.error(error)
+      if (error instanceof InsufficientBalanceError) {
+        toast.error(error.message, { id: toastId })
+        console.error(error.message)
+      } else {
+        toast.error('Failed to create staking pool', { id: toastId })
+        console.error(error)
+      }
       handleOpenChange(false)
     } finally {
       setIsSigning(false)
@@ -250,7 +270,7 @@ export function AddPoolModal({
       })
 
       const optInRewardToken =
-        validator?.config.rewardTokenId !== 0 && validator?.state.numPools === 0
+        validator.config.rewardTokenId !== 0 && validator.state.numPools === 0
 
       setIsSigning(true)
 
@@ -277,8 +297,13 @@ export function AddPoolModal({
       setCurrentStep(3)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      toast.error('Minimum required balance payment failed', { id: toastId })
-      console.error(error)
+      if (error instanceof InsufficientBalanceError) {
+        toast.error(error.message, { id: toastId })
+        console.error(error.message)
+      } else {
+        toast.error('Pool storage requirement payment failed', { id: toastId })
+        console.error(error)
+      }
       setIsInitMbrError(error?.message)
     } finally {
       setIsSigning(false)
@@ -328,8 +353,13 @@ export function AddPoolModal({
       handleOpenChange(false)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      toast.error('Linking NFD to pool failed', { id: toastId })
-      console.error(error)
+      if (error instanceof InsufficientBalanceError) {
+        toast.error(error.message, { id: toastId })
+        console.error(error.message)
+      } else {
+        toast.error('Link pool to NFD failed', { id: toastId })
+        console.error(error)
+      }
     } finally {
       setIsSigning(false)
     }
