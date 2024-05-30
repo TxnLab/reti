@@ -5698,7 +5698,7 @@ doesStakerMeetGating:
 
 	// contracts/validatorRegistry.algo.ts:1433
 	// assert(
-	//                 (AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as uint64) ===
+	//                 btoi(AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID') as bytes) ===
 	//                     config.entryGatingAssets[0],
 	//                 'specified nfd must be a segment of the nfd the validator specified as a requirement',
 	//             )
@@ -5708,6 +5708,7 @@ doesStakerMeetGating:
 
 	// global state value does not exist: AppID.fromUint64(userOfferedNFDAppID).globalState('i.parentAppID')
 	assert
+	btoi
 	frame_dig 2 // config: (uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)
 	extract 113 8
 	btoi

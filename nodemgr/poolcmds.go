@@ -17,7 +17,6 @@ import (
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/nfdonchain"
-	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
 func GetPoolCmdOpts() *cli.Command {
@@ -105,60 +104,6 @@ func GetPoolCmdOpts() *cli.Command {
 					},
 				},
 				Action: PayoutPool,
-			},
-			{
-				Name:     "stake",
-				Usage:    "Mostly for testing - but allows adding stake w/ a locally available account Add a new staking pool to this node",
-				Category: "pool",
-				Action:   StakeAdd,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "account",
-						Usage:    "The account to send stake 'from' - the staker account.",
-						Required: true,
-					},
-					&cli.UintFlag{
-						Name:     "amount",
-						Usage:    "The amount of whole algo to stake",
-						Required: true,
-					},
-					&cli.UintFlag{
-						Name:     "validator",
-						Aliases:  []string{"v"},
-						Usage:    "The validator id to stake to",
-						Required: true,
-					},
-				},
-			},
-			{
-				Name:     "unstake",
-				Usage:    "Mostly for testing - but allows adding stake w/ a locally available account Add a new staking pool to this node",
-				Category: "pool",
-				Action:   StakeRemove,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "account",
-						Usage:    "The staker account wanting to remove stake",
-						Required: true,
-					},
-					&cli.UintFlag{
-						Name:     "amount",
-						Usage:    "The amount of whole algo to unstake",
-						Required: true,
-					},
-					&cli.UintFlag{
-						Name:     "validator",
-						Aliases:  []string{"v"},
-						Usage:    "The validator id stake is with",
-						Required: true,
-					},
-					&cli.UintFlag{
-						Name:     "pool",
-						Aliases:  []string{"p"},
-						Usage:    "The pool id to remove the stake from",
-						Required: true,
-					},
-				},
 			},
 		},
 	}
@@ -436,63 +381,6 @@ func ClaimPool(ctx context.Context, command *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func StakeAdd(ctx context.Context, command *cli.Command) error {
-	// account, amount, validator
-	stakerAddr, err := types.DecodeAddress(command.String("account"))
-	if err != nil {
-		return err
-	}
-	poolKey, err := App.retiClient.AddStake(
-		command.Uint("validator"),
-		stakerAddr,
-		command.Uint("amount")*1e6,
-		0, // TODO do we bother handle token gating in CLI ?  best left to the UI
-	)
-	if err != nil {
-		return err
-	}
-	misc.Infof(App.logger, "stake added into pool:%d", poolKey.PoolId)
-	return nil
-}
-
-func StakeRemove(ctx context.Context, command *cli.Command) error {
-	// account, amount, validator, pool
-	stakerAddr, err := types.DecodeAddress(command.String("account"))
-	if err != nil {
-		return err
-	}
-	validatorId := command.Uint("validator")
-	var poolKey *reti.ValidatorPoolKey
-	// This staker must have staked something!
-	poolKeys, err := App.retiClient.GetStakedPoolsForAccount(stakerAddr)
-	if err != nil {
-		return err
-	}
-	for _, key := range poolKeys {
-		if key.ID == validatorId && key.PoolId == command.Uint("pool") {
-			poolKey = key
-			break
-		}
-	}
-	if poolKey == nil {
-		return fmt.Errorf("staker has not staked in the specified pool")
-	}
-
-	signer, err := App.signer.FindFirstSigner([]string{App.retiClient.Info().Config.Owner, App.retiClient.Info().Config.Manager, stakerAddr.String()})
-	if err != nil {
-		return fmt.Errorf("neither owner or manager address for your validator has local keys present")
-	}
-	signerAddr, _ := types.DecodeAddress(signer)
-	misc.Infof(App.logger, "signing unstake with:%s", signer)
-
-	err = App.retiClient.RemoveStake(*poolKey, signerAddr, stakerAddr, command.Uint("amount")*1e6)
-	if err != nil {
-		return err
-	}
-	misc.Infof(App.logger, "stake removed from pool:%d", poolKey.PoolId)
 	return nil
 }
 

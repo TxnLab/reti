@@ -34,6 +34,7 @@ import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorM
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { GatingType } from '@/constants/gating'
 import { EntryGatingAssets, Validator } from '@/interfaces/validator'
+import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { setValidatorQueriesData, transformEntryGatingAssets } from '@/utils/contracts'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
@@ -262,7 +263,15 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
       // Seed/update query cache with new data
       setValidatorQueriesData(queryClient, newData)
     } catch (error) {
-      toast.error('Failed to update entry gating', { id: toastId })
+      if (error instanceof InsufficientBalanceError) {
+        toast.error('Insufficient balance', {
+          id: toastId,
+          description: error.toastMessage,
+          duration: 5000,
+        })
+      } else {
+        toast.error('Failed to update entry gating', { id: toastId })
+      }
       console.error(error)
     } finally {
       setIsSigning(false)

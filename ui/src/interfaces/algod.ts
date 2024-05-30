@@ -22,6 +22,11 @@ export interface AccountInformation {
   // add more fields as needed
 }
 
+export interface AccountAssetInformation {
+  'asset-holding': AssetHolding
+  round: number
+}
+
 export type AccountBalance = {
   amount: AlgoAmount
   available: AlgoAmount
