@@ -70,7 +70,7 @@ export function RewardToken({
         href={ExplorerLink.asset(validator.config.rewardTokenId)}
         rel="noreferrer"
         target="_blank"
-        className={cn('text-link text-foreground', className)}
+        className={cn('link text-foreground', className)}
       >
         {renderRewardToken(validator)}
       </a>

@@ -523,7 +523,7 @@ export function AddPoolModal({
                         <div className="flex items-center flex-wrap gap-x-6">
                           {nfdToLink && (
                             <p className="flex items-center gap-x-2 text-sm mb-2 py-1">
-                              <NfdThumbnail nfd={nfdToLink} link className="text-link" />
+                              <NfdThumbnail nfd={nfdToLink} link className="link" />
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -542,7 +542,7 @@ export function AddPoolModal({
                                 href={ExplorerLink.account(poolAddress)}
                                 rel="noreferrer"
                                 target="_blank"
-                                className="text-link font-mono whitespace-nowrap"
+                                className="link font-mono whitespace-nowrap"
                               >
                                 {ellipseAddressJsx(poolAddress)}
                               </a>

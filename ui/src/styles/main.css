@@ -59,7 +59,7 @@
 }
 
 @layer base {
-  .text-link {
+  .link {
     @apply underline underline-offset-4 decoration-foreground/50 hover:decoration-2 hover:decoration-primary;
   }
 }

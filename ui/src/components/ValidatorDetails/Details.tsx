@@ -162,7 +162,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.owner)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.owner)}
                   </a>
@@ -177,7 +177,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.manager)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.manager)}
                   </a>
@@ -193,7 +193,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.validatorCommissionAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.validatorCommissionAddress)}
                   </a>
@@ -213,7 +213,7 @@ export function Details({ validator }: DetailsProps) {
                           href={`${nfdAppUrl}/name/${validator.nfd.name}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-link truncate"
+                          className="link truncate"
                         >
                           {validator.nfd.name}
                         </a>
