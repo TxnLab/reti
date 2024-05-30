@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { isAxiosError } from 'axios'
-import { ArrowUpRight, Check, Monitor, MonitorCheck, WalletMinimal } from 'lucide-react'
+import { ArrowUpRight, Check, Monitor, MonitorCheck, WalletMinimal, X } from 'lucide-react'
 import * as React from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import { fetchNfd } from '@/api/nfd'
 import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { AssetLookup } from '@/components/AssetLookup'
 import { InfoPopover } from '@/components/InfoPopover'
+import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -67,6 +68,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
   const [rewardToken, setRewardToken] = React.useState<Asset | null>(null)
   const [isFetchingRewardToken, setIsFetchingRewardToken] = React.useState(false)
+  const [gatingAssets, setGatingAssets] = React.useState<Array<Asset | null>>([])
+  const [isFetchingGatingAssetIndex, setIsFetchingGatingAssetIndex] = React.useState<number>(-1)
   const [epochTimeframe, setEpochTimeframe] = React.useState('blocks')
   const [isSigning, setIsSigning] = React.useState(false)
 
@@ -125,26 +128,56 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const { errors } = form.formState
 
-  const { fields, append, replace } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'entryGatingAssets',
   })
+
+  const handleAddAssetField = () => {
+    append({ value: '' })
+    setGatingAssets((prev) => [...prev, null])
+
+    // Reset min balance if there are multiple assets
+    form.setValue('gatingAssetMinBalance', '')
+  }
+
+  const handleRemoveAssetField = (index: number) => {
+    remove(index)
+    setGatingAssets((prev) => {
+      const newAssets = [...prev]
+      newAssets.splice(index, 1)
+      return newAssets
+    })
+  }
+
+  const handleSetGatingAssetById = async (index: number, value: Asset | null) => {
+    setGatingAssets((prev) => {
+      const newAssets = [...prev]
+      newAssets[index] = value
+      return newAssets
+    })
+  }
+
+  const handleSetIsFetchingGatingAssetIndex = (index: number, isFetching: boolean) => {
+    if (isFetching) {
+      setIsFetchingGatingAssetIndex(index)
+    } else if (index === isFetchingGatingAssetIndex) {
+      setIsFetchingGatingAssetIndex(-1)
+    }
+  }
 
   const $rewardTokenId = form.watch('rewardTokenId')
   const isRewardTokenInvalid = Number($rewardTokenId) > 0 && (isFetchingRewardToken || !rewardToken)
 
   const $entryGatingType = form.watch('entryGatingType')
+  const $entryGatingAssets = form.watch('entryGatingAssets')
 
   const showCreatorAddressField = $entryGatingType === String(GatingType.CreatorAccount)
   const showAssetFields = $entryGatingType === String(GatingType.AssetId)
   const showCreatorNfdField = $entryGatingType === String(GatingType.CreatorNfd)
   const showParentNfdField = $entryGatingType === String(GatingType.SegmentNfd)
-
-  const showMinBalanceField = [
-    String(GatingType.CreatorAccount),
-    String(GatingType.AssetId),
-    String(GatingType.CreatorNfd),
-  ].includes($entryGatingType)
+  const showMinBalanceField =
+    $entryGatingType === String(GatingType.AssetId) && $entryGatingAssets.length < 2
 
   const fetchNfdAppId = async (
     value: string,
@@ -263,9 +296,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         blockTime.ms,
       )
 
-      const entryGatingAssets = transformEntryGatingAssets(
+      const { entryGatingAssets, gatingAssetMinBalance } = transformEntryGatingAssets(
         values.entryGatingType,
         values.entryGatingAssets,
+        gatingAssets,
+        values.gatingAssetMinBalance,
         nfdCreatorAppId,
         nfdParentAppId,
       )
@@ -275,6 +310,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
         rewardPerPayout: String(rewardPerPayout),
         epochRoundLength: String(epochRoundLength),
         entryGatingAssets,
+        gatingAssetMinBalance,
       }
 
       const validatorId = await addValidator(
@@ -745,15 +781,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         onValueChange={(type) => {
                           field.onChange(type) // Inform react-hook-form of the change
 
-                          // Reset form fields
+                          // Reset gating assets
                           replace([{ value: '' }])
+                          setGatingAssets([])
+
+                          // Reset gating fields
                           form.setValue('entryGatingAddress', '')
                           form.setValue('entryGatingNfdCreator', '')
                           form.setValue('entryGatingNfdParent', '')
-                          form.setValue(
-                            'gatingAssetMinBalance',
-                            type === String(GatingType.SegmentNfd) ? '1' : '',
-                          )
+                          form.setValue('gatingAssetMinBalance', '')
 
                           // Clear any errors
                           form.clearErrors('entryGatingAssets')
@@ -808,12 +844,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <div className={cn({ hidden: !showAssetFields })}>
                 {fields.map((field, index) => (
-                  <FormField
-                    control={form.control}
-                    key={field.id}
-                    name={`entryGatingAssets.${index}.value`}
-                    render={({ field }) => (
-                      <FormItem>
+                  <div key={field.id} className="flex">
+                    <AssetLookup
+                      form={form}
+                      name={`entryGatingAssets.${index}.value`}
+                      className="flex-1"
+                      label={
                         <FormLabel className={cn(index !== 0 && 'sr-only')}>
                           Asset ID
                           <InfoPopover className={infoPopoverClassName}>
@@ -821,13 +857,29 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           </InfoPopover>
                           <span className="text-primary">*</span>
                         </FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      }
+                      asset={gatingAssets[index] || null}
+                      setAsset={(asset) => handleSetGatingAssetById(index, asset)}
+                      isFetching={isFetchingGatingAssetIndex === index}
+                      setIsFetching={(isFetching) =>
+                        handleSetIsFetchingGatingAssetIndex(index, isFetching)
+                      }
+                    />
+                    <div
+                      className={cn('flex items-center h-9 mt-2 ml-2', { invisible: index === 0 })}
+                    >
+                      <Tooltip content="Remove">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="group h-8 w-8"
+                          onClick={() => handleRemoveAssetField(index)}
+                        >
+                          <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  </div>
                 ))}
                 <FormMessage className="mt-2">
                   {errors.entryGatingAssets?.root?.message}
@@ -837,8 +889,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                   variant="outline"
                   size="sm"
                   className="mt-2"
-                  onClick={() => append({ value: '' })}
-                  disabled={fields.length >= 4}
+                  onClick={handleAddAssetField}
+                  disabled={
+                    fields.length >= 4 ||
+                    $entryGatingAssets[fields.length - 1].value === '' ||
+                    Array.isArray(errors.entryGatingAssets)
+                  }
                 >
                   Add Asset
                 </Button>
@@ -1004,106 +1060,26 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 control={form.control}
                 name="gatingAssetMinBalance"
                 render={({ field }) => (
-                  <FormItem className={cn({ hidden: !showMinBalanceField })}>
+                  <FormItem
+                    className={cn('sm:col-start-2 sm:col-end-3', { hidden: !showMinBalanceField })}
+                  >
                     <FormLabel>
                       Minimum balance
                       <InfoPopover className={infoPopoverClassName}>
-                        Minimum required balance of the entry gating asset
+                        <p className="mb-2">
+                          Optional minimum required balance of the entry gating asset.
+                        </p>
+                        <p>Defaults to 1 if not set, or if more than one asset is selected.</p>
                       </InfoPopover>
-                      <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="" {...field} />
+                      <Input placeholder="1" {...field} />
                     </FormControl>
                     <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
                   </FormItem>
                 )}
               />
             </fieldset>
-
-            {/* <fieldset className="grid gap-6 rounded-lg border p-6 max-w-3xl sm:grid-cols-2">
-              <legend className="-ml-1 px-1 text-lg font-medium">Sunsetting</legend>
-              <p className="sm:col-span-2 text-sm text-muted-foreground">
-                Set a sunset date for the validator (optional)
-              </p>
-              <FormField
-                control={form.control}
-                name="sunsettingOn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Sunset date
-                      <InfoPopover className={infoPopoverClassName}>Date when validator will sunset</InfoPopover>
-                    </FormLabel>
-                    <div className="flex items-center gap-x-3">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                'w-[240px] h-9 pl-3 text-left font-normal',
-                                !field.value && 'text-muted-foreground',
-                              )}
-                            >
-                              {field.value ? (
-                                dayjs.unix(Number(field.value)).format('LL')
-                              ) : (
-                                <span>Select a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              field.value !== ''
-                                ? dayjs.unix(Number(field.value)).toDate()
-                                : undefined
-                            }
-                            onSelect={(date) => field.onChange(dayjs(date).unix().toString())}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          form.setValue('sunsettingOn', '', { shouldValidate: true })
-                        }}
-                      >
-                        Reset
-                      </Button>
-                    </div>
-                    <FormMessage>{errors.sunsettingOn?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="sunsettingTo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Sunset to (validator ID)
-                      <InfoPopover className={infoPopoverClassName}>
-                        Validator ID that the validator is moving to (if known)
-                      </InfoPopover>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage>{errors.sunsettingTo?.message}</FormMessage>
-                  </FormItem>
-                )}
-              />
-            </fieldset> */}
           </div>
           <div className="flex justify-between mt-12">
             {/* <Button
