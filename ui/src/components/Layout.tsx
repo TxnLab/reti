@@ -23,7 +23,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between">
             <div className="flex">
-              <div className="-ml-2 mr-3 flex items-center md:hidden">
+              <div className="-ml-2 mr-3 flex items-center lg:hidden">
                 <MobileMenu />
               </div>
               <div className="flex flex-shrink-0 items-center">
@@ -39,7 +39,7 @@ export function Layout({ children }: LayoutProps) {
                   </Badge>
                 </Link>
               </div>
-              <div className="hidden md:ml-8 md:flex md:items-center md:space-x-4">
+              <div className="hidden lg:ml-8 lg:flex lg:items-center lg:space-x-4">
                 <Navigation />
               </div>
             </div>

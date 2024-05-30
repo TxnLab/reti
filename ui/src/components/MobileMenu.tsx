@@ -14,7 +14,7 @@ export function MobileMenu() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="shrink-0 md:hidden">
+        <Button variant="ghost" size="icon" className="shrink-0 lg:hidden">
           <Menu className="h-6 w-6" />
           <span className="sr-only">Toggle navigation menu</span>
         </Button>
