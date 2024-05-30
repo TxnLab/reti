@@ -1,7 +1,7 @@
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
-import { Menu, Home, Monitor, ArrowUpRight } from 'lucide-react'
+import { Menu, Home, Monitor, Book, HandCoins } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { ModeToggleMobile } from '@/components/ModeToggleMobile'
 import { Button } from '@/components/ui/button'
@@ -57,11 +57,23 @@ export function MobileMenu() {
                 rel="noreferrer"
                 className="flex items-center gap-3.5 px-2.5 text-muted-foreground hover:text-foreground"
               >
-                <ArrowUpRight className="h-6 w-6" />
+                <HandCoins className="h-6 w-6" />
                 Dispenser
               </a>
             </SheetClose>
           )}
+
+          <SheetClose asChild>
+            <a
+              href="https://txnlab.gitbook.io/reti-open-pooling"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3.5 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <Book className="h-6 w-6" />
+              Documentation
+            </a>
+          </SheetClose>
 
           <SheetClose asChild>
             <a
