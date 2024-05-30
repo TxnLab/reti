@@ -2,6 +2,7 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Loading } from '@/components/Loading'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
+import { RewardToken } from '@/components/RewardToken'
 import { Tooltip } from '@/components/Tooltip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EditCommissionAccount } from '@/components/ValidatorDetails/EditCommissionAccount'
@@ -51,36 +52,6 @@ export function Details({ validator }: DetailsProps) {
         })}
       </span>
     )
-  }
-
-  const renderRewardToken = () => {
-    if (validator.config.rewardTokenId === 0) {
-      return null
-    }
-
-    const { rewardToken } = validator
-
-    if (!rewardToken) {
-      return validator.config.rewardTokenId
-    }
-
-    const { name, 'unit-name': unitName } = rewardToken.params
-
-    if (name) {
-      return unitName ? (
-        <>
-          {name} (<span className="font-mono">{unitName}</span>)
-        </>
-      ) : (
-        name
-      )
-    }
-
-    if (unitName) {
-      return <span className="font-mono">{unitName}</span>
-    }
-
-    return validator.config.rewardTokenId
   }
 
   const renderRewardPerPayout = () => {
@@ -191,7 +162,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.owner)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.owner)}
                   </a>
@@ -206,7 +177,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.manager)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.manager)}
                   </a>
@@ -222,7 +193,7 @@ export function Details({ validator }: DetailsProps) {
                     href={ExplorerLink.account(validator.config.validatorCommissionAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.validatorCommissionAddress)}
                   </a>
@@ -242,7 +213,7 @@ export function Details({ validator }: DetailsProps) {
                           href={`${nfdAppUrl}/name/${validator.nfd.name}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-link truncate"
+                          className="link truncate"
                         >
                           {validator.nfd.name}
                         </a>
@@ -301,18 +272,7 @@ export function Details({ validator }: DetailsProps) {
                       Reward Token
                     </dt>
                     <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
-                      {validator.config.rewardTokenId === 0 ? (
-                        <span className="text-muted-foreground">--</span>
-                      ) : (
-                        <a
-                          href={ExplorerLink.asset(validator.config.rewardTokenId)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-link"
-                        >
-                          {renderRewardToken()}
-                        </a>
-                      )}
+                      <RewardToken validator={validator} show="full" link />
                     </dd>
                   </div>
                   <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">

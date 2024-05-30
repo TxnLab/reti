@@ -324,7 +324,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                       href={ExplorerLink.account(selectedPoolInfo.poolAddress)}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-link font-mono whitespace-nowrap"
+                      className="link font-mono whitespace-nowrap"
                     >
                       {ellipseAddressJsx(selectedPoolInfo.poolAddress)}
                     </a>
@@ -484,7 +484,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                       <Link
                         to="/validators/$validatorId"
                         params={{ validatorId: String(validator.config.sunsettingTo) }}
-                        className="whitespace-nowrap font-semibold text-link"
+                        className="whitespace-nowrap font-semibold link"
                       >
                         Validator {validator.config.sunsettingTo}
                       </Link>

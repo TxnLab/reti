@@ -59,7 +59,7 @@
 }
 
 @layer base {
-  .text-link {
+  .link {
     @apply underline underline-offset-4 decoration-foreground/50 hover:decoration-2 hover:decoration-primary;
   }
 }
@@ -106,4 +106,12 @@
   color: theme(colors.green.500);
   content: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMyMmM1NWUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHlsZT0ibWFyZ2luLXRvcDogMnB4OyI+PHBhdGggZD0iTTIwIDYgOSAxN2wtNS01Ii8+PC9zdmc+');
   font-size: 1.25rem;
+}
+
+.\[\&\>div\>label\]\:step > div.completed.skipped > label:before {
+  background-color: theme(colors.green.900);
+  color: theme(colors.green.500);
+  content: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMyMmM1NWUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTggNiA2IDE4Ii8+PHBhdGggZD0ibTYgNiAxMiAxMiIvPjwvc3ZnPg==');
+  font-size: 1.4rem;
+  filter: grayscale(100%);
 }
