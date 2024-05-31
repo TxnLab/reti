@@ -1,5 +1,6 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { DisplayAsset } from '@/components/DisplayAsset'
 import { Loading } from '@/components/Loading'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Tooltip } from '@/components/Tooltip'
@@ -16,7 +17,7 @@ import { useRewardBalance } from '@/hooks/useRewardBalance'
 import { dayjs } from '@/utils/dayjs'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
-import { formatAmount, formatAssetAmount } from '@/utils/format'
+import { convertFromBaseUnits, formatAmount, formatAssetAmount } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
@@ -51,36 +52,6 @@ export function Details({ validator }: DetailsProps) {
         })}
       </span>
     )
-  }
-
-  const renderRewardToken = () => {
-    if (validator.config.rewardTokenId === 0) {
-      return null
-    }
-
-    const { rewardToken } = validator
-
-    if (!rewardToken) {
-      return validator.config.rewardTokenId
-    }
-
-    const { name, 'unit-name': unitName } = rewardToken.params
-
-    if (name) {
-      return unitName ? (
-        <>
-          {name} (<span className="font-mono">{unitName}</span>)
-        </>
-      ) : (
-        name
-      )
-    }
-
-    if (unitName) {
-      return <span className="font-mono">{unitName}</span>
-    }
-
-    return validator.config.rewardTokenId
   }
 
   const renderRewardPerPayout = () => {
@@ -123,24 +94,16 @@ export function Details({ validator }: DetailsProps) {
             </a>
           </>
         )
-      // @todo: Fetch gating assets and display unit names
       case GatingType.AssetId:
         return (
           <>
-            <strong className="font-medium text-muted-foreground">Asset ID</strong>
-            <ul className="mt-1 list-none list-inside">
+            <strong className="font-medium text-muted-foreground">Asset(s)</strong>
+            <ul className="mt-1 list-none">
               {entryGatingAssets
                 .filter((assetId) => assetId !== 0)
-                .map((assetId) => (
-                  <li key={assetId}>
-                    <a
-                      href={ExplorerLink.asset(assetId)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-mono hover:underline"
-                    >
-                      {assetId}
-                    </a>
+                .map((assetId, index) => (
+                  <li key={assetId} className="leading-loose">
+                    <DisplayAsset asset={validator.gatingAssets?.[index]} link />
                   </li>
                 ))}
             </ul>
@@ -179,34 +142,34 @@ export function Details({ validator }: DetailsProps) {
           <div className="border-t border-foreground-muted">
             <dl className="divide-y divide-foreground-muted">
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="text-sm font-medium leading-normal text-muted-foreground">
                   Validator ID
                 </dt>
-                <dd className="flex items-center gap-x-2 text-sm leading-6">{validator.id}</dd>
+                <dd className="flex items-center gap-x-2 text-sm leading-normal">{validator.id}</dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">Owner</dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-6">
+                <dt className="text-sm font-medium leading-normal text-muted-foreground">Owner</dt>
+                <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-normal">
                   <a
                     href={ExplorerLink.account(validator.config.owner)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.owner)}
                   </a>
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="flex items-center text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="flex items-center text-sm font-medium leading-normal text-muted-foreground">
                   Manager
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-6">
+                <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-normal">
                   <a
                     href={ExplorerLink.account(validator.config.manager)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.manager)}
                   </a>
@@ -214,15 +177,15 @@ export function Details({ validator }: DetailsProps) {
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="flex items-center text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="flex items-center text-sm font-medium leading-normal text-muted-foreground">
                   Commission Account
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-6">
+                <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-normal">
                   <a
                     href={ExplorerLink.account(validator.config.validatorCommissionAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-link"
+                    className="link"
                   >
                     {ellipseAddressJsx(validator.config.validatorCommissionAddress)}
                   </a>
@@ -232,17 +195,17 @@ export function Details({ validator }: DetailsProps) {
 
               {(isOwner || validator.nfd) && (
                 <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                  <dt className="flex items-center text-sm font-medium leading-6 text-muted-foreground">
+                  <dt className="flex items-center text-sm font-medium leading-normal text-muted-foreground">
                     Associated NFD
                   </dt>
-                  <dd className="flex items-center justify-between gap-x-2 text-sm font-medium leading-6">
+                  <dd className="flex items-center justify-between gap-x-2 text-sm font-medium leading-normal">
                     {validator.nfd ? (
                       <Tooltip content={validator.nfd.name}>
                         <a
                           href={`${nfdAppUrl}/name/${validator.nfd.name}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-link truncate"
+                          className="link truncate"
                         >
                           {validator.nfd.name}
                         </a>
@@ -256,10 +219,10 @@ export function Details({ validator }: DetailsProps) {
               )}
 
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="text-sm font-medium leading-normal text-muted-foreground">
                   Minimum Entry Stake
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                   <AlgoDisplayAmount
                     amount={validator.config.minEntryStake}
                     microalgos
@@ -268,28 +231,28 @@ export function Details({ validator }: DetailsProps) {
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="text-sm font-medium leading-normal text-muted-foreground">
                   Epoch Length
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                   <span className="capitalize">
                     {formatAmount(validator.config.epochRoundLength)} blocks
                   </span>
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="text-sm font-medium leading-normal text-muted-foreground">
                   Commission Rate
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                   {`${validator.config.percentToValidator / 10000}%`}
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                <dt className="text-sm font-medium leading-normal text-muted-foreground">
                   Pools Per Node
                 </dt>
-                <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                   {validator.config.poolsPerNode}
                 </dd>
               </div>
@@ -297,29 +260,18 @@ export function Details({ validator }: DetailsProps) {
               {validator.config.rewardTokenId > 0 && (
                 <>
                   <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                    <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                    <dt className="text-sm font-medium leading-normal text-muted-foreground">
                       Reward Token
                     </dt>
-                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
-                      {validator.config.rewardTokenId === 0 ? (
-                        <span className="text-muted-foreground">--</span>
-                      ) : (
-                        <a
-                          href={ExplorerLink.asset(validator.config.rewardTokenId)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-link"
-                        >
-                          {renderRewardToken()}
-                        </a>
-                      )}
+                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
+                      <DisplayAsset asset={validator.rewardToken} show="full" link />
                     </dd>
                   </div>
                   <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                    <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                    <dt className="text-sm font-medium leading-normal text-muted-foreground">
                       Reward Per Payout
                     </dt>
-                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                       {renderRewardPerPayout()}
                       {isOwner && validator.config.rewardTokenId > 0 && (
                         <EditRewardPerPayout validator={validator} />
@@ -327,10 +279,10 @@ export function Details({ validator }: DetailsProps) {
                     </dd>
                   </div>
                   <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                    <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                    <dt className="text-sm font-medium leading-normal text-muted-foreground">
                       Reward Token Balance
                     </dt>
-                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                       {renderRewardBalance()}
                     </dd>
                   </div>
@@ -340,10 +292,10 @@ export function Details({ validator }: DetailsProps) {
               {(isOwner || validator.config.entryGatingType > 0) && (
                 <>
                   <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                    <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                    <dt className="text-sm font-medium leading-normal text-muted-foreground">
                       Entry Gating
                     </dt>
-                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                    <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                       {validator.config.entryGatingType === 0 ? (
                         <span className="text-muted-foreground">--</span>
                       ) : (
@@ -353,16 +305,21 @@ export function Details({ validator }: DetailsProps) {
                     </dd>
                   </div>
 
-                  {/* @todo: convertFromBaseUnits each asset's min balance and display unit name */}
-                  {![GatingType.None, GatingType.SegmentNfd].includes(
-                    validator.config.entryGatingType,
-                  ) && (
+                  {validator.config.gatingAssetMinBalance > 1 && !!validator.gatingAssets?.[0] && (
                     <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                      <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                      <dt className="text-sm font-medium leading-normal text-muted-foreground">
                         Gating Asset Minimum Balance
                       </dt>
-                      <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-6">
-                        {formatAmount(validator.config.gatingAssetMinBalance.toString())}
+                      <dd className="flex items-center justify-between gap-x-2 text-sm font-mono leading-normal">
+                        <span>
+                          {formatAmount(
+                            convertFromBaseUnits(
+                              validator.config.gatingAssetMinBalance,
+                              validator.gatingAssets[0].params.decimals || 0,
+                            ),
+                          )}{' '}
+                          <DisplayAsset asset={validator.gatingAssets[0]} />
+                        </span>
                       </dd>
                     </div>
                   )}
@@ -371,10 +328,10 @@ export function Details({ validator }: DetailsProps) {
 
               {isOwner || validator.config.sunsettingOn ? (
                 <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
-                  <dt className="text-sm font-medium leading-6 text-muted-foreground">
+                  <dt className="text-sm font-medium leading-normal text-muted-foreground">
                     Sunset Date
                   </dt>
-                  <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
+                  <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
                     {validator.config.sunsettingOn === 0 ? (
                       <span className="text-muted-foreground">--</span>
                     ) : (

@@ -3,7 +3,7 @@ import algosdk from 'algosdk'
 import { fetchAccountAssetInformation, fetchAccountInformation } from '@/api/algod'
 import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
 import { GatingType } from '@/constants/gating'
-import { AssetHolding } from '@/interfaces/algod'
+import { Asset, AssetHolding } from '@/interfaces/algod'
 import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
 import {
@@ -21,6 +21,7 @@ import {
   ValidatorState,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
+import { convertToBaseUnits } from '@/utils/format'
 
 /**
  * Transform raw validator configuration data (from `callGetValidatorConfig`) into a structured object
@@ -224,34 +225,63 @@ export function getEpochLengthBlocks(
   }
 }
 
+interface TransformedGatingAssets {
+  entryGatingAssets: string[]
+  gatingAssetMinBalance: string
+}
+
 /**
- * Transform entry gating assets into a fixed length array of asset IDs
+ * Prepares entry gating assets and minimum balance to submit to the contract
  * @param {string} type - Entry gating type
- * @param {Array<{ value: string }>} assets - Entry gating assets
+ * @param {Array<{ value: string }>} assetIds - Entry gating asset IDs from form input
+ * @param {Array<Asset | null>} assets - Array of fetched asset objects
+ * @param {string} minBalance - Minimum balance required for gating assets
  * @param {number} nfdCreatorAppId - NFD creator app ID
  * @param {number} nfdParentAppId - NFD parent app ID
- * @returns {string[]} Fixed length array of asset IDs
+ * @returns {TransformedGatingAssets} Gating assets and minimum balance prepared for submission
  */
 export function transformEntryGatingAssets(
   type: string,
-  assets: Array<{ value: string }>,
+  assetIds: Array<{ value: string }>,
+  assets: Array<Asset | null>,
+  minBalance: string,
   nfdCreatorAppId: number,
   nfdParentAppId: number,
-): string[] {
+): TransformedGatingAssets {
   const fixedLengthArray: string[] = new Array(4).fill('0')
 
   switch (type) {
     case String(GatingType.AssetId):
-      for (let i = 0; i < assets.length && i < 4; i++) {
-        fixedLengthArray[i] = assets[i].value !== '' ? assets[i].value : '0'
+      for (let i = 0; i < assetIds.length && i < 4; i++) {
+        fixedLengthArray[i] = assetIds[i].value !== '' ? assetIds[i].value : '0'
       }
-      return fixedLengthArray.sort((a, b) => Number(b) - Number(a))
+
+      if (minBalance !== '' && !assets[0]) {
+        throw new Error('Missing asset decimals for calculating minimum balance.')
+      }
+
+      return {
+        entryGatingAssets: fixedLengthArray.sort((a, b) => Number(b) - Number(a)),
+        gatingAssetMinBalance:
+          minBalance === '' || assetIds.length > 1
+            ? '1'
+            : convertToBaseUnits(minBalance, assets[0]!.params.decimals).toString(),
+      }
     case String(GatingType.CreatorNfd):
-      return [nfdCreatorAppId.toString(), '0', '0', '0']
+      return {
+        entryGatingAssets: [nfdCreatorAppId.toString(), '0', '0', '0'],
+        gatingAssetMinBalance: '1',
+      }
     case String(GatingType.SegmentNfd):
-      return [nfdParentAppId.toString(), '0', '0', '0']
+      return {
+        entryGatingAssets: [nfdParentAppId.toString(), '0', '0', '0'],
+        gatingAssetMinBalance: '1',
+      }
     default:
-      return fixedLengthArray
+      return {
+        entryGatingAssets: ['0', '0', '0', '0'],
+        gatingAssetMinBalance: '0',
+      }
   }
 }
 

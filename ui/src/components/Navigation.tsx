@@ -24,6 +24,16 @@ export function Navigation() {
         </Link>
       )}
 
+      <a
+        href="https://txnlab.gitbook.io/reti-open-pooling"
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-0.5 text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Docs
+        <ArrowUpRight className="h-5 w-5 opacity-75" />
+      </a>
+
       {isTestnet && (
         <a
           href="https://bank.testnet.algorand.network/"

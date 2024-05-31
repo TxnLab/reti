@@ -8,12 +8,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { cn } from '@/utils/ui'
 
 interface EditValidatorModalProps {
   title: string
   description: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  className?: string
   children?: React.ReactNode
 }
 
@@ -22,6 +24,7 @@ export function EditValidatorModal({
   description,
   open,
   onOpenChange,
+  className = '',
   children,
 }: EditValidatorModalProps) {
   return (
@@ -31,12 +34,12 @@ export function EditValidatorModal({
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
           >
             <Settings2 className="h-5 w-5" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-[600px]">
+        <DialogContent className={cn('max-w-[640px]', className)}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>

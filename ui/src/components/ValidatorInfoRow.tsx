@@ -1,3 +1,4 @@
+import { DisplayAsset } from '@/components/DisplayAsset'
 import { useBlockTime } from '@/hooks/useBlockTime'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { calculateMaxStakers } from '@/utils/contracts'
@@ -16,30 +17,6 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
   const epochLength = validator.config.epochRoundLength
   const numRounds = formatAmount(epochLength)
   const durationEstimate = epochLength * blockTime.ms
-
-  const renderRewardToken = () => {
-    if (validator.config.rewardTokenId === 0) {
-      return <>--</>
-    }
-
-    const { rewardToken } = validator
-
-    if (!rewardToken) {
-      return validator.config.rewardTokenId
-    }
-
-    const { name, 'unit-name': unitName } = rewardToken.params
-
-    if (name) {
-      return name
-    }
-
-    if (unitName) {
-      return <span className="font-mono">{unitName}</span>
-    }
-
-    return validator.config.rewardTokenId
-  }
 
   const renderRewardPerPayout = () => {
     if (validator.config.rewardPerPayout === 0n) {
@@ -109,7 +86,9 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
       >
         <div>
           <h4 className="text-sm font-medium text-muted-foreground">Reward Token</h4>
-          <p className="text-sm">{renderRewardToken()}</p>
+          <p className="text-sm">
+            <DisplayAsset asset={validator.rewardToken} show="name" />
+          </p>
         </div>
         <div>
           <h4 className="text-sm font-medium text-muted-foreground">Reward Per Payout</h4>

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ProgressBar } from '@tremor/react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
+import { CheckIcon, Copy } from 'lucide-react'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -16,7 +17,9 @@ import {
 } from '@/api/contracts'
 import { mbrQueryOptions, poolAssignmentQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { DisplayAsset } from '@/components/DisplayAsset'
 import { NfdLookup } from '@/components/NfdLookup'
+import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { NodeSelect } from '@/components/NodeSelect'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
@@ -44,6 +47,9 @@ import {
   processNodePoolAssignment,
   setValidatorQueriesData,
 } from '@/utils/contracts'
+import { copyToClipboard } from '@/utils/copyToClipboard'
+import { ellipseAddressJsx } from '@/utils/ellipseAddress'
+import { ExplorerLink } from '@/utils/explorer'
 import { formatAlgoAmount } from '@/utils/format'
 import { isValidName } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
@@ -60,14 +66,16 @@ export function AddPoolModal({
   poolAssignment: poolAssignmentProp,
 }: AddPoolModalProps) {
   const [isSigning, setIsSigning] = React.useState<boolean>(false)
-  const [progress, setProgress] = React.useState<number>(0)
-  const [currentStep, setCurrentStep] = React.useState<number>(1)
+  const [currentStep, setCurrentStep] = React.useState<number>(0)
+  const [totalSteps, setTotalSteps] = React.useState<number>(3)
   const [poolKey, setPoolKey] = React.useState<ValidatorPoolKey | null>(null)
+  const [poolAddress, setPoolAddress] = React.useState<string | null>(null)
   const [isInitMbrError, setIsInitMbrError] = React.useState<string | undefined>(undefined)
   const [nfdToLink, setNfdToLink] = React.useState<Nfd | null>(null)
   const [isFetchingNfdToLink, setIsFetchingNfdToLink] = React.useState(false)
 
   const isLocalnet = import.meta.env.VITE_ALGOD_NETWORK === 'localnet'
+  const showRewardTokenInfo = totalSteps === 4
 
   const queryClient = useQueryClient()
   const { transactionSigner, activeAddress } = useWallet()
@@ -142,8 +150,11 @@ export function AddPoolModal({
   const $nfdToLink = form.watch('nfdToLink')
 
   React.useEffect(() => {
-    if (validator !== null && currentStep == 1 && nodeNum !== '' && !errors.nodeNum) {
-      setProgress(33)
+    if (validator !== null && currentStep == 0 && nodeNum !== '' && !errors.nodeNum) {
+      const isRewardsPool = validator.config.rewardTokenId !== 0 && validator.state.numPools === 0
+      const numSteps = isRewardsPool ? 4 : 3
+      setTotalSteps(numSteps)
+      setCurrentStep(1)
     }
   }, [validator, currentStep, nodeNum, errors.nodeNum])
 
@@ -154,9 +165,11 @@ export function AddPoolModal({
   const handleResetForm = () => {
     form.reset(defaultValues)
     form.clearErrors()
-    setProgress(0)
-    setCurrentStep(1)
+    setCurrentStep(0)
+    setTotalSteps(3)
     setPoolKey(null)
+    setPoolAddress(null)
+    setNfdToLink(null)
     setIsSigning(false)
   }
 
@@ -213,7 +226,11 @@ export function AddPoolModal({
         transactionSigner,
         activeAddress,
       )
+
       setPoolKey(stakingPoolKey)
+
+      const poolAppAddress = algosdk.getApplicationAddress(stakingPoolKey.poolAppId)
+      setPoolAddress(poolAppAddress)
 
       toast.success(`Staking pool ${stakingPoolKey.poolId} created!`, {
         id: toastId,
@@ -223,7 +240,6 @@ export function AddPoolModal({
       // Refetch account info to get new available balance for MBR payment
       await accountInfoQuery.refetch()
 
-      setProgress(68)
       setCurrentStep(2)
     } catch (error) {
       if (error instanceof InsufficientBalanceError) {
@@ -296,7 +312,6 @@ export function AddPoolModal({
       const newData = await fetchValidator(validator!.id)
       setValidatorQueriesData(queryClient, newData)
 
-      setProgress(100)
       setCurrentStep(3)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -348,15 +363,14 @@ export function AddPoolModal({
         activeAddress,
       )
 
-      const poolAppAddress = algosdk.getApplicationAddress(poolKey.poolAppId)
-      queryClient.setQueryData(['nfd-lookup', poolAppAddress, { view: 'thumbnail' }], nfdToLink)
+      queryClient.setQueryData(['nfd-lookup', poolAddress, { view: 'thumbnail' }], nfdToLink)
 
       toast.success(`Pool ${poolKey.poolId} successfully linked to ${$nfdToLink}!`, {
         id: toastId,
         duration: 5000,
       })
 
-      handleOpenChange(false)
+      setCurrentStep(4)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (error instanceof InsufficientBalanceError) {
@@ -374,9 +388,14 @@ export function AddPoolModal({
     }
   }
 
-  const handleComplete = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSkipForNow = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
-    handleOpenChange(false)
+
+    if (showRewardTokenInfo) {
+      setCurrentStep(4)
+    } else {
+      handleOpenChange(false)
+    }
   }
 
   return (
@@ -394,7 +413,7 @@ export function AddPoolModal({
         <div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleCreatePool)}>
-              <div className="[&>div>label]:step steps ml-4 pl-8 [counter-reset:step]">
+              <div className="[&>div>label]:step steps ml-4 pl-8 pb-4 [counter-reset:step] max-w-full">
                 <Collapsible
                   open={currentStep == 1}
                   className={cn('relative pb-6 space-y-2', { completed: currentStep > 1 })}
@@ -453,7 +472,18 @@ export function AddPoolModal({
                   </CollapsibleContent>
                 </Collapsible>
 
-                <Collapsible open={currentStep == 3} className="space-y-2">
+                <Collapsible
+                  open={currentStep == 3}
+                  className={cn('relative pb-6 space-y-2', {
+                    completed: currentStep > 3,
+                    skipped: !nfdToLink,
+                  })}
+                >
+                  <span
+                    className={cn('absolute -left-8 -translate-x-[1px] h-full w-px bg-muted', {
+                      hidden: !showRewardTokenInfo,
+                    })}
+                  />
                   <FormLabel className={cn({ 'text-muted-foreground/50': currentStep < 3 })}>
                     Link Pool to NFD
                   </FormLabel>
@@ -473,8 +503,79 @@ export function AddPoolModal({
                     />
                   </CollapsibleContent>
                 </Collapsible>
+
+                {showRewardTokenInfo && (
+                  <Collapsible open={currentStep == 4} className="space-y-2">
+                    <FormLabel className={cn({ 'text-muted-foreground/50': currentStep < 4 })}>
+                      Send Reward Tokens
+                    </FormLabel>
+                    <CollapsibleContent className="space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          You can now send <DisplayAsset asset={validator?.rewardToken} link />{' '}
+                          tokens to Pool 1.
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Tokens will be distributed from this pool every epoch based on the
+                          validator's configuration.
+                        </p>
+
+                        <div className="flex items-center flex-wrap gap-x-6">
+                          {nfdToLink && (
+                            <p className="flex items-center gap-x-2 text-sm mb-2 py-1">
+                              <NfdThumbnail nfd={nfdToLink} link className="link" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="group h-8 w-8 -my-1"
+                                data-clipboard-text={nfdToLink.name}
+                                onClick={copyToClipboard}
+                              >
+                                <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                              </Button>
+                            </p>
+                          )}
+
+                          {poolAddress && (
+                            <p className="flex items-center gap-x-2 text-sm mb-2 py-1">
+                              <a
+                                href={ExplorerLink.account(poolAddress)}
+                                rel="noreferrer"
+                                target="_blank"
+                                className="link font-mono whitespace-nowrap"
+                              >
+                                {ellipseAddressJsx(poolAddress)}
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="group h-8 w-8 -my-1"
+                                data-clipboard-text={poolAddress}
+                                onClick={copyToClipboard}
+                              >
+                                <Copy className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                              </Button>
+                            </p>
+                          )}
+                        </div>
+                        <FormMessage className={cn({ hidden: !isInitMbrError })}>
+                          {isInitMbrError}
+                        </FormMessage>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </div>
-              <DialogFooter className="my-6 sm:justify-start">
+
+              <div className={cn('my-4')}>
+                <ProgressBar
+                  value={currentStep * (100 / totalSteps)}
+                  color="rose"
+                  className="mt-3"
+                  showAnimation
+                />
+              </div>
+              <DialogFooter className="mt-6">
                 {currentStep == 1 && (
                   <Button type="submit" disabled={isSigning}>
                     Create Pool
@@ -487,19 +588,25 @@ export function AddPoolModal({
                 )}
                 {currentStep == 3 && (
                   <>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleSkipForNow}
+                      disabled={isSigning}
+                    >
+                      Skip for now
+                    </Button>
                     <Button onClick={handleLinkPoolToNfd} disabled={isLocalnet || isSigning}>
                       Link to NFD
                     </Button>
-                    <Button variant="secondary" onClick={handleComplete} disabled={isSigning}>
-                      Skip for now
-                    </Button>
                   </>
                 )}
+                {currentStep == 4 && (
+                  <Button onClick={() => handleOpenChange(false)}>
+                    <CheckIcon className="mr-2 h-4 w-4" /> Finished
+                  </Button>
+                )}
               </DialogFooter>
-
-              <div className={cn('my-4')}>
-                <ProgressBar value={progress} color="rose" className="mt-3" showAnimation />
-              </div>
             </form>
           </Form>
         </div>

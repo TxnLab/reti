@@ -12,8 +12,10 @@ import {
 } from '@/api/clients'
 import { fetchNfd } from '@/api/nfd'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
+import { GatingType } from '@/constants/gating'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
 import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
+import { Asset } from '@/interfaces/algod'
 import { StakedInfo, StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
 import {
   Constraints,
@@ -121,6 +123,19 @@ export async function fetchValidator(
     if (validator.config.rewardTokenId > 0) {
       const rewardToken = await fetchAsset(validator.config.rewardTokenId)
       validator.rewardToken = rewardToken
+    }
+
+    if (validator.config.entryGatingType === GatingType.AssetId) {
+      const gatingAssets = await Promise.all(
+        validator.config.entryGatingAssets.map(async (assetId) => {
+          if (assetId > 0) {
+            return fetchAsset(assetId)
+          }
+          return null
+        }),
+      )
+
+      validator.gatingAssets = gatingAssets.filter(Boolean) as Asset[]
     }
 
     if (validator.config.nfdForInfo > 0) {
