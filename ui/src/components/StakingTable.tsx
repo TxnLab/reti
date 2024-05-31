@@ -116,7 +116,7 @@ export function StakingTable({
               params={{
                 validatorId: String(row.original.validatorId),
               }}
-              className="hover:underline underline-offset-4"
+              className="link underline-offset-4"
             >
               {nfdAppId > 0 ? (
                 <NfdThumbnail nameOrId={nfdAppId} />

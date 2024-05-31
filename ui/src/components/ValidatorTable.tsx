@@ -163,7 +163,7 @@ export function ValidatorTable({
               params={{
                 validatorId: String(validator.id),
               }}
-              className="truncate hover:underline underline-offset-4"
+              className={cn('link underline-offset-4', { truncate: !!nfd })}
               preload="intent"
             >
               {nfd ? (

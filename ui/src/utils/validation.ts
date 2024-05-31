@@ -1,8 +1,11 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { RefinementCtx, z } from 'zod'
+import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { GatingType } from '@/constants/gating'
+import { Asset } from '@/interfaces/algod'
 import { Constraints } from '@/interfaces/validator'
+import { convertToBaseUnits } from '@/utils/format'
 import { isValidName, isValidRoot } from '@/utils/nfd'
 
 /**
@@ -274,9 +277,14 @@ export const rewardTokenRefinement = (
  * Validator schema refinement for entry gating
  * @param {any} data - The form data
  * @param {RefinementCtx} ctx - The refinement context
+ * @param {Array<Asset | null>} assets - The gating assets
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
+export const entryGatingRefinement = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any,
+  ctx: RefinementCtx,
+  assets: Array<Asset | null>,
+) => {
   const {
     entryGatingType,
     entryGatingAddress,
@@ -288,29 +296,29 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
 
   switch (entryGatingType) {
     case String(GatingType.None):
-      if (entryGatingAddress !== '') {
+      if (!['', ALGORAND_ZERO_ADDRESS_STRING].includes(entryGatingAddress)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAddress'],
-          message: 'entryGatingAddress should not be set when entry gating is disabled',
+          message: 'entryGatingAddress should not be set when entryGatingType is None',
         })
       } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAssets'],
-          message: 'entryGatingAssets should not be set when entry gating is disabled',
+          message: 'entryGatingAssets should not be set when entryGatingType is None',
         })
       } else if (entryGatingNfdCreator !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdCreator'],
-          message: 'entryGatingNfdCreator should not be set when entry gating is disabled',
+          message: 'entryGatingNfdCreator should not be set when entryGatingType is None',
         })
       } else if (entryGatingNfdParent !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdParent'],
-          message: 'entryGatingNfdParent should not be set when entry gating is disabled',
+          message: 'entryGatingNfdParent should not be set when entryGatingType is None',
         })
       }
       break
@@ -325,19 +333,19 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAssets'],
-          message: 'entryGatingAssets should not be set when entryGatingType is 1',
+          message: 'entryGatingAssets should not be set when entryGatingType is CreatorAccount',
         })
       } else if (entryGatingNfdCreator !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdCreator'],
-          message: 'entryGatingNfdCreator should not be set when entryGatingType is 1',
+          message: 'entryGatingNfdCreator should not be set when entryGatingType is CreatorAccount',
         })
       } else if (entryGatingNfdParent !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdParent'],
-          message: 'entryGatingNfdParent should not be set when entryGatingType is 1',
+          message: 'entryGatingNfdParent should not be set when entryGatingType is CreatorAccount',
         })
       }
       break
@@ -360,65 +368,65 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
           path: ['entryGatingAssets'],
           message: 'Must provide at least one gating asset',
         })
-      } else if (entryGatingAddress !== '') {
+      } else if (!['', ALGORAND_ZERO_ADDRESS_STRING].includes(entryGatingAddress)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAddress'],
-          message: 'entryGatingAddress should not be set when entryGatingType is 2',
+          message: 'entryGatingAddress should not be set when entryGatingType is AssetId',
         })
       } else if (entryGatingNfdCreator !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdCreator'],
-          message: 'entryGatingNfdCreator should not be set when entryGatingType is 2',
+          message: 'entryGatingNfdCreator should not be set when entryGatingType is AssetId',
         })
       } else if (entryGatingNfdParent !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdParent'],
-          message: 'entryGatingNfdParent should not be set when entryGatingType is 2',
+          message: 'entryGatingNfdParent should not be set when entryGatingType is AssetId',
         })
       }
       break
     case String(GatingType.CreatorNfd):
-      if (entryGatingAddress !== '') {
+      if (!['', ALGORAND_ZERO_ADDRESS_STRING].includes(entryGatingAddress)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAddress'],
-          message: 'entryGatingAddress should not be set when entryGatingType is 3',
+          message: 'entryGatingAddress should not be set when entryGatingType is CreatorNfd',
         })
       } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAssets'],
-          message: 'entryGatingAssets should not be set when entryGatingType is 3',
+          message: 'entryGatingAssets should not be set when entryGatingType is CreatorNfd',
         })
       } else if (entryGatingNfdParent !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdParent'],
-          message: 'entryGatingNfdParent should not be set when entryGatingType is 3',
+          message: 'entryGatingNfdParent should not be set when entryGatingType is CreatorNfd',
         })
       }
       break
     case String(GatingType.SegmentNfd):
-      if (entryGatingAddress !== '') {
+      if (!['', ALGORAND_ZERO_ADDRESS_STRING].includes(entryGatingAddress)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAddress'],
-          message: 'entryGatingAddress should not be set when entryGatingType is 4',
+          message: 'entryGatingAddress should not be set when entryGatingType is SegmentNfd',
         })
       } else if (entryGatingAssets.length > 1 || entryGatingAssets[0].value !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingAssets'],
-          message: 'entryGatingAssets should not be set when entryGatingType is 4',
+          message: 'entryGatingAssets should not be set when entryGatingType is SegmentNfd',
         })
       } else if (entryGatingNfdCreator !== '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['entryGatingNfdCreator'],
-          message: 'entryGatingNfdCreator should not be set when entryGatingType is 4',
+          message: 'entryGatingNfdCreator should not be set when entryGatingType is SegmentNfd',
         })
       }
       break
@@ -426,30 +434,31 @@ export const entryGatingRefinement = (data: any, ctx: RefinementCtx) => {
       break
   }
 
-  const isGatingEnabled = [
-    String(GatingType.CreatorAccount),
-    String(GatingType.AssetId),
-    String(GatingType.CreatorNfd),
-    String(GatingType.SegmentNfd),
-  ].includes(String(entryGatingType))
-
-  if (isGatingEnabled) {
-    if (
-      isNaN(Number(gatingAssetMinBalance)) ||
-      !Number.isInteger(Number(gatingAssetMinBalance)) ||
-      Number(gatingAssetMinBalance) <= 0
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['gatingAssetMinBalance'],
-        message: 'Invalid minimum balance',
-      })
+  if (entryGatingType === String(GatingType.AssetId)) {
+    if (entryGatingAssets.length === 1) {
+      // gatingAssetMinBalance field is visible
+      if (isNaN(Number(gatingAssetMinBalance)) || Number(gatingAssetMinBalance) < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['gatingAssetMinBalance'],
+          message: 'Invalid minimum balance',
+        })
+      } else {
+        const asset = assets.find((asset) => asset?.index === Number(entryGatingAssets[0].value))
+        if (asset) {
+          const minBalanceBaseUnits = convertToBaseUnits(
+            gatingAssetMinBalance,
+            asset.params.decimals,
+          )
+          if (minBalanceBaseUnits > asset.params.total) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['gatingAssetMinBalance'],
+              message: `Minimum balance cannot exceed ${asset.params['unit-name'] || 'gating asset'} total supply`,
+            })
+          }
+        }
+      }
     }
-  } else if (gatingAssetMinBalance !== '') {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['gatingAssetMinBalance'],
-      message: 'gatingAssetMinBalance should not be set when entry gating is disabled',
-    })
   }
 }

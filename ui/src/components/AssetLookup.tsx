@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react'
+import * as React from 'react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useDebouncedCallback } from 'use-debounce'
 import { fetchAsset as fetchAssetInformation } from '@/api/algod'
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { AlgodHttpError, Asset } from '@/interfaces/algod'
 import { cn } from '@/utils/ui'
 
+const ERROR_EMPTY_FIELD = 'No asset ID entered'
 const ERROR_NOT_FOUND = 'Asset not found'
 const ERROR_FAILED = 'Failed to fetch asset'
 const ERROR_UNKNOWN = 'An unknown error occurred'
@@ -22,7 +24,7 @@ interface AssetLookupProps<
   isFetching: boolean
   setIsFetching: (isFetching: boolean) => void
   errorMessage?: string
-  label?: string
+  label?: React.ReactNode
   className?: string
 }
 
@@ -42,6 +44,12 @@ export function AssetLookup<
 }: AssetLookupProps<TFieldValues, TName>) {
   const fetchAsset = async (value: string) => {
     try {
+      if (!value) {
+        // If the field is empty, set a validation error but don't throw an error
+        form.setError(name, { type: 'manual', message: ERROR_EMPTY_FIELD })
+        return
+      }
+
       const asset = await fetchAssetInformation(Number(value))
 
       form.clearErrors(name)
@@ -80,13 +88,35 @@ export function AssetLookup<
     }
   }, 500)
 
+  React.useEffect(() => {
+    const initialFetch = async () => {
+      if (form.getValues(name)) {
+        await fetchAsset(form.getValues(name))
+      }
+    }
+
+    initialFetch()
+  }, [])
+
+  const renderLabel = () => {
+    if (typeof label === 'string') {
+      return <FormLabel>{label}</FormLabel>
+    }
+
+    if (label) {
+      return label
+    }
+
+    return null
+  }
+
   return (
     <FormField
       control={form.control}
       name={name}
       render={({ field }) => (
         <FormItem className={className}>
-          {label && <FormLabel>{label}</FormLabel>}
+          {renderLabel()}
           <div className="flex items-center gap-x-3">
             <div className="flex-1 relative">
               <FormControl>

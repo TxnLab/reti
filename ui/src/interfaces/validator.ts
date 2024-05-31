@@ -87,6 +87,7 @@ export type Validator = {
   pools: PoolInfo[]
   nodePoolAssignment: NodePoolAssignmentConfig
   rewardToken?: Asset
+  gatingAssets?: Asset[]
   nfd?: Nfd
   apy?: number
 }

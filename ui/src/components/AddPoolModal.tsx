@@ -17,10 +17,10 @@ import {
 } from '@/api/contracts'
 import { mbrQueryOptions, poolAssignmentQueryOptions } from '@/api/queries'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { DisplayAsset } from '@/components/DisplayAsset'
 import { NfdLookup } from '@/components/NfdLookup'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { NodeSelect } from '@/components/NodeSelect'
-import { RewardToken } from '@/components/RewardToken'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import {
@@ -512,8 +512,8 @@ export function AddPoolModal({
                     <CollapsibleContent className="space-y-2">
                       <div>
                         <p className="text-sm text-muted-foreground mb-2">
-                          You can now send <RewardToken validator={validator} link /> tokens to Pool
-                          1.
+                          You can now send <DisplayAsset asset={validator?.rewardToken} link />{' '}
+                          tokens to Pool 1.
                         </p>
                         <p className="text-sm text-muted-foreground mb-4">
                           Tokens will be distributed from this pool every epoch based on the

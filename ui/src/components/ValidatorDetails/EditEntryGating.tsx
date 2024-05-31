@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { isAxiosError } from 'axios'
-import { ArrowUpRight, Check, RotateCcw } from 'lucide-react'
+import { ArrowUpRight, Check, RotateCcw, X } from 'lucide-react'
 import * as React from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -11,12 +11,15 @@ import { z } from 'zod'
 import { changeValidatorRewardInfo, fetchValidator } from '@/api/contracts'
 import { fetchNfd } from '@/api/nfd'
 import { nfdQueryOptions } from '@/api/queries'
+import { AssetLookup } from '@/components/AssetLookup'
 import { InfoPopover } from '@/components/InfoPopover'
+import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,9 +36,11 @@ import {
 import { EditValidatorModal } from '@/components/ValidatorDetails/EditValidatorModal'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { GatingType } from '@/constants/gating'
+import { Asset } from '@/interfaces/algod'
 import { EntryGatingAssets, Validator } from '@/interfaces/validator'
 import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { setValidatorQueriesData, transformEntryGatingAssets } from '@/utils/contracts'
+import { convertFromBaseUnits } from '@/utils/format'
 import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
@@ -50,6 +55,8 @@ interface EditEntryGatingProps {
 export function EditEntryGating({ validator }: EditEntryGatingProps) {
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
   const [isSigning, setIsSigning] = React.useState(false)
+  const [gatingAssets, setGatingAssets] = React.useState<Array<Asset | null>>([])
+  const [isFetchingGatingAssetIndex, setIsFetchingGatingAssetIndex] = React.useState<number>(-1)
 
   const {
     entryGatingType,
@@ -84,9 +91,17 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
       entryGatingNfdParent: validatorSchemas.entryGatingNfdParent(),
       gatingAssetMinBalance: validatorSchemas.gatingAssetMinBalance(),
     })
-    .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
+    .superRefine((data, ctx) => entryGatingRefinement(data, ctx, gatingAssets))
 
   type FormValues = z.infer<typeof formSchema>
+
+  const defaultGatingAssetMinBalance =
+    gatingAssetMinBalance > 1
+      ? convertFromBaseUnits(
+          gatingAssetMinBalance,
+          validator.gatingAssets?.[0].params.decimals,
+        ).toString()
+      : ''
 
   const defaultValues = {
     entryGatingType: String(entryGatingType),
@@ -99,7 +114,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
         : [{ value: '' }],
     entryGatingNfdCreator: nfdCreatorQuery.data?.name || '',
     entryGatingNfdParent: nfdParentQuery.data?.name || '',
-    gatingAssetMinBalance: String(gatingAssetMinBalance),
+    gatingAssetMinBalance: defaultGatingAssetMinBalance,
   }
 
   const form = useForm<FormValues>({
@@ -109,10 +124,48 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
 
   const { errors, isDirty } = form.formState
 
-  const { fields, append, replace } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'entryGatingAssets',
   })
+
+  const handleAddAssetField = () => {
+    append({ value: '' })
+    setGatingAssets((prev) => [...prev, null])
+
+    // Reset min balance if there are multiple assets
+    form.setValue('gatingAssetMinBalance', '')
+  }
+
+  const handleRemoveAssetField = (index: number) => {
+    if ($entryGatingAssets.length === 1) {
+      replace([{ value: '' }])
+    } else {
+      remove(index)
+    }
+
+    setGatingAssets((prev) => {
+      const newAssets = [...prev]
+      newAssets.splice(index, 1)
+      return newAssets
+    })
+  }
+
+  const handleSetGatingAssetById = async (index: number, value: Asset | null) => {
+    setGatingAssets((prev) => {
+      const newAssets = [...prev]
+      newAssets[index] = value
+      return newAssets
+    })
+  }
+
+  const handleSetIsFetchingGatingAssetIndex = (index: number, isFetching: boolean) => {
+    if (isFetching) {
+      setIsFetchingGatingAssetIndex(index)
+    } else if (index === isFetchingGatingAssetIndex) {
+      setIsFetchingGatingAssetIndex(-1)
+    }
+  }
 
   const handleResetForm = () => {
     form.reset(defaultValues)
@@ -130,17 +183,16 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
   }
 
   const $entryGatingType = form.watch('entryGatingType')
+  const $entryGatingAssets = form.watch('entryGatingAssets')
+  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
   const showCreatorAddressField = $entryGatingType === String(GatingType.CreatorAccount)
   const showAssetFields = $entryGatingType === String(GatingType.AssetId)
   const showCreatorNfdField = $entryGatingType === String(GatingType.CreatorNfd)
   const showParentNfdField = $entryGatingType === String(GatingType.SegmentNfd)
 
-  const showMinBalanceField = [
-    String(GatingType.CreatorAccount),
-    String(GatingType.AssetId),
-    String(GatingType.CreatorNfd),
-  ].includes($entryGatingType)
+  const showMinBalanceField =
+    $entryGatingType === String(GatingType.AssetId) && $entryGatingAssets.length < 2
 
   const fetchNfdAppId = async (
     value: string,
@@ -198,8 +250,6 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
     }
   }, 500)
 
-  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
-
   const showPrimaryMintNfd = (
     name: string,
     isFetching: boolean,
@@ -230,23 +280,23 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
 
       toast.loading('Sign transactions to update entry gating...', { id: toastId })
 
-      const gatingAssets = transformEntryGatingAssets(
+      const { entryGatingAssets, gatingAssetMinBalance } = transformEntryGatingAssets(
         values.entryGatingType,
         values.entryGatingAssets,
+        gatingAssets,
+        values.gatingAssetMinBalance,
         nfdCreatorAppId,
         nfdParentAppId,
-      ).map(Number) as EntryGatingAssets
+      )
 
-      const gatingType = Number(values.entryGatingType)
-      const gatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
-      const gatingAssetMinBalance = BigInt(values.gatingAssetMinBalance)
+      const entryGatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
 
       await changeValidatorRewardInfo(
         validator.id,
-        gatingType,
-        gatingAddress,
-        gatingAssets,
-        gatingAssetMinBalance,
+        Number(values.entryGatingType),
+        entryGatingAddress,
+        entryGatingAssets.map(Number) as EntryGatingAssets,
+        BigInt(gatingAssetMinBalance),
         rewardPerPayout,
         transactionSigner,
         activeAddress,
@@ -283,13 +333,14 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
   return (
     <EditValidatorModal
       title="Edit Entry Gating"
-      description={`Require stakers to hold a qualified asset to enter pool on Validator ${validator.id}`}
+      description={`Require stakers to hold a qualified asset to add stake to Validator ${validator.id}`}
       open={isOpen}
       onOpenChange={handleOpenChange}
+      className="max-w-[640px]"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="">
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 sm:grid-cols-[14rem,1fr]">
             <FormField
               control={form.control}
               name="entryGatingType"
@@ -307,15 +358,15 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                       onValueChange={(type) => {
                         field.onChange(type) // Inform react-hook-form of the change
 
-                        // Reset form fields
+                        // Reset gating assets
                         replace([{ value: '' }])
+                        setGatingAssets([])
+
+                        // Reset gating fields
                         form.setValue('entryGatingAddress', '')
                         form.setValue('entryGatingNfdCreator', '')
                         form.setValue('entryGatingNfdParent', '')
-                        form.setValue(
-                          'gatingAssetMinBalance',
-                          type === String(GatingType.SegmentNfd) ? '1' : '',
-                        )
+                        form.setValue('gatingAssetMinBalance', '')
 
                         // Clear any errors
                         form.clearErrors('entryGatingAssets')
@@ -370,12 +421,12 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
 
             <div className={cn({ hidden: !showAssetFields })}>
               {fields.map((field, index) => (
-                <FormField
-                  control={form.control}
-                  key={field.id}
-                  name={`entryGatingAssets.${index}.value`}
-                  render={({ field }) => (
-                    <FormItem>
+                <div key={field.id} className="flex items-end">
+                  <AssetLookup
+                    form={form}
+                    name={`entryGatingAssets.${index}.value`}
+                    className="flex-1"
+                    label={
                       <FormLabel className={cn(index !== 0 && 'sr-only')}>
                         Asset ID
                         <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
@@ -383,17 +434,31 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                         </InfoPopover>
                         <span className="text-primary">*</span>
                       </FormLabel>
-                      <FormControl>
-                        <Input
-                          className="font-mono placeholder:font-sans"
-                          placeholder="Enter asset ID"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    }
+                    asset={gatingAssets[index] || null}
+                    setAsset={(asset) => handleSetGatingAssetById(index, asset)}
+                    isFetching={isFetchingGatingAssetIndex === index}
+                    setIsFetching={(isFetching) =>
+                      handleSetIsFetchingGatingAssetIndex(index, isFetching)
+                    }
+                  />
+                  <div
+                    className={cn('flex items-center h-9 mt-2 ml-2', {
+                      invisible: gatingAssets.length === 0,
+                    })}
+                  >
+                    <Tooltip content="Remove">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="group h-8 w-8"
+                        onClick={() => handleRemoveAssetField(index)}
+                      >
+                        <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </div>
               ))}
               <FormMessage className="mt-2">{errors.entryGatingAssets?.root?.message}</FormMessage>
               <Button
@@ -401,8 +466,12 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                onClick={() => append({ value: '' })}
-                disabled={fields.length >= 4}
+                onClick={handleAddAssetField}
+                disabled={
+                  fields.length >= 4 ||
+                  $entryGatingAssets[fields.length - 1]?.value === '' ||
+                  Array.isArray(errors.entryGatingAssets)
+                }
               >
                 Add Asset
               </Button>
@@ -568,17 +637,19 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               control={form.control}
               name="gatingAssetMinBalance"
               render={({ field }) => (
-                <FormItem className={cn({ hidden: !showMinBalanceField })}>
+                <FormItem
+                  className={cn('sm:col-start-2 sm:col-end-3', { hidden: !showMinBalanceField })}
+                >
                   <FormLabel>
                     Minimum balance
                     <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
-                      Minimum required balance of the entry gating asset
+                      Optional minimum required balance of the entry gating asset.
                     </InfoPopover>
-                    <span className="text-primary">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="" {...field} />
+                    <Input {...field} />
                   </FormControl>
+                  <FormDescription>No minimum if left blank</FormDescription>
                   <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
                 </FormItem>
               )}
