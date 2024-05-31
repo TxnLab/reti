@@ -53,6 +53,7 @@ import { dayjs } from '@/utils/dayjs'
 import { simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAssetAmount } from '@/utils/format'
+import { globalFilterFn } from '@/utils/table'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -297,6 +298,9 @@ export function StakingTable({
   const table = useReactTable({
     data: stakesByValidator,
     columns,
+    filterFns: {
+      global: globalFilterFn,
+    },
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),

@@ -4,7 +4,6 @@ import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
-  FilterFn,
   SortingState,
   Updater,
   VisibilityState,
@@ -65,13 +64,8 @@ import { dayjs } from '@/utils/dayjs'
 import { sendRewardTokensToPool, simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAmount, formatAssetAmount } from '@/utils/format'
+import { globalFilterFn, sunsetFilter } from '@/utils/table'
 import { cn } from '@/utils/ui'
-
-declare module '@tanstack/react-table' {
-  interface FilterFns {
-    global: FilterFn<unknown>
-  }
-}
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -138,56 +132,8 @@ export function ValidatorTable({
     }
   }
 
-  // `validator` column filter for sunsetted validators
-  const sunsetFilter: FilterFn<Validator> = (row, columnId, showSunsetted) => {
-    const validator = row.original
-    const isSunset = isSunsetted(validator)
-    return showSunsetted ? true : !isSunset
-  }
-
   // Persistent global filter state
   const [globalFilter, setGlobalFilter] = useLocalStorage<string>('validator-global-filter', '')
-
-  const globalFilterFn: FilterFn<Validator> = (row, columnId, filterValue) => {
-    if (filterValue === '') return true
-
-    const validator = row.original
-    const search = filterValue.toLowerCase()
-
-    const nfd = validator.nfd
-    const name = nfd?.name?.toLowerCase() ?? ''
-    const owner = validator.config.owner.toLowerCase()
-
-    if (name.includes(search)) return true
-    if (owner.includes(search)) return true
-
-    const rewardToken = validator.rewardToken
-    if (rewardToken) {
-      const tokenId = rewardToken.index.toString()
-      const { name, 'unit-name': unitName } = rewardToken.params
-      const tokenName = name?.toLowerCase() ?? ''
-      const tokenUnitName = unitName?.toLowerCase() ?? ''
-
-      if (tokenId === search) return true
-      if (tokenName.includes(search)) return true
-      if (tokenUnitName.includes(search)) return true
-    }
-
-    const gatingAssets = validator.gatingAssets
-    if (gatingAssets) {
-      const assetIds = gatingAssets.map((asset) => asset.index.toString())
-      const assetNames = gatingAssets.map((asset) => asset.params.name?.toLowerCase() ?? '')
-      const assetUnitnames = gatingAssets.map(
-        (asset) => asset.params['unit-name']?.toLowerCase() ?? '',
-      )
-
-      if (assetIds.some((id) => id === search)) return true
-      if (assetNames.some((name) => name.includes(search))) return true
-      if (assetUnitnames.some((unitName) => unitName.includes(search))) return true
-    }
-
-    return false
-  }
 
   // Column definitions
   const columns: ColumnDef<Validator>[] = [
@@ -486,7 +432,7 @@ export function ValidatorTable({
     },
   ]
 
-  const table = useReactTable({
+  const table = useReactTable<Validator>({
     data: validators,
     columns,
     filterFns: {
