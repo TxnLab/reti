@@ -1,8 +1,8 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { DisplayAsset } from '@/components/DisplayAsset'
 import { Loading } from '@/components/Loading'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
-import { RewardToken } from '@/components/RewardToken'
 import { Tooltip } from '@/components/Tooltip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EditCommissionAccount } from '@/components/ValidatorDetails/EditCommissionAccount'
@@ -272,7 +272,7 @@ export function Details({ validator }: DetailsProps) {
                       Reward Token
                     </dt>
                     <dd className="flex items-center justify-between gap-x-2 text-sm leading-6">
-                      <RewardToken validator={validator} show="full" link />
+                      <DisplayAsset asset={validator.rewardToken} show="full" link />
                     </dd>
                   </div>
                   <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">

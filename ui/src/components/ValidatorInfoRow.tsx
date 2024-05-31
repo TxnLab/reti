@@ -1,4 +1,4 @@
-import { RewardToken } from '@/components/RewardToken'
+import { DisplayAsset } from '@/components/DisplayAsset'
 import { useBlockTime } from '@/hooks/useBlockTime'
 import { Constraints, Validator } from '@/interfaces/validator'
 import { calculateMaxStakers } from '@/utils/contracts'
@@ -87,7 +87,7 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
         <div>
           <h4 className="text-sm font-medium text-muted-foreground">Reward Token</h4>
           <p className="text-sm">
-            <RewardToken validator={validator} show="name" />
+            <DisplayAsset asset={validator.rewardToken} show="name" />
           </p>
         </div>
         <div>

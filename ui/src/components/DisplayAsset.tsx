@@ -1,35 +1,29 @@
 import * as React from 'react'
-import { Validator } from '@/interfaces/validator'
+import { Asset } from '@/interfaces/algod'
 import { ExplorerLink } from '@/utils/explorer'
 import { cn } from '@/utils/ui'
 
-interface RewardTokenProps {
-  validator?: Validator | null
+interface DisplayAssetProps {
+  asset?: Asset
   show?: 'name' | 'unit-name' | 'full'
   link?: boolean
   fallback?: React.ReactNode
   className?: string
 }
 
-export function RewardToken({
-  validator,
+export function DisplayAsset({
+  asset,
   show = 'unit-name',
   link = false,
   fallback = <span className="text-muted-foreground">--</span>,
   className = '',
-}: RewardTokenProps) {
+}: DisplayAssetProps) {
   const renderUnitName = (unitName: string) => {
     return <span className="font-mono">{unitName}</span>
   }
 
-  const renderRewardToken = (validator: Validator) => {
-    const { rewardToken } = validator
-
-    if (!rewardToken) {
-      return validator.config.rewardTokenId
-    }
-
-    const { name, 'unit-name': unitName } = rewardToken.params
+  const renderDisplayAsset = (asset: Asset) => {
+    const { name, 'unit-name': unitName } = asset.params
 
     if (unitName && show === 'unit-name') {
       return renderUnitName(unitName)
@@ -57,25 +51,25 @@ export function RewardToken({
       return renderUnitName(unitName)
     }
 
-    return validator.config.rewardTokenId
+    return asset.index
   }
 
-  if (!validator?.config.rewardTokenId) {
+  if (!asset) {
     return fallback
   }
 
   if (link) {
     return (
       <a
-        href={ExplorerLink.asset(validator.config.rewardTokenId)}
+        href={ExplorerLink.asset(asset.index)}
         rel="noreferrer"
         target="_blank"
         className={cn('link text-foreground', className)}
       >
-        {renderRewardToken(validator)}
+        {renderDisplayAsset(asset)}
       </a>
     )
   }
 
-  return <span className={className}>{renderRewardToken(validator)}</span>
+  return <span className={className}>{renderDisplayAsset(asset)}</span>
 }
