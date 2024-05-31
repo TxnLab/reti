@@ -53,6 +53,7 @@ import { dayjs } from '@/utils/dayjs'
 import { simulateEpoch } from '@/utils/development'
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAssetAmount } from '@/utils/format'
+import { globalFilterFn } from '@/utils/table'
 import { cn } from '@/utils/ui'
 
 interface StakingTableProps {
@@ -71,7 +72,6 @@ export function StakingTable({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState({})
 
   const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
@@ -297,18 +297,19 @@ export function StakingTable({
   const table = useReactTable({
     data: stakesByValidator,
     columns,
+    filterFns: {
+      global: globalFilterFn,
+    },
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
     },
   })
 
