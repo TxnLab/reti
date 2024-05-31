@@ -4,6 +4,7 @@ import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
+  FilterFn,
   SortingState,
   Updater,
   VisibilityState,
@@ -23,9 +24,11 @@ import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { AlgoSymbol } from '@/components/AlgoSymbol'
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
+import { DebouncedSearch } from '@/components/DebouncedSearch'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
 import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +37,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -65,6 +67,12 @@ import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAmount, formatAssetAmount } from '@/utils/format'
 import { cn } from '@/utils/ui'
 
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    global: FilterFn<unknown>
+  }
+}
+
 interface ValidatorTableProps {
   validators: Validator[]
   stakesByValidator: StakerValidatorData[]
@@ -76,9 +84,6 @@ export function ValidatorTable({
   stakesByValidator,
   constraints,
 }: ValidatorTableProps) {
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [rowSelection, setRowSelection] = React.useState({})
-
   const [addStakeValidator, setAddStakeValidator] = React.useState<Validator | null>(null)
   const [unstakeValidator, setUnstakeValidator] = React.useState<Validator | null>(null)
   const [addPoolValidator, setAddPoolValidator] = React.useState<Validator | null>(null)
@@ -89,6 +94,7 @@ export function ValidatorTable({
   const router = useRouter()
   const queryClient = useQueryClient()
 
+  // Persistent column sorting state
   const [sorting, setSorting] = useLocalStorage<SortingState>('validator-sorting', [
     { id: 'stake', desc: true },
   ])
@@ -102,10 +108,12 @@ export function ValidatorTable({
     }
   }
 
+  // Persistent column visibility state
   const [columnVisibility, setColumnVisibility] = useLocalStorage<VisibilityState>(
     'validator-columns',
     {},
   )
+
   const handleColumnVisibilityChange = (updaterOrValue: Updater<VisibilityState>) => {
     if (typeof updaterOrValue === 'function') {
       const newState = updaterOrValue(columnVisibility)
@@ -115,6 +123,73 @@ export function ValidatorTable({
     }
   }
 
+  // Persistent column filters state
+  const [columnFilters, setColumnFilters] = useLocalStorage<ColumnFiltersState>(
+    'validator-column-filters',
+    [{ id: 'validator', value: false }],
+  )
+
+  const handleColumnFiltersChange = (updaterOrValue: Updater<ColumnFiltersState>) => {
+    if (typeof updaterOrValue === 'function') {
+      const newState = updaterOrValue(columnFilters)
+      setColumnFilters(newState)
+    } else {
+      setColumnFilters(updaterOrValue)
+    }
+  }
+
+  // `validator` column filter for sunsetted validators
+  const sunsetFilter: FilterFn<Validator> = (row, columnId, showSunsetted) => {
+    const validator = row.original
+    const isSunset = isSunsetted(validator)
+    return showSunsetted ? true : !isSunset
+  }
+
+  // Persistent global filter state
+  const [globalFilter, setGlobalFilter] = useLocalStorage<string>('validator-global-filter', '')
+
+  const globalFilterFn: FilterFn<Validator> = (row, columnId, filterValue) => {
+    if (filterValue === '') return true
+
+    const validator = row.original
+    const search = filterValue.toLowerCase()
+
+    const nfd = validator.nfd
+    const name = nfd?.name?.toLowerCase() ?? ''
+    const owner = validator.config.owner.toLowerCase()
+
+    if (name.includes(search)) return true
+    if (owner.includes(search)) return true
+
+    const rewardToken = validator.rewardToken
+    if (rewardToken) {
+      const tokenId = rewardToken.index.toString()
+      const { name, 'unit-name': unitName } = rewardToken.params
+      const tokenName = name?.toLowerCase() ?? ''
+      const tokenUnitName = unitName?.toLowerCase() ?? ''
+
+      if (tokenId === search) return true
+      if (tokenName.includes(search)) return true
+      if (tokenUnitName.includes(search)) return true
+    }
+
+    const gatingAssets = validator.gatingAssets
+    if (gatingAssets) {
+      const assetIds = gatingAssets.map((asset) => asset.index.toString())
+      const assetNames = gatingAssets.map((asset) => asset.params.name?.toLowerCase() ?? '')
+      const assetUnitnames = gatingAssets.map(
+        (asset) => asset.params['unit-name']?.toLowerCase() ?? '',
+      )
+
+      if (assetIds.some((id) => id === search)) return true
+      if (assetNames.some((name) => name.includes(search))) return true
+      if (assetUnitnames.some((unitName) => unitName.includes(search))) return true
+    }
+
+    return false
+  }
+
+  // Column definitions
   const columns: ColumnDef<Validator>[] = [
     {
       id: 'expander',
@@ -138,6 +213,7 @@ export function ValidatorTable({
     {
       id: 'validator',
       accessorFn: (row) => row.nfd?.name || row.config.owner.toLowerCase(),
+      filterFn: sunsetFilter,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
         const validator = row.original
@@ -163,7 +239,7 @@ export function ValidatorTable({
               params={{
                 validatorId: String(validator.id),
               }}
-              className={cn('link underline-offset-4', { truncate: !!nfd })}
+              className={cn('link underline-offset-4 whitespace-nowrap', { truncate: !!nfd })}
               preload="intent"
             >
               {nfd ? (
@@ -413,36 +489,65 @@ export function ValidatorTable({
   const table = useReactTable({
     data: validators,
     columns,
+    filterFns: {
+      global: globalFilterFn,
+    },
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: 'global',
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: handleSortingChange,
     getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: handleColumnVisibilityChange,
-    onRowSelectionChange: setRowSelection,
     getRowCanExpand: () => true,
     getExpandedRowModel: getExpandedRowModel(),
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
+      globalFilter,
     },
   })
+
+  // Pre-filtered count of sunsetted validators
+  const sunsetCount = table
+    .getPreFilteredRowModel()
+    .rows.filter((row) => isSunsetted(row.original)).length
 
   return (
     <>
       <div>
-        <div className="lg:flex items-center lg:gap-x-2 py-3">
-          <h2 className="mb-2 text-lg font-semibold lg:flex-1 lg:my-1">All Validators</h2>
-          <div className="flex items-center gap-x-3">
-            <Input
-              placeholder="Filter validators..."
-              value={(table.getColumn('validator')?.getFilterValue() as string) ?? ''}
-              onChange={(event) => table.getColumn('validator')?.setFilterValue(event.target.value)}
-              className="sm:max-w-sm lg:w-64"
+        <div className="sm:flex items-center sm:gap-x-3 py-3">
+          <h2 className="mb-2 text-lg font-semibold sm:flex-1 sm:my-1">Validators</h2>
+          <div
+            className={cn('flex items-center gap-x-2 h-7 sm:h-9 px-3 mb-3 sm:mb-0', {
+              hidden: sunsetCount === 0,
+            })}
+          >
+            <Checkbox
+              checked={(table.getColumn('validator')?.getFilterValue() as boolean) ?? false}
+              onCheckedChange={(checked) => table.getColumn('validator')?.setFilterValue(!!checked)}
             />
-            <DataTableViewOptions table={table} className="h-9" />
+            <label
+              htmlFor="terms"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Show sunsetted ({sunsetCount})
+            </label>
+          </div>
+          <div className="flex items-center gap-x-3 flex-wrap sm:flex-0">
+            <div className="flex items-center gap-x-3 w-full sm:w-auto">
+              <div className="flex-1">
+                <DebouncedSearch
+                  placeholder="Filter validators..."
+                  value={globalFilter ?? ''}
+                  onSearch={(value) => setGlobalFilter(String(value))}
+                  className="w-full sm:max-w-sm lg:w-64"
+                />
+              </div>
+              <DataTableViewOptions table={table} className="h-9" />
+            </div>
           </div>
         </div>
         <div className="rounded-md border">
