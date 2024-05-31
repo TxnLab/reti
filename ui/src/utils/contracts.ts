@@ -225,15 +225,20 @@ export function getEpochLengthBlocks(
   }
 }
 
+interface TransformedGatingAssets {
+  entryGatingAssets: string[]
+  gatingAssetMinBalance: string
+}
+
 /**
- * Transform entry gating assets into a fixed length array of asset IDs
+ * Prepares entry gating assets and minimum balance to submit to the contract
  * @param {string} type - Entry gating type
  * @param {Array<{ value: string }>} assetIds - Entry gating asset IDs from form input
  * @param {Array<Asset | null>} assets - Array of fetched asset objects
  * @param {string} minBalance - Minimum balance required for gating assets
  * @param {number} nfdCreatorAppId - NFD creator app ID
  * @param {number} nfdParentAppId - NFD parent app ID
- * @returns {string[]} Fixed length array of asset IDs
+ * @returns {TransformedGatingAssets} Gating assets and minimum balance prepared for submission
  */
 export function transformEntryGatingAssets(
   type: string,
@@ -242,7 +247,7 @@ export function transformEntryGatingAssets(
   minBalance: string,
   nfdCreatorAppId: number,
   nfdParentAppId: number,
-): { entryGatingAssets: string[]; gatingAssetMinBalance: string } {
+): TransformedGatingAssets {
   const fixedLengthArray: string[] = new Array(4).fill('0')
 
   switch (type) {

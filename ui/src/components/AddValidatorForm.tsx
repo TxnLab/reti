@@ -100,7 +100,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       poolsPerNode: validatorSchemas.poolsPerNode(constraints),
     })
     .superRefine((data, ctx) => rewardTokenRefinement(data, ctx, rewardToken?.params.decimals))
-    .superRefine((data, ctx) => entryGatingRefinement(data, ctx))
+    .superRefine((data, ctx) => entryGatingRefinement(data, ctx, gatingAssets))
 
   type FormValues = z.infer<typeof formSchema>
 
@@ -142,7 +142,12 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   }
 
   const handleRemoveAssetField = (index: number) => {
-    remove(index)
+    if ($entryGatingAssets.length === 1) {
+      replace([{ value: '' }])
+    } else {
+      remove(index)
+    }
+
     setGatingAssets((prev) => {
       const newAssets = [...prev]
       newAssets.splice(index, 1)
@@ -171,6 +176,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
   const $entryGatingType = form.watch('entryGatingType')
   const $entryGatingAssets = form.watch('entryGatingAssets')
+  const $nfdForInfo = form.watch('nfdForInfo')
+  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
   const showCreatorAddressField = $entryGatingType === String(GatingType.CreatorAccount)
   const showAssetFields = $entryGatingType === String(GatingType.AssetId)
@@ -247,9 +254,6 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       setIsFetchingNfdParent(false)
     }
   }, 500)
-
-  const $nfdForInfo = form.watch('nfdForInfo')
-  const $entryGatingNfdParent = form.watch('entryGatingNfdParent')
 
   const showPrimaryMintNfd = (
     name: string,
@@ -844,7 +848,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
               <div className={cn({ hidden: !showAssetFields })}>
                 {fields.map((field, index) => (
-                  <div key={field.id} className="flex">
+                  <div key={field.id} className="flex items-end">
                     <AssetLookup
                       form={form}
                       name={`entryGatingAssets.${index}.value`}
@@ -866,7 +870,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       }
                     />
                     <div
-                      className={cn('flex items-center h-9 mt-2 ml-2', { invisible: index === 0 })}
+                      className={cn('flex items-center h-9 mt-2 ml-2', {
+                        invisible: gatingAssets.length === 0,
+                      })}
                     >
                       <Tooltip content="Remove">
                         <Button
@@ -892,7 +898,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                   onClick={handleAddAssetField}
                   disabled={
                     fields.length >= 4 ||
-                    $entryGatingAssets[fields.length - 1].value === '' ||
+                    $entryGatingAssets[fields.length - 1]?.value === '' ||
                     Array.isArray(errors.entryGatingAssets)
                   }
                 >
@@ -1066,15 +1072,13 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormLabel>
                       Minimum balance
                       <InfoPopover className={infoPopoverClassName}>
-                        <p className="mb-2">
-                          Optional minimum required balance of the entry gating asset.
-                        </p>
-                        <p>Defaults to 1 if not set, or if more than one asset is selected.</p>
+                        Optional minimum required balance of the entry gating asset.
                       </InfoPopover>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="1" {...field} />
+                      <Input {...field} />
                     </FormControl>
+                    <FormDescription>No minimum if left blank</FormDescription>
                     <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
                   </FormItem>
                 )}

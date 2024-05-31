@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react'
+import * as React from 'react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useDebouncedCallback } from 'use-debounce'
 import { fetchAsset as fetchAssetInformation } from '@/api/algod'
@@ -86,6 +87,16 @@ export function AssetLookup<
       setIsFetching(false)
     }
   }, 500)
+
+  React.useEffect(() => {
+    const initialFetch = async () => {
+      if (form.getValues(name)) {
+        await fetchAsset(form.getValues(name))
+      }
+    }
+
+    initialFetch()
+  }, [])
 
   const renderLabel = () => {
     if (typeof label === 'string') {
