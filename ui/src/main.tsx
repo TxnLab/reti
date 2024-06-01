@@ -27,6 +27,7 @@ import {
 // use-wallet configuration
 let wallets: SupportedWallet[]
 const siteName = 'Réti Pooling'
+
 if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
   const kmdConfig = getKmdConfigFromViteEnvironment()
   wallets = [
@@ -39,15 +40,24 @@ if (import.meta.env.VITE_ALGOD_NETWORK === 'localnet') {
         port: String(kmdConfig.port),
       },
     },
-    { id: WalletId.LUTE, options: { siteName } },
+    {
+      id: WalletId.LUTE,
+      options: { siteName },
+    },
   ]
 } else {
   wallets = [
     WalletId.DEFLY,
-    WalletId.PERA,
+    {
+      id: WalletId.PERA,
+      options: { projectId: import.meta.env.VITE_WC_PROJECT_ID || '' },
+    },
     WalletId.KIBISIS,
     WalletId.EXODUS,
-    { id: WalletId.LUTE, options: { siteName } },
+    {
+      id: WalletId.LUTE,
+      options: { siteName },
+    },
   ]
 }
 
