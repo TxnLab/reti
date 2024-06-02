@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { Connect } from '@/components/Connect'
 import { ConnectedMenu } from '@/components/ConnectedMenu'
+import { Footer } from '@/components/Footer'
 import { GitHub } from '@/components/GitHub'
 import { Logo } from '@/components/Logo'
 import { MobileMenu } from '@/components/MobileMenu'
@@ -55,6 +56,8 @@ export function Layout({ children }: LayoutProps) {
       </nav>
 
       <div className="py-10">{children}</div>
+
+      <Footer />
     </div>
   )
 }

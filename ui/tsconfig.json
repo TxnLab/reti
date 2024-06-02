@@ -27,7 +27,7 @@
     },
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "vitest.setup.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "vitest.setup.ts", "vite-env.d.ts"],
   "references": [
     {
       "path": "./tsconfig.node.json"
