@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig } from 'vite'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
+import { version } from './package.json'
 
 export default defineConfig({
   plugins: [
@@ -27,6 +28,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
   },
   test: {
     name: 'reti-ui',
