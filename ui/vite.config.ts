@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+import replace from '@rollup/plugin-replace'
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -8,6 +9,11 @@ import { version } from './package.json'
 
 export default defineConfig({
   plugins: [
+    replace({
+      __APP_VERSION__: JSON.stringify(version),
+      preventAssignment: true,
+      include: ['public/version.json'],
+    }),
     react(),
     TanStackRouterVite(),
     nodePolyfills({
