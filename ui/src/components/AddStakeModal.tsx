@@ -151,6 +151,15 @@ export function AddStakeModal({
       .refine((val) => !isNaN(Number(val)) && parseFloat(val) > 0, {
         message: 'Invalid amount',
       })
+      .refine(
+        (val) => {
+          const match = val.match(/^\d+(\.\d{1,6})?$/)
+          return match !== null
+        },
+        {
+          message: 'Cannot have more than 6 decimal places',
+        },
+      )
       .superRefine((val, ctx) => {
         const algoAmount = parseFloat(val)
         const amountToStake = AlgoAmount.Algos(algoAmount).microAlgos
