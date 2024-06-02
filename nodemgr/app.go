@@ -53,6 +53,9 @@ func initApp() *RetiApp {
 	if os.Getenv("DEBUG") == "1" {
 		logLevel.Set(slog.LevelDebug)
 	}
+
+	misc.LoadEnvSettings(logger)
+
 	// We initialize our wrapper instance first, so we can call its methods in the 'Before' lambda func
 	// in initialization of cli App instance.
 	// signer will be set in the initClients method.
@@ -160,7 +163,7 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 
 	// Now load .env.{network} overrides -ie: .env.sandbox containing generated mnemonics
 	// by bootstrap testing script
-	misc.LoadEnvForNetwork(network)
+	misc.LoadEnvForNetwork(ac.logger, network)
 
 	// Initialize algod client / networks / reti validator app id (testing connectivity as well)
 	cfg := algo.GetNetworkConfig(network)

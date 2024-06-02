@@ -51,6 +51,11 @@ func GetNetworkConfig(network string) NetworkConfig {
 	if nodeToken != "" {
 		cfg.NodeToken = nodeToken
 	}
+	// ALGO_ALGOD_ADMIN_TOKEN is what we assume users will use, so it takes precedence for the node token
+	// (which is required to be an admin token)
+	if token := misc.GetSecret("ALGO_ALGOD_ADMIN_TOKEN"); token != "" {
+		cfg.NodeToken = token
+	}
 	NodeHeaders := misc.GetSecret("ALGO_ALGOD_HEADERS")
 	// parse NodeHeaders from key:value,[key:value...] pairs and put into cfg.NodeHeaders map
 	cfg.NodeHeaders = map[string]string{}

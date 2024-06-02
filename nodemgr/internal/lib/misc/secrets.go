@@ -23,6 +23,11 @@ func SecretKeys() []string {
 	return retStrings
 }
 
+// GetSecret retrieves the value of a secret identified by the given key.
+// If the secret is found in an environment variable, it returns the value.
+// Otherwise, it return the value secretsMap if found.
+// This abstraction is just an env abstraction at the moment but could easily
+// be changed to fetch secrets other ways if necessary.
 func GetSecret(key string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
