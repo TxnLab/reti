@@ -6,7 +6,7 @@ require (
 	github.com/algorand/go-algorand-sdk/v2 v2.5.0
 	github.com/antihax/optional v1.0.0
 	github.com/joho/godotenv v1.5.1
-	github.com/mailgun/holster/v4 v4.19.0
+	github.com/mailgun/holster/v4 v4.20.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/ssgreg/repeat v1.5.1
