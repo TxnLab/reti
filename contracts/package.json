@@ -21,7 +21,7 @@
     },
     "devDependencies": {
         "@algorandfoundation/algokit-client-generator": "^3.0.2",
-        "@algorandfoundation/tealscript": "=0.92.0",
+        "@algorandfoundation/tealscript": "=0.93.0",
         "@jest/globals": "^29.7.0",
         "@joe-p/algokit-generate-component": "^0.2.1",
         "@typescript-eslint/eslint-plugin": "7.11.0",
