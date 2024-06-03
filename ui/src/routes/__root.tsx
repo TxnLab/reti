@@ -4,6 +4,7 @@ import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { blockTimeQueryOptions, constraintsQueryOptions, mbrQueryOptions } from '@/api/queries'
 import { Layout } from '@/components/Layout'
+import { useCheckForUpdates } from '@/hooks/useCheckForUpdates'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -23,7 +24,16 @@ export const Route = createRootRouteWithContext<{
     queryClient.ensureQueryData(constraintsQueryOptions)
     queryClient.ensureQueryData(mbrQueryOptions)
   },
-  component: () => (
+  component: Root,
+  notFoundComponent: () => {
+    return <p>Not Found (on root route)</p>
+  },
+})
+
+function Root() {
+  useCheckForUpdates()
+
+  return (
     <>
       <Layout>
         <Outlet />
@@ -35,8 +45,5 @@ export const Route = createRootRouteWithContext<{
         </>
       )}
     </>
-  ),
-  notFoundComponent: () => {
-    return <p>Not Found (on root route)</p>
-  },
-})
+  )
+}

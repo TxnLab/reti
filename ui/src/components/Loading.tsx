@@ -4,9 +4,10 @@ interface LoadingProps {
   size?: 'sm' | 'md' | 'lg'
   inline?: boolean
   className?: string
+  flex?: boolean
 }
 
-export function Loading({ size, className = '', inline = false }: LoadingProps) {
+export function Loading({ size, className = '', inline = false, flex = false }: LoadingProps) {
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
@@ -52,7 +53,12 @@ export function Loading({ size, className = '', inline = false }: LoadingProps) 
   }
 
   return (
-    <div className="grid min-h-[140px] w-full place-items-center overflow-x-scroll rounded-lg p-6 lg:overflow-visible">
+    <div
+      className={cn(
+        'grid min-h-[140px] w-full place-items-center overflow-x-scroll rounded-lg p-6 lg:overflow-visible',
+        { 'flex-1': flex },
+      )}
+    >
       {renderSpinner()}
     </div>
   )

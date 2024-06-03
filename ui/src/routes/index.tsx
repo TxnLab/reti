@@ -19,7 +19,7 @@ export const Route = createFileRoute('/')({
     queryClient.ensureQueryData(validatorsQueryOptions(queryClient))
   },
   component: Dashboard,
-  pendingComponent: () => <Loading size="lg" className="opacity-50" />,
+  pendingComponent: () => <Loading size="lg" className="opacity-50" flex />,
   errorComponent: ({ error }) => {
     if (error instanceof Error) {
       return <div>{error?.message}</div>

@@ -192,7 +192,6 @@ export function ValidatorTable({
                 <NfdThumbnail
                   nfd={nfd}
                   truncate
-                  tooltip
                   className={cn(isSunsetted(validator) ? 'opacity-50' : '')}
                 />
               ) : (
