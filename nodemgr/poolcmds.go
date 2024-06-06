@@ -228,9 +228,13 @@ func PoolsList(ctx context.Context, command *cli.Command) error {
 
 		}
 	}
-	fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
-		algo.FormattedAlgoAmount(totalRewards))
-
+	if !showAll {
+		fmt.Fprintf(tw, "TOTAL\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
+			algo.FormattedAlgoAmount(totalRewards))
+	} else {
+		fmt.Fprintf(tw, "TOTAL\t\t\t%d\t%s\t%s\t\n", state.TotalStakers, algo.FormattedAlgoAmount(state.TotalAlgoStaked),
+			algo.FormattedAlgoAmount(totalRewards))
+	}
 	tw.Flush()
 	fmt.Print(out.String())
 	return err
