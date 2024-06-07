@@ -21,8 +21,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.3
       '@algorandfoundation/tealscript':
-        specifier: '=0.93.0'
-        version: 0.93.0
+        specifier: '=0.92.0'
+        version: 0.92.0
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -380,8 +380,8 @@ packages:
       buffer: 6.0.3
     dev: false
 
-  /@algorandfoundation/tealscript@0.93.0:
-    resolution: {integrity: sha512-nQt27f5XPD5QDjrco7qi7/ZNjqZU6QeQx8CfI5ikxmG1O1Ygk8KpQ9NyvbNRvlgWlJ6ct7XCY7Z/NdvRFSUC3Q==}
+  /@algorandfoundation/tealscript@0.92.0:
+    resolution: {integrity: sha512-gm6Vkydj14uvt4yeJKyrxYLAGpBcIRdMpqIa7YaLiTnaxU4d597ZH3u1dCMsFMHgXh5cXz9VrpHN98K9TCSuEQ==}
     hasBin: true
     dependencies:
       '@microsoft/tsdoc': 0.14.2
