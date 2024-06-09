@@ -732,10 +732,10 @@ export async function fetchStakerPoolData(
     const stakingPoolClient = await getSimulateStakingPoolClient(poolKey.poolAppId)
     const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
 
-    let lastPayoutTime = dayjs()
+    let lastPayoutRound: bigint = 0n
 
     if (stakingPoolGS.lastPayout !== undefined) {
-      lastPayoutTime = dayjs.unix(Number(stakingPoolGS.lastPayout.value))
+      lastPayoutRound = stakingPoolGS.lastPayout.value as bigint
     }
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
@@ -753,7 +753,7 @@ export async function fetchStakerPoolData(
     return {
       ...stakedInfo,
       poolKey,
-      lastPayout: lastPayoutTime.unix(),
+      lastPayout: lastPayoutRound,
     }
   } catch (error) {
     console.error(error)
@@ -796,7 +796,8 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
         existingData.totalRewarded += pool.totalRewarded
         existingData.rewardTokenBalance += pool.rewardTokenBalance
         existingData.entryTime = Math.max(existingData.entryTime, pool.entryRound)
-        existingData.lastPayout = Math.max(existingData.lastPayout, pool.lastPayout)
+        existingData.lastPayout =
+          existingData.lastPayout > pool.lastPayout ? existingData.lastPayout : pool.lastPayout
         existingData.pools.push(pool) // add pool to existing StakerPoolData[]
       } else {
         // First pool for this validator, add new entry
