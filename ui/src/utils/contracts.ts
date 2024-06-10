@@ -589,10 +589,10 @@ export function calculateMaxAvailableToStake(
  */
 export function calculateRewardEligibility(
   epochRoundLength: number = 0,
-  lastPoolPayoutRound: number = 0,
+  lastPoolPayoutRound: bigint = 0n,
   entryRound: number = 0,
 ): number | null {
-  if (epochRoundLength === 0 || lastPoolPayoutRound === 0 || entryRound === 0) {
+  if (epochRoundLength === 0 || lastPoolPayoutRound === 0n || entryRound === 0) {
     return null
   }
 

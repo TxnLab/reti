@@ -42,7 +42,6 @@ import {
   transformStakedInfo,
   transformValidatorData,
 } from '@/utils/contracts'
-import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
