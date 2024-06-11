@@ -116,7 +116,7 @@ func GetPoolCmdOpts() *cli.Command {
 						Required: true,
 					},
 				},
-				Action: πOfflinePool,
+				Action: OfflinePool,
 			},
 		},
 	}
