@@ -974,18 +974,20 @@ export class StakingPool extends Contract {
 
     private getGoOnlineFee(): uint64 {
         // TODO - AVM will have opcode like:
-        // voter_params_get IncentiveEligible
+        // voter_params_get VoterIncentiveEligible
         // this will be needed to determine if our pool is currently NOT eligible and we thus need to pay the fee.
         const isOnline = false
         if (!isOnline) {
-            // TODO - replace w/ AVM call once available to determine fee to go online
+            // TODO - AVM will have opcode:
+            // global PayoutsGoOnlineFee
             return 2_000_000
         }
         return 0
     }
 
     private getCurrentOnlineStake(): uint64 {
-        // TODO - replace w/ appropriate AVM call once available but return fixed 2 billion for now.
+        // TODO - avm will have opcode:
+        // online_stake
         return 2_000_000_000_000_000
     }
 
@@ -1028,15 +1030,15 @@ export class StakingPool extends Contract {
 
     private setRoundsPerDay() {
         this.roundsPerDay.value = AVG_ROUNDS_PER_DAY
-        // TODO fetching prior block times doesn't appear to be working in local testing - tabling for now
-        // if (globals.round < 10) {
+        // // TODO fetching prior block times probably isn't workable with most clients as rolling back firstValid isn't a normal thing
+        // if (globals.round < 12) {
         //     // must be start of dev/test? - just pick dummy val
-        //     this.roundsPerDay.value = 30857 // approx 'daily' bins (60*60*24/2.8)
+        //     this.roundsPerDay.value = AVG_ROUNDS_PER_DAY // approx 'daily' bins (60*60*24/2.8)
         //     return
         // }
-        // // get average block time - taking time delta between prior 10 blocks [block-11 : block-2]
-        // const avgBlockTimeTenths = blocks[globals.round - 2].timestamp - blocks[globals.round - 11].timestamp
-        // // dividing the diff by 10 would give us avg block time, but because we want block time as integet (with no decimals)
+        // // get average block time - taking time delta between prior 10 blocks [block-11 : block-1]
+        // const avgBlockTimeTenths = blocks[globals.round - 1].timestamp - blocks[globals.round - 11].timestamp
+        // // dividing the diff by 10 would give us avg block time, but because we want block time as integer (with no decimals)
         // // we can just take the time as is - thus 25 seconds that would become 2.5 - we leave as '25' - then honoring the
         // // decimal later in final calcs.
         // this.roundsPerDay.value = (24 * 60 * 60 * 10) / avgBlockTimeTenths

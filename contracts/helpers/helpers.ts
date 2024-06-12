@@ -520,6 +520,9 @@ export async function addStakingPool(
     const suggestedParams = await context.algod.getTransactionParams().do()
     const validatorsAppRef = await validatorClient.appClient.getAppReference()
 
+    // suggestedParams.firstRound -= 15
+    // suggestedParams.lastRound -= 15
+    consoleLogger.info(`addStakingPool: firstRound:${suggestedParams.firstRound}`)
     // Pay the additional mbr to the validator contract for the new pool mbr
     const payPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,
