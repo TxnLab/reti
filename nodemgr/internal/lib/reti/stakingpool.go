@@ -294,18 +294,20 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, needsIncentiveFe
 	params.FlatFee = true
 	params.Fee = transaction.MinTxnFee * 3
 
+	poolAddress := crypto.GetApplicationAddress(poolAppID).String()
+	poolAccountInfo, err := algo.GetBareAccount(context.Background(), r.algoClient, poolAddress)
+	if err != nil {
+		return fmt.Errorf("failure getting account info for pool: %w", err)
+	}
 	var goOnlineFee uint64 = 0
-	// if going offline to online - pay extra 2 algo so the account is payouts eligible !
-	//if needsIncentiveFeePaid {
-	if true {
-		// TODO - this is temporary - need to wait until AVM has opcode which can detect if account isn't currently
-		// eligible for incentives and only then to pay the extra fee
-		// account return will also have IncentiveEligible property which caller will use when calling us.
+	if !poolAccountInfo.IncentiveEligible {
+		// if going offline to online - pay extra 2 algo so the account is payouts eligible !
+		// NOTE: this is NOT provided by any API so we have to hardcode this and MUST match the Payouts.GoOnlineFee consensus value
 		r.Logger.Info("paying extra fee for offline->online transition")
 		goOnlineFee = 2e6
 	}
 
-	paymentTxn, err := transaction.MakePaymentTxn(caller.String(), crypto.GetApplicationAddress(poolAppID).String(), goOnlineFee, nil, "", params)
+	paymentTxn, err := transaction.MakePaymentTxn(caller.String(), poolAddress, goOnlineFee, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, caller.String()),

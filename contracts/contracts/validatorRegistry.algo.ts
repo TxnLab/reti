@@ -163,7 +163,7 @@ type Constraints = {
  * See the StakingPool contract comments for details on how this contract creates new instances of them.
  */
 export class ValidatorRegistry extends Contract {
-    programVersion = 10
+    programVersion = 11
 
     // ======
     // GLOBAL STATE AND TEMPLATES
@@ -1507,15 +1507,11 @@ export class ValidatorRegistry extends Contract {
      * Returns the MAXIMUM allowed stake per pool and still receive incentives - we'll treat this as the 'max per pool'
      */
     private maxAlgoAllowedPerPool(): uint64 {
-        // TODO avm will have opcode
-        // global PayoutsMaxBalance
-        return 70_000_000_000_000 // 70m ALGO in microAlgo
+        return globals.payoutsMaxBalance
     }
 
     private getCurrentOnlineStake(): uint64 {
-        // TODO - avm will have opcode
-        // online_stake
-        return 2_000_000_000_000_000
+        return onlineStake()
     }
 
     private minBalanceForAccount(

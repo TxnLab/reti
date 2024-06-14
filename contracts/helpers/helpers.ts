@@ -522,7 +522,9 @@ export async function addStakingPool(
 
     // suggestedParams.firstRound -= 15
     // suggestedParams.lastRound -= 15
-    consoleLogger.info(`addStakingPool: firstRound:${suggestedParams.firstRound}`)
+    consoleLogger.info(
+        `addStakingPool: firstRound:${suggestedParams.firstRound} lastRound:${suggestedParams.lastRound}`,
+    )
     // Pay the additional mbr to the validator contract for the new pool mbr
     const payPoolMbr = makePaymentTxnWithSuggestedParamsFromObject({
         from: context.testAccount.addr,

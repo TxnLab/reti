@@ -21,8 +21,8 @@ importers:
         specifier: ^3.0.2
         version: 3.0.3
       '@algorandfoundation/tealscript':
-        specifier: '=0.95.1'
-        version: 0.95.1
+        specifier: '=0.96.0'
+        version: 0.96.0
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -363,8 +363,8 @@ packages:
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/tealscript@0.95.1':
-    resolution: {integrity: sha512-TqQKf21IOuXmxojYC1//Y0uTXIeN5Vhzz/cvM9k0WZHsVH+3XmpeJYzN5o7wTFNVznLZKCCbaO6AQ26d7hCXaA==}
+  '@algorandfoundation/tealscript@0.96.0':
+    resolution: {integrity: sha512-NKL+IpTpYpwYUHrVxMl/YQ0y+3+hPnShrPaSfy0fc68ftnhHuP7gIkFiwM4kuJvBcc3+StXY7dqb0tpQh3o0wg==}
     hasBin: true
 
   '@alloc/quick-lru@5.2.0':
@@ -5622,7 +5622,7 @@ snapshots:
       algosdk: 2.8.0
       buffer: 6.0.3
 
-  '@algorandfoundation/tealscript@0.95.1':
+  '@algorandfoundation/tealscript@0.96.0':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@playwright/test': 1.44.1

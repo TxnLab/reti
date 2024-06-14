@@ -34,7 +34,7 @@ export type StakedInfo = {
  * validate coming from the validator are only allowed if it matches the validator id it was created with.
  */
 export class StakingPool extends Contract {
-    programVersion = 10
+    programVersion = 11
 
     // When created, we track our creating validator contract so that only this contract can call us.  Independent
     // copies of this contract could be created but only the 'official' validator contract would be considered valid
@@ -958,8 +958,6 @@ export class StakingPool extends Contract {
 
     private getFeeSink(): Address {
         return this.feeSinkAddr
-        // TODO will be like: txn FirstValid; int 1; -; block BlkFeeSink
-        // once available in AVM
     }
 
     /**
@@ -973,22 +971,15 @@ export class StakingPool extends Contract {
     }
 
     private getGoOnlineFee(): uint64 {
-        // TODO - AVM will have opcode like:
-        // voter_params_get VoterIncentiveEligible
-        // this will be needed to determine if our pool is currently NOT eligible and we thus need to pay the fee.
-        const isOnline = false
-        if (!isOnline) {
-            // TODO - AVM will have opcode:
-            // global PayoutsGoOnlineFee
-            return 2_000_000
+        // Determine if we need to pay the 'go online' fee
+        if (!this.app.address.incentiveEligible) {
+            return globals.payoutsGoOnlineFee
         }
         return 0
     }
 
     private getCurrentOnlineStake(): uint64 {
-        // TODO - avm will have opcode:
-        // online_stake
-        return 2_000_000_000_000_000
+        return onlineStake()
     }
 
     /**

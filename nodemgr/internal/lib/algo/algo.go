@@ -118,9 +118,24 @@ func GetStringFromGlobalState(globalState []models.TealKeyValue, keyName string)
 	return "", ErrStateKeyNotFound
 }
 
-// GetBareAccount just returns account information without asset data
-func GetBareAccount(ctx context.Context, algoClient *algod.Client, account string) (models.Account, error) {
-	return algoClient.AccountInformation(account).Exclude("all").Do(ctx)
+type AccountWithIncentiveEligible struct {
+	models.Account
+	IncentiveEligible bool `json:"incentive-eligible,omitempty"`
+}
+
+// GetBareAccount just returns account information without asset data, but also includes the incentive-eligible that's
+// missing from the SDKs.
+func GetBareAccount(ctx context.Context, algoClient *algod.Client, account string) (AccountWithIncentiveEligible, error) {
+	var response AccountWithIncentiveEligible
+	var params = algod.AccountInformationParams{
+		Exclude: "all",
+	}
+
+	err := (*common.Client)(algoClient).Get(ctx, &response, fmt.Sprintf("/v2/accounts/%s", account), params, nil)
+	if err != nil {
+		return AccountWithIncentiveEligible{}, err
+	}
+	return response, nil
 }
 
 func GetVersionString(ctx context.Context, algoClient *algod.Client) (string, error) {
