@@ -105,6 +105,19 @@ func GetPoolCmdOpts() *cli.Command {
 				},
 				Action: PayoutPool,
 			},
+			{
+				Name:  "offline",
+				Usage: "Have pool go offline - should only be used if 0 balance as the daemon will have it go online again if its a managed pool",
+				Flags: []cli.Flag{
+					&cli.UintFlag{
+						Name:     "pool",
+						Usage:    "Pool id (the number in 'pool list')",
+						Value:    1,
+						Required: true,
+					},
+				},
+				Action: OfflinePool,
+			},
 		},
 	}
 }
@@ -397,4 +410,15 @@ func PayoutPool(ctx context.Context, command *cli.Command) error {
 	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
 	return App.retiClient.EpochBalanceUpdate(int(poolID), info.LocalPools[poolID], signerAddr)
+}
+
+func OfflinePool(ctx context.Context, command *cli.Command) error {
+	var info = App.retiClient.Info()
+	poolID := command.Uint("pool")
+	if int(poolID) >= len(info.Pools) {
+		return fmt.Errorf("pool num:%d not valid for pool id", poolID)
+	}
+	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
+
+	return App.retiClient.GoOffline(info.Pools[poolID-1].PoolAppId, signerAddr)
 }

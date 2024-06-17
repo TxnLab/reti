@@ -63,7 +63,7 @@
     "@tremor/react": "3.17.2",
     "@txnlab/use-wallet-react": "3.0.0-beta.7",
     "@walletconnect/modal-sign-html": "2.6.2",
-    "algosdk": "2.7.0",
+    "algosdk": "2.8.0",
     "axios": "1.7.2",
     "axios-cache-interceptor": "1.5.3",
     "big.js": "6.2.1",
