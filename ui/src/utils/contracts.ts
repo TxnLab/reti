@@ -129,7 +129,7 @@ export function transformStakedInfo(data: Uint8Array): StakedInfo {
     balance: algosdk.bytesToBigInt(data.slice(32, 40)),
     totalRewarded: algosdk.bytesToBigInt(data.slice(40, 48)),
     rewardTokenBalance: algosdk.bytesToBigInt(data.slice(48, 56)),
-    entryRound: Number(algosdk.bytesToBigInt(data.slice(56, 64))),
+    entryRound: algosdk.bytesToBigInt(data.slice(56, 64)),
   }
 }
 
