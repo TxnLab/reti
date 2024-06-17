@@ -590,15 +590,16 @@ export function calculateMaxAvailableToStake(
 export function calculateRewardEligibility(
   epochRoundLength: number = 0,
   lastPoolPayoutRound: bigint = 0n,
-  entryRound: number = 0,
+  entryRound: bigint = 0n,
 ): number | null {
-  if (epochRoundLength === 0 || lastPoolPayoutRound === 0n || entryRound === 0) {
+  if (epochRoundLength === 0 || lastPoolPayoutRound === 0n || entryRound === 0n) {
     return null
   }
 
   // Calculate the next payout round
-  const currentEpochStartRound = lastPoolPayoutRound - (lastPoolPayoutRound % epochRoundLength)
-  const nextPayoutRound = currentEpochStartRound + epochRoundLength
+  const currentEpochStartRound =
+    lastPoolPayoutRound - (lastPoolPayoutRound % BigInt(epochRoundLength))
+  const nextPayoutRound = currentEpochStartRound + BigInt(epochRoundLength)
 
   // If the entry round is greater than or equal to the next epoch, eligibility is 0%
   if (entryRound >= nextPayoutRound) {
@@ -606,7 +607,7 @@ export function calculateRewardEligibility(
   }
 
   // Calculate the effective rounds remaining in the current epoch
-  const remainingRoundsInEpoch = Math.max(0, nextPayoutRound - entryRound)
+  const remainingRoundsInEpoch = Math.max(0, Number(nextPayoutRound - entryRound))
 
   // Calculate eligibility as a percentage of the epoch length
   const eligibilePercent = (remainingRoundsInEpoch / epochRoundLength) * 100

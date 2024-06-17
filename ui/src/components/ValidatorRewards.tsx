@@ -75,9 +75,11 @@ export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
   })
   const dotColor =
     epochPayoutsQuery.data !== undefined
-      ? epochPayoutsQuery.data < 10
-        ? 'green'
-        : 'red'
+      ? epochPayoutsQuery.data < 21
+        ? 'green' // 1 minute
+        : epochPayoutsQuery.data < 1200
+          ? 'yellow' // 1 hour
+          : 'red'
       : 'defaultColor'
 
   if (totalBalancesQuery.isLoading) {
