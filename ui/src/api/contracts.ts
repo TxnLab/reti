@@ -734,19 +734,19 @@ export async function fetchStakerPoolData(
     let lastPayoutRound: bigint = 0n
 
     if (stakingPoolGS.lastPayout !== undefined) {
-      lastPayoutRound = stakingPoolGS.lastPayout.value as bigint
+      lastPayoutRound = BigInt(stakingPoolGS.lastPayout.value)
     }
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
 
-    const [account, balance, totalRewarded, rewardTokenBalance, entryTime] = result.returns![0]
+    const [account, balance, totalRewarded, rewardTokenBalance, entryRound] = result.returns![0]
 
     const stakedInfo: StakedInfo = {
       account,
       balance,
       totalRewarded,
       rewardTokenBalance,
-      entryRound: entryTime,
+      entryRound: entryRound,
     }
 
     return {
