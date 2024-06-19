@@ -19,10 +19,10 @@ importers:
     devDependencies:
       '@algorandfoundation/algokit-client-generator':
         specifier: ^3.0.2
-        version: 3.0.3
+        version: 3.0.4
       '@algorandfoundation/tealscript':
-        specifier: '=0.95.1'
-        version: 0.95.1
+        specifier: '=0.96.0'
+        version: 0.96.0
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -346,8 +346,8 @@ packages:
   '@adobe/css-tools@4.3.3':
     resolution: {integrity: sha512-rE0Pygv0sEZ4vBWHlAgJLGDU7Pm8xoO6p3wsEceb7GYAjScrOHpEo8KK/eVkAcnSM+slAEtXjA2JpdjLp4fJQQ==}
 
-  '@algorandfoundation/algokit-client-generator@3.0.3':
-    resolution: {integrity: sha512-yfTfLEm+pgXn7Ik87wzYZL/mgbDzdNdxyMR6A2neLCt9OivIN20km28L524yCGBdwutpJJFPIoeYS7mDgFVFZg==}
+  '@algorandfoundation/algokit-client-generator@3.0.4':
+    resolution: {integrity: sha512-BdjONUypZP7dpwjl0RgmrcTxfl6F879GFa71KzPpW0lIYYiheOsy5JmCUPhs1CANVzgrtlR9XOulod4k0zc3Xw==}
     engines: {node: '>=18.0'}
     hasBin: true
 
@@ -363,8 +363,8 @@ packages:
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/tealscript@0.95.1':
-    resolution: {integrity: sha512-TqQKf21IOuXmxojYC1//Y0uTXIeN5Vhzz/cvM9k0WZHsVH+3XmpeJYzN5o7wTFNVznLZKCCbaO6AQ26d7hCXaA==}
+  '@algorandfoundation/tealscript@0.96.0':
+    resolution: {integrity: sha512-NKL+IpTpYpwYUHrVxMl/YQ0y+3+hPnShrPaSfy0fc68ftnhHuP7gIkFiwM4kuJvBcc3+StXY7dqb0tpQh3o0wg==}
     hasBin: true
 
   '@alloc/quick-lru@5.2.0':
@@ -820,6 +820,7 @@ packages:
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
     engines: {node: '>=10.10.0'}
+    deprecated: Use @eslint/config-array instead
 
   '@humanwhocodes/module-importer@1.0.1':
     resolution: {integrity: sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA==}
@@ -827,6 +828,7 @@ packages:
 
   '@humanwhocodes/object-schema@2.0.3':
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
+    deprecated: Use @eslint/object-schema instead
 
   '@inquirer/confirm@3.1.6':
     resolution: {integrity: sha512-Mj4TU29g6Uy+37UtpA8UpEOI2icBfpCwSW1QDtfx60wRhUy90s/kHPif2OXSSvuwDQT1lhAYRWUfkNf9Tecxvg==}
@@ -3493,6 +3495,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -4737,6 +4740,7 @@ packages:
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   ripemd160@2.0.2:
@@ -5151,6 +5155,9 @@ packages:
 
   tslib@2.6.2:
     resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
+
+  tslib@2.6.3:
+    resolution: {integrity: sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==}
 
   tty-browserify@0.0.1:
     resolution: {integrity: sha512-C3TaO7K81YvjCgQH9Q1S3R3P3BtN3RIM8n+OvX4il1K1zgE8ZhI0op7kClgkxtutIE8hQrcrHBXvIheqKUUCxw==}
@@ -5603,7 +5610,7 @@ snapshots:
 
   '@adobe/css-tools@4.3.3': {}
 
-  '@algorandfoundation/algokit-client-generator@3.0.3':
+  '@algorandfoundation/algokit-client-generator@3.0.4':
     dependencies:
       '@algorandfoundation/algokit-utils': 5.8.0(algosdk@2.8.0)
       algosdk: 2.8.0
@@ -5622,7 +5629,7 @@ snapshots:
       algosdk: 2.8.0
       buffer: 6.0.3
 
-  '@algorandfoundation/tealscript@0.95.1':
+  '@algorandfoundation/tealscript@0.96.0':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@playwright/test': 1.44.1
@@ -8369,7 +8376,7 @@ snapshots:
   camel-case@4.1.2:
     dependencies:
       pascal-case: 3.1.2
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   camelcase-css@2.0.1: {}
 
@@ -8382,7 +8389,7 @@ snapshots:
   capital-case@1.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
       upper-case-first: 2.0.2
 
   chai@4.4.1:
@@ -8424,7 +8431,7 @@ snapshots:
       path-case: 3.0.4
       sentence-case: 3.0.4
       snake-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   char-regex@1.0.2: {}
 
@@ -8532,7 +8539,7 @@ snapshots:
   constant-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
       upper-case: 2.0.2
 
   constants-browserify@1.0.0: {}
@@ -8810,7 +8817,7 @@ snapshots:
   dot-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   dotenv@16.4.5: {}
 
@@ -9409,7 +9416,7 @@ snapshots:
   header-case@2.0.4:
     dependencies:
       capital-case: 1.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   headers-polyfill@4.0.3: {}
 
@@ -10246,7 +10253,7 @@ snapshots:
 
   lower-case@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   lru-cache@10.2.2: {}
 
@@ -10404,7 +10411,7 @@ snapshots:
   no-case@3.0.4:
     dependencies:
       lower-case: 2.0.2
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   node-addon-api@7.1.0: {}
 
@@ -10590,7 +10597,7 @@ snapshots:
   param-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   parent-module@1.0.1:
     dependencies:
@@ -10619,14 +10626,14 @@ snapshots:
   pascal-case@3.1.2:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   path-browserify@1.0.1: {}
 
   path-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   path-exists@4.0.0: {}
 
@@ -11109,7 +11116,7 @@ snapshots:
   sentence-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
       upper-case-first: 2.0.2
 
   set-blocking@2.0.0: {}
@@ -11165,7 +11172,7 @@ snapshots:
   snake-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   sonic-boom@2.8.0:
     dependencies:
@@ -11499,6 +11506,8 @@ snapshots:
 
   tslib@2.6.2: {}
 
+  tslib@2.6.3: {}
+
   tty-browserify@0.0.1: {}
 
   tweetnacl@1.0.3: {}
@@ -11613,11 +11622,11 @@ snapshots:
 
   upper-case-first@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   upper-case@2.0.2:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.6.3
 
   uqr@0.1.2: {}
 
