@@ -382,7 +382,7 @@ export const APP_SPEC: AppSpec = {
           {
             "name": "validatorId",
             "type": "uint64",
-            "desc": "@return{PoolInfo[]}- array of poolsNot callable from other contracts because>1K return but can be called w/ simulate which bumps log returns"
+            "desc": "@return{PoolInfo[]} - array of poolsNot callable from other contracts because >1K return but can be called w/ simulate which bumps log returns"
           }
         ],
         "returns": {
@@ -465,7 +465,7 @@ export const APP_SPEC: AppSpec = {
           {
             "name": "validatorId",
             "type": "uint64",
-            "desc": "The id of the validator.@return{PoolTokenPayoutRatio}- The token payout ratio for the validator."
+            "desc": "The id of the validator. @return{PoolTokenPayoutRatio}- The token payout ratio for the validator."
           }
         ],
         "returns": {
@@ -725,7 +725,7 @@ export const APP_SPEC: AppSpec = {
           {
             "name": "saturatedBurnToFeeSink",
             "type": "uint64",
-            "desc": "if the pool was in saturated state, the amount sent back to the fee sink.seen as 'accounted for/pending spent')"
+            "desc": "if the pool was in saturated state, the amount sent back to the fee sink.  Seen as 'accounted for/pending spent')"
           }
         ],
         "returns": {
@@ -791,7 +791,7 @@ export const APP_SPEC: AppSpec = {
       },
       {
         "name": "movePoolToNode",
-        "desc": "Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]",
+        "desc": "Find the specified pool (in any node number) and move it to the specified node.  The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]",
         "args": [
           {
             "name": "validatorId",
@@ -813,7 +813,7 @@ export const APP_SPEC: AppSpec = {
       },
       {
         "name": "emptyTokenRewards",
-        "desc": "Sends the reward tokens held in pool 1 to specified receiver.This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim willNOT be sent as they must be held back for stakers to later claim.[ ONLY OWNER CAN CALL]",
+        "desc": "Sends the reward tokens held in pool 1 to specified receiver.  This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim will NOT be sent as they must be held back for stakers to later claim. [ ONLY OWNER CAN CALL]",
         "args": [
           {
             "name": "validatorId",
@@ -986,7 +986,7 @@ export type ValidatorRegistry = {
     & Record<'getPools(uint64)(uint64,uint16,uint64)[]' | 'getPools', {
       argsObj: {
         /**
-         * @return{PoolInfo[]}- array of poolsNot callable from other contracts because>1K return but can be called w/ simulate which bumps log returns
+         * @return{PoolInfo[]} - array of poolsNot callable from other contracts because >1K return but can be called w/ simulate which bumps log returns
          */
         validatorId: bigint | number
       }
@@ -1038,7 +1038,7 @@ export type ValidatorRegistry = {
     & Record<'getTokenPayoutRatio(uint64)(uint64[24],uint64)' | 'getTokenPayoutRatio', {
       argsObj: {
         /**
-         * The id of the validator.@return{PoolTokenPayoutRatio}- The token payout ratio for the validator.
+         * The id of the validator. @return{PoolTokenPayoutRatio}- The token payout ratio for the validator.
          */
         validatorId: bigint | number
       }
@@ -1223,7 +1223,7 @@ export type ValidatorRegistry = {
          */
         validatorCommission: bigint | number
         /**
-         * if the pool was in saturated state, the amount sent back to the fee sink.seen as 'accounted for/pending spent')
+         * if the pool was in saturated state, the amount sent back to the fee sink.  Seen as 'accounted for/pending spent')
          */
         saturatedBurnToFeeSink: bigint | number
       }
@@ -1897,7 +1897,7 @@ export abstract class ValidatorRegistryCallFactory {
   /**
    * Constructs a no op call for the movePoolToNode(uint64,uint64,uint64)void ABI method
    *
-   * Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]
+   * Find the specified pool (in any node number) and move it to the specified node.  The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]
    *
    * @param args Any args for the contract call
    * @param params Any additional parameters for the call
@@ -1913,7 +1913,7 @@ export abstract class ValidatorRegistryCallFactory {
   /**
    * Constructs a no op call for the emptyTokenRewards(uint64,address)uint64 ABI method
    *
-   * Sends the reward tokens held in pool 1 to specified receiver.This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim willNOT be sent as they must be held back for stakers to later claim.[ ONLY OWNER CAN CALL]
+   * Sends the reward tokens held in pool 1 to specified receiver.  This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim will NOT be sent as they must be held back for stakers to later claim. [ ONLY OWNER CAN CALL]
    *
    * @param args Any args for the contract call
    * @param params Any additional parameters for the call
@@ -2432,7 +2432,7 @@ export class ValidatorRegistryClient {
   /**
    * Calls the movePoolToNode(uint64,uint64,uint64)void ABI method.
    *
-   * Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]
+   * Find the specified pool (in any node number) and move it to the specified node.  The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -2445,7 +2445,7 @@ export class ValidatorRegistryClient {
   /**
    * Calls the emptyTokenRewards(uint64,address)uint64 ABI method.
    *
-   * Sends the reward tokens held in pool 1 to specified receiver.This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim willNOT be sent as they must be held back for stakers to later claim.[ ONLY OWNER CAN CALL]
+   * Sends the reward tokens held in pool 1 to specified receiver.  This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim will NOT be sent as they must be held back for stakers to later claim. [ ONLY OWNER CAN CALL]
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -3058,7 +3058,7 @@ export type ValidatorRegistryComposer<TReturns extends [...any[]] = []> = {
   /**
    * Calls the movePoolToNode(uint64,uint64,uint64)void ABI method.
    *
-   * Find the specified pool (in any node number) and move it to the specified node.The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]
+   * Find the specified pool (in any node number) and move it to the specified node.  The pool account is forced offline if moved so prior node will still run for 320 rounds butnew key goes online on new node soon after (320 rounds after it goes online)No-op if success, asserts if not found or can't move  (no space in target)[ ONLY OWNER OR MANAGER CAN CHANGE ]
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -3069,7 +3069,7 @@ export type ValidatorRegistryComposer<TReturns extends [...any[]] = []> = {
   /**
    * Calls the emptyTokenRewards(uint64,address)uint64 ABI method.
    *
-   * Sends the reward tokens held in pool 1 to specified receiver.This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim willNOT be sent as they must be held back for stakers to later claim.[ ONLY OWNER CAN CALL]
+   * Sends the reward tokens held in pool 1 to specified receiver.  This is intended to be used by the owner when they want to get reward tokens 'back' which they sent tothe first pool (likely because validator is sunsetting.  Any tokens currently 'reserved' for stakers to claim will NOT be sent as they must be held back for stakers to later claim. [ ONLY OWNER CAN CALL]
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call

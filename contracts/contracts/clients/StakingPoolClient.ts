@@ -244,7 +244,7 @@ export const APP_SPEC: AppSpec = {
       },
       {
         "name": "initStorage",
-        "desc": "Called after we're created and then funded, so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.",
+        "desc": "Called after we're created and then funded, so we can create our large stakers ledger storage.  Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost. If this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.",
         "args": [
           {
             "name": "mbrPayment",
@@ -283,7 +283,7 @@ export const APP_SPEC: AppSpec = {
           {
             "name": "staker",
             "type": "address",
-            "desc": "account to remove.  normally same as sender, but the validator owner or manager can also callthis to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This isso a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longermeet the gating requirements (determined by the node daemon)."
+            "desc": "account to remove.  normally same as sender, but the validator owner or manager can also callthis to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This is so a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longer meet the gating requirements (determined by the node daemon)."
           },
           {
             "name": "amountToUnstake",
@@ -315,7 +315,7 @@ export const APP_SPEC: AppSpec = {
         ],
         "returns": {
           "type": "(address,uint64,uint64,uint64,uint64)",
-          "desc": "{StakedInfo}- The staked information for the given staker."
+          "desc": "{StakedInfo} - The staked information for the given staker."
         }
       },
       {
@@ -358,7 +358,7 @@ export const APP_SPEC: AppSpec = {
       },
       {
         "name": "epochBalanceUpdate",
-        "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.Note: ANYONE can call this.",
+        "desc": "Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.  The validator is paid their percentage each epoch payout.Note: ANYONE can call this.",
         "args": [],
         "returns": {
           "type": "void"
@@ -434,7 +434,7 @@ export const APP_SPEC: AppSpec = {
       },
       {
         "name": "proxiedSetTokenPayoutRatio",
-        "desc": "proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts",
+        "desc": "proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1.  We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts",
         "args": [
           {
             "name": "poolKey",
@@ -584,7 +584,7 @@ export type StakingPool = {
     & Record<'removeStake(address,uint64)void' | 'removeStake', {
       argsObj: {
         /**
-         * account to remove.  normally same as sender, but the validator owner or manager can also callthis to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This isso a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longermeet the gating requirements (determined by the node daemon).
+         * account to remove.  normally same as sender, but the validator owner or manager can also callthis to remove the specified staker explicitly. The removed stake MUST only go to the staker of course.  This is so a validator can shut down a poool and refund the stakers.  It can also be used to kick out stakers who no longer meet the gating requirements (determined by the node daemon).
          */
         staker: string
         /**
@@ -610,7 +610,7 @@ export type StakingPool = {
       }
       argsTuple: [staker: string]
       /**
-       * {StakedInfo}- The staked information for the given staker.
+       * {StakedInfo} - The staked information for the given staker.
        */
       returns: [string, bigint, bigint, bigint, bigint]
     }>
@@ -853,7 +853,7 @@ export abstract class StakingPoolCallFactory {
   /**
    * Constructs a no op call for the initStorage(pay)void ABI method
    *
-   * Called after we're created and then funded, so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.
+   * Called after we're created and then funded, so we can create our large stakers ledger storage.  Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost. If this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.
    *
    * @param args Any args for the contract call
    * @param params Any additional parameters for the call
@@ -965,7 +965,7 @@ export abstract class StakingPoolCallFactory {
   /**
    * Constructs a no op call for the epochBalanceUpdate()void ABI method
    *
-   * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.Note: ANYONE can call this.
+   * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.  The validator is paid their percentage each epoch payout.Note: ANYONE can call this.
    *
    * @param args Any args for the contract call
    * @param params Any additional parameters for the call
@@ -1027,7 +1027,7 @@ export abstract class StakingPoolCallFactory {
   /**
    * Constructs a no op call for the proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64) ABI method
    *
-   * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts
+   * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1.  We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts
    *
    * @param args Any args for the contract call
    * @param params Any additional parameters for the call
@@ -1176,7 +1176,7 @@ export class StakingPoolClient {
   /**
    * Calls the initStorage(pay)void ABI method.
    *
-   * Called after we're created and then funded, so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.
+   * Called after we're created and then funded, so we can create our large stakers ledger storage.  Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost. If this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -1232,7 +1232,7 @@ export class StakingPoolClient {
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
-   * @returns The result of the call: {StakedInfo}- The staked information for the given staker.
+   * @returns The result of the call: {StakedInfo} - The staked information for the given staker.
    */
   public getStakerInfo(args: MethodArgs<'getStakerInfo(address)(address,uint64,uint64,uint64,uint64)'>, params: AppClientCallCoreParams & CoreAppCallArgs = {}) {
     return this.call(StakingPoolCallFactory.getStakerInfo(args, params))
@@ -1267,7 +1267,7 @@ export class StakingPoolClient {
   /**
    * Calls the epochBalanceUpdate()void ABI method.
    *
-   * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.Note: ANYONE can call this.
+   * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.  The validator is paid their percentage each epoch payout.Note: ANYONE can call this.
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -1317,7 +1317,7 @@ export class StakingPoolClient {
   /**
    * Calls the proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64) ABI method.
    *
-   * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts
+   * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1.  We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -1550,7 +1550,7 @@ export type StakingPoolComposer<TReturns extends [...any[]] = []> = {
   /**
    * Calls the initStorage(pay)void ABI method.
    *
-   * Called after we're created and then funded, so we can create our large stakers ledger storageCaller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage costIf this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.
+   * Called after we're created and then funded, so we can create our large stakers ledger storage.  Caller has to get MBR amounts from ValidatorRegistry to know how much to fund us to cover the box storage cost. If this is pool 1 AND the validator has specified a reward token, opt-in to that tokenso that the validator can seed the pool with future rewards of that token.
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -1627,7 +1627,7 @@ export type StakingPoolComposer<TReturns extends [...any[]] = []> = {
   /**
    * Calls the epochBalanceUpdate()void ABI method.
    *
-   * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.The validator is paid their percentage each epoch payout.Note: ANYONE can call this.
+   * Updates the balance of stakers in the pool based on the received 'rewards' (current balance vs known staked balance)stakers outstanding balance is adjusted based on their % of stake and time in the current epoch - so that balancecompounds over time and staker can remove that amount at will.  The validator is paid their percentage each epoch payout.Note: ANYONE can call this.
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
@@ -1669,7 +1669,7 @@ export type StakingPoolComposer<TReturns extends [...any[]] = []> = {
   /**
    * Calls the proxiedSetTokenPayoutRatio((uint64,uint64,uint64))(uint64[24],uint64) ABI method.
    *
-   * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts
+   * proxiedSetTokenPayoutRatio is meant to be called by pools != 1 - calling US, pool #1.  We need to verify that we are in fact being called by another of OUR pools (not us)and then we'll call the validator on their behalf to update the token payouts
    *
    * @param args The arguments for the contract call
    * @param params Any additional parameters for the call
