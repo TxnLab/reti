@@ -9,8 +9,9 @@
   "devDependencies": {
     "@playwright/test": "1.44.1",
     "@tanstack/router-vite-plugin": "1.38.0",
+    "@testing-library/dom": "10.1.0",
     "@testing-library/jest-dom": "6.4.6",
-    "@testing-library/react": "15.0.7",
+    "@testing-library/react": "16.0.0",
     "@types/big.js": "6.2.2",
     "@types/node": "20.14.3",
     "@types/react": "18.3.3",
