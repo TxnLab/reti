@@ -61,7 +61,7 @@
     "@tanstack/react-table": "8.17.3",
     "@tanstack/router-devtools": "1.33.8",
     "@tremor/react": "3.17.2",
-    "@txnlab/use-wallet-react": "3.0.0-beta.7",
+    "@txnlab/use-wallet-react": "3.0.0-rc.2",
     "@walletconnect/modal-sign-html": "2.6.2",
     "algosdk": "2.8.0",
     "axios": "1.7.2",
