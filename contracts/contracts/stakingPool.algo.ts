@@ -727,6 +727,7 @@ export class StakingPool extends Contract {
         // remaining participants.
         if (algoRewardAvail !== 0 || tokenRewardAvail !== 0) {
             let partialStakersTotalStake: uint64 = 0
+            const origAlgoReward = algoRewardAvail
             for (let i = 0; i < this.stakers.value.length; i += 1) {
                 if (globals.opcodeBudget < 400) {
                     increaseOpcodeBudget()
@@ -761,22 +762,19 @@ export class StakingPool extends Contract {
                                 cmpStaker.rewardTokenBalance += stakerTokenReward
                                 tokenRewardPaidOut += stakerTokenReward
                             }
-                            if (algoRewardAvail > 0) {
-                                // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
-                                const stakerReward = wideRatio(
-                                    [cmpStaker.balance, algoRewardAvail, timePercentage],
-                                    [this.totalAlgoStaked.value, 1000],
-                                )
-
-                                // reduce the reward available (that we're accounting for) so that the subsequent
-                                // 'full' pays are based on what's left
-                                algoRewardAvail -= stakerReward
-                                // instead of sending them algo now - just increase their ledger balance, so they can claim
-                                // it at any time.
-                                cmpStaker.balance += stakerReward
-                                cmpStaker.totalRewarded += stakerReward
-                                increasedStake += stakerReward
-                            }
+                            // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
+                            const stakerReward = wideRatio(
+                                [cmpStaker.balance, origAlgoReward, timePercentage],
+                                [this.totalAlgoStaked.value, 1000],
+                            )
+                            // reduce the reward available (that we're accounting for) so that the subsequent
+                            // 'full' pays are based on what's left
+                            algoRewardAvail -= stakerReward
+                            // instead of sending them algo now - just increase their ledger balance, so they can claim
+                            // it at any time.
+                            cmpStaker.balance += stakerReward
+                            cmpStaker.totalRewarded += stakerReward
+                            increasedStake += stakerReward
                             // Update the box w/ the new data
                             this.stakers.value[i] = cmpStaker
                         }

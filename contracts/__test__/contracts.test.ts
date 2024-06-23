@@ -1285,14 +1285,21 @@ describe('StakeWRewards', () => {
     })
 
     test('testPartialReward', async () => {
-        // Create second (brand new!) staker - with same amount entered - but we'll enter later to the first staker so
-        // it will be a 'partial' entry into the epoch (so we can ensure partial payout occurs)
-        const partialEpochStaker = await getTestAccount(
+        // Create two (brand new!) stakers - with same amount entered - but we'll enter later to the first staker so
+        // it will be a 'partial' entry into the epoch (so we can ensure partial payout occurs) for the other stakers
+        // - this will verify the partial stakers have the reward divided correctly
+        const partialEpochStaker1 = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
             fixture.context.algod,
             fixture.context.kmd,
         )
-        stakerAccounts.push(partialEpochStaker)
+        const partialEpochStaker2 = await getTestAccount(
+            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
+            fixture.context.algod,
+            fixture.context.kmd,
+        )
+        stakerAccounts.push(partialEpochStaker1)
+        stakerAccounts.push(partialEpochStaker2)
 
         const params = await fixture.context.algod.getTransactionParams().do()
         // add blocks to get to block prior to start of new epoch
@@ -1312,7 +1319,7 @@ describe('StakeWRewards', () => {
         // by 'first time staker' fee to cover MBR (which goes to VALIDATOR contract account, not staker contract account!)
         // we pay the extra here so the final staked amount should be exactly 1000
         const stakeAmount1 = AlgoAmount.Algos(1000)
-        // Add stake for first staker - partial epoch
+        // Add stake for first staker
         const [aPoolKey] = await addStake(
             fixture.context,
             validatorMasterClient,
@@ -1330,30 +1337,44 @@ describe('StakeWRewards', () => {
         )
 
         // add next staker immediately after - with such small epoch it should be somewhat smaller reward
-        const stakeAmount2 = AlgoAmount.MicroAlgos(
+        const partialStakersAmount = AlgoAmount.MicroAlgos(
             AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos,
         )
-        // Add stake for partial-epoch staker
+        // Add stake for each partial-epoch staker
         const [newPoolKey] = await addStake(
             fixture.context,
             validatorMasterClient,
             validatorId,
-            partialEpochStaker,
-            stakeAmount2,
+            partialEpochStaker1,
+            partialStakersAmount,
             0n,
         )
 
         expect(newPoolKey.poolAppId).toEqual(aPoolKey.poolAppId)
-        const staker2Info = await getStakerInfo(firstPoolClient, partialEpochStaker)
+        const staker2Info = await getStakerInfo(firstPoolClient, partialEpochStaker1)
         consoleLogger.info(`partialEpochStaker: new entry round: ${staker2Info.entryRound}`)
+        const [newPoolKey2] = await addStake(
+            fixture.context,
+            validatorMasterClient,
+            validatorId,
+            partialEpochStaker2,
+            partialStakersAmount,
+            0n,
+        )
 
-        await logStakingPoolInfo(fixture.context, firstPoolKey.poolAppId, 'should have two stakers')
+        expect(newPoolKey2.poolAppId).toEqual(aPoolKey.poolAppId)
+        const staker3Info = await getStakerInfo(firstPoolClient, partialEpochStaker2)
+        consoleLogger.info(`partialEpochStaker: new entry round: ${staker3Info.entryRound}`)
+
+        await logStakingPoolInfo(fixture.context, firstPoolKey.poolAppId, 'should have three stakers')
 
         // ok now do payouts - and see if we can verify the expected totals
         const poolInfo = await getPoolInfo(validatorMasterClient, aPoolKey)
-        expect(poolInfo.totalStakers).toEqual(2)
-        // only subtract out 1 staker mbr because only the 'fullEpochStaker' will be 'new' to staking
-        expect(poolInfo.totalAlgoStaked).toEqual(BigInt(stakeAmount1.microAlgos + stakeAmount2.microAlgos) - stakerMbr)
+        expect(poolInfo.totalStakers).toEqual(3)
+        // only subtract out 2 stakers mbr because only the 'fullEpochStaker' will be 'new' to staking
+        expect(poolInfo.totalAlgoStaked).toEqual(
+            BigInt(stakeAmount1.microAlgos + partialStakersAmount.microAlgos * 2) - 2n * stakerMbr,
+        )
 
         // What's pool's current balance
         const poolBalance = await getPoolAvailBalance(fixture.context, firstPoolKey)
