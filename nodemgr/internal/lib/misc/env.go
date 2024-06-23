@@ -19,7 +19,7 @@ func LoadEnvForNetwork(log *slog.Logger, network string) {
 
 func loadEnvFile(log *slog.Logger, filename string) {
 	err := godotenv.Load(filename)
-	if !errors.Is(err, os.ErrNotExist) {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		Warnf(log, "error loading %s, err: %v", filename, err)
 	}
 }

@@ -15,8 +15,6 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
-	"github.com/algorand/go-algorand-sdk/v2/types"
-	"github.com/ssgreg/repeat"
 
 	"github.com/TxnLab/reti/internal/lib/misc"
 )
@@ -88,43 +86,6 @@ func GetAlgoClient(log *slog.Logger, config NetworkConfig) (*algod.Client, error
 	return client, nil
 }
 
-func SuggestedParams(ctx context.Context, logger *slog.Logger, client *algod.Client) types.SuggestedParams {
-	var (
-		txParams types.SuggestedParams
-		err      error
-	)
-	// don't accept no for an answer from this api ! just keep trying
-	err = repeat.Repeat(
-		repeat.Fn(func() error {
-			txParams, err = client.SuggestedParams().Do(ctx)
-			if err != nil {
-				return repeat.HintTemporary(err)
-			}
-			return nil
-		}),
-		repeat.StopOnSuccess(),
-		repeat.FnOnError(func(err error) error {
-			misc.Infof(logger, "retrying suggestedparams call, error:%s", err.Error())
-			return err
-		}),
-		repeat.WithDelay(repeat.ExponentialBackoff(1*time.Second).Set()),
-	)
-
-	// move FirstRoundValid back 1 just to cover for different nodes maybe being 'slightly' behind - so we
-	// don't create a transaction starting at round 100 but the node we submit to is only at round 99
-	txParams.FirstRoundValid--
-	txParams.LastRoundValid = txParams.FirstRoundValid + DefaultValidRoundRange
-	// Just set fixed fee for now - we don't want to send during high cost periods anyway.
-	txParams.FlatFee = true
-	txParams.Fee = types.MicroAlgos(txParams.MinFee)
-	return txParams
-}
-
-type AccountWithMinBalance struct {
-	models.Account
-	MinBalance uint64 `json:"min-balance,omitempty"`
-}
-
 func GetUint64FromGlobalState(globalState []models.TealKeyValue, keyName string) (uint64, error) {
 	for _, gs := range globalState {
 		rawKey, _ := base64.StdEncoding.DecodeString(gs.Key)
@@ -157,19 +118,9 @@ func GetStringFromGlobalState(globalState []models.TealKeyValue, keyName string)
 	return "", ErrStateKeyNotFound
 }
 
-// GetBareAccount just returns account information without asset data, but also includes the minimum balance that's
-// missing from the SDKs.
-func GetBareAccount(ctx context.Context, algoClient *algod.Client, account string) (AccountWithMinBalance, error) {
-	var response AccountWithMinBalance
-	var params = algod.AccountInformationParams{
-		Exclude: "all",
-	}
-
-	err := (*common.Client)(algoClient).Get(ctx, &response, fmt.Sprintf("/v2/accounts/%s", account), params, nil)
-	if err != nil {
-		return AccountWithMinBalance{}, err
-	}
-	return response, nil
+// GetBareAccount just returns account information without asset data
+func GetBareAccount(ctx context.Context, algoClient *algod.Client, account string) (models.Account, error) {
+	return algoClient.AccountInformation(account).Exclude("all").Do(ctx)
 }
 
 func GetVersionString(ctx context.Context, algoClient *algod.Client) (string, error) {

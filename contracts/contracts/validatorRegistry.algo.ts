@@ -432,7 +432,7 @@ export class ValidatorRegistry extends Contract {
         assert(config.manager !== Address.zeroAddress)
         assert(this.txn.sender === config.owner, 'sender must be owner to add new validator')
 
-        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addValidatorMbr })
+        verifyPayTxn(mbrPayment, { receiver: this.app.address, amount: this.getMbrAmounts().addValidatorMbr })
 
         assert(mbrPayment.fee > 10 * 1000000, 'fee must be 10 ALGO or more to prevent spamming of validators')
 
@@ -469,7 +469,7 @@ export class ValidatorRegistry extends Contract {
                 'provided NFD App id for gating must be valid NFD',
             )
         }
-        // this.retiOP_addedValidator.log({ id: validatorId, owner: config.owner, manager: config.manager });
+        // this.retiOP_addedValidator.log({ id: validatorId, owner: config.owner, manager: config.manager })
         return validatorId
     }
 
@@ -590,7 +590,7 @@ export class ValidatorRegistry extends Contract {
         )
 
         // must match MBR exactly
-        verifyPayTxn(mbrPayment, { amount: this.getMbrAmounts().addPoolMbr, receiver: this.app.address })
+        verifyPayTxn(mbrPayment, { receiver: this.app.address, amount: this.getMbrAmounts().addPoolMbr })
 
         assert(this.validatorList(validatorId).exists, "specified validator id isn't valid")
 
@@ -714,7 +714,7 @@ export class ValidatorRegistry extends Contract {
         //     poolAppId: AppID.fromUint64(poolKey.poolAppId),
         //     amountStaked: realAmount,
         //     staker: staker,
-        // });
+        // })
 
         return poolKey
     }
@@ -816,7 +816,7 @@ export class ValidatorRegistry extends Contract {
         //     rewardTokenHeldBack: rewardTokenAmountReserved,
         //     saturatedBurnToFeeSink: saturatedBurnToFeeSink,
         //     validatorCommission: validatorCommission,
-        // });
+        // })
     }
 
     /**
@@ -880,7 +880,7 @@ export class ValidatorRegistry extends Contract {
             //     amountUnstaked: amountRemoved,
             //     rewardTokenAssetId: AssetID.fromUint64(rewardTokenID),
             //     rewardTokensReceived: rewardRemoved,
-            // });
+            // })
         } else {
             // this.retiOP_stakeRemoved.log({
             //     id: poolKey.id,
@@ -891,7 +891,7 @@ export class ValidatorRegistry extends Contract {
             //     // no tokens rewarded..
             //     rewardTokenAssetId: AssetID.zeroIndex,
             //     rewardTokensReceived: 0,
-            // });
+            // })
         }
 
         if (stakerRemoved) {
@@ -1079,40 +1079,40 @@ export class ValidatorRegistry extends Contract {
      */
     // retiOP_addedValidator = new EventLogger<{
     //     // Assigned Validator ID
-    //     id: uint64;
+    //     id: uint64
     //     // Owner account
-    //     owner: Address;
+    //     owner: Address
     //     // Manager account
-    //     manager: Address;
-    // }>();
+    //     manager: Address
+    // }>()
     //
     // /**
     //  * Logs the addition of a new pool to a particular validator ID
     //  */
     // retiOP_validatorAddedPool = new EventLogger<{
     //     // Validator ID
-    //     id: uint64;
+    //     id: uint64
     //     // Pool number
-    //     num: uint16;
+    //     num: uint16
     //     // Pool application ID
-    //     poolAppId: AppID;
-    // }>();
+    //     poolAppId: AppID
+    // }>()
     //
     // /**
     //  * Logs how much stake was added by a staker to a particular staking pool
     //  */
     // retiOP_stakeAdded = new EventLogger<{
     //     // Validator ID staker staked with
-    //     id: uint64;
+    //     id: uint64
     //     // Pool number stake went to
-    //     poolNum: uint16;
+    //     poolNum: uint16
     //     // Pool application ID
-    //     poolAppId: AppID;
+    //     poolAppId: AppID
     //     // Staker account
-    //     staker: Address;
+    //     staker: Address
     //     // Amount staked
-    //     amountStaked: uint64;
-    // }>();
+    //     amountStaked: uint64
+    // }>()
     //
     // /**
     //  * Logs how much algo was detected as being added to a staking pool as part of epoch reward calculations.
@@ -1120,40 +1120,40 @@ export class ValidatorRegistry extends Contract {
     //  */
     // retiOP_epochRewardUpdate = new EventLogger<{
     //     // Validator ID
-    //     id: uint64;
+    //     id: uint64
     //     // Pool number rewards were accounted for
-    //     poolNum: uint16;
+    //     poolNum: uint16
     //     // Pool application ID
-    //     poolAppId: AppID;
+    //     poolAppId: AppID
     //     // Amount validator received (if anything)
-    //     validatorCommission: uint64;
+    //     validatorCommission: uint64
     //     // Saturated burn sent BACK to fee sink (if saturated pool)
-    //     saturatedBurnToFeeSink: uint64;
+    //     saturatedBurnToFeeSink: uint64
     //     // Algo amount added
-    //     algoAdded: uint64;
+    //     algoAdded: uint64
     //     // Reward token amount held back for future payout
-    //     rewardTokenHeldBack: uint64;
-    // }>();
+    //     rewardTokenHeldBack: uint64
+    // }>()
     //
     // /**
     //  * Logs how much stake was removed by a staker from a particular staking pool
     //  */
     // retiOP_stakeRemoved = new EventLogger<{
     //     // Validator ID staker staked with
-    //     id: uint64;
+    //     id: uint64
     //     // Pool number stake was removed from
-    //     poolNum: uint16;
+    //     poolNum: uint16
     //     // Pool application ID
-    //     poolAppId: AppID;
+    //     poolAppId: AppID
     //     // Staker account
-    //     staker: Address;
+    //     staker: Address
     //     // Amount of stake removed
-    //     amountUnstaked: uint64;
+    //     amountUnstaked: uint64
     //     // Number of reward tokens also received
-    //     rewardTokensReceived: uint64;
+    //     rewardTokensReceived: uint64
     //     // Reward token (if applicable) asset id
-    //     rewardTokenAssetId: AssetID;
-    // }>();
+    //     rewardTokenAssetId: AssetID
+    // }>()
 
     // ======
     // PRIVATE CONTRACT METHODS
@@ -1507,12 +1507,14 @@ export class ValidatorRegistry extends Contract {
      * Returns the MAXIMUM allowed stake per pool and still receive incentives - we'll treat this as the 'max per pool'
      */
     private maxAlgoAllowedPerPool(): uint64 {
-        // TODO replace w/ appropriate AVM call once available
+        // TODO avm will have opcode
+        // global PayoutsMaxBalance
         return 70_000_000_000_000 // 70m ALGO in microAlgo
     }
 
     private getCurrentOnlineStake(): uint64 {
-        // TODO - replace w/ appropriate AVM call once available but return fixed 2 billion for now.
+        // TODO - avm will have opcode
+        // online_stake
         return 2_000_000_000_000_000
     }
 

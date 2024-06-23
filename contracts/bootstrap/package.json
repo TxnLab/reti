@@ -1,6 +1,6 @@
 {
     "name": "bootstrap",
-    "version": "0.9.3",
+    "version": "0.9.4",
     "description": "",
     "main": "index.ts",
     "scripts": {
@@ -12,7 +12,7 @@
     "license": "MIT",
     "dependencies": {
         "@algorandfoundation/algokit-utils": "6.0.5",
-        "algosdk": "2.7.0",
+        "algosdk": "2.8.0",
         "prompts": "^2.4.2",
         "yargs": "^17.7.2"
     },

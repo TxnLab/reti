@@ -5,13 +5,13 @@ on:
     branches: [ dev, main ]
     paths:
       - 'ui/**'
-      # - '.github/workflows/ci-ui.yaml'
+      - '.github/workflows/ci-ui.yaml'
 
   pull_request:
     branches: [ dev, main ]
     paths:
       - 'ui/**'
-      # - '.github/workflows/ci-ui.yaml'
+      - '.github/workflows/ci-ui.yaml'
 
 jobs:
   run-ci:
@@ -38,10 +38,10 @@ jobs:
         with:
           node-version: 20
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 8
+          version: 9.2.0
           run_install: false
 
       - name: Get pnpm store directory

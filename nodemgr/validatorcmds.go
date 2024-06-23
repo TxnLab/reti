@@ -412,7 +412,6 @@ func refundAllStakers(ctx context.Context, command *cli.Command) error {
 			ledger, err := App.retiClient.GetLedgerForPool(pool.PoolAppId)
 			if err != nil {
 				misc.Errorf(App.logger, "error getting ledger for pool %d: %v", pool.PoolAppId, err)
-				return
 			}
 			for _, stakerData := range ledger {
 				if stakerData.Account == types.ZeroAddress {
@@ -427,14 +426,27 @@ func refundAllStakers(ctx context.Context, command *cli.Command) error {
 			sendReq := val.(removeStakeRequest)
 			err = App.retiClient.RemoveStake(sendReq.poolKey, signerAddr, sendReq.staker, 0)
 			if err != nil {
-				misc.Errorf(App.logger, "error removing stake for pool %d, staker:%s, err:%v", sendReq.poolKey.PoolAppId, sendReq.staker.String(), err)
+				return fmt.Errorf("error removing stake for pool %d, staker:%s, err:%v", sendReq.poolKey.PoolAppId, sendReq.staker.String(), err)
 			} else {
 				misc.Infof(App.logger, "Stake Removed for pool %d, staker:%s", sendReq.poolKey.PoolAppId, sendReq.staker.String())
 			}
 			return nil
 		}, send)
 	}
-	fanOut.Wait()
+	errs := fanOut.Wait()
+	for _, err := range errs {
+		misc.Errorf(App.logger, "error unstaking: %v", err)
+	}
+	if len(errs) == 0 {
+		managerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
+		// go offline in each of the pools as they should all be 0 balances now
+		for _, pool := range info.Pools {
+			misc.Infof(App.logger, "offlining pool app id:%d", pool)
+			if err := App.retiClient.GoOffline(pool.PoolAppId, managerAddr); err != nil {
+				misc.Errorf(App.logger, "error offlining pool app id:%d, err:%v", pool, err)
+			}
+		}
+	}
 
 	return nil
 }
