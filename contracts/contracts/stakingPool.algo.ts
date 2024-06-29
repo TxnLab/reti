@@ -74,10 +74,16 @@ export class StakingPool extends Contract {
 
     binRoundStart = GlobalStateKey<uint64>({ key: 'binRoundStart' })
 
+    // stakeAccumulator is the stake adjusted for a 'per day' bin.  It is used to determine a stake added per day (adjusting for
+    // stake additions as they occur, but adjusted for time in the day).  The stakeAccumulator and rewardAccumulator together
+    // are used to try to calculate a moving average of stake/rewards and APR.
     stakeAccumulator = GlobalStateKey<uint128>({ key: 'stakeAccumulator' })
 
+    // rewardAccumulator is similar to stakeAccumulator in how it accrues but tracks the rewards as they're determined each
+    // epoch.
     rewardAccumulator = GlobalStateKey<uint64>({ key: 'rewardAccumulator' })
 
+    // moving average - calculated based on approximate APR of rewards
     weightedMovingAverage = GlobalStateKey<uint128>({ key: 'ewma' })
 
     // ---
