@@ -1,0 +1,104 @@
+                # [5] int:expiration time to add to 'now'
+@startjson
+{
+  "Validator Contract": {
+    "{global state}": {
+      "numV": "number of Validators",
+      "numStakers": "number of Unique Stakers",
+      "staked": "total staked"
+    },
+    "boxes": {
+      "v{Validator ID}": {
+        "ValidatorInfo": {
+          "config": {
+            "ValidatorConfig": {
+              "id": "validator id",
+              "owner": "{address}",
+              "manager": "{address}",
+              "nfdForInfo": "{nfd app id}",
+              "entryGatingType": "uint8",
+              "entryGatingAddress": "{address}",
+              "entryGatingAssets": "uint64[4]",
+              "gatingAssetMinBalance": "uint64",
+              "rewardTokenId": "{asset id}",
+              "rewardPerPayout": "uint64",
+              "epochRoundLength": "uint32",
+              "percentToValidator": "uint32",
+              "validatorCommissionAddress": "{address}",
+              "minEntryStake": "uint64",
+              "maxAlgoPerPool": "uint64",
+              "poolsPerNode": "uint8",
+              "sunsettingOn": "uint64 - timestamp",
+              "sunsettingTo": "uint64 - validator id"
+            }
+          },
+          "state": {
+            "ValidatorCurState": {
+              "numPools": "uint16",
+              "totalStakers": "uint64",
+              "totalAlgoStaked": "uint64",
+              "rewardTokenHeldBack": "uint64"
+            }
+          },
+          "pools": {
+            "PoolInfo[24]": {
+              "poolAppId": "uint64",
+              "totalStakers": "uint64",
+              "totalAlgoStaked": "uint64"
+            }
+          },
+          "tokenPayoutRatio": {
+            "poolTokenPayoutRatio": {
+              "pooolPctOfWhole": "uint64[24]",
+              "updatedForPayout": "uint64"
+            }
+          },
+          "nodePoolAssignments": {
+            "NodePoolAssignmentConfig": {
+              "NodeConfig[8]": {
+                "poolAppIds": "uint64[3]"
+              }
+            }
+          }
+        }
+      },
+      "sps{Staker Address}": {
+        "ValidatorPoolKey[6]": {
+          "id": "validator id",
+          "poolId": "1-x [pool index]",
+          "poolAppId": "pool application id"
+        }
+      }
+    }
+  },
+  "Staking Pool Instance": {
+    "{global state}": {
+      "creatingValidatorContractAppId": "reti app id",
+      "validatorId": "uint64 - owning validator id",
+      "poolId": "uint64",
+      "numStakers": "uint64",
+      "totalAlgoStaked": "uint64",
+      "minEntryStake": "uint64",
+      "lastPayout": "uint64",
+      "epochNumber": "uint64",
+      "algodVer": "string",
+      "roundsPerDay": "uint64",
+      "binRoundStart": "uint64",
+      "stakeAccumulator": "uint128",
+      "rewardAccumulator": "uint64",
+      "weightedMovingAverage": "uint128"
+    },
+    "boxes": {
+      "stakers": {
+        "StakedInfo[200]": {
+          "account": "Address",
+          "balance": "uint64",
+          "totalRewarded": "uint64",
+          "rewardTokenBalance": "uint64",
+          "entryRound": "uint64"
+        }
+      }
+    }
+  }
+}
+@endjson
