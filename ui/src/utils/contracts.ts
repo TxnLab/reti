@@ -3,6 +3,7 @@ import algosdk from 'algosdk'
 import { fetchAccountAssetInformation, fetchAccountInformation } from '@/api/algod'
 import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
 import { GatingType } from '@/constants/gating'
+import { SaturationLevel } from '@/constants/saturation'
 import { Asset, AssetHolding } from '@/interfaces/algod'
 import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
@@ -21,7 +22,7 @@ import {
   ValidatorState,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
-import { convertToBaseUnits } from '@/utils/format'
+import { convertToBaseUnits, roundToFirstNonZeroDecimal } from '@/utils/format'
 
 /**
  * Transform raw validator configuration data (from `callGetValidatorConfig`) into a structured object
@@ -129,7 +130,7 @@ export function transformStakedInfo(data: Uint8Array): StakedInfo {
     balance: algosdk.bytesToBigInt(data.slice(32, 40)),
     totalRewarded: algosdk.bytesToBigInt(data.slice(40, 48)),
     rewardTokenBalance: algosdk.bytesToBigInt(data.slice(48, 56)),
-    entryRound: Number(algosdk.bytesToBigInt(data.slice(56, 64))),
+    entryRound: algosdk.bytesToBigInt(data.slice(56, 64)),
   }
 }
 
@@ -589,16 +590,17 @@ export function calculateMaxAvailableToStake(
  */
 export function calculateRewardEligibility(
   epochRoundLength: number = 0,
-  lastPoolPayoutRound: number = 0,
-  entryRound: number = 0,
+  lastPoolPayoutRound: bigint = 0n,
+  entryRound: bigint = 0n,
 ): number | null {
-  if (epochRoundLength === 0 || lastPoolPayoutRound === 0 || entryRound === 0) {
+  if (epochRoundLength === 0 || lastPoolPayoutRound === 0n || entryRound === 0n) {
     return null
   }
 
   // Calculate the next payout round
-  const currentEpochStartRound = lastPoolPayoutRound - (lastPoolPayoutRound % epochRoundLength)
-  const nextPayoutRound = currentEpochStartRound + epochRoundLength
+  const currentEpochStartRound =
+    lastPoolPayoutRound - (lastPoolPayoutRound % BigInt(epochRoundLength))
+  const nextPayoutRound = currentEpochStartRound + BigInt(epochRoundLength)
 
   // If the entry round is greater than or equal to the next epoch, eligibility is 0%
   if (entryRound >= nextPayoutRound) {
@@ -606,7 +608,7 @@ export function calculateRewardEligibility(
   }
 
   // Calculate the effective rounds remaining in the current epoch
-  const remainingRoundsInEpoch = Math.max(0, nextPayoutRound - entryRound)
+  const remainingRoundsInEpoch = Math.max(0, Number(nextPayoutRound - entryRound))
 
   // Calculate eligibility as a percentage of the epoch length
   const eligibilePercent = (remainingRoundsInEpoch / epochRoundLength) * 100
@@ -669,4 +671,74 @@ export async function fetchRemainingRewardsBalance(validator: Validator): Promis
   }
 
   return remainingBalance
+}
+
+export function calculateStakeSaturation(
+  validator: Validator,
+  constraints: Constraints,
+): SaturationLevel {
+  if (!constraints) {
+    return SaturationLevel.Error
+  }
+
+  const currentStake = validator.state.totalAlgoStaked
+  const maxStake = constraints.maxAlgoPerValidator
+  const saturatedAmount = constraints.amtConsideredSaturated
+
+  const nearSaturationThreshold = (saturatedAmount * BigInt(99)) / BigInt(100)
+
+  if (currentStake >= maxStake) {
+    return SaturationLevel.Max
+  } else if (currentStake > saturatedAmount) {
+    return SaturationLevel.Warning
+  } else if (currentStake >= nearSaturationThreshold) {
+    return SaturationLevel.Watch
+  } else {
+    return SaturationLevel.Normal
+  }
+}
+
+export function calculateSaturationPercentage(
+  validator: Validator,
+  constraints: Constraints,
+): number {
+  if (!constraints) {
+    return 0
+  }
+
+  const currentStake = validator.state.totalAlgoStaked
+  const maxStake = constraints.maxAlgoPerValidator
+
+  if (maxStake === BigInt(0) || currentStake === BigInt(0)) {
+    return 0
+  }
+
+  // Calculate percentage as a BigInt scaled by 10000000000n (for precision)
+  const scaledPercentage = (currentStake * 10000000000n) / maxStake
+
+  // Convert percentage to a number for display
+  const percentageAsNumber = Number(scaledPercentage) / 100000000
+
+  // If the percentage is greater than or equal to 100, cap it at 100
+  if (percentageAsNumber >= 100) {
+    return 100
+  }
+
+  // If the percentage is between 99 and 100, round down to 99
+  if (percentageAsNumber >= 99) {
+    return 99
+  }
+
+  // If the percentage is less than 0.00005, round up to 0.0001
+  if (percentageAsNumber < 0.00005) {
+    return 0.0001
+  }
+
+  // If percentage is less than 1, round to first non-zero decimal
+  if (percentageAsNumber < 1) {
+    return roundToFirstNonZeroDecimal(percentageAsNumber)
+  }
+
+  // Round to nearest whole number
+  return Math.round(percentageAsNumber)
 }

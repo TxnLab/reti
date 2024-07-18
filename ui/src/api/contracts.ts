@@ -42,7 +42,6 @@ import {
   transformStakedInfo,
   transformValidatorData,
 } from '@/utils/contracts'
-import { dayjs } from '@/utils/dayjs'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
@@ -732,28 +731,28 @@ export async function fetchStakerPoolData(
     const stakingPoolClient = await getSimulateStakingPoolClient(poolKey.poolAppId)
     const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
 
-    let lastPayoutTime = dayjs()
+    let lastPayoutRound: bigint = 0n
 
     if (stakingPoolGS.lastPayout !== undefined) {
-      lastPayoutTime = dayjs.unix(Number(stakingPoolGS.lastPayout.value))
+      lastPayoutRound = BigInt(stakingPoolGS.lastPayout.value)
     }
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
 
-    const [account, balance, totalRewarded, rewardTokenBalance, entryTime] = result.returns![0]
+    const [account, balance, totalRewarded, rewardTokenBalance, entryRound] = result.returns![0]
 
     const stakedInfo: StakedInfo = {
       account,
       balance,
       totalRewarded,
       rewardTokenBalance,
-      entryRound: Number(entryTime),
+      entryRound: entryRound,
     }
 
     return {
       ...stakedInfo,
       poolKey,
-      lastPayout: lastPayoutTime.unix(),
+      lastPayout: lastPayoutRound,
     }
   } catch (error) {
     console.error(error)
@@ -795,8 +794,10 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
         existingData.balance += pool.balance
         existingData.totalRewarded += pool.totalRewarded
         existingData.rewardTokenBalance += pool.rewardTokenBalance
-        existingData.entryTime = Math.max(existingData.entryTime, pool.entryRound)
-        existingData.lastPayout = Math.max(existingData.lastPayout, pool.lastPayout)
+        existingData.entryRound =
+          pool.entryRound > existingData.entryRound ? pool.entryRound : existingData.entryRound
+        existingData.lastPayout =
+          existingData.lastPayout > pool.lastPayout ? existingData.lastPayout : pool.lastPayout
         existingData.pools.push(pool) // add pool to existing StakerPoolData[]
       } else {
         // First pool for this validator, add new entry
@@ -805,7 +806,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
           balance: pool.balance,
           totalRewarded: pool.totalRewarded,
           rewardTokenBalance: pool.rewardTokenBalance,
-          entryTime: pool.entryRound,
+          entryRound: pool.entryRound,
           lastPayout: pool.lastPayout,
           pools: [pool], // add pool to new StakerPoolData[]
         })
@@ -844,7 +845,7 @@ export async function fetchProtocolConstraints(
       minEntryStake,
       maxAlgoPerPool,
       maxAlgoPerValidator,
-      saturationThreshold,
+      amtConsideredSaturated,
       maxNodes,
       maxPoolsPerNode,
       maxStakersPerPool,
@@ -858,7 +859,7 @@ export async function fetchProtocolConstraints(
       minEntryStake,
       maxAlgoPerPool,
       maxAlgoPerValidator,
-      saturationThreshold,
+      amtConsideredSaturated,
       maxNodes: Number(maxNodes),
       maxPoolsPerNode: Number(maxPoolsPerNode),
       maxStakersPerPool: Number(maxStakersPerPool),
