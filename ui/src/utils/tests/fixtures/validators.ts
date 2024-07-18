@@ -145,7 +145,7 @@ export const MOCK_CONSTRAINTS: Constraints = {
   minEntryStake: 1000000n,
   maxAlgoPerPool: 70000000000000n,
   maxAlgoPerValidator: 300000000000000n,
-  saturationThreshold: 200000000000000n,
+  amtConsideredSaturated: 200000000000000n,
   maxNodes: 8,
   maxPoolsPerNode: 3,
   maxStakersPerPool: 200,

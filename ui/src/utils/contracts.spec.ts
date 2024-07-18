@@ -1,6 +1,7 @@
 import {
   calculateMaxStake,
   calculateRewardEligibility,
+  calculateSaturationPercentage,
   getEpochLengthBlocks,
   isStakingDisabled,
   isUnstakingDisabled,
@@ -308,5 +309,159 @@ describe('calculateRewardEligibility', () => {
     const lastPoolPayoutRound = 100n
     const entryRound = 250n // Future round beyond the current epoch
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(0)
+  })
+})
+
+describe('calculateSaturationPercentage', () => {
+  it('should return 0% if the validator has no stake', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 0n,
+      },
+    }
+    expect(calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)).toBe(0)
+  })
+
+  it('should calculate the correct saturation percentage', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 72000000000000n,
+      },
+    }
+
+    // 300000000000000n is the protocol maximum in MOCK_CONSTRAINTS
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(24)
+  })
+
+  it('should round to the nearest whole number', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 71184768795601n,
+      },
+    }
+
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(24) // 23.72825626 rounded to 24
+  })
+
+  it('should return 100% if the total stake exceeds the protocol maximum', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: MOCK_CONSTRAINTS.maxAlgoPerValidator + 1000n,
+      },
+    }
+    expect(calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)).toBe(100)
+  })
+
+  it('should handle very small percentages correctly', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 50000000n,
+      },
+    }
+
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(0.0001)
+  })
+
+  it('should handle extremely small percentages by returning 0.0001', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 1n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 1000000000000n,
+    }
+
+    const result = calculateSaturationPercentage(validator, constraints)
+    expect(result).toBe(0.0001)
+  })
+
+  it('should round to first non-zero decimal for small percentages', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 5000000000n,
+      },
+    }
+
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(0.002) // 0.00166666 rounded to 0.002
+  })
+
+  it('should return 0 when constraints is null or undefined', () => {
+    // @ts-expect-error constraints is null
+    expect(calculateSaturationPercentage(MOCK_VALIDATOR_1, null)).toBe(0)
+    // @ts-expect-error constraints is undefined
+    expect(calculateSaturationPercentage(MOCK_VALIDATOR_1, undefined)).toBe(0)
+  })
+
+  it('should return 0 when maxAlgoPerValidator is 0', () => {
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 0n,
+    }
+    expect(calculateSaturationPercentage(MOCK_VALIDATOR_1, constraints)).toBe(0)
+  })
+
+  it('should calculate correctly for percentages just below 100%', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 99999999999999n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 100000000000000n,
+    }
+    expect(calculateSaturationPercentage(validator, constraints)).toBe(99)
+  })
+
+  it('should round correctly at the 0.00005 threshold', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 150000n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 300000000000000n,
+    }
+    expect(calculateSaturationPercentage(validator, constraints)).toBe(0.0001)
+  })
+
+  it('should round correctly just above the 0.00005 threshold', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 151000n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 300000000000000n,
+    }
+    expect(calculateSaturationPercentage(validator, constraints)).toBe(0.0001)
   })
 })

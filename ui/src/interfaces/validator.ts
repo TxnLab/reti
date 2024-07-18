@@ -133,7 +133,7 @@ export interface Constraints {
   minEntryStake: bigint
   maxAlgoPerPool: bigint
   maxAlgoPerValidator: bigint
-  saturationThreshold: bigint
+  amtConsideredSaturated: bigint
   maxNodes: number
   maxPoolsPerNode: number
   maxStakersPerPool: number

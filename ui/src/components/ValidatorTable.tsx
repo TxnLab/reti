@@ -25,6 +25,7 @@ import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { DebouncedSearch } from '@/components/DebouncedSearch'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
+import { SaturationIndicator } from '@/components/SaturationIndicator'
 import { Tooltip } from '@/components/Tooltip'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -237,6 +238,7 @@ export function ValidatorTable({
           <span className="whitespace-nowrap">
             <AlgoSymbol />
             {currentStakeCompact} / {maxStakeCompact}
+            <SaturationIndicator validator={validator} constraints={constraints} />
           </span>
         )
       },
