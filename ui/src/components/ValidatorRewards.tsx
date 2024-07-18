@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchAccountBalance } from '@/api/algod'
 import { getApplicationAddress } from 'algosdk'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { getSimulateStakingPoolClient } from '@/api/clients'
+import { ParamsCache } from '@/utils/paramsCache'
 
 /**
  * Fetches the total excess balances (rewards) of all pools for a given validator.
@@ -25,6 +27,37 @@ async function fetchRewardBalances(validator: Validator) {
   }
 }
 
+async function epochPayoutFetch(validator: Validator) {
+  const length = BigInt(validator.config.epochRoundLength)
+  const params = await ParamsCache.getSuggestedParams()
+  try {
+    let oldestRound = 0n
+    for (const pool of validator.pools) {
+      const poolBal = await fetchAccountBalance(getApplicationAddress(pool.poolAppId), true)
+      if (poolBal > 0) {
+        const stakingPoolClient = await getSimulateStakingPoolClient(pool.poolAppId)
+        const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
+
+        let nextRound: bigint = 0n
+
+        if (stakingPoolGS.lastPayout !== undefined) {
+          const payout = BigInt(stakingPoolGS.lastPayout.value)
+          nextRound = payout - (payout % length) + length
+        }
+        if (oldestRound === 0n) {
+          oldestRound = nextRound
+        } else {
+          oldestRound = nextRound < oldestRound ? nextRound : oldestRound
+        }
+      }
+    }
+    return BigInt(params.firstRound) - oldestRound
+  } catch (error) {
+    console.error(error)
+    return 0
+  }
+}
+
 interface ValidatorRewardsProps {
   validator: Validator
 }
@@ -35,6 +68,19 @@ export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
     queryFn: () => fetchRewardBalances(validator),
     refetchInterval: 30000,
   })
+  const epochPayoutsQuery = useQuery({
+    queryKey: ['epochPayouts', validator.id],
+    queryFn: () => epochPayoutFetch(validator),
+    refetchInterval: 30000,
+  })
+  const dotColor =
+    epochPayoutsQuery.data !== undefined
+      ? epochPayoutsQuery.data < 21
+        ? 'green' // 1 minute
+        : epochPayoutsQuery.data < 1200
+          ? 'yellow' // 1 hour
+          : 'red'
+      : 'defaultColor'
 
   if (totalBalancesQuery.isLoading) {
     return <span>Loading...</span>
@@ -42,5 +88,12 @@ export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
   if (totalBalancesQuery.error || totalBalancesQuery.data == undefined) {
     return <span className="text-sm text-red-500">Error fetching balance</span>
   }
-  return <AlgoDisplayAmount amount={totalBalancesQuery.data} microalgos />
+  return (
+    <>
+      <span className="text-2xl" style={{ color: dotColor }}>
+        &bull;
+      </span>
+      <AlgoDisplayAmount amount={totalBalancesQuery.data} microalgos />
+    </>
+  )
 }
