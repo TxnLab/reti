@@ -4,6 +4,7 @@ import { Link, useRouter } from '@tanstack/react-router'
 import {
   ColumnDef,
   ColumnFiltersState,
+  SortingFn,
   SortingState,
   Updater,
   VisibilityState,
@@ -101,6 +102,35 @@ export function ValidatorTable({
     } else {
       setSorting(updaterOrValue)
     }
+  }
+
+  const sortRewardsFn: SortingFn<Validator> = (rowA, rowB, columnId) => {
+    const a = rowA.original
+    const b = rowB.original
+
+    // Assign values for epoch payout status
+    const getStatus = (validator: Validator): number => {
+      if (validator.roundsSinceLastPayout === undefined) return 0 // red
+      if (validator.roundsSinceLastPayout < 21n) return 2 // green
+      if (validator.roundsSinceLastPayout < 1200n) return 1 // yellow
+      return 0 // red
+    }
+
+    const statusA = getStatus(a)
+    const statusB = getStatus(b)
+
+    // Compare status
+    if (statusA !== statusB) {
+      return statusA - statusB
+    }
+
+    // If status is the same, compare rewardsBalance
+    if (a.rewardsBalance === undefined && b.rewardsBalance === undefined) return 0
+    if (a.rewardsBalance === undefined) return 1
+    if (b.rewardsBalance === undefined) return -1
+
+    // Compare rewardsBalance
+    return Number(a.rewardsBalance - b.rewardsBalance)
   }
 
   // Persistent column visibility state
@@ -254,7 +284,9 @@ export function ValidatorTable({
     },
     {
       id: 'reward',
-      accessorFn: (row) => row.state.totalStakers, // @todo: fix this
+      accessorFn: (row) => row.rewardsBalance,
+      sortingFn: sortRewardsFn,
+      sortUndefined: -1,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Avail. Rewards" />,
       cell: ({ row }) => {
         const validator = row.original

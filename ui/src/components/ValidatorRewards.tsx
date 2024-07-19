@@ -54,7 +54,7 @@ async function epochPayoutFetch(validator: Validator) {
     return BigInt(params.firstRound) - oldestRound
   } catch (error) {
     console.error(error)
-    return 0
+    return 0n
   }
 }
 
@@ -64,20 +64,20 @@ interface ValidatorRewardsProps {
 
 export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
   const totalBalancesQuery = useQuery({
-    queryKey: ['valrewards', validator.id],
+    queryKey: ['available-rewards', validator.id],
     queryFn: () => fetchRewardBalances(validator),
     refetchInterval: 30000,
   })
   const epochPayoutsQuery = useQuery({
-    queryKey: ['epochPayouts', validator.id],
+    queryKey: ['rounds-since-last-payout', validator.id],
     queryFn: () => epochPayoutFetch(validator),
     refetchInterval: 30000,
   })
   const dotColor =
     epochPayoutsQuery.data !== undefined
-      ? epochPayoutsQuery.data < 21
+      ? epochPayoutsQuery.data < 21n
         ? 'green' // 1 minute
-        : epochPayoutsQuery.data < 1200
+        : epochPayoutsQuery.data < 1200n
           ? 'yellow' // 1 hour
           : 'red'
       : 'defaultColor'
