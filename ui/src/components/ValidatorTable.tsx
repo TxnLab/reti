@@ -104,7 +104,7 @@ export function ValidatorTable({
     }
   }
 
-  const sortRewardsFn: SortingFn<Validator> = (rowA, rowB, columnId) => {
+  const sortRewardsFn: SortingFn<Validator> = (rowA, rowB) => {
     const a = rowA.original
     const b = rowB.original
 
