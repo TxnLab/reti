@@ -1,9 +1,12 @@
-import { Validator } from '@/interfaces/validator'
 import { useQuery } from '@tanstack/react-query'
-import { fetchAccountBalance } from '@/api/algod'
 import { getApplicationAddress } from 'algosdk'
-import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { Validator } from '@/interfaces/validator'
+import { fetchAccountBalance } from '@/api/algod'
 import { getSimulateStakingPoolClient } from '@/api/clients'
+import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { TrafficLight } from '@/components/TrafficLight'
+import { Indicator } from '@/constants/indicator'
+import { calculateValidatorHealth } from '@/utils/contracts'
 import { ParamsCache } from '@/utils/paramsCache'
 
 /**
@@ -68,31 +71,28 @@ export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
     queryFn: () => fetchRewardBalances(validator),
     refetchInterval: 30000,
   })
+
   const epochPayoutsQuery = useQuery({
     queryKey: ['rounds-since-last-payout', validator.id],
     queryFn: () => epochPayoutFetch(validator),
     refetchInterval: 30000,
   })
-  const dotColor =
-    epochPayoutsQuery.data !== undefined
-      ? epochPayoutsQuery.data < 21n
-        ? 'green' // 1 minute
-        : epochPayoutsQuery.data < 1200n
-          ? 'yellow' // 1 hour
-          : 'red'
-      : 'defaultColor'
 
-  if (totalBalancesQuery.isLoading) {
-    return <span>Loading...</span>
+  const healthStatus = calculateValidatorHealth(epochPayoutsQuery.data)
+
+  const tooltipContent = {
+    [Indicator.Normal]: 'Fully operational',
+    [Indicator.Watch]: 'Payouts Lagging',
+    [Indicator.Error]: 'Not operational',
   }
+
   if (totalBalancesQuery.error || totalBalancesQuery.data == undefined) {
     return <span className="text-sm text-red-500">Error fetching balance</span>
   }
+
   return (
     <>
-      <span className="text-2xl" style={{ color: dotColor }}>
-        &bull;
-      </span>
+      <TrafficLight indicator={healthStatus} tooltipContent={tooltipContent} className="mr-2" />
       <AlgoDisplayAmount amount={totalBalancesQuery.data} microalgos />
     </>
   )

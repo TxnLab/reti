@@ -26,8 +26,8 @@ import { DataTableColumnHeader } from '@/components/DataTableColumnHeader'
 import { DataTableViewOptions } from '@/components/DataTableViewOptions'
 import { DebouncedSearch } from '@/components/DebouncedSearch'
 import { NfdThumbnail } from '@/components/NfdThumbnail'
-import { SaturationIndicator } from '@/components/SaturationIndicator'
 import { Tooltip } from '@/components/Tooltip'
+import { TrafficLight } from '@/components/TrafficLight'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -55,6 +55,8 @@ import { Constraints, Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   calculateMaxStake,
+  calculateSaturationPercentage,
+  calculateStakeSaturation,
   canManageValidator,
   isAddingPoolDisabled,
   isStakingDisabled,
@@ -264,11 +266,18 @@ export function ValidatorTable({
           notation: 'compact',
         }).format(maxStakeAlgos)
 
+        const saturationLevel = calculateStakeSaturation(validator, constraints)
+        const saturationPercent = calculateSaturationPercentage(validator, constraints)
+
         return (
           <span className="whitespace-nowrap">
             <AlgoSymbol />
             {currentStakeCompact} / {maxStakeCompact}
-            <SaturationIndicator validator={validator} constraints={constraints} />
+            <TrafficLight
+              tooltipContent={`${saturationPercent}%`}
+              indicator={saturationLevel}
+              className="ml-2"
+            />
           </span>
         )
       },
