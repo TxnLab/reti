@@ -83,7 +83,8 @@ export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
   const tooltipContent = {
     [Indicator.Normal]: 'Fully operational',
     [Indicator.Watch]: 'Payouts Lagging',
-    [Indicator.Error]: 'Not operational',
+    [Indicator.Warning]: 'Payouts Stopped',
+    [Indicator.Error]: 'Rewards not compounding',
   }
 
   if (totalBalancesQuery.error || totalBalancesQuery.data == undefined) {

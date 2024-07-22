@@ -747,6 +747,9 @@ export function calculateValidatorHealth(roundsSinceLastPayout: bigint | undefin
   if (!roundsSinceLastPayout || roundsSinceLastPayout >= 1200n) {
     // 1 hour
     return Indicator.Error
+  } else if (roundsSinceLastPayout >= 210n) {
+    // 10 minutes
+    return Indicator.Warning
   } else if (roundsSinceLastPayout >= 21n) {
     // 1 minute
     return Indicator.Watch
