@@ -140,3 +140,10 @@ export interface Constraints {
   maxPoolsPerNode: number
   maxStakersPerPool: number
 }
+
+// Used for calculating validator metrics
+export type PoolData = {
+  balance: bigint
+  lastPayout?: bigint
+  apy?: number
+}

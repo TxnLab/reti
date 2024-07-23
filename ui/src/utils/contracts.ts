@@ -12,6 +12,7 @@ import {
   EntryGatingAssets,
   NodeInfo,
   NodePoolAssignmentConfig,
+  PoolData,
   PoolInfo,
   RawNodePoolAssignmentConfig,
   RawPoolsInfo,
@@ -22,7 +23,7 @@ import {
   ValidatorState,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
-import { convertToBaseUnits, roundToFirstNonZeroDecimal } from '@/utils/format'
+import { convertToBaseUnits, roundToFirstNonZeroDecimal, roundToWholeAlgos } from '@/utils/format'
 
 /**
  * Transform raw validator configuration data (from `callGetValidatorConfig`) into a structured object
@@ -756,4 +757,28 @@ export function calculateValidatorHealth(roundsSinceLastPayout: bigint | undefin
   } else {
     return Indicator.Normal
   }
+}
+
+export function calculateValidatorPoolMetrics(
+  poolsData: PoolData[],
+  totalAlgoStaked: bigint,
+  epochRoundLength: bigint,
+  currentRound: bigint,
+) {
+  const totalBalances = poolsData.reduce((sum, data) => sum + data.balance, 0n)
+  const oldestRound = poolsData.reduce((oldest, data) => {
+    if (!data.lastPayout) return oldest
+    const nextRound = data.lastPayout - (data.lastPayout % epochRoundLength) + epochRoundLength
+    return oldest === 0n || nextRound < oldest ? nextRound : oldest
+  }, 0n)
+
+  const rewardsBalance = roundToWholeAlgos(totalBalances - totalAlgoStaked)
+  const roundsSinceLastPayout = oldestRound ? currentRound - oldestRound : undefined
+
+  // Calculate APY only for pools with non-zero balance
+  const nonZeroBalancePools = poolsData.filter((data) => data.balance > 0n)
+  const totalApy = nonZeroBalancePools.reduce((sum, data) => sum + (data.apy || 0), 0)
+  const apy = nonZeroBalancePools.length > 0 ? totalApy / nonZeroBalancePools.length : 0
+
+  return { rewardsBalance, roundsSinceLastPayout, apy }
 }

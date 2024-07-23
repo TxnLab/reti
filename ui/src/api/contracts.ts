@@ -23,6 +23,7 @@ import {
   FindPoolForStakerResponse,
   MbrAmounts,
   NodePoolAssignmentConfig,
+  PoolData,
   PoolInfo,
   RawConstraints,
   RawNodePoolAssignmentConfig,
@@ -38,11 +39,11 @@ import { makeEmptyTransactionSigner } from '@/lib/makeEmptyTransactionSigner'
 import { BalanceChecker } from '@/utils/balanceChecker'
 import { chunkBytes } from '@/utils/bytes'
 import {
+  calculateValidatorPoolMetrics,
   transformNodePoolAssignment,
   transformStakedInfo,
   transformValidatorData,
 } from '@/utils/contracts'
-import { roundToWholeAlgos } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
@@ -81,12 +82,6 @@ export function callGetValidatorState(
     .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 }
 
-type PoolData = {
-  balance: bigint
-  lastPayout?: bigint
-  apy?: number
-}
-
 async function processPool(pool: PoolInfo): Promise<PoolData> {
   const poolBalance = await fetchAccountBalance(algosdk.getApplicationAddress(pool.poolAppId), true)
   if (poolBalance === 0) {
@@ -105,30 +100,6 @@ async function processPool(pool: PoolInfo): Promise<PoolData> {
     lastPayout,
     apy,
   }
-}
-
-function calculateValidatorPoolMetrics(
-  poolsData: PoolData[],
-  totalAlgoStaked: bigint,
-  epochRoundLength: bigint,
-  currentRound: bigint,
-) {
-  const totalBalances = poolsData.reduce((sum, data) => sum + data.balance, 0n)
-  const oldestRound = poolsData.reduce((oldest, data) => {
-    if (!data.lastPayout) return oldest
-    const nextRound = data.lastPayout - (data.lastPayout % epochRoundLength) + epochRoundLength
-    return oldest === 0n || nextRound < oldest ? nextRound : oldest
-  }, 0n)
-
-  const rewardsBalance = roundToWholeAlgos(totalBalances - totalAlgoStaked)
-  const roundsSinceLastPayout = oldestRound ? currentRound - oldestRound : undefined
-
-  // Calculate APY only for pools with non-zero balance
-  const nonZeroBalancePools = poolsData.filter((data) => data.balance > 0n)
-  const totalApy = nonZeroBalancePools.reduce((sum, data) => sum + (data.apy || 0), 0)
-  const apy = nonZeroBalancePools.length > 0 ? totalApy / nonZeroBalancePools.length : 0
-
-  return { rewardsBalance, roundsSinceLastPayout, apy }
 }
 
 async function setValidatorPoolMetrics(validator: Validator, queryClient?: QueryClient) {
