@@ -86,6 +86,8 @@ export type Validator = {
   state: ValidatorState
   pools: PoolInfo[]
   nodePoolAssignment: NodePoolAssignmentConfig
+  rewardsBalance?: bigint
+  roundsSinceLastPayout?: bigint
   rewardToken?: Asset
   gatingAssets?: Asset[]
   nfd?: Nfd
@@ -137,4 +139,11 @@ export interface Constraints {
   maxNodes: number
   maxPoolsPerNode: number
   maxStakersPerPool: number
+}
+
+// Used for calculating validator metrics
+export type PoolData = {
+  balance: bigint
+  lastPayout?: bigint
+  apy?: number
 }

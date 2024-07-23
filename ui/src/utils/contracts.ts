@@ -3,7 +3,7 @@ import algosdk from 'algosdk'
 import { fetchAccountAssetInformation, fetchAccountInformation } from '@/api/algod'
 import { fetchNfd, fetchNfdSearch } from '@/api/nfd'
 import { GatingType } from '@/constants/gating'
-import { SaturationLevel } from '@/constants/saturation'
+import { Indicator } from '@/constants/indicator'
 import { Asset, AssetHolding } from '@/interfaces/algod'
 import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
@@ -12,6 +12,7 @@ import {
   EntryGatingAssets,
   NodeInfo,
   NodePoolAssignmentConfig,
+  PoolData,
   PoolInfo,
   RawNodePoolAssignmentConfig,
   RawPoolsInfo,
@@ -22,7 +23,7 @@ import {
   ValidatorState,
 } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
-import { convertToBaseUnits, roundToFirstNonZeroDecimal } from '@/utils/format'
+import { convertToBaseUnits, roundToFirstNonZeroDecimal, roundToWholeAlgos } from '@/utils/format'
 
 /**
  * Transform raw validator configuration data (from `callGetValidatorConfig`) into a structured object
@@ -676,9 +677,9 @@ export async function fetchRemainingRewardsBalance(validator: Validator): Promis
 export function calculateStakeSaturation(
   validator: Validator,
   constraints: Constraints,
-): SaturationLevel {
+): Indicator {
   if (!constraints) {
-    return SaturationLevel.Error
+    return Indicator.Error
   }
 
   const currentStake = validator.state.totalAlgoStaked
@@ -688,13 +689,13 @@ export function calculateStakeSaturation(
   const nearSaturationThreshold = (saturatedAmount * BigInt(99)) / BigInt(100)
 
   if (currentStake >= maxStake) {
-    return SaturationLevel.Max
+    return Indicator.Max
   } else if (currentStake > saturatedAmount) {
-    return SaturationLevel.Warning
+    return Indicator.Warning
   } else if (currentStake >= nearSaturationThreshold) {
-    return SaturationLevel.Watch
+    return Indicator.Watch
   } else {
-    return SaturationLevel.Normal
+    return Indicator.Normal
   }
 }
 
@@ -741,4 +742,43 @@ export function calculateSaturationPercentage(
 
   // Round to nearest whole number
   return Math.round(percentageAsNumber)
+}
+
+export function calculateValidatorHealth(roundsSinceLastPayout: bigint | undefined): Indicator {
+  if (!roundsSinceLastPayout || roundsSinceLastPayout >= 1200n) {
+    // 1 hour
+    return Indicator.Error
+  } else if (roundsSinceLastPayout >= 210n) {
+    // 10 minutes
+    return Indicator.Warning
+  } else if (roundsSinceLastPayout >= 21n) {
+    // 1 minute
+    return Indicator.Watch
+  } else {
+    return Indicator.Normal
+  }
+}
+
+export function calculateValidatorPoolMetrics(
+  poolsData: PoolData[],
+  totalAlgoStaked: bigint,
+  epochRoundLength: bigint,
+  currentRound: bigint,
+) {
+  const totalBalances = poolsData.reduce((sum, data) => sum + data.balance, 0n)
+  const oldestRound = poolsData.reduce((oldest, data) => {
+    if (!data.lastPayout) return oldest
+    const nextRound = data.lastPayout - (data.lastPayout % epochRoundLength) + epochRoundLength
+    return oldest === 0n || nextRound < oldest ? nextRound : oldest
+  }, 0n)
+
+  const rewardsBalance = roundToWholeAlgos(totalBalances - totalAlgoStaked)
+  const roundsSinceLastPayout = oldestRound ? currentRound - oldestRound : undefined
+
+  // Calculate APY only for pools with non-zero balance
+  const nonZeroBalancePools = poolsData.filter((data) => data.balance > 0n)
+  const totalApy = nonZeroBalancePools.reduce((sum, data) => sum + (data.apy || 0), 0)
+  const apy = nonZeroBalancePools.length > 0 ? totalApy / nonZeroBalancePools.length : 0
+
+  return { rewardsBalance, roundsSinceLastPayout, apy }
 }

@@ -263,3 +263,20 @@ export function roundToFirstNonZeroDecimal(num: number): number {
   // Use toFixed to round to the first significant decimal place
   return Number(num.toFixed(decimalPlaces))
 }
+
+/**
+ * Round a MicroAlgos amount to the nearest million (whole Algo amount)
+ * @param {number | bigint} microalgos - The number of MicroAlgos to round
+ * @returns {number | bigint} The rounded number
+ */
+export function roundToWholeAlgos<T extends number | bigint>(microalgos: T): T {
+  if (typeof microalgos === 'bigint') {
+    const sign = microalgos < 0n ? -1n : 1n
+    const abs = microalgos < 0n ? -microalgos : microalgos
+    return (((abs + 500000n) / 1000000n) * 1000000n * sign) as T
+  } else {
+    const sign = microalgos < 0 ? -1 : 1
+    const abs = Math.abs(microalgos)
+    return (Math.round(abs / 1e6) * 1e6 * sign) as T
+  }
+}

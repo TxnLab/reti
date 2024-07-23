@@ -7,6 +7,7 @@ import {
   formatAmount,
   formatWithPrecision,
   roundToFirstNonZeroDecimal,
+  roundToWholeAlgos,
 } from '@/utils/format'
 
 describe('convertFromBaseUnits', () => {
@@ -264,5 +265,70 @@ describe('roundToFirstNonZeroDecimal', () => {
     expect(roundToFirstNonZeroDecimal(0.001234)).toBe(0.001)
     expect(roundToFirstNonZeroDecimal(0.0005678)).toBe(0.0006)
     expect(roundToFirstNonZeroDecimal(1234.567)).toBe(1234.567)
+  })
+})
+
+describe('roundToWholeAlgos', () => {
+  // Tests for number input
+  it('rounds 1500000 to 2000000', () => {
+    expect(roundToWholeAlgos(1500000)).toBe(2000000)
+  })
+
+  it('rounds 1499999 to 1000000', () => {
+    expect(roundToWholeAlgos(1499999)).toBe(1000000)
+  })
+
+  it('rounds 0 to 0', () => {
+    expect(roundToWholeAlgos(0)).toBe(0)
+  })
+
+  it('rounds negative numbers correctly', () => {
+    expect(roundToWholeAlgos(-1500000)).toBe(-2000000)
+    expect(roundToWholeAlgos(-1499999)).toBe(-1000000)
+  })
+
+  it('handles large numbers', () => {
+    expect(roundToWholeAlgos(1000000000000001)).toBe(1000000000000000)
+  })
+
+  // Tests for bigint input
+  it('rounds 1500000n to 2000000n', () => {
+    expect(roundToWholeAlgos(1500000n)).toBe(2000000n)
+  })
+
+  it('rounds 1499999n to 1000000n', () => {
+    expect(roundToWholeAlgos(1499999n)).toBe(1000000n)
+  })
+
+  it('rounds 0n to 0n', () => {
+    expect(roundToWholeAlgos(0n)).toBe(0n)
+  })
+
+  it('rounds negative bigints correctly', () => {
+    expect(roundToWholeAlgos(-1500000n)).toBe(-2000000n)
+    expect(roundToWholeAlgos(-1499999n)).toBe(-1000000n)
+  })
+
+  it('handles large bigints', () => {
+    expect(roundToWholeAlgos(1000000000000001n)).toBe(1000000000000000n)
+  })
+
+  // Edge cases
+  it('handles Number.MAX_SAFE_INTEGER', () => {
+    expect(roundToWholeAlgos(BigInt(Number.MAX_SAFE_INTEGER))).toBe(9007199255000000n)
+  })
+
+  it('handles very large bigints', () => {
+    const veryLargeBigInt = 2n ** 100n + 500000n
+    expect(roundToWholeAlgos(veryLargeBigInt)).toBe(1267650600228229401496704000000n)
+  })
+
+  // Type checking
+  it('returns the same type as input', () => {
+    const numberResult = roundToWholeAlgos(1500000)
+    expect(typeof numberResult).toBe('number')
+
+    const bigintResult = roundToWholeAlgos(1500000n)
+    expect(typeof bigintResult).toBe('bigint')
   })
 })
