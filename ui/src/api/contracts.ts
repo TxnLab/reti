@@ -122,7 +122,11 @@ function calculateValidatorPoolMetrics(
 
   const rewardsBalance = roundToWholeAlgos(totalBalances - totalAlgoStaked)
   const roundsSinceLastPayout = oldestRound ? currentRound - oldestRound : undefined
-  const apy = poolsData.reduce((sum, data) => sum + (data.apy || 0), 0) / poolsData.length
+
+  // Calculate APY only for pools with non-zero balance
+  const nonZeroBalancePools = poolsData.filter((data) => data.balance > 0n)
+  const totalApy = nonZeroBalancePools.reduce((sum, data) => sum + (data.apy || 0), 0)
+  const apy = nonZeroBalancePools.length > 0 ? totalApy / nonZeroBalancePools.length : 0
 
   return { rewardsBalance, roundsSinceLastPayout, apy }
 }
