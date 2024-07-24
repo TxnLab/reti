@@ -11,8 +11,8 @@ importers:
   contracts:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: ^6.1.1
-        version: 6.1.1(algosdk@2.8.0)
+        specifier: ^6.1.2
+        version: 6.1.2(algosdk@2.8.0)
       algosdk:
         specifier: 2.8.0
         version: 2.8.0
@@ -69,10 +69,10 @@ importers:
   contracts/bootstrap:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 6.0.5
-        version: 6.0.5(algosdk@2.8.0)
+        specifier: ^6.1.2
+        version: 6.1.2(algosdk@2.8.0)
       algosdk:
-        specifier: 2.8.0
+        specifier: ^2.8.0
         version: 2.8.0
       prompts:
         specifier: ^2.4.2
@@ -360,14 +360,14 @@ packages:
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/algokit-utils@6.0.5':
-    resolution: {integrity: sha512-/a4pD62nQ58r6JnuNFZm9KAC9D8M7JNeAYTaIuA4TwmdLeypdUA9SD8BiaLAI8aR/GLaaPEILHnSbRSlPq9GPw==}
+  '@algorandfoundation/algokit-utils@6.1.1':
+    resolution: {integrity: sha512-vpR47BfFdZOhBfctrFIRXqZx97Wt2A/IOZ4DLW9TSatsIFBps2hK9eCG9gwMVoDIWNkdiSe0CFwQYUtEbedsrA==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/algokit-utils@6.1.1':
-    resolution: {integrity: sha512-vpR47BfFdZOhBfctrFIRXqZx97Wt2A/IOZ4DLW9TSatsIFBps2hK9eCG9gwMVoDIWNkdiSe0CFwQYUtEbedsrA==}
+  '@algorandfoundation/algokit-utils@6.1.2':
+    resolution: {integrity: sha512-nTY3Uq8S5ljdAj1CaRNTubhB5OF+KxlJkOpDDFXNHK7unf7/TdxDKHK3cQOqvs1cScR4/l0Wrd8O6jBH0lg0cA==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
@@ -5724,12 +5724,12 @@ snapshots:
       algosdk: 2.8.0
       buffer: 6.0.3
 
-  '@algorandfoundation/algokit-utils@6.0.5(algosdk@2.8.0)':
+  '@algorandfoundation/algokit-utils@6.1.1(algosdk@2.8.0)':
     dependencies:
       algosdk: 2.8.0
       buffer: 6.0.3
 
-  '@algorandfoundation/algokit-utils@6.1.1(algosdk@2.8.0)':
+  '@algorandfoundation/algokit-utils@6.1.2(algosdk@2.8.0)':
     dependencies:
       algosdk: 2.8.0
       buffer: 6.0.3

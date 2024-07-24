@@ -1,12 +1,12 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
-import { mnemonicAccountFromEnvironment } from '@algorandfoundation/algokit-utils'
-import { Account, decodeAddress, Kmd, secretKeyToMnemonic } from 'algosdk'
+import { AlgorandClient } from '@algorandfoundation/algokit-utils'
+import { Account, decodeAddress, secretKeyToMnemonic } from 'algosdk'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
 import * as fs from 'fs'
-import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
 import yargs from 'yargs'
 import prompts from 'prompts'
+import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 import { getPools } from '../helpers/helpers'
@@ -87,13 +87,16 @@ async function main() {
         .option('update', { type: 'boolean', default: false })
         .option('id', { type: 'number', default: 0 }).argv
 
-    const [algodconfig, registryAppID, feeSink] = getNetworkConfig(args.network)
+    const [algodConfig, registryAppID, feeSink] = getNetworkConfig(args.network)
 
-    const algod = algokit.getAlgoClient(algodconfig)
-    const localConfig = algokit.getConfigFromEnvOrDefaults()
+    // default to localnet
+    let algorand: AlgorandClient = algokit.AlgorandClient.defaultLocalNet()
+    if (args.network !== 'localnet') {
+        algorand = algokit.AlgorandClient.fromConfig({ algodConfig, indexerConfig: undefined, kmdConfig: undefined })
+    }
+    // const algorand = algokit.AlgorandClient.fromConfig({ algodConfig: algodconfig, kmdConfig })
 
     let creatorAcct: Account
-    let kmd: Kmd
 
     // Confirm the network choice by prompting the user if they want to continue if !localnet
     if (args.network !== 'localnet') {
@@ -102,7 +105,7 @@ async function main() {
             console.error('Environment variable CREATOR_MNEMONIC is not defined')
             process.exit(1)
         }
-        creatorAcct = await mnemonicAccountFromEnvironment('CREATOR', algod)
+        creatorAcct = (await algorand.account.fromEnvironment('CREATOR')).account
         console.log(`using ${creatorAcct.addr} as Reti creator.  MAKE SURE THIS IS CORRECT!`)
 
         console.log(`You've specified you want to DEPLOY to ${args.network}!  This is permanent !`)
@@ -116,12 +119,11 @@ async function main() {
             return
         }
     } else {
-        kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)
         if (!process.env.CREATOR_MNEMONIC) {
             console.log('no creator account specified - using dispenser account as creator')
-            creatorAcct = await algokit.getDispenserAccount(algod, kmd)
+            creatorAcct = (await algorand.account.dispenserFromEnvironment()).account
         } else {
-            creatorAcct = await mnemonicAccountFromEnvironment('CREATOR', algod)
+            creatorAcct = (await algorand.account.fromEnvironment('CREATOR')).account
             console.log(`using ${creatorAcct.addr} as Reti creator.  MAKE SURE THIS IS CORRECT!`)
         }
 
@@ -135,7 +137,7 @@ async function main() {
             resolveBy: 'id',
             id: 0,
         },
-        algod,
+        algorand.client.algod,
     )
     const { approvalCompiled } = await poolClient.appClient.compile({
         deployTimeParams: {
@@ -155,7 +157,7 @@ async function main() {
                 nfdRegistryAppId: registryAppID,
             },
         },
-        algod,
+        algorand.client.algod,
     )
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let validatorApp: any
@@ -166,10 +168,10 @@ async function main() {
             await algokit.ensureFunded(
                 {
                     accountToFund: creatorAcct,
-                    fundingSource: await algokit.getDispenserAccount(algod, kmd!),
+                    fundingSource: await algorand.account.localNetDispenser(),
                     minSpendingBalance: AlgoAmount.Algos(200),
                 },
-                algod,
+                algorand.client.algod,
             )
         }
         validatorApp = await validatorClient.create.createApplication({}, { schema: { extraPages: 3 } })
@@ -184,7 +186,7 @@ async function main() {
                 to: validatorApp.appAddress,
                 amount: AlgoAmount.Algos(2),
             },
-            algod,
+            algorand.client.algod,
         )
     } else {
         if (args.id === 0) {
@@ -221,17 +223,14 @@ async function main() {
     await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true, suppressLog: true })
 
     if (args.network === 'localnet') {
-        kmd = algokit.getAlgoKmdClient(localConfig.kmdConfig)
         // generate two dummy stakers - each w/ 100 million
         const staker1 = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true },
-            algod,
-            kmd,
+            algorand,
         )
         const staker2 = await getTestAccount(
             { initialFunds: AlgoAmount.Algos(100_000_000), suppressLog: true },
-            algod,
-            kmd,
+            algorand,
         )
         console.log(`Created test account 1:${staker1.addr}`)
         console.log(`Created test account 2:${staker2.addr}`)
@@ -264,7 +263,7 @@ async function main() {
                             feeSinkAddr: decodeAddress(feeSink).publicKey,
                         },
                     },
-                    algod,
+                    algorand.client.algod,
                 )
                 console.log(`updating validator:${valId}, pool appid: ${pool.poolAppId}`)
                 // eslint-disable-next-line no-await-in-loop
