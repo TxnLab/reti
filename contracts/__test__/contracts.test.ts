@@ -3,7 +3,7 @@ import { algoKitLogCaptureFixture, algorandFixture } from '@algorandfoundation/a
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { Account, decodeAddress, encodeAddress, getApplicationAddress } from 'algosdk'
-import { AlgorandClient, assetOptIn, transferAlgos, transferAsset } from '@algorandfoundation/algokit-utils'
+import { assetOptIn, transferAlgos, transferAsset } from '@algorandfoundation/algokit-utils'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
@@ -45,7 +45,6 @@ const MaxPoolsPerNode = 3
 // The ValidatorWFullPoolWRewards test is 'skip'ped for now - but should be periodically enabled for testing.
 const MaxStakersPerPool = 200
 
-const algorand = AlgorandClient.fromEnvironment()
 const fixture = algorandFixture({ testAccountFunding: AlgoAmount.Algos(10000) })
 const logs = algoKitLogCaptureFixture()
 
