@@ -7,6 +7,7 @@ import * as fs from 'fs'
 import yargs from 'yargs'
 import prompts from 'prompts'
 import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 import { getPools } from '../helpers/helpers'
@@ -19,7 +20,7 @@ function getNetworkConfig(network: string): [AlgoClientConfig, bigint, string] {
         case 'localnet':
             registryAppID = 0n
             feeSink = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
-            return [algokit.getConfigFromEnvOrDefaults().algodConfig, registryAppID, feeSink]
+            return [ClientManager.getConfigFromEnvironmentOrLocalNet().algodConfig, registryAppID, feeSink]
         case 'betanet':
             registryAppID = 842656530n
             feeSink = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
@@ -146,7 +147,7 @@ async function main() {
         },
     })
 
-    // first we have to deploy a staking pool contract instance for future use by the staking master contract (which uses it as its
+    // first we have to deploy a staking pool contract instance for future use by the staking master contract which uses it as its
     // 'reference' instance when creating new staking pool contract instances.
     const validatorClient = new ValidatorRegistryClient(
         {
