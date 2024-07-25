@@ -279,17 +279,18 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	lastPayout, err := App.retiClient.GetLastPayout(pools[poolId-1].PoolAppId)
 	nextEpoch := lastPayout - (lastPayout % uint64(config.EpochRoundLength)) + uint64(config.EpochRoundLength)
-	if nextEpoch < uint64(params.FirstRoundValid) {
-		nextEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(config.EpochRoundLength))
+	adjustedEpoch := nextEpoch
+	if adjustedEpoch < uint64(params.FirstRoundValid) {
+		adjustedEpoch = uint64(params.FirstRoundValid) - (uint64(params.FirstRoundValid) % uint64(config.EpochRoundLength))
 	}
 	pctTimeInEpoch := func(stakerEntry uint64) int {
-		if nextEpoch == 0 {
+		if adjustedEpoch == 0 {
 			return 100
 		}
-		if nextEpoch < stakerEntry {
+		if adjustedEpoch < stakerEntry {
 			return 0
 		}
-		timeInEpoch := (nextEpoch - stakerEntry) * 1000 / uint64(config.EpochRoundLength)
+		timeInEpoch := (adjustedEpoch - stakerEntry) * 1000 / uint64(config.EpochRoundLength)
 		if timeInEpoch < 0 {
 			timeInEpoch = 0
 		}
@@ -344,7 +345,10 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	floatApr.Quo(floatApr, big.NewFloat(10000.0))
 	fmt.Fprintf(tw, "APR %%: %s\t\n", floatApr.String())
 	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(config.EpochRoundLength)))
-	fmt.Fprintf(tw, "Next Payout: %d\t\n", nextEpoch)
+	fmt.Fprintf(tw, "Next Payout: %d\t\n", adjustedEpoch)
+	if nextEpoch < uint64(params.FirstRoundValid) {
+		fmt.Fprintf(tw, "Missed payout by: %d\t\n", uint64(params.FirstRoundValid)-nextEpoch)
+	}
 	tw.Flush()
 	slog.Info(out.String())
 	return nil

@@ -1,8 +1,13 @@
-import { Validator } from '@/interfaces/validator'
 import { useQuery } from '@tanstack/react-query'
-import { fetchAccountBalance } from '@/api/algod'
 import { getApplicationAddress } from 'algosdk'
+import { Validator } from '@/interfaces/validator'
+import { fetchAccountBalance } from '@/api/algod'
+import { getSimulateStakingPoolClient } from '@/api/clients'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
+import { TrafficLight } from '@/components/TrafficLight'
+import { Indicator } from '@/constants/indicator'
+import { calculateValidatorHealth } from '@/utils/contracts'
+import { ParamsCache } from '@/utils/paramsCache'
 
 /**
  * Fetches the total excess balances (rewards) of all pools for a given validator.
@@ -25,22 +30,71 @@ async function fetchRewardBalances(validator: Validator) {
   }
 }
 
+async function epochPayoutFetch(validator: Validator) {
+  const length = BigInt(validator.config.epochRoundLength)
+  const params = await ParamsCache.getSuggestedParams()
+  try {
+    let oldestRound = 0n
+    for (const pool of validator.pools) {
+      const poolBal = await fetchAccountBalance(getApplicationAddress(pool.poolAppId), true)
+      if (poolBal > 0) {
+        const stakingPoolClient = await getSimulateStakingPoolClient(pool.poolAppId)
+        const stakingPoolGS = await stakingPoolClient.appClient.getGlobalState()
+
+        let nextRound: bigint = 0n
+
+        if (stakingPoolGS.lastPayout !== undefined) {
+          const payout = BigInt(stakingPoolGS.lastPayout.value)
+          nextRound = payout - (payout % length) + length
+        }
+        if (oldestRound === 0n) {
+          oldestRound = nextRound
+        } else {
+          oldestRound = nextRound < oldestRound ? nextRound : oldestRound
+        }
+      }
+    }
+    return BigInt(params.firstRound) - oldestRound
+  } catch (error) {
+    console.error(error)
+    return 0n
+  }
+}
+
 interface ValidatorRewardsProps {
   validator: Validator
 }
 
 export function ValidatorRewards({ validator }: ValidatorRewardsProps) {
   const totalBalancesQuery = useQuery({
-    queryKey: ['valrewards', validator.id],
+    queryKey: ['available-rewards', validator.id],
     queryFn: () => fetchRewardBalances(validator),
     refetchInterval: 30000,
   })
 
-  if (totalBalancesQuery.isLoading) {
-    return <span>Loading...</span>
+  const epochPayoutsQuery = useQuery({
+    queryKey: ['rounds-since-last-payout', validator.id],
+    queryFn: () => epochPayoutFetch(validator),
+    refetchInterval: 30000,
+  })
+
+  const healthStatus = calculateValidatorHealth(epochPayoutsQuery.data)
+
+  const tooltipContent = {
+    [Indicator.Normal]: 'Fully operational',
+    [Indicator.Watch]: 'Payouts Lagging',
+    [Indicator.Warning]: 'Payouts Stopped',
+    [Indicator.Error]: 'Rewards not compounding',
   }
+
   if (totalBalancesQuery.error || totalBalancesQuery.data == undefined) {
     return <span className="text-sm text-red-500">Error fetching balance</span>
   }
-  return <AlgoDisplayAmount amount={totalBalancesQuery.data} microalgos />
+
+  return (
+    <>
+      <TrafficLight indicator={healthStatus} tooltipContent={tooltipContent} className="mr-2" />
+      <AlgoDisplayAmount amount={totalBalancesQuery.data} microalgos />
+    </>
+  )
 }

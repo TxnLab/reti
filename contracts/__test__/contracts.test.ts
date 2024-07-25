@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
-import { algoKitLogCaptureFixture, algorandFixture, getTestAccount } from '@algorandfoundation/algokit-utils/testing'
+import { algoKitLogCaptureFixture, algorandFixture } from '@algorandfoundation/algokit-utils/testing'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { Account, decodeAddress, encodeAddress, getApplicationAddress } from 'algosdk'
@@ -128,11 +128,10 @@ describe('MultValidatorAddCheck', () => {
 
     // Just verify adding new validators and their ids incrementing and mbrs being covered, etc.,
     test('validatorAddTests', async () => {
-        const validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         const validatorsAppRef = await validatorMasterClient.appClient.getAppReference()
         const origMbr = (await fixture.context.algod.accountInformation(validatorsAppRef.appAddress).do())[
             'min-balance'
@@ -189,11 +188,10 @@ describe('StakeAdds', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
@@ -262,11 +260,10 @@ describe('StakeAdds', () => {
         const origStakePoolInfo = await fixture.context.algod.accountInformation(getApplicationAddress(poolAppId)).do()
 
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         // Start by funding 'not enough' (we pay minimum stake [but no mbr]) - should fail (!)
         await expect(
             addStake(fixture.context, validatorMasterClient, validatorId, stakerAccount, AlgoAmount.Algos(1000), 0n),
@@ -395,11 +392,10 @@ describe('StakeAdds', () => {
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
 
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         // add 2000 stake by random staker - should go to NEW slot - but this is still their first add, so they have to pay more mbr
         // this time - since it's over minimum... don't pay 'extra' - so we should ensure that the MBR is NOT part of what we stake
         const stakeAmount1 = AlgoAmount.Algos(2000)
@@ -480,14 +476,10 @@ describe('StakeAdds', () => {
         // now create X new stakers
         for (let i = 0; i < poolsToCreate; i += 1) {
             // fund some new staker accounts (4)
-            const stakerAccount = await getTestAccount(
-                {
-                    initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
-                    suppressLog: true,
-                },
-                fixture.context.algod,
-                fixture.context.kmd,
-            )
+            const stakerAccount = await fixture.context.generateAccount({
+                initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
+                suppressLog: true,
+            })
             stakers.push(stakerAccount)
         }
         // have the first max-1 of the max new stakers - add such that each pool is basically completely full but just
@@ -588,14 +580,10 @@ describe('StakeAdds', () => {
     })
 
     test('addThenRemoveStake', async () => {
-        const stakerAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.Algos(10_000),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(10_000),
+            suppressLog: true,
+        })
         let amountStaked = 0
         // smallish amount of stake - should just get added to first pool
         const [addStake1, fees1] = await addStake(
@@ -669,14 +657,10 @@ describe('StakeAdds', () => {
     })
 
     test('addThenRemoveAllStake', async () => {
-        const stakerAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.Algos(10_000),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(10_000),
+            suppressLog: true,
+        })
         let amountStaked = 0
         // smallish amount of stake - should just get added to first pool
         const [addStake1, addFees] = await addStake(
@@ -744,11 +728,10 @@ describe('StakeAddWMixedRemove', () => {
     let firstPoolKey: ValidatorPoolKey
 
     beforeAll(async () => {
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         const config = createValidatorConfig({
             owner: validatorOwnerAccount.addr,
             manager: validatorOwnerAccount.addr,
@@ -777,14 +760,10 @@ describe('StakeAddWMixedRemove', () => {
         )
     })
     test('addRemoveByStaker', async () => {
-        const stakerAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.Algos(10_000),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(10_000),
+            suppressLog: true,
+        })
         let amountStaked = 0
         const [addStake1] = await addStake(
             fixture.context,
@@ -821,14 +800,10 @@ describe('StakeAddWMixedRemove', () => {
     })
 
     test('addRemoveFail', async () => {
-        const stakerAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.Algos(10_000),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(10_000),
+            suppressLog: true,
+        })
         const [addStake1] = await addStake(
             fixture.context,
             validatorMasterClient,
@@ -845,27 +820,19 @@ describe('StakeAddWMixedRemove', () => {
             { sender: stakerAccount, resolveBy: 'id', id: firstPoolKey.poolAppId },
             fixture.context.algod,
         )
-        const otherAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.Algos(10_000),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const otherAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(10_000),
+            suppressLog: true,
+        })
 
         await expect(removeStake(ourPoolClient, otherAccount, AlgoAmount.MicroAlgos(0))).rejects.toThrowError()
     })
 
     test('addRemoveByValidator', async () => {
-        const stakerAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.Algos(10_000),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(10_000),
+            suppressLog: true,
+        })
         let amountStaked = 0
         const [addStake1] = await addStake(
             fixture.context,
@@ -1039,11 +1006,10 @@ describe('StakeWRewards', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
@@ -1106,11 +1072,10 @@ describe('StakeWRewards', () => {
     // adds 1000 algo (plus enough to cover staker mbr)
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(stakerAccount)
 
         // now stake 1000(+mbr), min for this pool - for the first time - which means actual stake amount will be reduced
@@ -1288,16 +1253,14 @@ describe('StakeWRewards', () => {
         // Create two (brand new!) stakers - with same amount entered - but we'll enter later to the first staker so
         // it will be a 'partial' entry into the epoch (so we can ensure partial payout occurs) for the other stakers
         // - this will verify the partial stakers have the reward divided correctly
-        const partialEpochStaker1 = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
-        const partialEpochStaker2 = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const partialEpochStaker1 = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
+        const partialEpochStaker2 = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(partialEpochStaker1)
         stakerAccounts.push(partialEpochStaker2)
 
@@ -1418,11 +1381,10 @@ describe('StakeW0Commission', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
@@ -1468,11 +1430,10 @@ describe('StakeW0Commission', () => {
     // boilerplate at this point. just dd some stake - testing different commissions is all we care about
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(stakerAccount)
 
         // now stake 1000(+mbr), min for this pool - for the first time - which means actual stake amount will be reduced
@@ -1600,11 +1561,10 @@ describe('StakeW100Commission', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
@@ -1650,11 +1610,10 @@ describe('StakeW100Commission', () => {
     // boilerplate at this point. just dd some stake - testing different commissions is all we care about
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(stakerAccount)
 
         // now stake 1000(+mbr), min for this pool - for the first time - which means actual stake amount will be reduced
@@ -1786,11 +1745,10 @@ describe('StakeWTokenWRewards', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Create a reward token to pay out to stakers
-        tokenCreatorAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        tokenCreatorAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         rewardTokenID = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
@@ -1801,11 +1759,10 @@ describe('StakeWTokenWRewards', () => {
         )
 
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -1883,11 +1840,10 @@ describe('StakeWTokenWRewards', () => {
     // adds 1000 algo (plus enough to cover staker mbr)
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(stakerAccount)
         // opt-in to reward token
         await assetOptIn({ account: stakerAccount, assetId: Number(rewardTokenID) }, fixture.context.algod)
@@ -2007,11 +1963,10 @@ describe('StakeWTokenWRewards', () => {
     test('testPartialReward', async () => {
         // Create second (brand new!) staker - with same amount entered - but we'll enter later to the first staker so
         // it will be a 'partial' entry into the epoch (so we can ensure partial payout occurs)
-        const partialEpochStaker = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const partialEpochStaker = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(partialEpochStaker)
         // opt-in to reward token
         await assetOptIn({ account: partialEpochStaker, assetId: Number(rewardTokenID) }, fixture.context.algod)
@@ -2171,11 +2126,10 @@ describe('StakeUnstakeAccumTests', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
@@ -2236,11 +2190,10 @@ describe('StakeUnstakeAccumTests', () => {
     // Dummy staker - add 3000 algo - and then we'll slowly remove stake to see if we can trigger remove stake bug
     test('stakeAccumTests', async () => {
         // Fund a 'staker account' that will be the new 'staker'
-        const stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         stakerAccounts.push(stakerAccount)
 
         const stakeAmount1 = AlgoAmount.MicroAlgos(
@@ -2328,11 +2281,10 @@ describe('TokenRewardOnlyTokens', () => {
 
     beforeAll(async () => {
         // Create a reward token to pay out to stakers
-        const tokenCreatorAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const tokenCreatorAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         rewardTokenID = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
@@ -2342,11 +2294,10 @@ describe('TokenRewardOnlyTokens', () => {
             0,
         )
 
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -2402,11 +2353,10 @@ describe('TokenRewardOnlyTokens', () => {
     // adds 1000 algo (plus enough to cover staker mbr)
     test('firstStaker', async () => {
         // Fund a 'staker account' that will be the new 'staker'
-        stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         // opt-in to reward token
         await assetOptIn({ account: stakerAccount, assetId: Number(rewardTokenID) }, fixture.context.algod)
 
@@ -2507,11 +2457,10 @@ describe('DoublePoolWTokens', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Create a reward token to pay out to stakers
-        const tokenCreatorAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const tokenCreatorAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         rewardTokenID = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
@@ -2522,11 +2471,10 @@ describe('DoublePoolWTokens', () => {
         )
 
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -2626,11 +2574,10 @@ describe('DoublePoolWTokens', () => {
     // add 2 stakers - full pool amount each
     test('addStakers', async () => {
         for (let i = 0; i < 2; i += 1) {
-            const stakerAccount = await getTestAccount(
-                { initialFunds: AlgoAmount.Algos(6000), suppressLog: true },
-                fixture.context.algod,
-                fixture.context.kmd,
-            )
+            const stakerAccount = await fixture.context.generateAccount({
+                initialFunds: AlgoAmount.Algos(6000),
+                suppressLog: true,
+            })
             stakerAccounts.push(stakerAccount)
             // opt-in to reward token
             await assetOptIn({ account: stakerAccount, assetId: Number(rewardTokenID) }, fixture.context.algod)
@@ -2778,11 +2725,10 @@ describe('TokenGatingByCreator', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Create a token that will be required for stakers to possess in order to stake
-        tokenCreatorAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        tokenCreatorAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         gatingToken1Id = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
@@ -2801,11 +2747,10 @@ describe('TokenGatingByCreator', () => {
         )
 
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -2848,11 +2793,10 @@ describe('TokenGatingByCreator', () => {
         let stakerCreatedTokenId: bigint
         beforeAll(async () => {
             // Fund a 'staker account' that will be the new 'staker'
-            stakerAccount = await getTestAccount(
-                { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-                fixture.context.algod,
-                fixture.context.kmd,
-            )
+            stakerAccount = await fixture.context.generateAccount({
+                initialFunds: AlgoAmount.Algos(5000),
+                suppressLog: true,
+            })
 
             await assetOptIn({ account: stakerAccount, assetId: Number(gatingToken1Id) }, fixture.context.algod)
             await assetOptIn({ account: stakerAccount, assetId: Number(gatingToken2Id) }, fixture.context.algod)
@@ -3001,11 +2945,10 @@ describe('TokenGatingByAsset', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Create a token that will be required for stakers to possess in order to stake
-        tokenCreatorAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        tokenCreatorAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         gatingToken1Id = await createAsset(
             fixture.context.algod,
             tokenCreatorAccount,
@@ -3024,11 +2967,10 @@ describe('TokenGatingByAsset', () => {
         )
 
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -3071,11 +3013,10 @@ describe('TokenGatingByAsset', () => {
         let stakerCreatedTokenId: bigint
         beforeAll(async () => {
             // Fund a 'staker account' that will be the new 'staker'
-            stakerAccount = await getTestAccount(
-                { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-                fixture.context.algod,
-                fixture.context.kmd,
-            )
+            stakerAccount = await fixture.context.generateAccount({
+                initialFunds: AlgoAmount.Algos(5000),
+                suppressLog: true,
+            })
 
             await assetOptIn({ account: stakerAccount, assetId: Number(gatingToken1Id) }, fixture.context.algod)
             await assetOptIn({ account: stakerAccount, assetId: Number(gatingToken2Id) }, fixture.context.algod)
@@ -3217,11 +3158,10 @@ describe('TokenGatingMultAssets', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Create a token that will be required for stakers to possess in order to stake
-        tokenCreatorAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        tokenCreatorAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(5000),
+            suppressLog: true,
+        })
         // create 4 dummy assets
         for (let i = 0; i < 4; i += 1) {
             gatingTokens.push(
@@ -3229,11 +3169,10 @@ describe('TokenGatingMultAssets', () => {
             )
         }
 
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -3276,11 +3215,10 @@ describe('TokenGatingMultAssets', () => {
         let stakerCreatedTokenId: bigint
         beforeAll(async () => {
             // Fund a 'staker account' that will be the new 'staker'
-            stakerAccount = await getTestAccount(
-                { initialFunds: AlgoAmount.Algos(8000), suppressLog: true },
-                fixture.context.algod,
-                fixture.context.kmd,
-            )
+            stakerAccount = await fixture.context.generateAccount({
+                initialFunds: AlgoAmount.Algos(8000),
+                suppressLog: true,
+            })
 
             for (let i = 0; i < 4; i += 1) {
                 await assetOptIn({ account: stakerAccount, assetId: Number(gatingTokens[i]) }, fixture.context.algod)
@@ -3433,11 +3371,10 @@ describe('SaturatedValidator', () => {
         constraints = await getProtocolConstraints(validatorMasterClient)
 
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         validatorConfig = createValidatorConfig({
@@ -3468,11 +3405,10 @@ describe('SaturatedValidator', () => {
             ),
         )
 
-        stakerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(300e6), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(300e6),
+            suppressLog: true,
+        })
     })
 
     // Fill up the first pool completely
@@ -3564,11 +3500,10 @@ describe('SaturatedValidator', () => {
         const rewardAmount = AlgoAmount.Algos(200).microAlgos
         // ok, NOW it should be over the limit on next balance update - send a bit more algo - and it should be in
         // saturated state now - so reward gets diminished, validator gets nothing, rest goes to fee sink
-        const rewardSender = await getTestAccount(
-            { initialFunds: AlgoAmount.MicroAlgos(rewardAmount + 4e6), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const rewardSender = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.MicroAlgos(rewardAmount + 4e6),
+            suppressLog: true,
+        })
         await transferAlgos(
             {
                 from: rewardSender,
@@ -3618,11 +3553,10 @@ describe('StakeAddRemoveBugVerify', () => {
     let firstPoolClient: StakingPoolClient
 
     beforeAll(async () => {
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         const config = createValidatorConfig({
             owner: validatorOwnerAccount.addr,
             manager: validatorOwnerAccount.addr,
@@ -3657,14 +3591,10 @@ describe('StakeAddRemoveBugVerify', () => {
     test('addRemoveStakers', async () => {
         const stakers: Account[] = []
         for (let i = 0; i < 3; i += 1) {
-            const stakerAccount = await getTestAccount(
-                {
-                    initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
-                    suppressLog: true,
-                },
-                fixture.context.algod,
-                fixture.context.kmd,
-            )
+            const stakerAccount = await fixture.context.generateAccount({
+                initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
+                suppressLog: true,
+            })
             stakers.push(stakerAccount)
         }
         // we have 3 stakers, now stake 0, 2, 1.  Remove 2 - add stake for 1
@@ -3736,11 +3666,10 @@ describe('StakerMultiPoolAddRemoveBugVerify', () => {
     let validatorOwnerAccount: Account
 
     beforeAll(async () => {
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         const config = createValidatorConfig({
             owner: validatorOwnerAccount.addr,
             manager: validatorOwnerAccount.addr,
@@ -3783,14 +3712,10 @@ describe('StakerMultiPoolAddRemoveBugVerify', () => {
     // Stake to validator 1, then stake to validator 2, then unstake all from validator 1 then stake again to
     // validator 2.  With bug present, validator 2 will be listed twice in staker pool set and should fail this test
     test('stakeUnstakeReproduce', async () => {
-        const stakerAccount = await getTestAccount(
-            {
-                initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
-                suppressLog: true,
-            },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        const stakerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.MicroAlgos(MaxAlgoPerPool + AlgoAmount.Algos(4000).microAlgos),
+            suppressLog: true,
+        })
         const stakeAmt = AlgoAmount.MicroAlgos(
             AlgoAmount.Algos(1000).microAlgos + AlgoAmount.MicroAlgos(Number(stakerMbr)).microAlgos,
         )
@@ -3868,11 +3793,10 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
     // add validator and 1 pool for subsequent stake tests
     beforeAll(async () => {
         // Fund a 'validator account' that will be the validator owner.
-        validatorOwnerAccount = await getTestAccount(
-            { initialFunds: AlgoAmount.Algos(500), suppressLog: true },
-            fixture.context.algod,
-            fixture.context.kmd,
-        )
+        validatorOwnerAccount = await fixture.context.generateAccount({
+            initialFunds: AlgoAmount.Algos(500),
+            suppressLog: true,
+        })
         consoleLogger.info(`validator account ${validatorOwnerAccount.addr}`)
 
         const config = createValidatorConfig({
@@ -3935,11 +3859,10 @@ describe.skip('ValidatorWFullPoolWRewards', () => {
         'addStakers',
         async () => {
             for (let i = 0; i < NumStakers + 1; i += 1) {
-                const stakerAccount = await getTestAccount(
-                    { initialFunds: AlgoAmount.Algos(5000), suppressLog: true },
-                    fixture.context.algod,
-                    fixture.context.kmd,
-                )
+                const stakerAccount = await fixture.context.generateAccount({
+                    initialFunds: AlgoAmount.Algos(5000),
+                    suppressLog: true,
+                })
 
                 // now stake 1000(+mbr), min for this pool - for the first time - which means actual stake amount will be reduced
                 // by 'first time staker' fee to cover MBR (which goes to VALIDATOR contract account, not staker contract account!)

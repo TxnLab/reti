@@ -1,6 +1,8 @@
 import {
   calculateMaxStake,
   calculateRewardEligibility,
+  calculateSaturationPercentage,
+  calculateValidatorPoolMetrics,
   getEpochLengthBlocks,
   isStakingDisabled,
   isUnstakingDisabled,
@@ -212,8 +214,8 @@ describe('isUnstakingDisabled', () => {
       balance: 1000n,
       totalRewarded: 0n,
       rewardTokenBalance: 0n,
-      entryTime: 1622548800,
-      lastPayout: 1625140800,
+      entryRound: 1622548800n,
+      lastPayout: 1625140800n,
       pools: [],
     },
   ]
@@ -224,8 +226,8 @@ describe('isUnstakingDisabled', () => {
       balance: 1000n,
       totalRewarded: 0n,
       rewardTokenBalance: 0n,
-      entryTime: 1622548800,
-      lastPayout: 1625140800,
+      entryRound: 1622548800n,
+      lastPayout: 1625140800n,
       pools: [],
     },
   ]
@@ -250,63 +252,338 @@ describe('isUnstakingDisabled', () => {
 
 describe('calculateRewardEligibility', () => {
   it('should return null if any input parameter is zero', () => {
-    expect(calculateRewardEligibility(0, 1000, 500)).toBeNull()
-    expect(calculateRewardEligibility(10, 0, 500)).toBeNull()
-    expect(calculateRewardEligibility(10, 1000, 0)).toBeNull()
+    expect(calculateRewardEligibility(0, 1000n, 500n)).toBeNull()
+    expect(calculateRewardEligibility(10, 0n, 500n)).toBeNull()
+    expect(calculateRewardEligibility(10, 1000n, 0n)).toBeNull()
   })
 
   it('should return null if any input parameter is undefined', () => {
-    expect(calculateRewardEligibility(undefined, 1000, 500)).toBeNull()
-    expect(calculateRewardEligibility(10, undefined, 500)).toBeNull()
-    expect(calculateRewardEligibility(10, 1000, undefined)).toBeNull()
+    expect(calculateRewardEligibility(undefined, 1000n, 500n)).toBeNull()
+    expect(calculateRewardEligibility(10, undefined, 500n)).toBeNull()
+    expect(calculateRewardEligibility(10, 1000n, undefined)).toBeNull()
   })
 
   it('should calculate correct percentage when entry round is halfway through an epoch', () => {
     const epochRoundLength = 100
-    const lastPoolPayoutRound = 900
-    const entryRound = 950
+    const lastPoolPayoutRound = 900n
+    const entryRound = 950n
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(50)
   })
 
   it('should calculate correct percentage when entry round was in the previous epoch', () => {
     const epochRoundLength = 50
-    const lastPoolPayoutRound = 200
-    const entryRound = 100
+    const lastPoolPayoutRound = 200n
+    const entryRound = 100n
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(100)
   })
 
   it('should handle edge case where next payout is exactly now', () => {
     const epochRoundLength = 60
-    const lastPoolPayoutRound = 120
-    const entryRound = 60
+    const lastPoolPayoutRound = 120n
+    const entryRound = 60n
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(100)
   })
 
   it('should handle postdated entry rounds correctly', () => {
     const epochRoundLength = 1
-    const lastPoolPayoutRound = 2
-    const entryRound = 20 // Postdated entry round
+    const lastPoolPayoutRound = 2n
+    const entryRound = 20n // Postdated entry round
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(0)
   })
 
   it('should round down to the nearest integer', () => {
     const epochRoundLength = 200
-    const lastPoolPayoutRound = 600
-    const entryRound = 651 // Exact eligibility is 74.5%
+    const lastPoolPayoutRound = 600n
+    const entryRound = 651n // Exact eligibility is 74.5%
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(74)
   })
 
   it('should never return more than 100%', () => {
     const epochRoundLength = 100
-    const lastPoolPayoutRound = 300
-    const entryRound = 200 // Calculated eligibility is 200%
+    const lastPoolPayoutRound = 300n
+    const entryRound = 200n // Calculated eligibility is 200%
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(100)
   })
 
   it('should never return less than 0%', () => {
     const epochRoundLength = 100
-    const lastPoolPayoutRound = 100
-    const entryRound = 250 // Future round beyond the current epoch
+    const lastPoolPayoutRound = 100n
+    const entryRound = 250n // Future round beyond the current epoch
     expect(calculateRewardEligibility(epochRoundLength, lastPoolPayoutRound, entryRound)).toBe(0)
+  })
+})
+
+describe('calculateSaturationPercentage', () => {
+  it('should return 0% if the validator has no stake', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 0n,
+      },
+    }
+    expect(calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)).toBe(0)
+  })
+
+  it('should calculate the correct saturation percentage', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 72000000000000n,
+      },
+    }
+
+    // 300000000000000n is the protocol maximum in MOCK_CONSTRAINTS
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(24)
+  })
+
+  it('should round to the nearest whole number', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 71184768795601n,
+      },
+    }
+
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(24) // 23.72825626 rounded to 24
+  })
+
+  it('should return 100% if the total stake exceeds the protocol maximum', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: MOCK_CONSTRAINTS.maxAlgoPerValidator + 1000n,
+      },
+    }
+    expect(calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)).toBe(100)
+  })
+
+  it('should handle very small percentages correctly', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 50000000n,
+      },
+    }
+
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(0.0001)
+  })
+
+  it('should handle extremely small percentages by returning 0.0001', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 1n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 1000000000000n,
+    }
+
+    const result = calculateSaturationPercentage(validator, constraints)
+    expect(result).toBe(0.0001)
+  })
+
+  it('should round to first non-zero decimal for small percentages', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 5000000000n,
+      },
+    }
+
+    const result = calculateSaturationPercentage(validator, MOCK_CONSTRAINTS)
+    expect(result).toBe(0.002) // 0.00166666 rounded to 0.002
+  })
+
+  it('should return 0 when constraints is null or undefined', () => {
+    // @ts-expect-error constraints is null
+    expect(calculateSaturationPercentage(MOCK_VALIDATOR_1, null)).toBe(0)
+    // @ts-expect-error constraints is undefined
+    expect(calculateSaturationPercentage(MOCK_VALIDATOR_1, undefined)).toBe(0)
+  })
+
+  it('should return 0 when maxAlgoPerValidator is 0', () => {
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 0n,
+    }
+    expect(calculateSaturationPercentage(MOCK_VALIDATOR_1, constraints)).toBe(0)
+  })
+
+  it('should calculate correctly for percentages just below 100%', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 99999999999999n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 100000000000000n,
+    }
+    expect(calculateSaturationPercentage(validator, constraints)).toBe(99)
+  })
+
+  it('should round correctly at the 0.00005 threshold', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 150000n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 300000000000000n,
+    }
+    expect(calculateSaturationPercentage(validator, constraints)).toBe(0.0001)
+  })
+
+  it('should round correctly just above the 0.00005 threshold', () => {
+    const validator = {
+      ...MOCK_VALIDATOR_1,
+      state: {
+        ...MOCK_VALIDATOR_1.state,
+        totalAlgoStaked: 151000n,
+      },
+    }
+    const constraints = {
+      ...MOCK_CONSTRAINTS,
+      maxAlgoPerValidator: 300000000000000n,
+    }
+    expect(calculateSaturationPercentage(validator, constraints)).toBe(0.0001)
+  })
+})
+
+describe('calculateValidatorPoolMetrics', () => {
+  const epochRoundLength = 1000n
+  const currentRound = 5000n
+
+  it('calculates metrics correctly with multiple non-zero balance pools', () => {
+    const poolsData = [
+      { balance: 1000000n, lastPayout: 4000n, apy: 5 },
+      { balance: 2000000n, lastPayout: 3500n, apy: 7 },
+      { balance: 3000000n, lastPayout: 4500n, apy: 6 },
+    ]
+    const totalAlgoStaked = 5500000n
+
+    const result = calculateValidatorPoolMetrics(
+      poolsData,
+      totalAlgoStaked,
+      epochRoundLength,
+      currentRound,
+    )
+
+    expect(result.rewardsBalance).toBe(1000000n) // Rounded to nearest whole ALGO
+    expect(result.roundsSinceLastPayout).toBe(1000n)
+    expect(result.apy).toBe(6)
+  })
+
+  it('handles pools with zero balance', () => {
+    const poolsData = [
+      { balance: 1000000n, lastPayout: 4000n, apy: 5 },
+      { balance: 0n, lastPayout: 3500n, apy: 0 },
+      { balance: 3000000n, lastPayout: 4500n, apy: 6 },
+    ]
+    const totalAlgoStaked = 3900000n
+
+    const result = calculateValidatorPoolMetrics(
+      poolsData,
+      totalAlgoStaked,
+      epochRoundLength,
+      currentRound,
+    )
+
+    expect(result.rewardsBalance).toBe(0n)
+    expect(result.roundsSinceLastPayout).toBe(1000n)
+    expect(result.apy).toBe(5.5)
+  })
+
+  it('returns zero APY when all pools have zero balance', () => {
+    const poolsData = [
+      { balance: 0n, lastPayout: 4000n, apy: 0 },
+      { balance: 0n, lastPayout: 3500n, apy: 0 },
+    ]
+    const totalAlgoStaked = 0n
+
+    const result = calculateValidatorPoolMetrics(
+      poolsData,
+      totalAlgoStaked,
+      epochRoundLength,
+      currentRound,
+    )
+
+    expect(result.rewardsBalance).toBe(0n)
+    expect(result.roundsSinceLastPayout).toBe(1000n)
+    expect(result.apy).toBe(0)
+  })
+
+  it('handles undefined lastPayout', () => {
+    const poolsData = [
+      { balance: 1000000n, lastPayout: undefined, apy: 5 },
+      { balance: 2000000n, lastPayout: 3500n, apy: 7 },
+    ]
+    const totalAlgoStaked = 2900000n
+
+    const result = calculateValidatorPoolMetrics(
+      poolsData,
+      totalAlgoStaked,
+      epochRoundLength,
+      currentRound,
+    )
+
+    expect(result.rewardsBalance).toBe(0n)
+    expect(result.roundsSinceLastPayout).toBe(1000n)
+    expect(result.apy).toBe(6)
+  })
+
+  it('returns undefined roundsSinceLastPayout when no valid lastPayout', () => {
+    const poolsData = [
+      { balance: 1000000n, lastPayout: undefined, apy: 5 },
+      { balance: 2000000n, lastPayout: undefined, apy: 7 },
+    ]
+    const totalAlgoStaked = 2900000n
+
+    const result = calculateValidatorPoolMetrics(
+      poolsData,
+      totalAlgoStaked,
+      epochRoundLength,
+      currentRound,
+    )
+
+    expect(result.rewardsBalance).toBe(0n)
+    expect(result.roundsSinceLastPayout).toBeUndefined()
+    expect(result.apy).toBe(6)
+  })
+
+  it('handles negative rewards balance', () => {
+    const poolsData = [
+      { balance: 1000000n, lastPayout: 4000n, apy: 5 },
+      { balance: 2000000n, lastPayout: 3500n, apy: 7 },
+    ]
+    const totalAlgoStaked = 3100000n
+
+    const result = calculateValidatorPoolMetrics(
+      poolsData,
+      totalAlgoStaked,
+      epochRoundLength,
+      currentRound,
+    )
+
+    expect(result.rewardsBalance).toBe(0n)
+    expect(result.roundsSinceLastPayout).toBe(1000n)
+    expect(result.apy).toBe(6)
   })
 })

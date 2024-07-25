@@ -1,13 +1,13 @@
 import { DonutChart, EventProps } from '@tremor/react'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 
-type PoolData = {
+type PoolChartData = {
   name: string
   value: number
 }
 
 interface PoolsChartProps {
-  data: PoolData[]
+  data: PoolChartData[]
   onValueChange: (value: EventProps) => void
   className?: string
 }

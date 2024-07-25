@@ -11,7 +11,7 @@ export const DEFAULT_STAKED_INFO: StakedInfo = {
   balance: BigInt(0),
   totalRewarded: BigInt(0),
   rewardTokenBalance: BigInt(0),
-  entryRound: 0,
+  entryRound: 0n,
 }
 
 export const MOCK_STAKED_INFO_1: StakedInfo = {
@@ -19,7 +19,7 @@ export const MOCK_STAKED_INFO_1: StakedInfo = {
   balance: BigInt(AlgoAmount.Algos(1000).microAlgos),
   totalRewarded: BigInt(AlgoAmount.Algos(10).microAlgos),
   rewardTokenBalance: BigInt(0),
-  entryRound: 1,
+  entryRound: 1n,
 }
 
 export const MOCK_STAKED_INFO_2: StakedInfo = {
@@ -27,7 +27,7 @@ export const MOCK_STAKED_INFO_2: StakedInfo = {
   balance: BigInt(AlgoAmount.Algos(2000).microAlgos),
   totalRewarded: BigInt(AlgoAmount.Algos(20).microAlgos),
   rewardTokenBalance: BigInt(0),
-  entryRound: 2,
+  entryRound: 2n,
 }
 
 interface BoxData {
