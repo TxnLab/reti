@@ -1,6 +1,7 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { fetchAccountBalance, fetchAsset, isOptedInToAsset } from '@/api/algod'
@@ -49,7 +50,7 @@ import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
-const algodClient = algokit.getAlgoClient({
+const algodClient = ClientManager.getAlgodClient({
   server: algodConfig.server,
   port: algodConfig.port,
   token: algodConfig.token,

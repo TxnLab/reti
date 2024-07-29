@@ -1,4 +1,4 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import algosdk from 'algosdk'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
@@ -23,7 +23,7 @@ export class ParamsCache {
 
   private constructor() {
     const algodConfig = getAlgodConfigFromViteEnvironment()
-    this.client = algokit.getAlgoClient({
+    this.client = ClientManager.getAlgodClient({
       server: algodConfig.server,
       port: algodConfig.port,
       token: algodConfig.token,

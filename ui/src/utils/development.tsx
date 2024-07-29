@@ -1,6 +1,8 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
+import { AlgorandClient } from '@algorandfoundation/algokit-utils'
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import { QueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import algosdk from 'algosdk'
@@ -17,11 +19,20 @@ import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClient
 import { ParamsCache } from '@/utils/paramsCache'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
-const algodClient = algokit.getAlgoClient({
+
+const algodClient = ClientManager.getAlgodClient({
   server: algodConfig.server,
   port: algodConfig.port,
   token: algodConfig.token,
 })
+
+const kmdClient = ClientManager.getKmdClient({
+  server: algodConfig.server,
+  port: algodConfig.port,
+  token: algodConfig.token,
+})
+
+const algorandClient = AlgorandClient.fromClients({ algod: algodClient, kmd: kmdClient })
 
 async function wait(ms: number) {
   return new Promise((resolve) => {
@@ -48,16 +59,9 @@ export async function incrementRoundNumberBy(rounds: number) {
 
   // console.log(`Increment round number start: ${result.startRound}`)
 
-  const kmdClient = algokit.getAlgoKmdClient({
-    server: algodConfig.server,
-    port: algodConfig.port,
-    token: algodConfig.token,
-  })
-
   const testAccount = await getTestAccount(
     { initialFunds: AlgoAmount.Algos(10), suppressLog: true },
-    algodClient,
-    kmdClient,
+    algorandClient,
   )
 
   let txnId = ''
