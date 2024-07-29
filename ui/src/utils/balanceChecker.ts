@@ -1,4 +1,4 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import algosdk from 'algosdk'
 import { formatAlgoAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
@@ -30,7 +30,7 @@ export class BalanceChecker {
     this.address = address
 
     const algodConfig = getAlgodConfigFromViteEnvironment()
-    this.algodClient = algokit.getAlgoClient({
+    this.algodClient = ClientManager.getAlgodClient({
       server: algodConfig.server,
       port: algodConfig.port,
       token: algodConfig.token,

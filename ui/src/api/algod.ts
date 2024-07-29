@@ -1,5 +1,5 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import {
   AccountAssetInformation,
   AccountBalance,
@@ -15,7 +15,7 @@ import {
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
-const algodClient = algokit.getAlgoClient({
+const algodClient = ClientManager.getAlgodClient({
   server: algodConfig.server,
   port: algodConfig.port,
   token: algodConfig.token,
