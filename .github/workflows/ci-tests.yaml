@@ -1,15 +1,12 @@
-name: Playwright Tests
+name: Contract/Playwright Tests
 on:
-  push:
-    branches: 
-      - 'main'
   pull_request:
-    branches: 
+    branches:
       - 'main'
       # - 'dev'
 
 jobs:
-  playwright-tests:
+  ci-tests:
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
@@ -65,6 +62,9 @@ jobs:
 
       - name: Start local Algorand network
         run: algokit localnet start
+
+      - name: Run Contract tests from already built contracts
+        run: pnpm --filter ./contracts run retest
 
       - name: Bootstrap the validator
         run: pnpm run bootstrap
