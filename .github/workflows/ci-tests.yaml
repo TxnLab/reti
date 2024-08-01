@@ -1,9 +1,5 @@
 name: Contract/Playwright Tests
 on:
-  push:
-    branches:
-      - 'main'
-      - 'test/migrate-contracts-to-vitest'
   pull_request:
     branches:
       - 'main'
