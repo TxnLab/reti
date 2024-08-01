@@ -987,16 +987,7 @@ export async function incrementRoundNumberBy(context: AlgorandTestAutomationCont
         })
         txnid = txn.txID()
         const signedTransaction = await signTransaction(txn, context.testAccount)
-        context.algod.sendRawTransaction(signedTransaction).do()
-        // await algokit.transferAlgos(
-        //     {
-        //         from: context.testAccount,
-        //         to: context.testAccount,
-        //         amount: AlgoAmount.Algos(1),
-        //         suppressLog: true,
-        //     },
-        //     context.algod,
-        // )
+        await context.algod.sendRawTransaction(signedTransaction).do()
     }
     // wait for the final transaction to show up...
     await waitForConfirmation(txnid, rounds + 1, context.algod)
