@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { algoKitLogCaptureFixture, algorandFixture } from '@algorandfoundation/algokit-utils/testing'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'

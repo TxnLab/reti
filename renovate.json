@@ -42,17 +42,6 @@
         "groupName": "ESLint/Prettier"
       },
       {
-        "matchFileNames": ["contracts/package.json"],
-        "semanticCommitScope": "contracts",
-        "matchPackageNames": [
-          "@jest/globals",
-          "@types/jest",
-          "jest",
-          "ts-jest"
-        ],
-        "groupName": "Jest"
-      },
-      {
         "matchFileNames": ["contracts/bootstrap/package.json"],
         "semanticCommitScope": "bootstrap"
       },

@@ -1,5 +1,5 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
 import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import algosdk from 'algosdk'
 import { FEE_SINK } from '@/constants/accounts'
 import { StakingPoolClient } from '@/contracts/StakingPoolClient'
@@ -10,7 +10,7 @@ import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClient
 import { ParamsCache } from '@/utils/paramsCache'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
-const algodClient = algokit.getAlgoClient({
+const algodClient = ClientManager.getAlgodClient({
   server: algodConfig.server,
   port: algodConfig.port,
   token: algodConfig.token,

@@ -1,4 +1,4 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
+import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import algosdk from 'algosdk'
 import { ParamsCache } from '@/utils/paramsCache'
 
@@ -14,12 +14,14 @@ const mockParams: algosdk.SuggestedParams = {
 const mockGetTransactionParams = vi.fn().mockResolvedValue(mockParams)
 
 // Mock algokit-utils
-vi.mock('@algorandfoundation/algokit-utils', () => ({
-  getAlgoClient: vi.fn(() => ({
-    getTransactionParams: vi.fn(() => ({
-      do: mockGetTransactionParams,
+vi.mock('@algorandfoundation/algokit-utils/types/client-manager', () => ({
+  ClientManager: {
+    getAlgodClient: vi.fn(() => ({
+      getTransactionParams: vi.fn(() => ({
+        do: mockGetTransactionParams,
+      })),
     })),
-  })),
+  },
 }))
 
 // Mock getAlgodConfigFromViteEnvironment
@@ -39,18 +41,18 @@ beforeEach(() => {
 describe('ParamsCache', () => {
   it('should fetch and cache transaction parameters', async () => {
     const params = await ParamsCache.getSuggestedParams()
-    expect(algokit.getAlgoClient).toHaveBeenCalledTimes(1) // First call
+    expect(ClientManager.getAlgodClient).toHaveBeenCalledTimes(1) // First call
     expect(params).toEqual(mockParams)
 
     // Simulate another call within 5 minutes
     const cachedParams = await ParamsCache.getSuggestedParams()
-    expect(algokit.getAlgoClient).toHaveBeenCalledTimes(1) // No second call (cached)
+    expect(ClientManager.getAlgodClient).toHaveBeenCalledTimes(1) // No second call (cached)
     expect(cachedParams).toEqual(params)
   })
 
   it('should refresh cached parameters after expiration', async () => {
     const initialParams = await ParamsCache.getSuggestedParams()
-    expect(algokit.getAlgoClient).toHaveBeenCalledTimes(1) // First call
+    expect(ClientManager.getAlgodClient).toHaveBeenCalledTimes(1) // First call
     expect(initialParams).toEqual(mockParams)
 
     // Mock Date.now to simulate cache expiration (5 minutes later)
