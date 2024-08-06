@@ -38,8 +38,8 @@
       },
       {
         "matchDepTypes": ["devDependencies"],
-        "matchPackagePatterns": ["lint", "prettier"],
-        "groupName": "ESLint/Prettier"
+        "groupName": "ESLint/Prettier",
+        "matchPackageNames": ["/lint/", "/prettier/"]
       },
       {
         "matchFileNames": ["contracts/bootstrap/package.json"],
