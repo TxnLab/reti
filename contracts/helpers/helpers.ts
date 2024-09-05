@@ -446,7 +446,13 @@ export async function getProtocolConstraints(validatorClient: ValidatorRegistryC
 }
 
 function dumpLogs(logs: Uint8Array[]) {
-    consoleLogger.info(logs.map((uint8array) => new TextDecoder().decode(uint8array)).join('\n'))
+    const asciiOnlyLogs = logs
+        .map((uint8array) => new TextDecoder().decode(uint8array))
+        .join('\n')
+        .split('\n')
+        .filter((line) => /^[\x00-\x7F]*$/.test(line))
+
+    consoleLogger.info(asciiOnlyLogs.join('\n'))
 }
 
 export async function addValidator(
@@ -712,7 +718,7 @@ export async function addStake(
         const willBeNewStaker = expectedPool[1]
 
         consoleLogger.info(
-            `addStake findPool will add to validator:${poolKey.id}, pool:${poolKey.poolId} and willBeNew:${willBeNewStaker}`,
+            `addStake findPool for stake:${algoAmount.toString()} will add to validator:${poolKey.id}, pool:${poolKey.poolId} and willBeNew:${willBeNewStaker}`,
         )
 
         // Pay the stake to the validator contract
@@ -740,7 +746,6 @@ export async function addStake(
             .simulate({ allowUnnamedResources: true, allowMoreLogging: true })
 
         const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult
-        // verify logs isn't undefined
         if (logs !== undefined) {
             dumpLogs(logs)
         }
@@ -881,7 +886,6 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
         .simulate({ allowUnnamedResources: true, allowMoreLogging: true })
 
     const { logs } = await simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult
-    // verify logs isn't undefined
     if (logs !== undefined) {
         dumpLogs(logs)
     }

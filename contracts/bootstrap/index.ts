@@ -10,7 +10,6 @@ import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/networ
 import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
-import { getPools } from '../helpers/helpers'
 
 function getNetworkConfig(network: string): [AlgoClientConfig, bigint, string] {
     let registryAppID: bigint
@@ -79,21 +78,18 @@ function createViteEnvFileForLocalnet(validatorAppId: number | bigint): void {
 }
 
 async function main() {
-    const args = await yargs
-        .option('network', {
-            default: 'localnet',
-            choices: ['localnet', 'betanet', 'testnet', 'mainnet'],
-            demandOption: true,
-        })
-        .option('update', { type: 'boolean', default: false })
-        .option('id', { type: 'number', default: 0 }).argv
+    const args = await yargs.option('network', {
+        default: 'localnet',
+        choices: ['localnet', 'betanet', 'testnet', 'mainnet'],
+        demandOption: true,
+    }).argv
 
     const [algodConfig, registryAppID, feeSink] = getNetworkConfig(args.network)
 
     // default to localnet
-    let algorand: AlgorandClient = algokit.AlgorandClient.defaultLocalNet()
+    let algorand: AlgorandClient = AlgorandClient.defaultLocalNet()
     if (args.network !== 'localnet') {
-        algorand = algokit.AlgorandClient.fromConfig({ algodConfig, indexerConfig: undefined, kmdConfig: undefined })
+        algorand = AlgorandClient.fromConfig({ algodConfig, indexerConfig: undefined, kmdConfig: undefined })
     }
     // const algorand = algokit.AlgorandClient.fromConfig({ algodConfig: algodconfig, kmdConfig })
 
@@ -137,15 +133,14 @@ async function main() {
             sender: creatorAcct,
             resolveBy: 'id',
             id: 0,
+            deployTimeParams: {
+                nfdRegistryAppId: Number(registryAppID),
+                feeSinkAddr: decodeAddress(feeSink).publicKey,
+            },
         },
         algorand.client.algod,
     )
-    const { approvalCompiled } = await poolClient.appClient.compile({
-        deployTimeParams: {
-            nfdRegistryAppId: registryAppID,
-            feeSinkAddr: decodeAddress(feeSink).publicKey,
-        },
-    })
+    const { approvalCompiled } = await poolClient.appClient.compile()
 
     // first we have to deploy a staking pool contract instance for future use by the staking master contract which uses it as its
     // 'reference' instance when creating new staking pool contract instances.
@@ -153,56 +148,40 @@ async function main() {
         {
             sender: creatorAcct,
             resolveBy: 'id',
-            id: args.id,
+            id: 0,
             deployTimeParams: {
-                nfdRegistryAppId: registryAppID,
+                nfdRegistryAppId: Number(registryAppID),
             },
         },
         algorand.client.algod,
     )
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let validatorApp: any
-    if (!args.update) {
-        console.log(`creating application`)
-        if (args.network === 'localnet') {
-            console.log(`funding ${creatorAcct.addr}`)
-            await algokit.ensureFunded(
-                {
-                    accountToFund: creatorAcct,
-                    fundingSource: await algorand.account.localNetDispenser(),
-                    minSpendingBalance: AlgoAmount.Algos(200),
-                },
-                algorand.client.algod,
-            )
-        }
-        validatorApp = await validatorClient.create.createApplication({}, { schema: { extraPages: 3 } })
-
-        console.log(`Validator registry app id is:${validatorApp.appId}`)
-        console.log(`Validator Contract HASH is:${validatorApp.compiledApproval.compiledHash}`)
-
-        // Fund the validator w/ 2 ALGO for contract mbr reqs.
-        await algokit.transferAlgos(
+    console.log(`creating application`)
+    if (args.network === 'localnet') {
+        console.log(`funding ${creatorAcct.addr}`)
+        await algokit.ensureFunded(
             {
-                from: creatorAcct,
-                to: validatorApp.appAddress,
-                amount: AlgoAmount.Algos(2),
+                accountToFund: creatorAcct,
+                fundingSource: await algorand.account.localNetDispenser(),
+                minSpendingBalance: AlgoAmount.Algos(200),
             },
             algorand.client.algod,
         )
-    } else {
-        if (args.id === 0) {
-            // error -  id must be defined!
-            console.error('Error: id must be defined!')
-            process.exit(1)
-        }
-        console.log(`updating application ${args.id}`)
-        validatorApp = await validatorClient.update.updateApplication(
-            {},
-            { sendParams: { populateAppCallResources: true } },
-        )
-        console.log(`application ${args.id} updated`)
-        console.log(`Validator Contract HASH is:${validatorApp.compiledApproval.compiledHash}`)
     }
+    const validatorApp = await validatorClient.create.createApplication({}, { schema: { extraPages: 3 } })
+
+    console.log(`Validator registry app id is:${validatorApp.appId}`)
+    console.log(`Validator Contract HASH is:${validatorApp.compiledApproval!.compiledHash}`)
+
+    // Fund the validator w/ 2 ALGO for contract mbr reqs.
+    await algokit.transferAlgos(
+        {
+            from: creatorAcct,
+            to: validatorApp.appAddress,
+            amount: AlgoAmount.Algos(2),
+        },
+        algorand.client.algod,
+    )
 
     console.log(
         `loading the ${approvalCompiled.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
@@ -245,32 +224,6 @@ async function main() {
 
         // Create a .env.localnet file in the ui directory with the validator app id
         createViteEnvFileForLocalnet(validatorApp.appId ?? args.id)
-    }
-
-    if (args.update) {
-        // Fetch all validators, and all their pools - updating all of them.
-        const numV = (await validatorClient.getGlobalState()).numV!.asNumber()
-        for (let valId = 1; valId <= numV; valId += 1) {
-            // const state = await getValidatorState(validatorClient, valId)
-            const pools = await getPools(validatorClient, valId)
-            for (const pool of pools) {
-                const updPoolClient = new StakingPoolClient(
-                    {
-                        sender: creatorAcct,
-                        resolveBy: 'id',
-                        id: pool.poolAppId,
-                        deployTimeParams: {
-                            nfdRegistryAppId: registryAppID,
-                            feeSinkAddr: decodeAddress(feeSink).publicKey,
-                        },
-                    },
-                    algorand.client.algod,
-                )
-                console.log(`updating validator:${valId}, pool appid: ${pool.poolAppId}`)
-                // eslint-disable-next-line no-await-in-loop
-                await updPoolClient.update.updateApplication({})
-            }
-        }
     }
 }
 

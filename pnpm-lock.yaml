@@ -11,18 +11,18 @@ importers:
   contracts:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: ^6.1.2
-        version: 6.1.2(algosdk@2.8.0)
+        specifier: ^6.2.1
+        version: 6.2.1(algosdk@2.9.0)
       algosdk:
-        specifier: 2.8.0
-        version: 2.8.0
+        specifier: ^2.9.0
+        version: 2.9.0
     devDependencies:
       '@algorandfoundation/algokit-client-generator':
-        specifier: ^3.0.2
-        version: 3.0.4
+        specifier: ^3.0.6
+        version: 3.0.6
       '@algorandfoundation/tealscript':
-        specifier: ^0.98.0
-        version: 0.98.0
+        specifier: ^0.100.2
+        version: 0.100.2
       '@joe-p/algokit-generate-component':
         specifier: ^0.2.1
         version: 0.2.1(chokidar@3.6.0)
@@ -57,17 +57,17 @@ importers:
         specifier: ^5.4.5
         version: 5.5.4
       vitest:
-        specifier: 2.0.3
-        version: 2.0.3(@types/node@20.14.12)(jsdom@24.1.0)
+        specifier: ^2.0.5
+        version: 2.0.5(@types/node@20.14.12)(jsdom@24.1.0)
 
   contracts/bootstrap:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: ^6.1.2
-        version: 6.1.2(algosdk@2.8.0)
+        specifier: ^6.2.1
+        version: 6.2.1(algosdk@2.9.0)
       algosdk:
-        specifier: ^2.8.0
-        version: 2.8.0
+        specifier: ^2.9.0
+        version: 2.9.0
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
@@ -94,17 +94,17 @@ importers:
   ui:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 6.1.1
-        version: 6.1.1(algosdk@2.8.0)
+        specifier: ^6.2.1
+        version: 6.2.1(algosdk@2.9.0)
       '@blockshake/defly-connect':
         specifier: 1.1.6
-        version: 1.1.6(algosdk@2.8.0)
+        version: 1.1.6(algosdk@2.9.0)
       '@hookform/resolvers':
         specifier: 3.9.0
         version: 3.9.0(react-hook-form@7.52.1(react@18.3.1))
       '@perawallet/connect':
         specifier: 1.3.4
-        version: 1.3.4(algosdk@2.8.0)
+        version: 1.3.4(algosdk@2.9.0)
       '@radix-ui/react-avatar':
         specifier: 1.1.0
         version: 1.1.0(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -173,13 +173,13 @@ importers:
         version: 3.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@3.4.6(ts-node@10.9.2(@types/node@20.14.11)(typescript@5.5.3)))
       '@txnlab/use-wallet-react':
         specifier: 3.0.0
-        version: 3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.8.0))(@perawallet/connect@1.3.4(algosdk@2.8.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.8.0)(lute-connect@1.3.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.3.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@walletconnect/modal-sign-html':
         specifier: 2.6.2
         version: 2.6.2(@types/react@18.3.3)(react@18.3.1)
       algosdk:
-        specifier: 2.8.0
-        version: 2.8.0
+        specifier: ^2.9.0
+        version: 2.9.0
       axios:
         specifier: 1.7.2
         version: 1.7.2
@@ -343,8 +343,8 @@ packages:
   '@adobe/css-tools@4.4.0':
     resolution: {integrity: sha512-Ff9+ksdQQB3rMncgqDK78uLznstjyfIf2Arnh22pW8kBpLs6rpKDwgnZT46hin5Hl1WzazzK64DOrhSwYpS7bQ==}
 
-  '@algorandfoundation/algokit-client-generator@3.0.4':
-    resolution: {integrity: sha512-BdjONUypZP7dpwjl0RgmrcTxfl6F879GFa71KzPpW0lIYYiheOsy5JmCUPhs1CANVzgrtlR9XOulod4k0zc3Xw==}
+  '@algorandfoundation/algokit-client-generator@3.0.6':
+    resolution: {integrity: sha512-Cva0ENsyZYngEgCbhVNtVZKjRXNA2d6txXdAtupZa/BpQdOSH+t/DPSZOGU6Rjj3ZV0E16eAGawqB1eEj3POKA==}
     engines: {node: '>=18.0'}
     hasBin: true
 
@@ -354,20 +354,14 @@ packages:
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/algokit-utils@6.1.1':
-    resolution: {integrity: sha512-vpR47BfFdZOhBfctrFIRXqZx97Wt2A/IOZ4DLW9TSatsIFBps2hK9eCG9gwMVoDIWNkdiSe0CFwQYUtEbedsrA==}
+  '@algorandfoundation/algokit-utils@6.2.1':
+    resolution: {integrity: sha512-oJbqT91KJp34OasYID2guWHysCLdgZ/4GVb06sdgXxORWKKMhZa/Uj12UiACo4VzZJBOUZEJCh/QrSuHmu/m2g==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/algokit-utils@6.1.2':
-    resolution: {integrity: sha512-nTY3Uq8S5ljdAj1CaRNTubhB5OF+KxlJkOpDDFXNHK7unf7/TdxDKHK3cQOqvs1cScR4/l0Wrd8O6jBH0lg0cA==}
-    engines: {node: '>=18.0'}
-    peerDependencies:
-      algosdk: ^2.7.0
-
-  '@algorandfoundation/tealscript@0.98.0':
-    resolution: {integrity: sha512-NS5kj2T8RlJgxPdgYS6Qu5iPPdOAx9Pj6ob99Xd5lU3wo+rZnSQ9VwsEI7190uM74OT5b+U2p5T8m9YMQDdcvA==}
+  '@algorandfoundation/tealscript@0.100.2':
+    resolution: {integrity: sha512-yCKE1/8V4ERN7ie8964OMu6QKLCuYyIB5o+l7Wjxyfnr88q588S4waQOfE/WSFe8UjjJYADJrNa2bVYmsy9W7A==}
     hasBin: true
 
   '@alloc/quick-lru@5.2.0':
@@ -2139,23 +2133,41 @@ packages:
   '@vitest/expect@2.0.3':
     resolution: {integrity: sha512-X6AepoOYePM0lDNUPsGXTxgXZAl3EXd0GYe/MZyVE4HzkUqyUVC6S3PrY5mClDJ6/7/7vALLMV3+xD/Ko60Hqg==}
 
+  '@vitest/expect@2.0.5':
+    resolution: {integrity: sha512-yHZtwuP7JZivj65Gxoi8upUN2OzHTi3zVfjwdpu2WrvCZPLwsJ2Ey5ILIPccoW23dd/zQBlJ4/dhi7DWNyXCpA==}
+
   '@vitest/pretty-format@2.0.3':
     resolution: {integrity: sha512-URM4GLsB2xD37nnTyvf6kfObFafxmycCL8un3OC9gaCs5cti2u+5rJdIflZ2fUJUen4NbvF6jCufwViAFLvz1g==}
 
   '@vitest/pretty-format@2.0.4':
     resolution: {integrity: sha512-RYZl31STbNGqf4l2eQM1nvKPXE0NhC6Eq0suTTePc4mtMQ1Fn8qZmjV4emZdEdG2NOWGKSCrHZjmTqDCDoeFBw==}
 
+  '@vitest/pretty-format@2.0.5':
+    resolution: {integrity: sha512-h8k+1oWHfwTkyTkb9egzwNMfJAEx4veaPSnMeKbVSjp4euqGSbQlm5+6VHwTr7u4FJslVVsUG5nopCaAYdOmSQ==}
+
   '@vitest/runner@2.0.3':
     resolution: {integrity: sha512-EmSP4mcjYhAcuBWwqgpjR3FYVeiA4ROzRunqKltWjBfLNs1tnMLtF+qtgd5ClTwkDP6/DGlKJTNa6WxNK0bNYQ==}
+
+  '@vitest/runner@2.0.5':
+    resolution: {integrity: sha512-TfRfZa6Bkk9ky4tW0z20WKXFEwwvWhRY+84CnSEtq4+3ZvDlJyY32oNTJtM7AW9ihW90tX/1Q78cb6FjoAs+ig==}
 
   '@vitest/snapshot@2.0.3':
     resolution: {integrity: sha512-6OyA6v65Oe3tTzoSuRPcU6kh9m+mPL1vQ2jDlPdn9IQoUxl8rXhBnfICNOC+vwxWY684Vt5UPgtcA2aPFBb6wg==}
 
+  '@vitest/snapshot@2.0.5':
+    resolution: {integrity: sha512-SgCPUeDFLaM0mIUHfaArq8fD2WbaXG/zVXjRupthYfYGzc8ztbFbu6dUNOblBG7XLMR1kEhS/DNnfCZ2IhdDew==}
+
   '@vitest/spy@2.0.3':
     resolution: {integrity: sha512-sfqyAw/ypOXlaj4S+w8689qKM1OyPOqnonqOc9T91DsoHbfN5mU7FdifWWv3MtQFf0lEUstEwR9L/q/M390C+A==}
 
+  '@vitest/spy@2.0.5':
+    resolution: {integrity: sha512-c/jdthAhvJdpfVuaexSrnawxZz6pywlTPe84LUB2m/4t3rl2fTo9NFGBG4oWgaD+FTgDDV8hJ/nibT7IfH3JfA==}
+
   '@vitest/utils@2.0.3':
     resolution: {integrity: sha512-c/UdELMuHitQbbc/EVctlBaxoYAwQPQdSNwv7z/vHyBKy2edYZaFgptE27BRueZB7eW8po+cllotMNTDpL3HWg==}
+
+  '@vitest/utils@2.0.5':
+    resolution: {integrity: sha512-d8HKbqIcya+GR67mkZbrzhS5kKhtp8dQLcmRZLGTscGVg7yImT82cIrhtn2L8+VujWcy6KZweApgNmPsTAO/UQ==}
 
   '@walletconnect/browser-utils@1.8.0':
     resolution: {integrity: sha512-Wcqqx+wjxIo9fv6eBUFHPsW1y/bGWWRboni5dfD8PtOmrihrEpOCmvRJe4rfl7xgJW8Ea9UqKEaq0bIRLHlK4A==}
@@ -2307,8 +2319,8 @@ packages:
     resolution: {integrity: sha512-F1tGh056XczEaEAqu7s+hlZUDWwOBT70Eq0lfMpBP2YguSQVyxRbprLq5rELXKQOyOaixTWYhMeMQMzP0U5FoQ==}
     engines: {node: '>= 10'}
 
-  algosdk@2.8.0:
-    resolution: {integrity: sha512-yjDH/VbQ689hxmn4PFbfXQrn4VZbYCGGzI/RD4ccA0yr55qT/TyAtR/dnq4XXX2pwCKNHbxOfantaJ5kTiwuMQ==}
+  algosdk@2.9.0:
+    resolution: {integrity: sha512-o0n0nLMbTX6SFQdMUk2/2sy50jmEmZk5OTPYSh2aAeP8DUPxrhjMPfwGsYNvaO+qk75MixC2eWpfA9vygCQ/Mg==}
     engines: {node: '>=18.0.0'}
 
   ansi-escapes@4.3.2:
@@ -5415,6 +5427,11 @@ packages:
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
 
+  vite-node@2.0.5:
+    resolution: {integrity: sha512-LdsW4pxj0Ot69FAoXZ1yTnA9bjGohr2yNBU7QKRxpz8ITSkhuDl6h3zS/tvgz4qrNjeRnvrWeXQ8ZF7Um4W00Q==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+
   vite-plugin-node-polyfills@0.22.0:
     resolution: {integrity: sha512-F+G3LjiGbG8QpbH9bZ//GSBr9i1InSTkaulfUHFa9jkLqVGORFBoqc2A/Yu5Mmh1kNAbiAeKeK+6aaQUf3x0JA==}
     peerDependencies:
@@ -5457,6 +5474,31 @@ packages:
       '@types/node': ^18.0.0 || >=20.0.0
       '@vitest/browser': 2.0.3
       '@vitest/ui': 2.0.3
+      happy-dom: '*'
+      jsdom: '*'
+    peerDependenciesMeta:
+      '@edge-runtime/vm':
+        optional: true
+      '@types/node':
+        optional: true
+      '@vitest/browser':
+        optional: true
+      '@vitest/ui':
+        optional: true
+      happy-dom:
+        optional: true
+      jsdom:
+        optional: true
+
+  vitest@2.0.5:
+    resolution: {integrity: sha512-8GUxONfauuIdeSl5f9GTgVEpg5BTOlplET4WEDaeY2QBiN8wSm68vxN/tb5z405OwppfoCavnwXafiaYBC/xOA==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@edge-runtime/vm': '*'
+      '@types/node': ^18.0.0 || >=20.0.0
+      '@vitest/browser': 2.0.5
+      '@vitest/ui': 2.0.5
       happy-dom: '*'
       jsdom: '*'
     peerDependenciesMeta:
@@ -5532,6 +5574,11 @@ packages:
 
   why-is-node-running@2.2.2:
     resolution: {integrity: sha512-6tSwToZxTOcotxHeA+qGCq1mVzKR3CwcJGmVcY+QE8SHy6TnpFnh8PAvPNHYr7EcuVeG0QSMxtYCuO1ta/G/oA==}
+    engines: {node: '>=8'}
+    hasBin: true
+
+  why-is-node-running@2.3.0:
+    resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
 
@@ -5655,31 +5702,26 @@ snapshots:
 
   '@adobe/css-tools@4.4.0': {}
 
-  '@algorandfoundation/algokit-client-generator@3.0.4':
+  '@algorandfoundation/algokit-client-generator@3.0.6':
     dependencies:
-      '@algorandfoundation/algokit-utils': 5.8.0(algosdk@2.8.0)
-      algosdk: 2.8.0
+      '@algorandfoundation/algokit-utils': 5.8.0(algosdk@2.9.0)
+      algosdk: 2.9.0
       chalk: 4.1.2
       change-case: 4.1.2
       commander: 11.1.0
       jsonschema: 1.4.1
 
-  '@algorandfoundation/algokit-utils@5.8.0(algosdk@2.8.0)':
+  '@algorandfoundation/algokit-utils@5.8.0(algosdk@2.9.0)':
     dependencies:
-      algosdk: 2.8.0
+      algosdk: 2.9.0
       buffer: 6.0.3
 
-  '@algorandfoundation/algokit-utils@6.1.1(algosdk@2.8.0)':
+  '@algorandfoundation/algokit-utils@6.2.1(algosdk@2.9.0)':
     dependencies:
-      algosdk: 2.8.0
+      algosdk: 2.9.0
       buffer: 6.0.3
 
-  '@algorandfoundation/algokit-utils@6.1.2(algosdk@2.8.0)':
-    dependencies:
-      algosdk: 2.8.0
-      buffer: 6.0.3
-
-  '@algorandfoundation/tealscript@0.98.0':
+  '@algorandfoundation/tealscript@0.100.2':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@playwright/test': 1.45.2
@@ -5872,39 +5914,33 @@ snapshots:
     dependencies:
       '@babel/types': 7.24.9
 
-  '@babel/plugin-syntax-async-generators@7.8.4(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-async-generators@7.8.4(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-bigint@7.8.3(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-bigint@7.8.3(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-class-properties@7.12.13(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-class-properties@7.12.13(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-import-meta@7.10.4(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-import-meta@7.10.4(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-json-strings@7.8.3(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-json-strings@7.8.3(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
-      '@babel/helper-plugin-utils': 7.24.7
-    optional: true
-
-  '@babel/plugin-syntax-jsx@7.24.7(@babel/core@7.24.7)':
-    dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
@@ -5913,51 +5949,45 @@ snapshots:
       '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
 
-  '@babel/plugin-syntax-logical-assignment-operators@7.10.4(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-logical-assignment-operators@7.10.4(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-nullish-coalescing-operator@7.8.3(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-nullish-coalescing-operator@7.8.3(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-numeric-separator@7.10.4(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-numeric-separator@7.10.4(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-object-rest-spread@7.8.3(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-object-rest-spread@7.8.3(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-optional-catch-binding@7.8.3(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-optional-catch-binding@7.8.3(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-optional-chaining@7.8.3(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-optional-chaining@7.8.3(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
-  '@babel/plugin-syntax-top-level-await@7.14.5(@babel/core@7.24.7)':
+  '@babel/plugin-syntax-top-level-await@7.14.5(@babel/core@7.24.9)':
     dependencies:
-      '@babel/core': 7.24.7
-      '@babel/helper-plugin-utils': 7.24.7
-    optional: true
-
-  '@babel/plugin-syntax-typescript@7.24.7(@babel/core@7.24.7)':
-    dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@babel/helper-plugin-utils': 7.24.7
     optional: true
 
@@ -6030,11 +6060,11 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@blockshake/defly-connect@1.1.6(algosdk@2.8.0)':
+  '@blockshake/defly-connect@1.1.6(algosdk@2.9.0)':
     dependencies:
       '@walletconnect/client': 1.8.0
       '@walletconnect/types': 1.8.0
-      algosdk: 2.8.0
+      algosdk: 2.9.0
       bowser: 2.11.0
       buffer: 6.0.3
       lottie-web: 5.12.2
@@ -6401,7 +6431,7 @@ snapshots:
 
   '@jest/transform@29.7.0':
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@jest/types': 29.6.3
       '@jridgewell/trace-mapping': 0.3.25
       babel-plugin-istanbul: 6.1.1
@@ -6604,12 +6634,12 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.4.1
       '@parcel/watcher-win32-x64': 2.4.1
 
-  '@perawallet/connect@1.3.4(algosdk@2.8.0)':
+  '@perawallet/connect@1.3.4(algosdk@2.9.0)':
     dependencies:
       '@evanhahn/lottie-web-light': 5.8.1
       '@walletconnect/client': 1.8.0
       '@walletconnect/types': 1.8.0
-      algosdk: 2.8.0
+      algosdk: 2.9.0
       bowser: 2.11.0
       buffer: 6.0.3
       qr-code-styling: 1.6.0-rc.1
@@ -7439,28 +7469,28 @@ snapshots:
 
   '@tsconfig/node18@18.2.4': {}
 
-  '@txnlab/use-wallet-react@3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.8.0))(@perawallet/connect@1.3.4(algosdk@2.8.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.8.0)(lute-connect@1.3.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@txnlab/use-wallet-react@3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.3.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/react-store': 0.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@txnlab/use-wallet': 3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.8.0))(@perawallet/connect@1.3.4(algosdk@2.8.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.8.0)(lute-connect@1.3.0)
-      algosdk: 2.8.0
+      '@txnlab/use-wallet': 3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.3.0)
+      algosdk: 2.9.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
-      '@blockshake/defly-connect': 1.1.6(algosdk@2.8.0)
-      '@perawallet/connect': 1.3.4(algosdk@2.8.0)
+      '@blockshake/defly-connect': 1.1.6(algosdk@2.9.0)
+      '@perawallet/connect': 1.3.4(algosdk@2.9.0)
       '@walletconnect/modal': 2.6.2(@types/react@18.3.3)(react@18.3.1)
       lute-connect: 1.3.0
     transitivePeerDependencies:
       - '@agoralabs-sh/avm-web-provider'
 
-  '@txnlab/use-wallet@3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.8.0))(@perawallet/connect@1.3.4(algosdk@2.8.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.8.0)(lute-connect@1.3.0)':
+  '@txnlab/use-wallet@3.0.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.3)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.3.0)':
     dependencies:
       '@tanstack/store': 0.4.1
-      algosdk: 2.8.0
+      algosdk: 2.9.0
     optionalDependencies:
-      '@blockshake/defly-connect': 1.1.6(algosdk@2.8.0)
-      '@perawallet/connect': 1.3.4(algosdk@2.8.0)
+      '@blockshake/defly-connect': 1.1.6(algosdk@2.9.0)
+      '@perawallet/connect': 1.3.4(algosdk@2.9.0)
       '@walletconnect/modal': 2.6.2(@types/react@18.3.3)(react@18.3.1)
       lute-connect: 1.3.0
 
@@ -7769,6 +7799,13 @@ snapshots:
       chai: 5.1.1
       tinyrainbow: 1.2.0
 
+  '@vitest/expect@2.0.5':
+    dependencies:
+      '@vitest/spy': 2.0.5
+      '@vitest/utils': 2.0.5
+      chai: 5.1.1
+      tinyrainbow: 1.2.0
+
   '@vitest/pretty-format@2.0.3':
     dependencies:
       tinyrainbow: 1.2.0
@@ -7777,9 +7814,18 @@ snapshots:
     dependencies:
       tinyrainbow: 1.2.0
 
+  '@vitest/pretty-format@2.0.5':
+    dependencies:
+      tinyrainbow: 1.2.0
+
   '@vitest/runner@2.0.3':
     dependencies:
       '@vitest/utils': 2.0.3
+      pathe: 1.1.2
+
+  '@vitest/runner@2.0.5':
+    dependencies:
+      '@vitest/utils': 2.0.5
       pathe: 1.1.2
 
   '@vitest/snapshot@2.0.3':
@@ -7788,13 +7834,30 @@ snapshots:
       magic-string: 0.30.10
       pathe: 1.1.2
 
+  '@vitest/snapshot@2.0.5':
+    dependencies:
+      '@vitest/pretty-format': 2.0.5
+      magic-string: 0.30.10
+      pathe: 1.1.2
+
   '@vitest/spy@2.0.3':
+    dependencies:
+      tinyspy: 3.0.0
+
+  '@vitest/spy@2.0.5':
     dependencies:
       tinyspy: 3.0.0
 
   '@vitest/utils@2.0.3':
     dependencies:
       '@vitest/pretty-format': 2.0.3
+      estree-walker: 3.0.3
+      loupe: 3.1.1
+      tinyrainbow: 1.2.0
+
+  '@vitest/utils@2.0.5':
+    dependencies:
+      '@vitest/pretty-format': 2.0.5
       estree-walker: 3.0.3
       loupe: 3.1.1
       tinyrainbow: 1.2.0
@@ -8185,7 +8248,7 @@ snapshots:
 
   algo-msgpack-with-bigint@2.1.1: {}
 
-  algosdk@2.8.0:
+  algosdk@2.9.0:
     dependencies:
       algo-msgpack-with-bigint: 2.1.1
       buffer: 6.0.3
@@ -8353,13 +8416,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  babel-jest@29.7.0(@babel/core@7.24.7):
+  babel-jest@29.7.0(@babel/core@7.24.9):
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@jest/transform': 29.7.0
       '@types/babel__core': 7.20.5
       babel-plugin-istanbul: 6.1.1
-      babel-preset-jest: 29.6.3(@babel/core@7.24.7)
+      babel-preset-jest: 29.6.3(@babel/core@7.24.9)
       chalk: 4.1.2
       graceful-fs: 4.2.11
       slash: 3.0.0
@@ -8381,33 +8444,33 @@ snapshots:
   babel-plugin-jest-hoist@29.6.3:
     dependencies:
       '@babel/template': 7.24.7
-      '@babel/types': 7.24.7
+      '@babel/types': 7.24.9
       '@types/babel__core': 7.20.5
       '@types/babel__traverse': 7.20.6
     optional: true
 
-  babel-preset-current-node-syntax@1.0.1(@babel/core@7.24.7):
+  babel-preset-current-node-syntax@1.0.1(@babel/core@7.24.9):
     dependencies:
-      '@babel/core': 7.24.7
-      '@babel/plugin-syntax-async-generators': 7.8.4(@babel/core@7.24.7)
-      '@babel/plugin-syntax-bigint': 7.8.3(@babel/core@7.24.7)
-      '@babel/plugin-syntax-class-properties': 7.12.13(@babel/core@7.24.7)
-      '@babel/plugin-syntax-import-meta': 7.10.4(@babel/core@7.24.7)
-      '@babel/plugin-syntax-json-strings': 7.8.3(@babel/core@7.24.7)
-      '@babel/plugin-syntax-logical-assignment-operators': 7.10.4(@babel/core@7.24.7)
-      '@babel/plugin-syntax-nullish-coalescing-operator': 7.8.3(@babel/core@7.24.7)
-      '@babel/plugin-syntax-numeric-separator': 7.10.4(@babel/core@7.24.7)
-      '@babel/plugin-syntax-object-rest-spread': 7.8.3(@babel/core@7.24.7)
-      '@babel/plugin-syntax-optional-catch-binding': 7.8.3(@babel/core@7.24.7)
-      '@babel/plugin-syntax-optional-chaining': 7.8.3(@babel/core@7.24.7)
-      '@babel/plugin-syntax-top-level-await': 7.14.5(@babel/core@7.24.7)
+      '@babel/core': 7.24.9
+      '@babel/plugin-syntax-async-generators': 7.8.4(@babel/core@7.24.9)
+      '@babel/plugin-syntax-bigint': 7.8.3(@babel/core@7.24.9)
+      '@babel/plugin-syntax-class-properties': 7.12.13(@babel/core@7.24.9)
+      '@babel/plugin-syntax-import-meta': 7.10.4(@babel/core@7.24.9)
+      '@babel/plugin-syntax-json-strings': 7.8.3(@babel/core@7.24.9)
+      '@babel/plugin-syntax-logical-assignment-operators': 7.10.4(@babel/core@7.24.9)
+      '@babel/plugin-syntax-nullish-coalescing-operator': 7.8.3(@babel/core@7.24.9)
+      '@babel/plugin-syntax-numeric-separator': 7.10.4(@babel/core@7.24.9)
+      '@babel/plugin-syntax-object-rest-spread': 7.8.3(@babel/core@7.24.9)
+      '@babel/plugin-syntax-optional-catch-binding': 7.8.3(@babel/core@7.24.9)
+      '@babel/plugin-syntax-optional-chaining': 7.8.3(@babel/core@7.24.9)
+      '@babel/plugin-syntax-top-level-await': 7.14.5(@babel/core@7.24.9)
     optional: true
 
-  babel-preset-jest@29.6.3(@babel/core@7.24.7):
+  babel-preset-jest@29.6.3(@babel/core@7.24.9):
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       babel-plugin-jest-hoist: 29.6.3
-      babel-preset-current-node-syntax: 1.0.1(@babel/core@7.24.7)
+      babel-preset-current-node-syntax: 1.0.1(@babel/core@7.24.9)
     optional: true
 
   balanced-match@1.0.2: {}
@@ -9786,8 +9849,8 @@ snapshots:
 
   istanbul-lib-instrument@5.2.1:
     dependencies:
-      '@babel/core': 7.24.7
-      '@babel/parser': 7.24.7
+      '@babel/core': 7.24.9
+      '@babel/parser': 7.24.8
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
       semver: 6.3.1
@@ -9797,8 +9860,8 @@ snapshots:
 
   istanbul-lib-instrument@6.0.3:
     dependencies:
-      '@babel/core': 7.24.7
-      '@babel/parser': 7.24.7
+      '@babel/core': 7.24.9
+      '@babel/parser': 7.24.8
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
       semver: 7.6.3
@@ -9896,10 +9959,10 @@ snapshots:
 
   jest-config@29.7.0(@types/node@20.14.11)(ts-node@10.9.2(@types/node@20.14.11)(typescript@5.5.3)):
     dependencies:
-      '@babel/core': 7.24.7
+      '@babel/core': 7.24.9
       '@jest/test-sequencer': 29.7.0
       '@jest/types': 29.6.3
-      babel-jest: 29.7.0(@babel/core@7.24.7)
+      babel-jest: 29.7.0(@babel/core@7.24.9)
       chalk: 4.1.2
       ci-info: 3.9.0
       deepmerge: 4.3.1
@@ -10098,15 +10161,15 @@ snapshots:
 
   jest-snapshot@29.7.0:
     dependencies:
-      '@babel/core': 7.24.7
-      '@babel/generator': 7.24.7
-      '@babel/plugin-syntax-jsx': 7.24.7(@babel/core@7.24.7)
-      '@babel/plugin-syntax-typescript': 7.24.7(@babel/core@7.24.7)
-      '@babel/types': 7.24.7
+      '@babel/core': 7.24.9
+      '@babel/generator': 7.24.10
+      '@babel/plugin-syntax-jsx': 7.24.7(@babel/core@7.24.9)
+      '@babel/plugin-syntax-typescript': 7.24.7(@babel/core@7.24.9)
+      '@babel/types': 7.24.9
       '@jest/expect-utils': 29.7.0
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
-      babel-preset-current-node-syntax: 1.0.1(@babel/core@7.24.7)
+      babel-preset-current-node-syntax: 1.0.1(@babel/core@7.24.9)
       chalk: 4.1.2
       expect: 29.7.0
       graceful-fs: 4.2.11
@@ -11819,7 +11882,7 @@ snapshots:
       - supports-color
       - terser
 
-  vite-node@2.0.3(@types/node@20.14.12):
+  vite-node@2.0.5(@types/node@20.14.12):
     dependencies:
       cac: 6.7.14
       debug: 4.3.5
@@ -11895,15 +11958,15 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@2.0.3(@types/node@20.14.12)(jsdom@24.1.0):
+  vitest@2.0.5(@types/node@20.14.12)(jsdom@24.1.0):
     dependencies:
       '@ampproject/remapping': 2.3.0
-      '@vitest/expect': 2.0.3
-      '@vitest/pretty-format': 2.0.4
-      '@vitest/runner': 2.0.3
-      '@vitest/snapshot': 2.0.3
-      '@vitest/spy': 2.0.3
-      '@vitest/utils': 2.0.3
+      '@vitest/expect': 2.0.5
+      '@vitest/pretty-format': 2.0.5
+      '@vitest/runner': 2.0.5
+      '@vitest/snapshot': 2.0.5
+      '@vitest/spy': 2.0.5
+      '@vitest/utils': 2.0.5
       chai: 5.1.1
       debug: 4.3.5
       execa: 8.0.1
@@ -11914,8 +11977,8 @@ snapshots:
       tinypool: 1.0.0
       tinyrainbow: 1.2.0
       vite: 5.3.4(@types/node@20.14.12)
-      vite-node: 2.0.3(@types/node@20.14.12)
-      why-is-node-running: 2.2.2
+      vite-node: 2.0.5(@types/node@20.14.12)
+      why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.14.12
       jsdom: 24.1.0
@@ -11988,6 +12051,11 @@ snapshots:
       isexe: 2.0.0
 
   why-is-node-running@2.2.2:
+    dependencies:
+      siginfo: 2.0.0
+      stackback: 0.0.2
+
+  why-is-node-running@2.3.0:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
