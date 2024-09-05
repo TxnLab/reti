@@ -31,7 +31,6 @@ import {
     getValidatorState,
     incrementRoundNumberBy,
     logStakingPoolInfo,
-    ProtocolConstraints,
     removeStake,
     StakedInfo,
     ValidatorConfig,

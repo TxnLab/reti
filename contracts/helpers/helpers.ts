@@ -445,16 +445,6 @@ export async function getProtocolConstraints(validatorClient: ValidatorRegistryC
     )
 }
 
-function dumpLogs(logs: Uint8Array[]) {
-    const asciiOnlyLogs = logs
-        .map((uint8array) => new TextDecoder().decode(uint8array))
-        .join('\n')
-        .split('\n')
-        .filter((line) => /^[\x00-\x7F]*$/.test(line))
-
-    consoleLogger.info(asciiOnlyLogs.join('\n'))
-}
-
 export async function addValidator(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
@@ -745,10 +735,6 @@ export async function addStake(
             )
             .simulate({ allowUnnamedResources: true, allowMoreLogging: true })
 
-        const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult
-        if (logs !== undefined) {
-            dumpLogs(logs)
-        }
         stakeTransfer.group = undefined
         fees = AlgoAmount.MicroAlgos(
             2000 +
@@ -885,10 +871,6 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
         .simulate({ allowUnnamedResources: true, allowMoreLogging: true })
 
-    const { logs } = await simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult
-    if (logs !== undefined) {
-        dumpLogs(logs)
-    }
     fees = AlgoAmount.MicroAlgos(
         1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700),
     )
