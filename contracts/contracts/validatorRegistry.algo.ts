@@ -527,12 +527,6 @@ export class ValidatorRegistry extends Contract {
             receiver: this.app.address,
         })
 
-        // Ensure we're not over our protocol maximum for combined stake in all pools using the
-        // MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL percentage
-        assert(
-            this.validatorList(validatorId).value.state.totalAlgoStaked < this.maxAllowedStake(),
-            'total staked for all of a validators pools may not exceed hard cap',
-        )
         // If the validator specified that a specific token creator is required to stake, verify that the required
         // balance is held by the staker, and that the asset they offered up to validate was created by the account
         // the validator defined as its creator requirement.
@@ -548,6 +542,13 @@ export class ValidatorRegistry extends Contract {
             realAmount -= mbrAmtLeftBehind
             this.stakerPoolSet(staker).create()
         }
+        // Ensure we're not over our protocol maximum for combined stake in all pools using the
+        // MAX_VALIDATOR_HARD_PCT_OF_ONLINE_1DECIMAL percentage
+        assert(
+            this.validatorList(validatorId).value.state.totalAlgoStaked + realAmount < this.maxAllowedStake(),
+            'total staked for all of a validators pools may not exceed hard cap',
+        )
+
         // find existing slot where staker is already in a pool w/ this validator, or if none found, then ensure they're
         // putting in minimum amount for this validator.
         const findRet = this.findPoolForStaker(validatorId, staker, realAmount)

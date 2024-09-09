@@ -1026,7 +1026,10 @@ export class StakingPool extends Contract {
 
     private setRoundsPerDay() {
         this.roundsPerDay.value = AVG_ROUNDS_PER_DAY
-        // // TODO fetching prior block times probably isn't workable with most clients as rolling back firstValid isn't a normal thing
+        // While the average block times could be fetched from prior blocks, it isn't practical as current algorand clients
+        // go out of their way to prevent users from even modifying the valid block ranges (particularly to set them 'backwards'
+        // which calculating the average block time would require).
+        // If implemented, an example implementation might look like:
         // if (globals.round < 12) {
         //     // must be start of dev/test? - just pick dummy val
         //     this.roundsPerDay.value = AVG_ROUNDS_PER_DAY // approx 'daily' bins (60*60*24/2.8)
