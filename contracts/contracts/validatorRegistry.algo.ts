@@ -320,12 +320,7 @@ export class ValidatorRegistry extends Contract {
 
         if (config.nfdForInfo !== 0) {
             // verify nfd is real, matches provided name, and owned by sender
-            sendAppCall({
-                applicationID: AppID.fromUint64(this.nfdRegistryAppId),
-                applicationArgs: ['is_valid_nfd_appid', nfdName, itob(config.nfdForInfo)],
-                applications: [AppID.fromUint64(config.nfdForInfo)],
-            })
-            assert(btoi(this.itxn.lastLog) === 1, "provided NFD isn't valid")
+            assert(this.isNFDAppIDValid(config.nfdForInfo), 'provided NFD must be valid')
             // Verify the NFDs owner is same as our sender (presumably either owner or manager)
             assert(
                 this.txn.sender === (AppID.fromUint64(config.nfdForInfo).globalState('i.owner.a') as Address),
@@ -384,11 +379,7 @@ export class ValidatorRegistry extends Contract {
     changeValidatorNFD(validatorId: ValidatorIdType, nfdAppID: uint64, nfdName: string): void {
         this.callerMustBeOwner(validatorId)
         // verify nfd is real, and owned by owner or manager
-        sendAppCall({
-            applicationID: AppID.fromUint64(this.nfdRegistryAppId),
-            applicationArgs: ['is_valid_nfd_appid', nfdName, itob(nfdAppID)],
-            applications: [AppID.fromUint64(nfdAppID)],
-        })
+        assert(this.isNFDAppIDValid(nfdAppID), 'provided NFD must be valid')
         // we know sender is owner or manager - so if sender is owner of nfd - we're fine.
         assert(
             this.txn.sender === (AppID.fromUint64(nfdAppID).globalState('i.owner.a') as Address),
@@ -427,6 +418,12 @@ export class ValidatorRegistry extends Contract {
         )
         if (EntryGatingType === GATING_TYPE_ASSETS_CREATED_BY) {
             assert(EntryGatingAddress !== globals.zeroAddress)
+        }
+        if (
+            EntryGatingType === GATING_TYPE_CREATED_BY_NFD_ADDRESSES ||
+            EntryGatingType === GATING_TYPE_SEGMENT_OF_NFD
+        ) {
+            assert(this.isNFDAppIDValid(EntryGatingAssets[0]), 'provided NFD App id for gating must be valid NFD')
         }
         this.validatorList(validatorId).value.config.entryGatingType = EntryGatingType
         this.validatorList(validatorId).value.config.entryGatingAddress = EntryGatingAddress
@@ -1290,7 +1287,7 @@ export class ValidatorRegistry extends Contract {
             )
         }
         if (type === GATING_TYPE_SEGMENT_OF_NFD) {
-            // verify NFD user wants to offer up for testing is at least 'real' - since we just have app id - fetch its name then do is valid call
+            // verify nfd is real...
             const userOfferedNFDAppID = valueToVerify
             assert(this.isNFDAppIDValid(userOfferedNFDAppID), 'provided NFD must be valid')
 
