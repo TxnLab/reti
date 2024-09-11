@@ -3584,7 +3584,7 @@ goOnline:
 	//             voteFirst: voteFirst,
 	//             voteLast: voteLast,
 	//             voteKeyDilution: voteKeyDilution,
-	//             fee: this.getGoOnlineFee(),
+	//             fee: extraFee,
 	//         })
 	itxn_begin
 	int keyreg
@@ -3621,8 +3621,8 @@ goOnline:
 	itxn_field VoteKeyDilution
 
 	// contracts/stakingPool.algo.ts:900
-	// fee: this.getGoOnlineFee()
-	callsub getGoOnlineFee
+	// fee: extraFee
+	frame_dig 0 // extraFee: uint64
 	itxn_field Fee
 
 	// Submit inner transaction

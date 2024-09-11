@@ -897,7 +897,7 @@ export class StakingPool extends Contract {
             voteFirst: voteFirst,
             voteLast: voteLast,
             voteKeyDilution: voteKeyDilution,
-            fee: this.getGoOnlineFee(),
+            fee: extraFee,
         })
     }
 

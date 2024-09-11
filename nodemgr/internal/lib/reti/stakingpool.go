@@ -281,7 +281,11 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 }
 
 func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, needsIncentiveFeePaid bool, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
-	var err error
+	var (
+		err         error
+		poolAddress        = crypto.GetApplicationAddress(poolAppID).String()
+		goOnlineFee uint64 = 0
+	)
 
 	params, err := r.algoClient.SuggestedParams().Do(context.Background())
 	if err != nil {
@@ -294,18 +298,18 @@ func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, needsIncentiveFe
 	params.FlatFee = true
 	params.Fee = transaction.MinTxnFee * 3
 
-	var goOnlineFee uint64 = 0
+	// if account isn't currently incentive eligible, we need to pay the extra fee
+	account, err := algo.GetBareAccount(context.Background(), r.algoClient, poolAddress)
+	if err != nil {
+		return err
+	}
 	// if going offline to online - pay extra 2 algo so the account is payouts eligible !
-	//if needsIncentiveFeePaid {
-	if true {
-		// TODO - this is temporary - need to wait until algo sdk returns incentive eligible data
-		// eligible for incentives and only then to pay the extra fee
-		// account return will also have IncentiveEligible property which caller will use when calling us.
-		r.Logger.Info("paying extra fee for offline->online transition")
+	if !account.IncentiveEligible {
+		r.Logger.Info("paying extra fee to make pool incentive eligible")
 		goOnlineFee = 2e6
 	}
 
-	paymentTxn, err := transaction.MakePaymentTxn(caller.String(), crypto.GetApplicationAddress(poolAppID).String(), goOnlineFee, nil, "", params)
+	paymentTxn, err := transaction.MakePaymentTxn(caller.String(), poolAddress, goOnlineFee, nil, "", params)
 	payTxWithSigner := transaction.TransactionWithSigner{
 		Txn:    paymentTxn,
 		Signer: algo.SignWithAccountForATC(r.signer, caller.String()),
