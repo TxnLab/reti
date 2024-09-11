@@ -12,35 +12,39 @@ import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
 import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 
 function getNetworkConfig(network: string): [AlgoClientConfig, bigint, string] {
-    let registryAppID: bigint
+    let nfdRegistryAppID: bigint
     let feeSink: string
     switch (network) {
         case 'devnet':
         case 'localnet':
-            registryAppID = 0n
+            nfdRegistryAppID = 0n
             feeSink = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
-            return [ClientManager.getConfigFromEnvironmentOrLocalNet().algodConfig, registryAppID, feeSink]
+            return [ClientManager.getConfigFromEnvironmentOrLocalNet().algodConfig, nfdRegistryAppID, feeSink]
+        case 'fnet':
+            nfdRegistryAppID = 0n
+            feeSink = 'FEESINK7OJKODDB5ZB4W2SRYPUSTOTK65UDCUYZ5DB4BW3VOHDHGO6JUNE'
+            break
         case 'betanet':
-            registryAppID = 842656530n
+            nfdRegistryAppID = 842656530n
             feeSink = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
             break
         case 'testnet':
-            registryAppID = 84366825n
+            nfdRegistryAppID = 84366825n
             feeSink = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
             break
         case 'mainnet':
-            registryAppID = 760937186n
+            nfdRegistryAppID = 760937186n
             feeSink = 'Y76M3MSY6DKBRHBL7C3NNDXGS5IIMQVQVUAB6MP4XEMMGVF2QWNPL226CA'
             break
         default:
             throw new Error(`Unsupported network network: ${network}`)
     }
     const config = {
-        server: `https://${network}-api.algonode.cloud/`,
+        server: `https://${network}-api.4160.nodely.dev/`,
         port: 443,
     } as AlgoClientConfig
 
-    return [config, registryAppID, feeSink]
+    return [config, nfdRegistryAppID, feeSink]
 }
 
 /**
@@ -80,18 +84,20 @@ function createViteEnvFileForLocalnet(validatorAppId: number | bigint): void {
 async function main() {
     const args = await yargs.option('network', {
         default: 'localnet',
-        choices: ['localnet', 'betanet', 'testnet', 'mainnet'],
+        choices: ['localnet', 'fnet', 'betanet', 'testnet', 'mainnet'],
         demandOption: true,
     }).argv
 
+    console.log(`Network:${args.network}`)
     const [algodConfig, registryAppID, feeSink] = getNetworkConfig(args.network)
 
     // default to localnet
     let algorand: AlgorandClient = AlgorandClient.defaultLocalNet()
+    // let compileClient: AlgorandClient
     if (args.network !== 'localnet') {
         algorand = AlgorandClient.fromConfig({ algodConfig, indexerConfig: undefined, kmdConfig: undefined })
     }
-    // const algorand = algokit.AlgorandClient.fromConfig({ algodConfig: algodconfig, kmdConfig })
+    console.log(`algo config is:${JSON.stringify(algodConfig)}`)
 
     let creatorAcct: Account
 

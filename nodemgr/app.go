@@ -151,7 +151,7 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	}
 	// quick validity check on possible network names...
 	switch network {
-	case "sandbox", "betanet", "testnet", "mainnet", "voitestnet":
+	case "sandbox", "fnet", "betanet", "testnet", "mainnet", "voitestnet":
 	default:
 		return fmt.Errorf("unknown network:%s", network)
 	}
