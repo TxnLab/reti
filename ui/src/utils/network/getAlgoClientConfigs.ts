@@ -57,8 +57,6 @@ export function getAlgodNetwork(): NetworkId {
       return NetworkId.TESTNET
     case 'betanet':
       return NetworkId.BETANET
-    case 'fnet':
-      return NetworkId.FNET
     case 'localnet':
       return NetworkId.LOCALNET
     default:

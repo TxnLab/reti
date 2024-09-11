@@ -1,6 +1,6 @@
 {
   "name": "reti-ui",
-  "version": "0.9.9",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -96,7 +96,6 @@
     "dev:localnet": "vite --mode localnet --port 5173",
     "dev:testnet": "vite --mode testnet --port 5183",
     "dev:mainnet": "vite --mode mainnet --port 5193",
-    "dev:fnet": "vite --mode fnet --port 5203",
     "build": "tsc && vite build",
     "test": "vitest",
     "test:watch": "vitest --watch",
