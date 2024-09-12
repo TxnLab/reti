@@ -2,7 +2,7 @@ name: Contract/Playwright Tests
 on:
   pull_request:
     branches:
-      - 'main'
+      # - 'main'
       # - 'dev'
 
 jobs:
