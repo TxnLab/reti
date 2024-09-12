@@ -75,12 +75,54 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  AddRoute,
-  ValidatorsRoute,
-  ValidatorsValidatorIdRoute,
-})
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/add': typeof AddRoute
+  '/validators': typeof ValidatorsRoute
+  '/validators/$validatorId': typeof ValidatorsValidatorIdRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/add': typeof AddRoute
+  '/validators': typeof ValidatorsRoute
+  '/validators/$validatorId': typeof ValidatorsValidatorIdRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/add': typeof AddRoute
+  '/validators': typeof ValidatorsRoute
+  '/validators/$validatorId': typeof ValidatorsValidatorIdRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/add' | '/validators' | '/validators/$validatorId'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/add' | '/validators' | '/validators/$validatorId'
+  id: '__root__' | '/' | '/add' | '/validators' | '/validators/$validatorId'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  AddRoute: typeof AddRoute
+  ValidatorsRoute: typeof ValidatorsRoute
+  ValidatorsValidatorIdRoute: typeof ValidatorsValidatorIdRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AddRoute: AddRoute,
+  ValidatorsRoute: ValidatorsRoute,
+  ValidatorsValidatorIdRoute: ValidatorsValidatorIdRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 
