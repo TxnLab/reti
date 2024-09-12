@@ -65,7 +65,7 @@
     "@txnlab/use-wallet-react": "3.3.0",
     "@walletconnect/modal-sign-html": "2.6.2",
     "algosdk": "^2.9.0",
-    "axios": "1.7.2",
+    "axios": "1.7.4",
     "axios-cache-interceptor": "1.5.3",
     "big.js": "6.2.1",
     "class-variance-authority": "0.7.0",
