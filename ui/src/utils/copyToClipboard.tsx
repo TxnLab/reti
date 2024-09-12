@@ -24,7 +24,7 @@ export function copyToClipboard(event: React.MouseEvent<HTMLButtonElement>) {
       toast.message('Copied to clipboard', {
         description: text,
       })
-    } catch (error) {
+    } catch {
       toast.error('Copying to clipboard failed')
     }
   }
