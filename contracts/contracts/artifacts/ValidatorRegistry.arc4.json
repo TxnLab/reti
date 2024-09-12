@@ -3,13 +3,6 @@
   "desc": "",
   "methods": [
     {
-      "name": "updateApplication",
-      "args": [],
-      "returns": {
-        "type": "void"
-      }
-    },
-    {
       "name": "createApplication",
       "args": [],
       "returns": {
@@ -258,7 +251,27 @@
       "returns": {
         "type": "uint64",
         "desc": "uint64 validator id"
-      }
+      },
+      "events": [
+        {
+          "name": "retiOP_addedValidator",
+          "args": [
+            {
+              "name": "id",
+              "type": "uint64"
+            },
+            {
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "name": "manager",
+              "type": "address"
+            }
+          ],
+          "desc": "Logs the addition of a new validator to the system, its initial owner and manager"
+        }
+      ]
     },
     {
       "name": "changeValidatorManager",
@@ -400,7 +413,27 @@
       "returns": {
         "type": "(uint64,uint64,uint64)",
         "desc": "ValidatorPoolKey pool key to created pool"
-      }
+      },
+      "events": [
+        {
+          "name": "retiOP_validatorAddedPool",
+          "args": [
+            {
+              "name": "id",
+              "type": "uint64"
+            },
+            {
+              "name": "num",
+              "type": "uint16"
+            },
+            {
+              "name": "poolAppId",
+              "type": "uint64"
+            }
+          ],
+          "desc": "Logs the addition of a new pool to a particular validator ID"
+        }
+      ]
     },
     {
       "name": "addStake",
@@ -425,7 +458,35 @@
       "returns": {
         "type": "(uint64,uint64,uint64)",
         "desc": "ValidatorPoolKey - The key of the validator pool."
-      }
+      },
+      "events": [
+        {
+          "name": "retiOP_stakeAdded",
+          "args": [
+            {
+              "name": "id",
+              "type": "uint64"
+            },
+            {
+              "name": "poolNum",
+              "type": "uint16"
+            },
+            {
+              "name": "poolAppId",
+              "type": "uint64"
+            },
+            {
+              "name": "staker",
+              "type": "address"
+            },
+            {
+              "name": "amountStaked",
+              "type": "uint64"
+            }
+          ],
+          "desc": "Logs how much stake was added by a staker to a particular staking pool"
+        }
+      ]
     },
     {
       "name": "setTokenPayoutRatio",
@@ -474,7 +535,43 @@
       ],
       "returns": {
         "type": "void"
-      }
+      },
+      "events": [
+        {
+          "name": "retiOP_epochRewardUpdate",
+          "args": [
+            {
+              "name": "id",
+              "type": "uint64"
+            },
+            {
+              "name": "poolNum",
+              "type": "uint16"
+            },
+            {
+              "name": "poolAppId",
+              "type": "uint64"
+            },
+            {
+              "name": "validatorCommission",
+              "type": "uint64"
+            },
+            {
+              "name": "saturatedBurnToFeeSink",
+              "type": "uint64"
+            },
+            {
+              "name": "algoAdded",
+              "type": "uint64"
+            },
+            {
+              "name": "rewardTokenHeldBack",
+              "type": "uint64"
+            }
+          ],
+          "desc": "Logs how much algo was detected as being added to a staking pool as part of epoch reward calculations.\nCommission amount to validator, excess burned if pool is saturated, and the amount of tokens held back are logged as well."
+        }
+      ]
     },
     {
       "name": "stakeRemoved",
@@ -506,7 +603,43 @@
       ],
       "returns": {
         "type": "void"
-      }
+      },
+      "events": [
+        {
+          "name": "retiOP_stakeRemoved",
+          "args": [
+            {
+              "name": "id",
+              "type": "uint64"
+            },
+            {
+              "name": "poolNum",
+              "type": "uint16"
+            },
+            {
+              "name": "poolAppId",
+              "type": "uint64"
+            },
+            {
+              "name": "staker",
+              "type": "address"
+            },
+            {
+              "name": "amountUnstaked",
+              "type": "uint64"
+            },
+            {
+              "name": "rewardTokensReceived",
+              "type": "uint64"
+            },
+            {
+              "name": "rewardTokenAssetId",
+              "type": "uint64"
+            }
+          ],
+          "desc": "Logs how much stake was removed by a staker from a particular staking pool"
+        }
+      ]
     },
     {
       "name": "findPoolForStaker",
@@ -574,6 +707,138 @@
         "type": "uint64",
         "desc": "uint64 the amount of reward token sent"
       }
+    }
+  ],
+  "events": [
+    {
+      "name": "retiOP_addedValidator",
+      "args": [
+        {
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "name": "manager",
+          "type": "address"
+        }
+      ],
+      "desc": "Logs the addition of a new validator to the system, its initial owner and manager"
+    },
+    {
+      "name": "retiOP_validatorAddedPool",
+      "args": [
+        {
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "name": "num",
+          "type": "uint16"
+        },
+        {
+          "name": "poolAppId",
+          "type": "uint64"
+        }
+      ],
+      "desc": "Logs the addition of a new pool to a particular validator ID"
+    },
+    {
+      "name": "retiOP_stakeAdded",
+      "args": [
+        {
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "name": "poolNum",
+          "type": "uint16"
+        },
+        {
+          "name": "poolAppId",
+          "type": "uint64"
+        },
+        {
+          "name": "staker",
+          "type": "address"
+        },
+        {
+          "name": "amountStaked",
+          "type": "uint64"
+        }
+      ],
+      "desc": "Logs how much stake was added by a staker to a particular staking pool"
+    },
+    {
+      "name": "retiOP_epochRewardUpdate",
+      "args": [
+        {
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "name": "poolNum",
+          "type": "uint16"
+        },
+        {
+          "name": "poolAppId",
+          "type": "uint64"
+        },
+        {
+          "name": "validatorCommission",
+          "type": "uint64"
+        },
+        {
+          "name": "saturatedBurnToFeeSink",
+          "type": "uint64"
+        },
+        {
+          "name": "algoAdded",
+          "type": "uint64"
+        },
+        {
+          "name": "rewardTokenHeldBack",
+          "type": "uint64"
+        }
+      ],
+      "desc": "Logs how much algo was detected as being added to a staking pool as part of epoch reward calculations.\nCommission amount to validator, excess burned if pool is saturated, and the amount of tokens held back are logged as well."
+    },
+    {
+      "name": "retiOP_stakeRemoved",
+      "args": [
+        {
+          "name": "id",
+          "type": "uint64"
+        },
+        {
+          "name": "poolNum",
+          "type": "uint16"
+        },
+        {
+          "name": "poolAppId",
+          "type": "uint64"
+        },
+        {
+          "name": "staker",
+          "type": "address"
+        },
+        {
+          "name": "amountUnstaked",
+          "type": "uint64"
+        },
+        {
+          "name": "rewardTokensReceived",
+          "type": "uint64"
+        },
+        {
+          "name": "rewardTokenAssetId",
+          "type": "uint64"
+        }
+      ],
+      "desc": "Logs how much stake was removed by a staker from a particular staking pool"
     }
   ]
 }

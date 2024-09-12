@@ -445,10 +445,6 @@ export async function getProtocolConstraints(validatorClient: ValidatorRegistryC
     )
 }
 
-function dumpLogs(logs: Uint8Array[]) {
-    consoleLogger.info(logs.map((uint8array) => new TextDecoder().decode(uint8array)).join('\n'))
-}
-
 export async function addValidator(
     context: AlgorandTestAutomationContext,
     validatorClient: ValidatorRegistryClient,
@@ -712,7 +708,7 @@ export async function addStake(
         const willBeNewStaker = expectedPool[1]
 
         consoleLogger.info(
-            `addStake findPool will add to validator:${poolKey.id}, pool:${poolKey.poolId} and willBeNew:${willBeNewStaker}`,
+            `addStake findPool for stake:${algoAmount.toString()} will add to validator:${poolKey.id}, pool:${poolKey.poolId} and willBeNew:${willBeNewStaker}`,
         )
 
         // Pay the stake to the validator contract
@@ -739,11 +735,6 @@ export async function addStake(
             )
             .simulate({ allowUnnamedResources: true, allowMoreLogging: true })
 
-        const { logs } = simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult
-        // verify logs isn't undefined
-        if (logs !== undefined) {
-            dumpLogs(logs)
-        }
         stakeTransfer.group = undefined
         fees = AlgoAmount.MicroAlgos(
             2000 +
@@ -880,11 +871,6 @@ export async function epochBalanceUpdate(stakeClient: StakingPoolClient) {
         .epochBalanceUpdate({}, { sendParams: { fee: fees } })
         .simulate({ allowUnnamedResources: true, allowMoreLogging: true })
 
-    const { logs } = await simulateResults.simulateResponse.txnGroups[0].txnResults[2].txnResult
-    // verify logs isn't undefined
-    if (logs !== undefined) {
-        dumpLogs(logs)
-    }
     fees = AlgoAmount.MicroAlgos(
         1000 * Math.floor(((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700),
     )

@@ -1,17 +1,18 @@
 import { Contract } from '@algorandfoundation/tealscript'
 // eslint-disable-next-line import/no-cycle
-import { PoolTokenPayoutRatio, ValidatorPoolKey, ValidatorRegistry } from './validatorRegistry.algo'
+import { ValidatorRegistry } from './validatorRegistry.algo'
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
+    ALGORAND_STAKING_BLOCK_DELAY,
     ASSET_HOLDING_FEE,
+    AVG_ROUNDS_PER_DAY,
     MAX_STAKERS_PER_POOL,
     MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
 } from './constants.algo'
+import { PoolTokenPayoutRatio, ValidatorPoolKey } from './validatorConfigs.algo'
 
-const ALGORAND_STAKING_BLOCK_DELAY = 320 // # of blocks until algorand sees online balance changes in staking
-const AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)
-
+// The data stored 'per-staker' in box storage of each pool
 export type StakedInfo = {
     account: Address
     balance: uint64
@@ -34,7 +35,7 @@ export type StakedInfo = {
  * validate coming from the validator are only allowed if it matches the validator id it was created with.
  */
 export class StakingPool extends Contract {
-    programVersion = 10
+    programVersion = 11
 
     // When created, we track our creating validator contract so that only this contract can call us.  Independent
     // copies of this contract could be created but only the 'official' validator contract would be considered valid
@@ -91,15 +92,6 @@ export class StakingPool extends Contract {
     nfdRegistryAppId = TemplateVar<uint64>()
 
     feeSinkAddr = TemplateVar<Address>()
-
-    // TODO - TEMPORARY!  just want these upgradeable until prior to final release so users don't have to keep
-    // resetting every validator, and refund every staker.
-    updateApplication(): void {
-        assert(
-            this.txn.sender === Address.fromAddress('LZ4V2IRVLCXFJK4REJV4TAGEKEYTA2GMR6TC2344OB3L3AF3MWXZ6ZAFIQ'),
-            'Temporary: contract is upgradeable but only during testing and only from a development account',
-        )
-    }
 
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
@@ -535,13 +527,9 @@ export class StakingPool extends Contract {
         const thisEpochBegin = curRound - (curRound % epochRoundLength)
 
         // check which epoch we're currently in and if it's outside of last payout epoch.
-        if (this.lastPayout.exists) {
-            const lastPayoutEpoch = this.lastPayout.value - (this.lastPayout.value % epochRoundLength)
-            // log(concat('thisEpoch: ', thisEpochBegin.toString()))
-            // log(concat('lastpayoutEpoch: ', lastPayoutEpoch.toString()))
-            // We've had one payout - so we need to be at least one epoch past the last payout.
-            assert(lastPayoutEpoch !== thisEpochBegin, "can't call epochBalanceUpdate in same epoch as prior call")
-        }
+        const lastPayoutEpoch = this.lastPayout.value - (this.lastPayout.value % epochRoundLength)
+        // We've had one payout - so we need to be at least one epoch past the last payout.
+        assert(lastPayoutEpoch !== thisEpochBegin, "can't call epochBalanceUpdate in same epoch as prior call")
         // Update APR data
         this.checkIfBinClosed()
 
@@ -577,7 +565,7 @@ export class StakingPool extends Contract {
                     methodArgs: [this.validatorId.value],
                 })
             } else {
-                // This isn't pool 2 - so call pool 1 to then ask IT to call the validator to call setTokenPayoutRatio
+                // This isn't pool 1 - so call pool 1 to then ask IT to call the validator to call setTokenPayoutRatio
                 tokenPayoutRatio = sendMethodCall<typeof StakingPool.prototype.proxiedSetTokenPayoutRatio>({
                     applicationID: AppID.fromUint64(poolOneAppID),
                     methodArgs: [{ id: this.validatorId.value, poolId: this.poolId.value, poolAppId: this.app.id }],
@@ -649,8 +637,20 @@ export class StakingPool extends Contract {
 
         if (isPoolSaturated) {
             // see comment where isPoolSaturated is set for changes in rewards...
+            // ME-03 [audit]:
+            //  make sure reward to stakers isn't more than they would have received normally.
+            //  since validator gets nothing and stakers get a reward amount calculated differently we need to make
+            //  sure it's always <= reward they would've received had the validator taken their cut.
+            const normalValidatorCommission = wideRatio(
+                [algoRewardAvail, validatorConfig.percentToValidator as uint64],
+                [1_000_000],
+            )
             // diminishedReward = (reward * maxStakePerPool) / stakeForValidator
-            const diminishedReward = wideRatio([algoRewardAvail, algoSaturationAmt], [validatorState.totalAlgoStaked])
+            let diminishedReward = wideRatio([algoRewardAvail, algoSaturationAmt], [validatorState.totalAlgoStaked])
+            // ME-03 [audit] prevents stakers from receiving more reward than would normally be possible
+            if (diminishedReward > algoRewardAvail - normalValidatorCommission) {
+                diminishedReward = algoRewardAvail - normalValidatorCommission
+            }
             // send excess to fee sink...
             excessToFeeSink = algoRewardAvail - diminishedReward
             sendPayment({
@@ -734,6 +734,8 @@ export class StakingPool extends Contract {
         if (algoRewardAvail !== 0 || tokenRewardAvail !== 0) {
             let partialStakersTotalStake: uint64 = 0
             const origAlgoReward = algoRewardAvail
+            // HI-01 [audit] related fix - using non-changing reward amount for calcing % of total
+            const origTokenReward = tokenRewardAvail
             for (let i = 0; i < this.stakers.value.length; i += 1) {
                 if (globals.opcodeBudget < 400) {
                     increaseOpcodeBudget()
@@ -758,7 +760,7 @@ export class StakingPool extends Contract {
                             if (tokenRewardAvail > 0) {
                                 // calc: (balance * avail reward * percent in tenths) / (total staked * 1000)
                                 const stakerTokenReward = wideRatio(
-                                    [cmpStaker.balance, tokenRewardAvail, timePercentage],
+                                    [cmpStaker.balance, origTokenReward, timePercentage],
                                     [this.totalAlgoStaked.value, 1000],
                                 )
 
@@ -808,14 +810,13 @@ export class StakingPool extends Contract {
                             // we're in for 100%, so it's just % of stakers balance vs 'new total' for their
                             // payment
 
-                            // Handle token payouts first - as we don't want to use existin balance, not post algo-reward balance
+                            // Handle token payouts first - as we don't want to use existing balance, not post algo-reward balance
                             if (tokenRewardAvail > 0) {
                                 const stakerTokenReward = wideRatio(
                                     [cmpStaker.balance, tokenRewardAvail],
                                     [newPoolTotalStake],
                                 )
-                                // instead of sending them algo now - just increase their ledger balance, so they can claim
-                                // it at any time.
+                                // instead of sending them tokens now - we just update their pending balance
                                 cmpStaker.rewardTokenBalance += stakerTokenReward
                                 tokenRewardPaidOut += stakerTokenReward
                             }
@@ -896,7 +897,7 @@ export class StakingPool extends Contract {
             voteFirst: voteFirst,
             voteLast: voteLast,
             voteKeyDilution: voteKeyDilution,
-            fee: this.getGoOnlineFee(),
+            fee: extraFee,
         })
     }
 
@@ -962,8 +963,6 @@ export class StakingPool extends Contract {
 
     private getFeeSink(): Address {
         return this.feeSinkAddr
-        // TODO will be like: txn FirstValid; int 1; -; block BlkFeeSink
-        // once available in AVM
     }
 
     /**
@@ -977,22 +976,15 @@ export class StakingPool extends Contract {
     }
 
     private getGoOnlineFee(): uint64 {
-        // TODO - AVM will have opcode like:
-        // voter_params_get VoterIncentiveEligible
         // this will be needed to determine if our pool is currently NOT eligible and we thus need to pay the fee.
-        const isOnline = false
-        if (!isOnline) {
-            // TODO - AVM will have opcode:
-            // global PayoutsGoOnlineFee
-            return 2_000_000
+        if (!this.app.address.incentiveEligible) {
+            return globals.payoutsGoOnlineFee
         }
         return 0
     }
 
     private getCurrentOnlineStake(): uint64 {
-        // TODO - avm will have opcode:
-        // online_stake
-        return 2_000_000_000_000_000
+        return onlineStake()
     }
 
     /**
@@ -1034,7 +1026,10 @@ export class StakingPool extends Contract {
 
     private setRoundsPerDay() {
         this.roundsPerDay.value = AVG_ROUNDS_PER_DAY
-        // // TODO fetching prior block times probably isn't workable with most clients as rolling back firstValid isn't a normal thing
+        // While the average block times could be fetched from prior blocks, it isn't practical as current algorand clients
+        // go out of their way to prevent users from even modifying the valid block ranges (particularly to set them 'backwards'
+        // which calculating the average block time would require).
+        // If implemented, an example implementation might look like:
         // if (globals.round < 12) {
         //     // must be start of dev/test? - just pick dummy val
         //     this.roundsPerDay.value = AVG_ROUNDS_PER_DAY // approx 'daily' bins (60*60*24/2.8)

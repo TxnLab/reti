@@ -1,6 +1,6 @@
 {
     "name": "reti-contracts",
-    "version": "0.9.8",
+    "version": "0.9.9",
     "license": "MIT",
     "scripts": {
         "generate-client": "algokit generate client contracts/artifacts/ --language typescript  --output contracts/clients/{contract_name}Client.ts && ./update_contract_artifacts.sh",
@@ -16,12 +16,12 @@
         "prettier:fix": "npx prettier --write ."
     },
     "dependencies": {
-        "@algorandfoundation/algokit-utils": "^6.1.2",
-        "algosdk": "2.8.0"
+        "@algorandfoundation/algokit-utils": "^6.2.1",
+        "algosdk": "^2.9.0"
     },
     "devDependencies": {
-        "@algorandfoundation/algokit-client-generator": "^3.0.2",
-        "@algorandfoundation/tealscript": "^0.98.0",
+        "@algorandfoundation/algokit-client-generator": "^3.0.6",
+        "@algorandfoundation/tealscript": "^0.100.2",
         "@joe-p/algokit-generate-component": "^0.2.1",
         "@typescript-eslint/eslint-plugin": "7.16.1",
         "@typescript-eslint/parser": "7.16.1",
@@ -33,6 +33,6 @@
         "eslint-plugin-prettier": "^5.1.3",
         "prettier": "^3.2.5",
         "typescript": "^5.4.5",
-        "vitest": "2.0.3"
+        "vitest": "^2.0.5"
     }
 }
