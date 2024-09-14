@@ -1,6 +1,6 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgorandClient } from '@algorandfoundation/algokit-utils'
-import { Account, decodeAddress, secretKeyToMnemonic } from 'algosdk'
+import { Account, secretKeyToMnemonic } from 'algosdk'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { getTestAccount } from '@algorandfoundation/algokit-utils/testing'
 import * as fs from 'fs'
@@ -89,7 +89,7 @@ async function main() {
     }).argv
 
     console.log(`Network:${args.network}`)
-    const [algodConfig, registryAppID, feeSink] = getNetworkConfig(args.network)
+    const [algodConfig, registryAppID] = getNetworkConfig(args.network)
 
     // default to localnet
     let algorand: AlgorandClient = AlgorandClient.defaultLocalNet()
