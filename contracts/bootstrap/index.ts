@@ -141,7 +141,6 @@ async function main() {
             id: 0,
             deployTimeParams: {
                 nfdRegistryAppId: Number(registryAppID),
-                feeSinkAddr: decodeAddress(feeSink).publicKey,
             },
         },
         algorand.client.algod,

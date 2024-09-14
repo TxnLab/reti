@@ -21,8 +21,8 @@ importers:
         specifier: ^3.0.6
         version: 3.0.6
       '@algorandfoundation/tealscript':
-        specifier: ^0.100.2
-        version: 0.100.2
+        specifier: ^0.102.0
+        version: 0.102.0
       '@joe-p/algokit-generate-component':
         specifier: ^0.2.1
         version: 0.2.1(chokidar@3.6.0)
@@ -363,8 +363,8 @@ packages:
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/tealscript@0.100.2':
-    resolution: {integrity: sha512-yCKE1/8V4ERN7ie8964OMu6QKLCuYyIB5o+l7Wjxyfnr88q588S4waQOfE/WSFe8UjjJYADJrNa2bVYmsy9W7A==}
+  '@algorandfoundation/tealscript@0.102.0':
+    resolution: {integrity: sha512-5xwCO+s9XemBig68v0aopf0bxTBDKJ6czQpbZc0gv0w/DorUqQUcONiNSiI/FplrlEOsCiJH2NOo6L4A5xivwQ==}
     hasBin: true
 
   '@alloc/quick-lru@5.2.0':
@@ -5163,7 +5163,7 @@ snapshots:
       algosdk: 2.9.0
       buffer: 6.0.3
 
-  '@algorandfoundation/tealscript@0.100.2':
+  '@algorandfoundation/tealscript@0.102.0':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@playwright/test': 1.47.0

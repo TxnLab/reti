@@ -37,7 +37,7 @@ import {
     ValidatorPoolKey,
 } from '../helpers/helpers'
 
-const FEE_SINK_ADDR = 'Y76M3MSY6DKBRHBL7C3NNDXGS5IIMQVQVUAB6MP4XEMMGVF2QWNPL226CA'
+const FEE_SINK_ADDR = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
 
 const MaxPoolsPerNode = 3
 // Periodically set this to max amount allowed in protocol (200 atm) but when testing more frequently this should be lowered to something like 20 stakers
@@ -77,7 +77,6 @@ beforeAll(async () => {
     const { approvalCompiled } = await poolClient.appClient.compile({
         deployTimeParams: {
             nfdRegistryAppId: 0,
-            feeSinkAddr: decodeAddress(FEE_SINK_ADDR).publicKey,
         },
     })
     validatorMasterClient = new ValidatorRegistryClient(
