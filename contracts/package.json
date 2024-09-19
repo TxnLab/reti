@@ -9,7 +9,7 @@
         "noalgobuild": "pnpm run compile-contract -- --skip-algod && pnpm run generate-client",
         "build": "pnpm run compile-contract && pnpm run generate-client",
         "test": "pnpm run build && vitest --run --test-timeout=120000",
-        "retest": "vitest --run",
+        "retest": "vitest --run --test-timeout=120000",
         "localnet": "algokit localnet start --name master --config-dir ./localnet_config",
         "lint": "eslint . --ext ts --max-warnings 0",
         "lint:fix": "eslint . --ext ts --max-warnings 0 --fix",
