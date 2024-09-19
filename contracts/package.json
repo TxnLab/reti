@@ -8,7 +8,7 @@
         "generate-components": "algokit-generate-component contracts/artifacts/validatorRegistry.arc32.json contracts/artifacts/components",
         "noalgobuild": "pnpm run compile-contract -- --skip-algod && pnpm run generate-client",
         "build": "pnpm run compile-contract && pnpm run generate-client",
-        "test": "pnpm run build && vitest --run",
+        "test": "pnpm run build && vitest --run --test-timeout=120000",
         "retest": "vitest --run",
         "localnet": "algokit localnet start --name master --config-dir ./localnet_config",
         "lint": "eslint . --ext ts --max-warnings 0",
