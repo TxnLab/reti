@@ -22,7 +22,7 @@
     },
     "devDependencies": {
         "@algorandfoundation/algokit-client-generator": "^3.0.6",
-        "@algorandfoundation/tealscript": "^0.102.0",
+        "@algorandfoundation/tealscript": "^0.103.0",
         "@joe-p/algokit-generate-component": "^0.2.1",
         "@typescript-eslint/eslint-plugin": "8.6.0",
         "@typescript-eslint/parser": "8.6.0",
