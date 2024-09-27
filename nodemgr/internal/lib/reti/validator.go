@@ -202,7 +202,7 @@ func (v *ValidatorConfig) String() string {
 	case GatingTypeSegmentOfNFD:
 		out.WriteString(fmt.Sprintf("Reward Token NFD Segments of Root NFD id:%d\n", v.EntryGatingAssets[0]))
 	}
-	if v.EntryGatingType != GatingTypeNone {
+	if v.RewardTokenId != 0 {
 		out.WriteString(fmt.Sprintf("Reward Token id: %d\n", v.RewardTokenId))
 		out.WriteString(fmt.Sprintf("Reward Per Payout: %d\n", v.RewardPerPayout))
 	}
