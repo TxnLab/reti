@@ -48,7 +48,7 @@ import {
  * See the StakingPool contract comments for details on how this contract creates new instances of them.
  */
 export class ValidatorRegistry extends Contract {
-    programVersion = 11
+    programVersion = 10
 
     // ======
     // GLOBAL STATE AND TEMPLATES
@@ -1375,11 +1375,11 @@ export class ValidatorRegistry extends Contract {
      * Returns the MAXIMUM allowed stake per pool and still receive incentives - we'll treat this as the 'max per pool'
      */
     private maxAlgoAllowedPerPool(): uint64 {
-        return globals.payoutsMaxBalance
+        return 70_000_000_000_000
     }
 
     private getCurrentOnlineStake(): uint64 {
-        return onlineStake()
+        return 2_000_000_000_000_000
     }
 
     private minBalanceForAccount(

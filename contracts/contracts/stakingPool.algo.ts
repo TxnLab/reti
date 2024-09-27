@@ -35,7 +35,7 @@ export type StakedInfo = {
  * validate coming from the validator are only allowed if it matches the validator id it was created with.
  */
 export class StakingPool extends Contract {
-    programVersion = 11
+    programVersion = 10
 
     // When created, we track our creating validator contract so that only this contract can call us.  Independent
     // copies of this contract could be created but only the 'official' validator contract would be considered valid
@@ -653,7 +653,7 @@ export class StakingPool extends Contract {
             excessToFeeSink = algoRewardAvail - diminishedReward
             sendPayment({
                 amount: excessToFeeSink,
-                receiver: blocks[this.txn.firstValid - 1].feeSink,
+                receiver: Address.fromAddress('A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'),
                 note: 'pool saturated, excess to fee sink',
             })
             // then distribute the smaller reward amount like normal (skipping validator payout entirely)
@@ -971,14 +971,14 @@ export class StakingPool extends Contract {
 
     private getGoOnlineFee(): uint64 {
         // this will be needed to determine if our pool is currently NOT eligible and we thus need to pay the fee.
-        if (!this.app.address.incentiveEligible) {
-            return globals.payoutsGoOnlineFee
-        }
-        return 0
+        return 2000000
+        // if (!this.app.address.incentiveEligible) {
+        //     return globals.payoutsGoOnlineFee
+        // }
     }
 
     private getCurrentOnlineStake(): uint64 {
-        return onlineStake()
+        return 2_000_000_000_000_000
     }
 
     /**
