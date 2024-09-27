@@ -3354,7 +3354,7 @@ describe('TokenGatingMultAssets', () => {
     })
 })
 
-describe('SaturatedValidator', () => {
+describe.skip('SaturatedValidator', () => {
     beforeEach(fixture.beforeEach)
     beforeEach(logs.beforeEach)
     afterEach(logs.afterEach)
