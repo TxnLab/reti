@@ -50,7 +50,8 @@ func runAsDaemon(ctx context.Context, cmd *cli.Command) error {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 
-	newDaemon().start(ctx, &wg, cancel, int(cmd.Int("port")))
+	daemon := newDaemon(int(cmd.Int("port")))
+	daemon.start(ctx, &wg, cancel)
 
 	select {
 	case err := <-errc: // wait for termination signal

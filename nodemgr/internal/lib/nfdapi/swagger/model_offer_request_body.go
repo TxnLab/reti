@@ -10,7 +10,7 @@
 package swagger
 
 type OfferRequestBody struct {
-	// Amount in microAlgo to sell the NFD for.  1 ALGO is 1,000,000 microAlgo. 1 ALGO minimum, 100 million maximum.
+	// Amount in microAlgo to sell the NFD for.  1 ALGO is 1,000,000 microAlgo. 100 million maximum.
 	Offer int64 `json:"offer"`
 	// Whether to pay the offer amount + fees to the account the NFD is reserved for.  Equivalent to 'gifting' the NFD
 	PayReceiver bool   `json:"payReceiver,omitempty"`

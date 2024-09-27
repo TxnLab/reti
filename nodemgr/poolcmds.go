@@ -16,7 +16,6 @@ import (
 
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
-	"github.com/TxnLab/reti/internal/lib/nfdonchain"
 )
 
 func GetPoolCmdOpts() *cli.Command {
@@ -307,14 +306,6 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 
 	rewardAvail := App.retiClient.PoolAvailableRewards(pools[poolId-1].PoolAppId, pools[poolId-1].TotalAlgoStaked)
 
-	var nfdLookup *nfdonchain.NfdApi
-	if command.Bool("nfd") {
-		nfdLookup, err = nfdonchain.NewNfdApi(App.algoClient, command.String("network"))
-		if err != nil {
-			misc.Warnf(App.logger, "unable to use nfd lookups: %v", err)
-		}
-	}
-
 	out := new(strings.Builder)
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(tw, "Account\tStaked\tTotal Rewarded\tRwd Tokens\tPct\tEntry Round\t")
@@ -323,9 +314,9 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 			continue
 		}
 		var stakerName = stakerData.Account.String()
-		if nfdLookup != nil {
-			if nfds, err := nfdLookup.FindByAddress(context.Background(), stakerData.Account.String()); err == nil {
-				nfdInfo, err := nfdLookup.GetNFD(context.Background(), nfds[0], false)
+		if command.Bool("nfd") {
+			if nfds, err := App.nfdOnChain.FindByAddress(context.Background(), stakerData.Account.String()); err == nil {
+				nfdInfo, err := App.nfdOnChain.GetNFD(context.Background(), nfds[0], false)
 				if err == nil {
 					stakerName = nfdInfo.Internal["name"]
 				}

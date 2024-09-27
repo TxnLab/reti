@@ -9,6 +9,10 @@
  */
 package swagger
 
+import (
+	"time"
+)
+
 // NFDAnalyticEvent contains a price history record for a point in time of an NFD
 type NfdAnalyticEvent struct {
 	Block int64  `json:"block,omitempty"`
@@ -22,8 +26,12 @@ type NfdAnalyticEvent struct {
 	GroupID      string   `json:"groupID,omitempty"`
 	MetaTags     []string `json:"metaTags,omitempty"`
 	// NFD Name
-	Name     string `json:"name,omitempty"`
-	Note     string `json:"note,omitempty"`
-	SaleType string `json:"saleType,omitempty"`
-	Seller   string `json:"seller,omitempty"`
+	Name string `json:"name,omitempty"`
+	// new expiration time set from minting or renewing
+	NewExpTime time.Time `json:"newExpTime,omitempty"`
+	Note       string    `json:"note,omitempty"`
+	// price for one year mint/renew
+	OneYearRenewalPrice int64  `json:"oneYearRenewalPrice,omitempty"`
+	SaleType            string `json:"saleType,omitempty"`
+	Seller              string `json:"seller,omitempty"`
 }
