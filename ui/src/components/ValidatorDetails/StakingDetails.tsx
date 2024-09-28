@@ -423,7 +423,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
             Staking Details
             {poolsInfo.length > 0 && (
               <Select value={selectedPool} onValueChange={handleSelectValueChange}>
-                <SelectTrigger className="-my-2.5 w-[120px]" aria-label="Select pool">
+                <SelectTrigger className="-my-2.5 w-[120px]" aria-label="Select a pool">
                   <SelectValue placeholder="Select a pool" />
                 </SelectTrigger>
                 <SelectContent>

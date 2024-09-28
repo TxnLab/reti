@@ -380,7 +380,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                       }}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Select asset gating type">
                           <SelectValue placeholder="Select asset gating type" />
                         </SelectTrigger>
                       </FormControl>

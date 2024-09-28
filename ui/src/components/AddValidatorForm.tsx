@@ -566,7 +566,10 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         />
                         <Select value={epochTimeframe} onValueChange={setEpochTimeframe}>
                           <FormControl>
-                            <SelectTrigger className="w-[11rem] rounded-r-md rounded-l-none -ml-px">
+                            <SelectTrigger
+                              className="w-[11rem] rounded-r-md rounded-l-none -ml-px"
+                              aria-label="Select timeframe"
+                            >
                               <SelectValue placeholder="Select timeframe" />
                             </SelectTrigger>
                           </FormControl>
@@ -639,7 +642,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger aria-label="Select number of pools">
                             <SelectValue placeholder="Select number of pools" />
                           </SelectTrigger>
                         </FormControl>
@@ -831,7 +834,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         }}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger aria-label="Select asset gating type">
                             <SelectValue placeholder="Select asset gating type" />
                           </SelectTrigger>
                         </FormControl>

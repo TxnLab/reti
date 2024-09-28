@@ -281,8 +281,8 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                   ) : (
                     <>
                       <Select onValueChange={handleSetSelectedPool} value={selectedPoolId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a verified email to display" />
+                        <SelectTrigger aria-label="Select a pool">
+                          <SelectValue placeholder="Select a pool" />
                         </SelectTrigger>
                         <SelectContent>
                           {stakerPoolsData
