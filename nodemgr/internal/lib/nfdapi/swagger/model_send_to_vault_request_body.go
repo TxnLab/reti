@@ -11,7 +11,9 @@ package swagger
 
 type SendToVaultRequestBody struct {
 	// Base amount (in base units of specified asset - so decimals must be considered) of asset to send.   If multiple assets specified, amount is ignored and ALL of each are sent
-	Amount int64 `json:"amount"`
+	Amount int64 `json:"amount,omitempty"`
+	// String version of Base amount (in base units of specified asset - so decimals must be considered) of asset to send.  This is used to work around JS deficiencies with bigint
+	AmountStr string `json:"amountStr,omitempty"`
 	// Algorand ASA IDs to transfer (and opt-in inside vault if necessary) - use asset 0 to send ALGO.  Specifying multiple assets means ALL of each are sent and amount is ignored. 13 is max assets that can be specified if they're being sent (2 for MBR payments, 2 for opt-in txns (8+4 asset opt-ins), 12 asset transfers).  If opt-in only then 64 is maximum (1 MBR per 8 assets, 8 assets per txn * 8 txns)
 	Assets []int64 `json:"assets"`
 	// Optional note to include in asset send transaction

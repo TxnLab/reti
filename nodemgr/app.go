@@ -20,6 +20,7 @@ import (
 	"github.com/TxnLab/reti/internal/lib/algo"
 	"github.com/TxnLab/reti/internal/lib/misc"
 	"github.com/TxnLab/reti/internal/lib/nfdapi/swagger"
+	"github.com/TxnLab/reti/internal/lib/nfdonchain"
 	"github.com/TxnLab/reti/internal/lib/reti"
 )
 
@@ -129,6 +130,8 @@ type RetiApp struct {
 	signer     algo.MultipleWalletSigner
 	algoClient *algod.Client
 	nfdApi     *swagger.APIClient
+	nfdOnChain *nfdonchain.NfdApi
+
 	retiClient *reti.Reti
 
 	// just here for flag bootstrapping destination
@@ -137,8 +140,8 @@ type RetiApp struct {
 	retiNodeNum     uint64
 }
 
-// initClients initializes both an an algod client (to correct network - which it
-// also validates) and an nfd nfdApi client - for nfd updates or fetches if caller
+// initClients initializes both an algod client (to correct network - which it
+// also validates) and a nfd nfdApi client - for nfd updates or fetches if caller
 // desires
 func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	network := cmd.String("network")
@@ -213,6 +216,11 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 
 	ac.algoClient = algoClient
 	ac.nfdApi = api
+	nfdOnChain, err := nfdonchain.NewNfdApi(algoClient, cmd.String("network"))
+	if err != nil {
+		return fmt.Errorf("failed to initialize nfd onchain api client: %v", err)
+	}
+	ac.nfdOnChain = nfdOnChain
 
 	// Initialize the 'reti' client
 	retiClient, err := reti.New(ac.retiAppID, ac.logger, ac.algoClient, ac.signer, ac.retiValidatorID, ac.retiNodeNum)

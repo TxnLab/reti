@@ -1320,12 +1320,11 @@ export class ValidatorRegistry extends Contract {
         // verify NFD user wants to offer up for testing is at least 'real' - since we just have app id - fetch its name then do is valid call
         const userOfferedNFDName = AppID.fromUint64(nfdAppID).globalState('i.name') as string
 
-        sendAppCall({
+        return sendMethodCall<[string, uint64], boolean>({
             applicationID: AppID.fromUint64(this.nfdRegistryAppId),
-            applicationArgs: ['is_valid_nfd_appid', userOfferedNFDName, itob(nfdAppID)],
-            applications: [AppID.fromUint64(nfdAppID)],
+            name: 'isValidNfdAppId',
+            methodArgs: [userOfferedNFDName, nfdAppID],
         })
-        return btoi(this.itxn.lastLog) === 1
     }
 
     /**

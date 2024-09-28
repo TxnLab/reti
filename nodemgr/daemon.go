@@ -37,19 +37,22 @@ type Daemon struct {
 	logger     *slog.Logger
 	algoClient *algod.Client
 
+	listenPort int
+
 	// embed mutex for locking state for members below the mutex
 	sync.RWMutex
 	avgBlockTime time.Duration
 }
 
-func newDaemon() *Daemon {
+func newDaemon(listenPort int) *Daemon {
 	return &Daemon{
 		logger:     App.retiClient.Logger,
 		algoClient: App.algoClient,
+		listenPort: listenPort,
 	}
 }
 
-func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc, listenPort int) {
+func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc) {
 	misc.Infof(d.logger, "Réti daemon, version:%s started", getVersionInfo())
 	wg.Add(1)
 	go func() {
@@ -68,11 +71,21 @@ func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, cancel context.C
 
 	wg.Add(1)
 	go func() {
+		info := App.retiClient.Info()
+		if info.Config.EntryGatingType == reti.GatingTypeNone {
+			return
+		}
+		defer wg.Done()
+		d.StakerEvictor(ctx)
+	}()
+
+	wg.Add(1)
+	go func() {
 		defer wg.Done()
 		http.Handle("/ready", isReady())
 		http.Handle("/metrics", promhttp.Handler())
 
-		host := fmt.Sprintf(":%d", listenPort)
+		host := fmt.Sprintf(":%d", d.listenPort)
 		srv := &http.Server{Addr: host}
 		go func() {
 			misc.Infof(d.logger, "HTTP server listening on %q", host)
@@ -543,6 +556,7 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 
 	misc.Infof(d.logger, "at round:%d, with epoch length:%d, first epoch check at %d", curRound, epochRoundLength, stopAtRound)
 
+	signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 	for {
 		select {
 		case <-ctx.Done():
@@ -554,7 +568,6 @@ func (d *Daemon) EpochUpdater(ctx context.Context) {
 			}
 			stopAtRound = nextEpoch(blockWaitResult.atRound, epochRoundLength)
 
-			signerAddr, _ := types.DecodeAddress(App.retiClient.Info().Config.Manager)
 			var (
 				wg   syncutil.WaitGroup
 				info = App.retiClient.Info()
@@ -668,6 +681,23 @@ func (d *Daemon) getFirstEligibleEpochRound(curRound uint64, epochRoundLength ui
 		}
 	}
 	return earliestEpochToUse
+}
+
+func (d *Daemon) StakerEvictor(ctx context.Context) {
+	d.logger.Info("StakerEvictor started")
+	defer d.logger.Info("StakerEvictor stopped")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(5 * time.Minute):
+			err := d.checkForEvictions(ctx)
+			if err != nil {
+				misc.Errorf(d.logger, "error in eviction check: checking for evictions, err:%v", err)
+			}
+		}
+	}
 }
 
 // accountHasAtLeast checks if an account has at least a certain amount of microAlgos (spendable)

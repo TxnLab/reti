@@ -91,8 +91,6 @@ export class StakingPool extends Contract {
 
     nfdRegistryAppId = TemplateVar<uint64>()
 
-    feeSinkAddr = TemplateVar<Address>()
-
     /**
      * Initialize the staking pool w/ owner and manager, but can only be created by the validator contract.
      * @param {uint64} creatingContractId - id of contract that constructed us - the validator application (single global instance)
@@ -655,7 +653,7 @@ export class StakingPool extends Contract {
             excessToFeeSink = algoRewardAvail - diminishedReward
             sendPayment({
                 amount: excessToFeeSink,
-                receiver: this.getFeeSink(),
+                receiver: blocks[this.txn.firstValid - 1].feeSink,
                 note: 'pool saturated, excess to fee sink',
             })
             // then distribute the smaller reward amount like normal (skipping validator payout entirely)
@@ -959,10 +957,6 @@ export class StakingPool extends Contract {
             methodArgs: [this.validatorId.value],
         })
         return this.txn.sender === OwnerAndManager[0] || this.txn.sender === OwnerAndManager[1]
-    }
-
-    private getFeeSink(): Address {
-        return this.feeSinkAddr
     }
 
     /**

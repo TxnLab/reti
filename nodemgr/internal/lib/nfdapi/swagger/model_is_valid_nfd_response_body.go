@@ -9,7 +9,7 @@
  */
 package swagger
 
-// Whether NFD App id is for authentic NFD
+// Whether NFD App ID is for authentic NFD
 type IsValidNfdResponseBody struct {
 	IsValid        bool   `json:"isValid"`
 	Message        string `json:"message"`

@@ -9,9 +9,9 @@
  */
 package swagger
 
-type TotalsOkResponseBodySegmentTotals struct {
-	Day      int32 `json:"day,omitempty"`
-	Lifetime int32 `json:"lifetime,omitempty"`
-	Month    int32 `json:"month,omitempty"`
-	Week     int32 `json:"week,omitempty"`
+type TotalsOkResponseBodyContractTotals struct {
+	// Contract versions
+	AllVersions map[string]int64 `json:"allVersions,omitempty"`
+	// Contract versions
+	MajorVersions map[string]int64 `json:"majorVersions,omitempty"`
 }

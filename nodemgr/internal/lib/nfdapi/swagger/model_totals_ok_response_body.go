@@ -10,7 +10,10 @@
 package swagger
 
 type TotalsOkResponseBody struct {
-	ForSale int64 `json:"forSale"`
+	ContractTotals *TotalsOkResponseBodyContractTotals `json:"contractTotals"`
+	// NFDs that have expired
+	ExpiredTotal int64 `json:"expiredTotal"`
+	ForSale      int64 `json:"forSale"`
 	// Not returned, used in tagging for response to indicate if-none-match etag matched
 	MatchCheck    string                            `json:"match-check,omitempty"`
 	MintedTotals  *TotalsOkResponseBodyMintedTotals `json:"mintedTotals"`

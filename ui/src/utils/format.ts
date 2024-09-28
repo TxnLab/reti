@@ -19,7 +19,7 @@ export function convertFromBaseUnits(
     const divisor = decimals ? new Big(10).pow(Number(decimals)) : new Big(1)
     const bigAmount = typeof amount === 'bigint' ? new Big(amount.toString()) : new Big(amount)
     return bigAmount.div(divisor).toNumber()
-  } catch (error) {
+  } catch {
     return NaN
   }
 }
@@ -42,7 +42,7 @@ export function convertToBaseUnits(
     const multiplier = decimals ? new Big(10).pow(Number(decimals)) : new Big(1)
     const bigAmount = typeof amount === 'bigint' ? new Big(amount.toString()) : new Big(amount)
     return bigAmount.times(multiplier).toNumber()
-  } catch (error) {
+  } catch {
     return NaN
   }
 }
@@ -103,7 +103,7 @@ export function formatAmount(
     }
 
     fixedAmount = bigAmount.toFixed(precision)
-  } catch (error) {
+  } catch {
     return 'NaN'
   }
 

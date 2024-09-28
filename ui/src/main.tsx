@@ -62,6 +62,9 @@ const walletManager = new WalletManager({
     port: algodConfig.port,
     token: algodConfig.token as string,
   },
+  options: {
+    resetNetwork: true,
+  },
 })
 
 // Tanstack Query client instance

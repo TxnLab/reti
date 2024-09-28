@@ -491,46 +491,23 @@ export async function fetchValueToVerify(
   if (entryGatingType === GatingType.SegmentNfd) {
     const parentAppID = entryGatingAssets[0]
 
-    let offset = 0
-    const limit = 20
-    let hasMoreRecords = true
-
-    while (hasMoreRecords) {
+    try {
       const params: NfdSearchV2Params = {
         parentAppID,
+        state: ['owned'],
         owner: activeAddress,
         view: 'brief',
-        limit: limit,
-        offset: offset,
+        limit: 1,
       }
-
-      try {
-        const result = await fetchNfdSearch(params, { cache: false })
-
-        if (result.nfds.length === 0) {
-          return 0
-        }
-
-        const nfdSegment = result.nfds.find((nfd) =>
-          heldAssets.some((asset) => asset['asset-id'] === nfd.asaID),
-        )
-
-        if (nfdSegment) {
-          return nfdSegment.appID || 0
-        }
-
-        if (result.nfds.length < limit) {
-          hasMoreRecords = false
-        } else {
-          offset += limit
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        throw error
+      const result = await fetchNfdSearch(params, { cache: false })
+      if (result.nfds.length === 0) {
+        return 0
       }
+      return result.nfds[0].appID!
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      throw error
     }
-
-    return 0
   }
 
   return 0

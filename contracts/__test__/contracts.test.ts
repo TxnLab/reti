@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest
 import { algoKitLogCaptureFixture, algorandFixture } from '@algorandfoundation/algokit-utils/testing'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { Account, decodeAddress, encodeAddress, getApplicationAddress } from 'algosdk'
+import { Account, encodeAddress, getApplicationAddress } from 'algosdk'
 import { assetOptIn, transferAlgos, transferAsset } from '@algorandfoundation/algokit-utils'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
@@ -37,7 +37,7 @@ import {
     ValidatorPoolKey,
 } from '../helpers/helpers'
 
-const FEE_SINK_ADDR = 'Y76M3MSY6DKBRHBL7C3NNDXGS5IIMQVQVUAB6MP4XEMMGVF2QWNPL226CA'
+const FEE_SINK_ADDR = 'A7NMWS3NT3IUDMLVO26ULGXGIIOUQ3ND2TXSER6EBGRZNOBOUIQXHIBGDE'
 
 const MaxPoolsPerNode = 3
 // Periodically set this to max amount allowed in protocol (200 atm) but when testing more frequently this should be lowered to something like 20 stakers
@@ -77,7 +77,6 @@ beforeAll(async () => {
     const { approvalCompiled } = await poolClient.appClient.compile({
         deployTimeParams: {
             nfdRegistryAppId: 0,
-            feeSinkAddr: decodeAddress(FEE_SINK_ADDR).publicKey,
         },
     })
     validatorMasterClient = new ValidatorRegistryClient(
@@ -450,7 +449,7 @@ describe('StakeAdds', () => {
         // capture current 'total' state for all pools
         const origValidatorState = await getValidatorState(validatorMasterClient, validatorId)
 
-        // we create 'max pools per node' new pools on new node (first pool is still there which wee added as part of beforeAll)
+        // we create 'max pools per node' new pools on new node (first pool is still there which we added as part of beforeAll)
         for (let i = 0; i < poolsToCreate; i += 1) {
             const newPool = await addStakingPool(
                 fixture.context,

@@ -1,6 +1,6 @@
 {
     "name": "reti-contracts",
-    "version": "0.9.9",
+    "version": "0.10.0",
     "license": "MIT",
     "scripts": {
         "generate-client": "algokit generate client contracts/artifacts/ --language typescript  --output contracts/clients/{contract_name}Client.ts && ./update_contract_artifacts.sh",
@@ -8,8 +8,9 @@
         "generate-components": "algokit-generate-component contracts/artifacts/validatorRegistry.arc32.json contracts/artifacts/components",
         "noalgobuild": "pnpm run compile-contract -- --skip-algod && pnpm run generate-client",
         "build": "pnpm run compile-contract && pnpm run generate-client",
-        "test": "pnpm run build && vitest",
-        "retest": "vitest",
+        "test": "pnpm run build && vitest --run --test-timeout=120000",
+        "retest": "vitest --run --test-timeout=120000",
+        "localnet": "algokit localnet start --name master --config-dir ./localnet_config",
         "lint": "eslint . --ext ts --max-warnings 0",
         "lint:fix": "eslint . --ext ts --max-warnings 0 --fix",
         "prettier": "npx prettier --check .",
@@ -21,11 +22,11 @@
     },
     "devDependencies": {
         "@algorandfoundation/algokit-client-generator": "^3.0.6",
-        "@algorandfoundation/tealscript": "^0.100.2",
+        "@algorandfoundation/tealscript": "^0.103.0",
         "@joe-p/algokit-generate-component": "^0.2.1",
-        "@typescript-eslint/eslint-plugin": "7.16.1",
-        "@typescript-eslint/parser": "7.16.1",
-        "eslint": "8.57.0",
+        "@typescript-eslint/eslint-plugin": "8.7.0",
+        "@typescript-eslint/parser": "8.7.0",
+        "eslint": "8.57.1",
         "eslint-config-airbnb-base": "^15.0.0",
         "eslint-config-airbnb-typescript": "^18.0.0",
         "eslint-config-prettier": "^9.1.0",
@@ -33,6 +34,6 @@
         "eslint-plugin-prettier": "^5.1.3",
         "prettier": "^3.2.5",
         "typescript": "^5.4.5",
-        "vitest": "^2.0.5"
+        "vitest": "2.1.1"
     }
 }

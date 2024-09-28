@@ -15,9 +15,9 @@ import (
 
 // NFD contains all known information about an NFD record
 type Nfd struct {
-	// NFD Application id
+	// NFD Application ID
 	AppID int64 `json:"appID,omitempty"`
-	// NFD ASA id
+	// NFD ASA ID
 	AsaID int64 `json:"asaID,omitempty"`
 	// Whether the verified Avatar set in this NFD is newer (arc19) then is set into the NFD. This will only be present on direct NFD fetch and if true
 	AvatarOutdated bool `json:"avatarOutdated,omitempty"`
@@ -31,14 +31,15 @@ type Nfd struct {
 	// account wallets should send funds to - precedence is: caAlgo[0], unverifiedCaAlgo[0], owner
 	DepositAccount string `json:"depositAccount,omitempty"`
 	// ETag
-	Etag string `json:"etag,omitempty"`
+	Etag    string `json:"etag,omitempty"`
+	Expired bool   `json:"expired,omitempty"`
 	// Tags set by the system for tracking/analytics
 	MetaTags   []string `json:"metaTags,omitempty"`
 	Name       string   `json:"name"`
 	NfdAccount string   `json:"nfdAccount,omitempty"`
 	// Owner of NFD
 	Owner string `json:"owner,omitempty"`
-	// NFD Application id of Parent if this is a segment
+	// NFD Application ID of Parent if this is a segment
 	ParentAppID int64          `json:"parentAppID,omitempty"`
 	Properties  *NfdProperties `json:"properties,omitempty"`
 	// Reserved owner of NFD
@@ -54,6 +55,7 @@ type Nfd struct {
 	Tags          []string  `json:"tags,omitempty"`
 	TimeChanged   time.Time `json:"timeChanged,omitempty"`
 	TimeCreated   time.Time `json:"timeCreated,omitempty"`
+	TimeExpires   time.Time `json:"timeExpires,omitempty"`
 	TimePurchased time.Time `json:"timePurchased,omitempty"`
 	// Unverified (non-algo) Crypto addresses for this NFD
 	UnverifiedCa map[string][]string `json:"unverifiedCa,omitempty"`

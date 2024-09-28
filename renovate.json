@@ -9,6 +9,7 @@
   "separateMultipleMajor": true,
   "separateMajorMinor": true,
   "separateMinorPatch": false,
+  "ignorePaths": ["ui/.copier-answers.yml"],
   "packageRules": [
     {
       "matchCategories": ["node"],
