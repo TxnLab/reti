@@ -44,7 +44,9 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Staked</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Total Staked
+            </CardTitle>
             <Coins className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -61,7 +63,9 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stakers</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Stakers
+            </CardTitle>
             <Users className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -72,7 +76,9 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pools</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Pools
+            </CardTitle>
             <svg
               viewBox="0 0 576 512"
               className="h-5 w-5 text-muted-foreground"
@@ -100,7 +106,9 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Commission</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Commission
+            </CardTitle>
             <Percent className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>

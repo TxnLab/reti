@@ -52,7 +52,7 @@ export function Footer() {
           ))}
         </div>
         <div className="mt-8 md:order-1 md:mt-0">
-          <p className="text-center text-sm leading-5 text-stone-500">
+          <p className="text-center text-sm leading-5 text-stone-600 dark:text-stone-400">
             Réti Pooling v{__APP_VERSION__} <span className="mx-1 opacity-50">|</span>{' '}
             <a
               href="https://github.com/TxnLab/reti"

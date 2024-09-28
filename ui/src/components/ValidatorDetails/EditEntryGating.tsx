@@ -348,7 +348,10 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                 <FormItem>
                   <FormLabel>
                     Gating type
-                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                    <InfoPopover
+                      className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                      label="Gating type"
+                    >
                       Require stakers to hold a qualified asset to enter pool (optional)
                     </InfoPopover>
                   </FormLabel>
@@ -404,15 +407,23 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               name="entryGatingAddress"
               render={({ field }) => (
                 <FormItem className={cn({ hidden: !showCreatorAddressField })}>
-                  <FormLabel>
+                  <FormLabel htmlFor="edit-gating-creator-account-input">
                     Asset creator account
-                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                    <InfoPopover
+                      className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                      label="Asset creator account"
+                    >
                       Must hold asset created by this account to enter pool
                     </InfoPopover>
                     <span className="text-primary">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input className="font-mono" placeholder="" {...field} />
+                    <Input
+                      id="edit-gating-creator-account-input"
+                      className="font-mono placeholder:font-sans"
+                      placeholder="Enter creator account address"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage>{errors.entryGatingAddress?.message}</FormMessage>
                 </FormItem>
@@ -424,12 +435,19 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                 <div key={field.id} className="flex items-end">
                   <AssetLookup
                     form={form}
+                    id={`edit-gating-asset-${index}-input`}
                     name={`entryGatingAssets.${index}.value`}
                     className="flex-1"
                     label={
-                      <FormLabel className={cn(index !== 0 && 'sr-only')}>
+                      <FormLabel
+                        htmlFor={`edit-gating-asset-${index}-input`}
+                        className={cn(index !== 0 && 'sr-only')}
+                      >
                         Asset ID
-                        <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                        <InfoPopover
+                          className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                          label="Asset ID"
+                        >
                           Must hold asset with this ID to enter pool
                         </InfoPopover>
                         <span className="text-primary">*</span>
@@ -482,9 +500,12 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               name="entryGatingNfdCreator"
               render={({ field }) => (
                 <FormItem className={cn({ hidden: !showCreatorNfdField })}>
-                  <FormLabel>
+                  <FormLabel htmlFor="edit-gating-creator-nfd-input">
                     Asset creator NFD
-                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                    <InfoPopover
+                      className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                      label="Asset creator NFD"
+                    >
                       Must hold asset created by an account linked to this NFD to enter pool
                     </InfoPopover>
                     <span className="text-primary">*</span>
@@ -492,6 +513,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                   <div className="relative">
                     <FormControl>
                       <Input
+                        id="edit-gating-creator-nfd-input"
                         className={cn(isFetchingNfdCreator || nfdCreatorAppId > 0 ? 'pr-10' : '')}
                         placeholder=""
                         autoComplete="new-password"
@@ -542,9 +564,12 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
               name="entryGatingNfdParent"
               render={({ field }) => (
                 <FormItem className={cn({ hidden: !showParentNfdField })}>
-                  <FormLabel>
+                  <FormLabel htmlFor="edit-gating-parent-nfd-input">
                     Root/parent NFD
-                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                    <InfoPopover
+                      className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                      label="Root/parent NFD"
+                    >
                       Must hold a segment of this root/parent NFD to enter pool
                     </InfoPopover>
                     <span className="text-primary">*</span>
@@ -553,6 +578,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                     <div className="flex-1 relative">
                       <FormControl>
                         <Input
+                          id="edit-gating-parent-nfd-input"
                           className={cn(
                             '',
                             isFetchingNfdParent || nfdParentAppId > 0 ? 'pr-10' : '',
@@ -640,14 +666,17 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
                 <FormItem
                   className={cn('sm:col-start-2 sm:col-end-3', { hidden: !showMinBalanceField })}
                 >
-                  <FormLabel>
+                  <FormLabel htmlFor="edit-gating-min-balance-input">
                     Minimum balance
-                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                    <InfoPopover
+                      className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                      label="Minimum balance"
+                    >
                       Optional minimum required balance of the entry gating asset.
                     </InfoPopover>
                   </FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input id="edit-gating-min-balance-input" placeholder="0.000000" {...field} />
                   </FormControl>
                   <FormDescription>No minimum if left blank</FormDescription>
                   <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>
