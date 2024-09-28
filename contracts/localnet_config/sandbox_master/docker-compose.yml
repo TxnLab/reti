@@ -38,7 +38,7 @@ services:
 
   indexer-db:
     container_name: "algokit_sandbox_master_postgres"
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     ports:
       - 5443:5432
     user: postgres
