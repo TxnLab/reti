@@ -12,7 +12,7 @@
     "license": "MIT",
     "dependencies": {
         "@algorandfoundation/algokit-utils": "^6.2.1",
-        "algosdk": "^2.9.0",
+        "algosdk": "^3.0.0",
         "prompts": "^2.4.2",
         "yargs": "^17.7.2"
     },
