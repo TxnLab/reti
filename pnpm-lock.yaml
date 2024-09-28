@@ -12,10 +12,10 @@ importers:
     dependencies:
       '@algorandfoundation/algokit-utils':
         specifier: ^6.2.1
-        version: 6.2.1(algosdk@2.9.0)
+        version: 6.2.1(algosdk@3.0.0)
       algosdk:
-        specifier: ^2.9.0
-        version: 2.9.0
+        specifier: ^3.0.0
+        version: 3.0.0
     devDependencies:
       '@algorandfoundation/algokit-client-generator':
         specifier: ^3.0.6
@@ -2366,8 +2366,16 @@ packages:
     resolution: {integrity: sha512-F1tGh056XczEaEAqu7s+hlZUDWwOBT70Eq0lfMpBP2YguSQVyxRbprLq5rELXKQOyOaixTWYhMeMQMzP0U5FoQ==}
     engines: {node: '>= 10'}
 
+  algorand-msgpack@1.1.0:
+    resolution: {integrity: sha512-08k7pBQnkaUB5p+jL7f1TRaUIlTSDE0cesFu1mD7llLao+1cAhtvvZmGE3OnisTd0xOn118QMw74SRqddqaYvw==}
+    engines: {node: '>= 14'}
+
   algosdk@2.9.0:
     resolution: {integrity: sha512-o0n0nLMbTX6SFQdMUk2/2sy50jmEmZk5OTPYSh2aAeP8DUPxrhjMPfwGsYNvaO+qk75MixC2eWpfA9vygCQ/Mg==}
+    engines: {node: '>=18.0.0'}
+
+  algosdk@3.0.0:
+    resolution: {integrity: sha512-PIKZ/YvbBpCudduug4KSH1CY/pTotI7/ccbUIbXKtcI9Onevl+57E+K5X4ow4gsCdysZ8zVvSLdxuCcXvsmPOw==}
     engines: {node: '>=18.0.0'}
 
   ansi-escapes@4.3.2:
@@ -5356,6 +5364,11 @@ snapshots:
       algosdk: 2.9.0
       buffer: 6.0.3
 
+  '@algorandfoundation/algokit-utils@6.2.1(algosdk@3.0.0)':
+    dependencies:
+      algosdk: 3.0.0
+      buffer: 6.0.3
+
   '@algorandfoundation/tealscript@0.103.0':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
@@ -7605,10 +7618,23 @@ snapshots:
 
   algo-msgpack-with-bigint@2.1.1: {}
 
+  algorand-msgpack@1.1.0: {}
+
   algosdk@2.9.0:
     dependencies:
       algo-msgpack-with-bigint: 2.1.1
       buffer: 6.0.3
+      hi-base32: 0.5.1
+      js-sha256: 0.9.0
+      js-sha3: 0.8.0
+      js-sha512: 0.8.0
+      json-bigint: 1.0.0
+      tweetnacl: 1.0.3
+      vlq: 2.0.4
+
+  algosdk@3.0.0:
+    dependencies:
+      algorand-msgpack: 1.1.0
       hi-base32: 0.5.1
       js-sha256: 0.9.0
       js-sha3: 0.8.0
