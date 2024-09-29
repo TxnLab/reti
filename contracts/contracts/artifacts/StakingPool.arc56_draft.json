@@ -139,6 +139,7 @@
     {
       "name": "getStakerInfo",
       "desc": "Retrieves the staked information for a given staker.",
+      "readonly": true,
       "args": [
         {
           "name": "staker",
@@ -7865,7 +7866,7 @@
       },
       {
         "teal": 1731,
-        "source": 451,
+        "source": 450,
         "pc": [
           1801,
           1802
@@ -7919,7 +7920,7 @@
       },
       {
         "teal": 1744,
-        "source": 451,
+        "source": 450,
         "pc": [
           1812,
           1813,
@@ -7928,35 +7929,35 @@
       },
       {
         "teal": 1745,
-        "source": 451,
+        "source": 450,
         "pc": [
           1815
         ]
       },
       {
         "teal": 1746,
-        "source": 451,
+        "source": 450,
         "pc": [
           1816
         ]
       },
       {
         "teal": 1747,
-        "source": 451,
+        "source": 450,
         "pc": [
           1817
         ]
       },
       {
         "teal": 1748,
-        "source": 451,
+        "source": 450,
         "pc": [
           1818
         ]
       },
       {
         "teal": 1758,
-        "source": 451,
+        "source": 450,
         "pc": [
           1819,
           1820,
@@ -7965,7 +7966,7 @@
       },
       {
         "teal": 1761,
-        "source": 451,
+        "source": 450,
         "pc": [
           1822,
           1823
@@ -8340,7 +8341,7 @@
       },
       {
         "teal": 1846,
-        "source": 451,
+        "source": 450,
         "pc": [
           1902,
           1903
@@ -8348,7 +8349,7 @@
       },
       {
         "teal": 1847,
-        "source": 451,
+        "source": 450,
         "pc": [
           1904
         ]

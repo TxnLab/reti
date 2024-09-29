@@ -447,7 +447,7 @@ export class StakingPool extends Contract {
      * @returns {StakedInfo} - The staked information for the given staker.
      * @throws {Error} - If the staker's account is not found.
      */
-    // @abi.readonly
+    @abi.readonly
     getStakerInfo(staker: Address): StakedInfo {
         for (let i = 0; i < this.stakers.value.length; i += 1) {
             if (globals.opcodeBudget < 200) {
