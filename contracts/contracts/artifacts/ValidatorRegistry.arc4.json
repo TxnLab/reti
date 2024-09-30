@@ -71,6 +71,7 @@
     {
       "name": "getNumValidators",
       "desc": "Returns the current number of validators",
+      "readonly": true,
       "args": [],
       "returns": {
         "type": "uint64"
@@ -78,6 +79,7 @@
     },
     {
       "name": "getValidatorConfig",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -90,6 +92,7 @@
     },
     {
       "name": "getValidatorState",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -102,6 +105,7 @@
     },
     {
       "name": "getValidatorOwnerAndManager",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -115,6 +119,7 @@
     {
       "name": "getPools",
       "desc": "Return list of all pools for this validator.",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -128,6 +133,8 @@
     },
     {
       "name": "getPoolAppId",
+      "desc": "getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or\nwant to get staker list for an account.  The staking pool also uses it to get the app id of staking pool 1\n(which contains reward tokens if being used) so that the amount available can be determined.",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -144,6 +151,7 @@
     },
     {
       "name": "getPoolInfo",
+      "readonly": true,
       "args": [
         {
           "name": "poolKey",
@@ -157,6 +165,7 @@
     {
       "name": "getCurMaxStakePerPool",
       "desc": "Calculate the maximum stake per pool for a given validator.\nNormally this would be maxAlgoPerPool, but it should also never go above MaxAllowedStake / numPools so\nas pools are added the max allowed per pool can reduce.",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -171,6 +180,7 @@
     {
       "name": "doesStakerNeedToPayMBR",
       "desc": "Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount",
+      "readonly": true,
       "args": [
         {
           "name": "staker",
@@ -184,6 +194,7 @@
     {
       "name": "getStakedPoolsForAccount",
       "desc": "Retrieves the staked pools for an account.",
+      "readonly": true,
       "args": [
         {
           "name": "staker",
@@ -198,6 +209,7 @@
     {
       "name": "getTokenPayoutRatio",
       "desc": "Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token\npayouts across pools can be based on a stable snaphost of stake.",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -211,6 +223,7 @@
     },
     {
       "name": "getNodePoolAssignments",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",
@@ -223,6 +236,7 @@
     },
     {
       "name": "getNFDRegistryID",
+      "readonly": true,
       "args": [],
       "returns": {
         "type": "uint64"
@@ -644,6 +658,7 @@
     {
       "name": "findPoolForStaker",
       "desc": "Finds the pool for a staker based on the provided validator id, staker address, and amount to stake.\nFirst checks the stakers 'already staked list' for the validator preferring those (adding if possible) then adds\nto new pool if necessary.",
+      "readonly": true,
       "args": [
         {
           "name": "validatorId",

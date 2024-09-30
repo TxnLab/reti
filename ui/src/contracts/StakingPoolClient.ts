@@ -295,6 +295,7 @@ export const APP_SPEC: AppSpec = {
       {
         "name": "getStakerInfo",
         "desc": "Retrieves the staked information for a given staker.",
+        "readonly": true,
         "args": [
           {
             "name": "staker",

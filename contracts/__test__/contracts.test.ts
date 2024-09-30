@@ -4500,23 +4500,5 @@ describe('CoinFabrik Audit suggested extra tests', () => {
                     .execute({ populateAppCallResources: true, suppressLog: true }),
             ).rejects.toThrowError()
         })
-
-        // FAILS - Reflects ISSUE MI-05
-        // invalid test - sunsetting is timestamp, not round and setting before now is way to instantly sunset which
-        // may be desired outcome.
-        test.skip('SunsettingOn cannot be set before now', async () => {
-            // set the new sunset 1000 rounds before now
-            const badSunset = (await fixture.context.algod.getTransactionParams().do()).firstRound - 1000
-
-            await expect(
-                validatorMasterClient
-                    .compose()
-                    .changeValidatorSunsetInfo(
-                        { validatorId, sunsettingOn: badSunset, sunsettingTo: validatorId },
-                        { sender: validatorOwnerAccount },
-                    )
-                    .execute({ populateAppCallResources: true, suppressLog: true }),
-            ).rejects.toThrowError()
-        })
     })
 })
