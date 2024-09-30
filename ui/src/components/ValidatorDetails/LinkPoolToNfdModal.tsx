@@ -137,7 +137,11 @@ export function LinkPoolToNfdModal({
         <div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleLinkNfd)}>
+              <label htmlFor="link-pool-to-nfd-input" className="sr-only">
+                NFD Name
+              </label>
               <NfdLookup
+                id="link-pool-to-nfd-input"
                 form={form}
                 name="nfdName"
                 nfd={nfd}

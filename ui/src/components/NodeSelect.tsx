@@ -17,7 +17,7 @@ interface NodeSelectProps {
 export function NodeSelect({ nodesInfo, value, onValueChange }: NodeSelectProps) {
   return (
     <Select onValueChange={onValueChange} value={value}>
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className="w-[180px]" aria-label="Select a node">
         <SelectValue placeholder="Select a node" />
       </SelectTrigger>
       <SelectContent>

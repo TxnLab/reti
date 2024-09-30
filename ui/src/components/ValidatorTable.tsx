@@ -176,16 +176,17 @@ export function ValidatorTable({
       cell: ({ row }) => {
         return row.getCanExpand() ? (
           <button
+            type="button"
+            aria-label={row.getIsExpanded() ? 'Collapse row' : 'Expand row'}
+            title={row.getIsExpanded() ? 'Collapse row' : 'Expand row'}
             data-state={row.getIsExpanded() ? 'open' : 'closed'}
             className="m-0 p-2 cursor-pointer [&[data-state=open]>svg]:rotate-90"
-            {...{
-              onClick: row.getToggleExpandedHandler(),
-            }}
+            onClick={row.getToggleExpandedHandler()}
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
         ) : (
-          <>&nbsp;</>
+          <span aria-hidden="true">&nbsp;</span>
         )
       },
     },
