@@ -3,7 +3,7 @@ import { algoKitLogCaptureFixture, algorandFixture } from '@algorandfoundation/a
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { consoleLogger } from '@algorandfoundation/algokit-utils/types/logging'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
-import { ABIType, Account, getApplicationAddress } from 'algosdk'
+import { Account, getApplicationAddress } from 'algosdk'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import {
     StakedInfo,
@@ -18,22 +18,22 @@ import {
     ValidatorRegistryFactory,
 } from '../contracts/clients_new/ValidatorRegistryClient'
 import {
-    ALGORAND_ZERO_ADDRESS_STRING,
-    GATING_TYPE_ASSETS_CREATED_BY,
-    GATING_TYPE_ASSET_ID,
     addStake,
     addStakingPool,
     addValidator,
+    ALGORAND_ZERO_ADDRESS_STRING,
     claimTokens,
     createAsset,
     createValidatorConfig,
     epochBalanceUpdate,
+    GATING_TYPE_ASSET_ID,
+    GATING_TYPE_ASSETS_CREATED_BY,
     getCurMaxStakePerPool,
     getPoolAvailBalance,
     getPoolInfo,
     getProtocolConstraints,
-    getStakeInfoFromBoxValue,
     getStakedPoolsForAccount,
+    getStakeInfoFromBoxValue,
     getStakerInfo,
     getTokenPayoutRatio,
     getValidatorState,
@@ -2170,15 +2170,6 @@ describe('reti', () => {
             expect(poolInfo.totalAlgoStaked).toEqual(0n)
         })
 
-        function bigIntFromBytes(bytes: Uint8Array): bigint {
-            let result = BigInt(0)
-            bytes.forEach((byte) => {
-                // eslint-disable-next-line no-bitwise
-                result = (result << BigInt(8)) | BigInt(byte)
-            })
-            return result
-        }
-
         // Dummy staker - add 3000 algo - and then we'll slowly remove stake to see if we can trigger remove stake bug
         test('stakeAccumTests', async () => {
             // Fund a 'staker account' that will be the new 'staker'
@@ -3395,7 +3386,7 @@ describe('reti', () => {
                 suppressLog: true,
             })
             await fixture.algorand.send.payment({
-                sender: fixture.context.testAccount.addr,
+                sender: rewardSender.addr,
                 receiver: getApplicationAddress(pools[2].poolAppId),
                 amount: AlgoAmount.MicroAlgos(rewardAmount),
             })
