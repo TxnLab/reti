@@ -16,6 +16,8 @@ func NewNfdApi(algoClient *algod.Client, network string) (*NfdApi, error) {
 	var appId uint64
 
 	switch network {
+	case "fnet":
+		appId = 0 // nfds aren't deployed on fnet
 	case "betanet":
 		appId = 842656530
 	case "testnet":
