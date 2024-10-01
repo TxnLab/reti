@@ -95,16 +95,16 @@ importers:
     dependencies:
       '@algorandfoundation/algokit-utils':
         specifier: ^6.2.1
-        version: 6.2.1(algosdk@2.9.0)
+        version: 6.2.1(algosdk@3.0.0)
       '@blockshake/defly-connect':
         specifier: 1.1.6
-        version: 1.1.6(algosdk@2.9.0)
+        version: 1.1.6(algosdk@3.0.0)
       '@hookform/resolvers':
         specifier: 3.9.0
         version: 3.9.0(react-hook-form@7.53.0(react@18.3.1))
       '@perawallet/connect':
         specifier: 1.3.4
-        version: 1.3.4(algosdk@2.9.0)
+        version: 1.3.4(algosdk@3.0.0)
       '@radix-ui/react-avatar':
         specifier: 1.1.0
         version: 1.1.0(@types/react-dom@18.3.0)(@types/react@18.3.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -170,16 +170,16 @@ importers:
         version: 1.56.5(@tanstack/react-router@1.56.5(@tanstack/router-generator@1.57.9)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(csstype@3.1.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tremor/react':
         specifier: 3.18.1
-        version: 3.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)))
+        version: 3.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)))
       '@txnlab/use-wallet-react':
         specifier: 3.7.0
-        version: 3.7.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.4.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 3.7.0(@blockshake/defly-connect@1.1.6(algosdk@3.0.0))(@perawallet/connect@1.3.4(algosdk@3.0.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@3.0.0)(lute-connect@1.4.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@walletconnect/modal-sign-html':
         specifier: 2.6.2
         version: 2.6.2(@types/react@18.3.5)(react@18.3.1)
       algosdk:
-        specifier: ^2.9.0
-        version: 2.9.0
+        specifier: ^3.0.0
+        version: 3.0.0
       axios:
         specifier: 1.7.4
         version: 1.7.4
@@ -242,7 +242,7 @@ importers:
         version: 2.5.2
       tailwindcss-animate:
         specifier: 1.0.7
-        version: 1.0.7(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)))
+        version: 1.0.7(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)))
       tslib:
         specifier: 2.7.0
         version: 2.7.0
@@ -251,7 +251,7 @@ importers:
         version: 10.0.3(react@18.3.1)
       vite-plugin-node-polyfills:
         specifier: 0.22.0
-        version: 0.22.0(rollup@4.22.0)(vite@5.4.6(@types/node@20.16.7))
+        version: 0.22.0(rollup@4.22.0)(vite@5.4.6(@types/node@20.16.5))
       zod:
         specifier: 3.23.8
         version: 3.23.8
@@ -261,7 +261,7 @@ importers:
         version: 1.47.0
       '@tanstack/router-vite-plugin':
         specifier: 1.56.4
-        version: 1.56.4(vite@5.4.6(@types/node@20.16.7))
+        version: 1.56.4(vite@5.4.6(@types/node@20.16.5))
       '@testing-library/dom':
         specifier: 10.4.0
         version: 10.4.0
@@ -276,7 +276,7 @@ importers:
         version: 6.2.2
       '@types/node':
         specifier: 20.16.5
-        version: 20.16.7
+        version: 20.16.5
       '@types/react':
         specifier: 18.3.5
         version: 18.3.5
@@ -291,10 +291,10 @@ importers:
         version: 8.5.0(eslint@8.57.0)(typescript@5.5.4)
       '@vitejs/plugin-react':
         specifier: 4.3.1
-        version: 4.3.1(vite@5.4.6(@types/node@20.16.7))
+        version: 4.3.1(vite@5.4.6(@types/node@20.16.5))
       '@vitest/coverage-v8':
         specifier: 2.1.1
-        version: 2.1.1(vitest@2.1.1(@types/node@20.16.7)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4)))
+        version: 2.1.1(vitest@2.1.1(@types/node@20.16.5)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4)))
       algo-msgpack-with-bigint:
         specifier: 2.1.1
         version: 2.1.1
@@ -327,19 +327,19 @@ importers:
         version: 3.3.3
       tailwindcss:
         specifier: 3.4.10
-        version: 3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4))
+        version: 3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4))
       ts-node:
         specifier: 10.9.2
-        version: 10.9.2(@types/node@20.16.7)(typescript@5.5.4)
+        version: 10.9.2(@types/node@20.16.5)(typescript@5.5.4)
       typescript:
         specifier: 5.5.4
         version: 5.5.4
       vite:
         specifier: 5.4.6
-        version: 5.4.6(@types/node@20.16.7)
+        version: 5.4.6(@types/node@20.16.5)
       vitest:
         specifier: 2.1.1
-        version: 2.1.1(@types/node@20.16.7)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4))
+        version: 2.1.1(@types/node@20.16.5)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4))
 
 packages:
 
@@ -1951,6 +1951,9 @@ packages:
   '@types/mute-stream@0.0.4':
     resolution: {integrity: sha512-CPM9nzrCPPJHQNA9keH9CVkVI+WR5kMa+7XEs5jcGQ0VoAGnLv242w8lIVgwAEfmE4oufJRaTc9PNLQl0ioAow==}
 
+  '@types/node@20.16.5':
+    resolution: {integrity: sha512-VwYCweNo3ERajwy0IUlqqcyZ8/A7Zwa9ZP3MnENWcB11AejO+tLy3pu850goUW2FC/IJMdZUfKpX/yxL1gymCA==}
+
   '@types/node@20.16.7':
     resolution: {integrity: sha512-QkDQjAY3gkvJNcZOWwzy3BN34RweT0OQ9zJyvLCU0kSK22dO2QYh/NHGfbEAYylPYzRB1/iXcojS79wOg5gFSw==}
 
@@ -2299,8 +2302,16 @@ packages:
     resolution: {integrity: sha512-F1tGh056XczEaEAqu7s+hlZUDWwOBT70Eq0lfMpBP2YguSQVyxRbprLq5rELXKQOyOaixTWYhMeMQMzP0U5FoQ==}
     engines: {node: '>= 10'}
 
+  algorand-msgpack@1.1.0:
+    resolution: {integrity: sha512-08k7pBQnkaUB5p+jL7f1TRaUIlTSDE0cesFu1mD7llLao+1cAhtvvZmGE3OnisTd0xOn118QMw74SRqddqaYvw==}
+    engines: {node: '>= 14'}
+
   algosdk@2.9.0:
     resolution: {integrity: sha512-o0n0nLMbTX6SFQdMUk2/2sy50jmEmZk5OTPYSh2aAeP8DUPxrhjMPfwGsYNvaO+qk75MixC2eWpfA9vygCQ/Mg==}
+    engines: {node: '>=18.0.0'}
+
+  algosdk@3.0.0:
+    resolution: {integrity: sha512-PIKZ/YvbBpCudduug4KSH1CY/pTotI7/ccbUIbXKtcI9Onevl+57E+K5X4ow4gsCdysZ8zVvSLdxuCcXvsmPOw==}
     engines: {node: '>=18.0.0'}
 
   ansi-escapes@4.3.2:
@@ -5256,6 +5267,11 @@ snapshots:
       algosdk: 2.9.0
       buffer: 6.0.3
 
+  '@algorandfoundation/algokit-utils@6.2.1(algosdk@3.0.0)':
+    dependencies:
+      algosdk: 3.0.0
+      buffer: 6.0.3
+
   '@algorandfoundation/tealscript@0.103.0':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
@@ -5420,11 +5436,11 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@blockshake/defly-connect@1.1.6(algosdk@2.9.0)':
+  '@blockshake/defly-connect@1.1.6(algosdk@3.0.0)':
     dependencies:
       '@walletconnect/client': 1.8.0
       '@walletconnect/types': 1.8.0
-      algosdk: 2.9.0
+      algosdk: 3.0.0
       bowser: 2.11.0
       buffer: 6.0.3
       lottie-web: 5.12.2
@@ -5661,9 +5677,9 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@headlessui/tailwindcss@0.2.1(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)))':
+  '@headlessui/tailwindcss@0.2.1(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)))':
     dependencies:
-      tailwindcss: 3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4))
+      tailwindcss: 3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4))
 
   '@hookform/resolvers@3.9.0(react-hook-form@7.53.0(react@18.3.1))':
     dependencies:
@@ -5899,12 +5915,12 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.4.1
       '@parcel/watcher-win32-x64': 2.4.1
 
-  '@perawallet/connect@1.3.4(algosdk@2.9.0)':
+  '@perawallet/connect@1.3.4(algosdk@3.0.0)':
     dependencies:
       '@evanhahn/lottie-web-light': 5.8.1
       '@walletconnect/client': 1.8.0
       '@walletconnect/types': 1.8.0
-      algosdk: 2.9.0
+      algosdk: 3.0.0
       bowser: 2.11.0
       buffer: 6.0.3
       qr-code-styling: 1.6.0-rc.1
@@ -6610,7 +6626,7 @@ snapshots:
       tsx: 4.19.0
       zod: 3.23.8
 
-  '@tanstack/router-plugin@1.57.9(vite@5.4.6(@types/node@20.16.7))':
+  '@tanstack/router-plugin@1.57.9(vite@5.4.6(@types/node@20.16.5))':
     dependencies:
       '@babel/core': 7.25.2
       '@babel/generator': 7.25.6
@@ -6631,14 +6647,14 @@ snapshots:
       unplugin: 1.14.1
       zod: 3.23.8
     optionalDependencies:
-      vite: 5.4.6(@types/node@20.16.7)
+      vite: 5.4.6(@types/node@20.16.5)
     transitivePeerDependencies:
       - supports-color
       - webpack-sources
 
-  '@tanstack/router-vite-plugin@1.56.4(vite@5.4.6(@types/node@20.16.7))':
+  '@tanstack/router-vite-plugin@1.56.4(vite@5.4.6(@types/node@20.16.5))':
     dependencies:
-      '@tanstack/router-plugin': 1.57.9(vite@5.4.6(@types/node@20.16.7))
+      '@tanstack/router-plugin': 1.57.9(vite@5.4.6(@types/node@20.16.5))
     transitivePeerDependencies:
       - '@rsbuild/core'
       - supports-color
@@ -6685,11 +6701,11 @@ snapshots:
       '@types/react': 18.3.5
       '@types/react-dom': 18.3.0
 
-  '@tremor/react@3.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)))':
+  '@tremor/react@3.18.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)))':
     dependencies:
       '@floating-ui/react': 0.19.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@headlessui/react': 1.7.19(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@headlessui/tailwindcss': 0.2.1(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)))
+      '@headlessui/tailwindcss': 0.2.1(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)))
       date-fns: 3.6.0
       react: 18.3.1
       react-day-picker: 8.10.1(date-fns@3.6.0)(react@18.3.1)
@@ -6717,28 +6733,28 @@ snapshots:
 
   '@tsconfig/node18@18.2.4': {}
 
-  '@txnlab/use-wallet-react@3.7.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.4.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@txnlab/use-wallet-react@3.7.0(@blockshake/defly-connect@1.1.6(algosdk@3.0.0))(@perawallet/connect@1.3.4(algosdk@3.0.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@3.0.0)(lute-connect@1.4.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/react-store': 0.5.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@txnlab/use-wallet': 3.7.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.4.1)
-      algosdk: 2.9.0
+      '@txnlab/use-wallet': 3.7.0(@blockshake/defly-connect@1.1.6(algosdk@3.0.0))(@perawallet/connect@1.3.4(algosdk@3.0.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@3.0.0)(lute-connect@1.4.1)
+      algosdk: 3.0.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
-      '@blockshake/defly-connect': 1.1.6(algosdk@2.9.0)
-      '@perawallet/connect': 1.3.4(algosdk@2.9.0)
+      '@blockshake/defly-connect': 1.1.6(algosdk@3.0.0)
+      '@perawallet/connect': 1.3.4(algosdk@3.0.0)
       '@walletconnect/modal': 2.6.2(@types/react@18.3.5)(react@18.3.1)
       lute-connect: 1.4.1
     transitivePeerDependencies:
       - '@agoralabs-sh/avm-web-provider'
 
-  '@txnlab/use-wallet@3.7.0(@blockshake/defly-connect@1.1.6(algosdk@2.9.0))(@perawallet/connect@1.3.4(algosdk@2.9.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@2.9.0)(lute-connect@1.4.1)':
+  '@txnlab/use-wallet@3.7.0(@blockshake/defly-connect@1.1.6(algosdk@3.0.0))(@perawallet/connect@1.3.4(algosdk@3.0.0))(@walletconnect/modal@2.6.2(@types/react@18.3.5)(react@18.3.1))(algosdk@3.0.0)(lute-connect@1.4.1)':
     dependencies:
       '@tanstack/store': 0.5.5
-      algosdk: 2.9.0
+      algosdk: 3.0.0
     optionalDependencies:
-      '@blockshake/defly-connect': 1.1.6(algosdk@2.9.0)
-      '@perawallet/connect': 1.3.4(algosdk@2.9.0)
+      '@blockshake/defly-connect': 1.1.6(algosdk@3.0.0)
+      '@perawallet/connect': 1.3.4(algosdk@3.0.0)
       '@walletconnect/modal': 2.6.2(@types/react@18.3.5)(react@18.3.1)
       lute-connect: 1.4.1
 
@@ -6801,7 +6817,11 @@ snapshots:
 
   '@types/mute-stream@0.0.4':
     dependencies:
-      '@types/node': 20.16.7
+      '@types/node': 20.16.5
+
+  '@types/node@20.16.5':
+    dependencies:
+      undici-types: 6.19.8
 
   '@types/node@20.16.7':
     dependencies:
@@ -7005,18 +7025,18 @@ snapshots:
 
   '@ungap/structured-clone@1.2.0': {}
 
-  '@vitejs/plugin-react@4.3.1(vite@5.4.6(@types/node@20.16.7))':
+  '@vitejs/plugin-react@4.3.1(vite@5.4.6(@types/node@20.16.5))':
     dependencies:
       '@babel/core': 7.25.2
       '@babel/plugin-transform-react-jsx-self': 7.24.7(@babel/core@7.25.2)
       '@babel/plugin-transform-react-jsx-source': 7.24.7(@babel/core@7.25.2)
       '@types/babel__core': 7.20.5
       react-refresh: 0.14.2
-      vite: 5.4.6(@types/node@20.16.7)
+      vite: 5.4.6(@types/node@20.16.5)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@2.1.1(vitest@2.1.1(@types/node@20.16.7)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4)))':
+  '@vitest/coverage-v8@2.1.1(vitest@2.1.1(@types/node@20.16.5)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4)))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -7030,7 +7050,7 @@ snapshots:
       std-env: 3.7.0
       test-exclude: 7.0.1
       tinyrainbow: 1.2.0
-      vitest: 2.1.1(@types/node@20.16.7)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4))
+      vitest: 2.1.1(@types/node@20.16.5)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4))
     transitivePeerDependencies:
       - supports-color
 
@@ -7041,14 +7061,14 @@ snapshots:
       chai: 5.1.1
       tinyrainbow: 1.2.0
 
-  '@vitest/mocker@2.1.1(@vitest/spy@2.1.1)(msw@2.4.4(typescript@5.5.4))(vite@5.4.6(@types/node@20.16.7))':
+  '@vitest/mocker@2.1.1(@vitest/spy@2.1.1)(msw@2.4.4(typescript@5.5.4))(vite@5.4.6(@types/node@20.16.5))':
     dependencies:
       '@vitest/spy': 2.1.1
       estree-walker: 3.0.3
       magic-string: 0.30.11
     optionalDependencies:
       msw: 2.4.4(typescript@5.5.4)
-      vite: 5.4.6(@types/node@20.16.7)
+      vite: 5.4.6(@types/node@20.16.5)
 
   '@vitest/mocker@2.1.1(@vitest/spy@2.1.1)(msw@2.4.4(typescript@5.6.2))(vite@5.4.6(@types/node@22.7.4))':
     dependencies:
@@ -7470,10 +7490,23 @@ snapshots:
 
   algo-msgpack-with-bigint@2.1.1: {}
 
+  algorand-msgpack@1.1.0: {}
+
   algosdk@2.9.0:
     dependencies:
       algo-msgpack-with-bigint: 2.1.1
       buffer: 6.0.3
+      hi-base32: 0.5.1
+      js-sha256: 0.9.0
+      js-sha3: 0.8.0
+      js-sha512: 0.8.0
+      json-bigint: 1.0.0
+      tweetnacl: 1.0.3
+      vlq: 2.0.4
+
+  algosdk@3.0.0:
+    dependencies:
+      algorand-msgpack: 1.1.0
       hi-base32: 0.5.1
       js-sha256: 0.9.0
       js-sha3: 0.8.0
@@ -9598,13 +9631,13 @@ snapshots:
       camelcase-css: 2.0.1
       postcss: 8.4.45
 
-  postcss-load-config@4.0.2(postcss@8.4.45)(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)):
+  postcss-load-config@4.0.2(postcss@8.4.45)(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)):
     dependencies:
       lilconfig: 3.1.2
       yaml: 2.5.1
     optionalDependencies:
       postcss: 8.4.45
-      ts-node: 10.9.2(@types/node@20.16.7)(typescript@5.5.4)
+      ts-node: 10.9.2(@types/node@20.16.5)(typescript@5.5.4)
 
   postcss-nested@6.2.0(postcss@8.4.45):
     dependencies:
@@ -10150,11 +10183,11 @@ snapshots:
 
   tailwind-merge@2.5.2: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4))):
+  tailwindcss-animate@1.0.7(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4))):
     dependencies:
-      tailwindcss: 3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4))
+      tailwindcss: 3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4))
 
-  tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4)):
+  tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -10173,7 +10206,7 @@ snapshots:
       postcss: 8.4.45
       postcss-import: 15.1.0(postcss@8.4.45)
       postcss-js: 4.0.1(postcss@8.4.45)
-      postcss-load-config: 4.0.2(postcss@8.4.45)(ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4))
+      postcss-load-config: 4.0.2(postcss@8.4.45)(ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4))
       postcss-nested: 6.2.0(postcss@8.4.45)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
@@ -10255,14 +10288,14 @@ snapshots:
       '@ts-morph/common': 0.21.0
       code-block-writer: 12.0.0
 
-  ts-node@10.9.2(@types/node@20.16.7)(typescript@5.5.4):
+  ts-node@10.9.2(@types/node@20.16.5)(typescript@5.5.4):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       '@tsconfig/node10': 1.0.11
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
-      '@types/node': 20.16.7
+      '@types/node': 20.16.5
       acorn: 8.12.1
       acorn-walk: 8.3.4
       arg: 4.1.3
@@ -10496,12 +10529,12 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  vite-node@2.1.1(@types/node@20.16.7):
+  vite-node@2.1.1(@types/node@20.16.5):
     dependencies:
       cac: 6.7.14
       debug: 4.3.7
       pathe: 1.1.2
-      vite: 5.4.6(@types/node@20.16.7)
+      vite: 5.4.6(@types/node@20.16.5)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -10530,21 +10563,21 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-node-polyfills@0.22.0(rollup@4.22.0)(vite@5.4.6(@types/node@20.16.7)):
+  vite-plugin-node-polyfills@0.22.0(rollup@4.22.0)(vite@5.4.6(@types/node@20.16.5)):
     dependencies:
       '@rollup/plugin-inject': 5.0.5(rollup@4.22.0)
       node-stdlib-browser: 1.2.0
-      vite: 5.4.6(@types/node@20.16.7)
+      vite: 5.4.6(@types/node@20.16.5)
     transitivePeerDependencies:
       - rollup
 
-  vite@5.4.6(@types/node@20.16.7):
+  vite@5.4.6(@types/node@20.16.5):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.4.45
       rollup: 4.22.0
     optionalDependencies:
-      '@types/node': 20.16.7
+      '@types/node': 20.16.5
       fsevents: 2.3.3
 
   vite@5.4.6(@types/node@22.7.4):
@@ -10556,10 +10589,10 @@ snapshots:
       '@types/node': 22.7.4
       fsevents: 2.3.3
 
-  vitest@2.1.1(@types/node@20.16.7)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4)):
+  vitest@2.1.1(@types/node@20.16.5)(jsdom@24.1.3)(msw@2.4.4(typescript@5.5.4)):
     dependencies:
       '@vitest/expect': 2.1.1
-      '@vitest/mocker': 2.1.1(@vitest/spy@2.1.1)(msw@2.4.4(typescript@5.5.4))(vite@5.4.6(@types/node@20.16.7))
+      '@vitest/mocker': 2.1.1(@vitest/spy@2.1.1)(msw@2.4.4(typescript@5.5.4))(vite@5.4.6(@types/node@20.16.5))
       '@vitest/pretty-format': 2.1.1
       '@vitest/runner': 2.1.1
       '@vitest/snapshot': 2.1.1
@@ -10574,11 +10607,11 @@ snapshots:
       tinyexec: 0.3.0
       tinypool: 1.0.1
       tinyrainbow: 1.2.0
-      vite: 5.4.6(@types/node@20.16.7)
-      vite-node: 2.1.1(@types/node@20.16.7)
+      vite: 5.4.6(@types/node@20.16.5)
+      vite-node: 2.1.1(@types/node@20.16.5)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 20.16.7
+      '@types/node': 20.16.5
       jsdom: 24.1.3
     transitivePeerDependencies:
       - less
