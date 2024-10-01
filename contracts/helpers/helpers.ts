@@ -83,7 +83,7 @@ export async function addValidator(
                     }),
                     // --
                     nfdName: '',
-                    config: config,
+                    config,
                 },
                 sender: owner.addr,
             })
@@ -97,13 +97,8 @@ export async function addValidator(
 }
 
 export async function getValidatorState(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    // If getValidatorState was marked readonly this could be `(await validatorClient.send.getValidatorState({ args: [validatorId] })).return!`
-    return (
-        await validatorClient
-            .newGroup()
-            .getValidatorState({ args: [validatorId] })
-            .simulate({ allowUnnamedResources: true })
-    ).returns[0]!
+    return (await validatorClient.send.getValidatorState({ args: [validatorId], populateAppCallResources: true }))
+        .return!
 }
 
 export async function addStakingPool(
@@ -173,13 +168,7 @@ export async function addStakingPool(
 }
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
-    // If getPoolInfo was marked readonly this could be `(await validatorClient.send.getPoolInfo({ args: [poolKey] })).return!`
-    return (
-        await validatorClient
-            .newGroup()
-            .getPoolInfo({ args: [poolKey] })
-            .simulate({ allowUnnamedResources: true })
-    ).returns[0]!
+    return (await validatorClient.send.getPoolInfo({ args: [poolKey], populateAppCallResources: true })).return!
 }
 
 export async function getPools(validatorClient: ValidatorRegistryClient, validatorId: number): Promise<PoolInfo[]> {
@@ -195,13 +184,12 @@ export async function getPools(validatorClient: ValidatorRegistryClient, validat
 }
 
 export async function getCurMaxStakePerPool(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    // If getCurMaxStakePerPool was marked readonly this could be `(await validatorClient.send.getCurMaxStakePerPool({ args: [validatorId] })).return!`
     return (
-        await validatorClient
-            .newGroup()
-            .getCurMaxStakePerPool({ args: [validatorId] })
-            .simulate({ allowUnnamedResources: true })
-    ).returns![0]
+        await validatorClient.send.getCurMaxStakePerPool({
+            args: [validatorId],
+            populateAppCallResources: true,
+        })
+    ).return!
 }
 
 export async function getStakedPoolsForAccount(
@@ -222,20 +210,16 @@ export async function getStakedPoolsForAccount(
 
 export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Account) {
     return (
-        await stakeClient
-            .newGroup()
-            .getStakerInfo({ args: { staker: staker.addr } })
-            .simulate({ allowUnnamedResources: true })
-    ).returns[0]!
+        await stakeClient.send.getStakerInfo({
+            args: { staker: staker.addr },
+            populateAppCallResources: true,
+        })
+    ).return!
 }
 
 export async function getTokenPayoutRatio(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    return (
-        await validatorClient
-            .newGroup()
-            .getTokenPayoutRatio({ args: [validatorId] })
-            .simulate({ allowUnnamedResources: true })
-    ).returns[0]!
+    return (await validatorClient.send.getTokenPayoutRatio({ args: [validatorId], populateAppCallResources: true }))
+        .return!
 }
 
 export async function addStake(

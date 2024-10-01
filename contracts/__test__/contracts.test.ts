@@ -2219,14 +2219,11 @@ describe('reti', () => {
             })
             const AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)
             let poolGS = await firstPoolClient.state.global.getAll()
-            const x = await firstPoolClient.appClient.getGlobalState()
-            const y = ABIType.from('uint128').decode((x.stakeAccumulator as any).valueRaw)
-            const z = bigIntFromBytes((x.stakeAccumulator as any).valueRaw)
             const binRoundStart = poolGS.binRoundStart!
             let roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
             consoleLogger.info(`bin start:${binRoundStart}, rounds remaining in bin:${roundsRemaining}`)
             const stakeAccum = poolGS.stakeAccumulator!
-            expect(stakeAccum).toEqual(roundsRemaining * stakeAmount1.microAlgos - mbrs.addStakerMbr)
+            expect(stakeAccum).toEqual(roundsRemaining * (stakeAmount1.microAlgos - mbrs.addStakerMbr))
 
             // Ok, now add 'more' stake - we're updating existing slot for pool - ensure accumulator is updated
             const stakeAmount2 = AlgoAmount.Algos(1000)
@@ -4206,7 +4203,7 @@ describe('reti', () => {
                 })
 
                 pool1Client = stakingPoolFactory.getAppClientById({
-                    appId: pools[0].poolAppId,
+                    appId: pools[1].poolAppId,
                     defaultSender: validatorOwnerAccount.addr,
                 })
 
