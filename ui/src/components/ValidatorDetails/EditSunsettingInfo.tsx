@@ -151,13 +151,16 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between gap-x-4 rounded-lg border p-3 shadow-sm">
                   <div className="space-y-0.5">
-                    <FormLabel>Enable Validator Sunset</FormLabel>
+                    <FormLabel htmlFor="edit-enable-sunsetting-switch">
+                      Enable Validator Sunset
+                    </FormLabel>
                     <FormDescription>
                       Set a date after which stake can no longer be added to this validator
                     </FormDescription>
                   </div>
                   <FormControl>
                     <Switch
+                      id="edit-enable-sunsetting-switch"
                       checked={field.value}
                       onCheckedChange={(e) => {
                         field.onChange(e)
@@ -183,7 +186,10 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                 name="sunsettingOn"
                 render={({ field }) => (
                   <FormItem className="col-span-3 sm:col-auto">
-                    <FormLabel className={cn({ 'pointer-events-none': !$enableSunset })}>
+                    <FormLabel
+                      htmlFor="edit-sunsetting-on-input"
+                      className={cn({ 'pointer-events-none': !$enableSunset })}
+                    >
                       Sunset date
                     </FormLabel>
                     <div className="flex items-center gap-x-3">
@@ -209,6 +215,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
+                            id="edit-sunsetting-on-input"
                             mode="single"
                             defaultMonth={field.value}
                             selected={field.value}
@@ -230,14 +237,22 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
                 name="sunsettingTo"
                 render={({ field }) => (
                   <FormItem className="col-span-2 sm:col-auto">
-                    <FormLabel>
+                    <FormLabel htmlFor="edit-sunsetting-to-input">
                       Migrate to
-                      <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                      <InfoPopover
+                        className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                        label="Migrate to Validator ID"
+                      >
                         Validator ID that stakers should migrate to, if known (optional)
                       </InfoPopover>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="" disabled={!$enableSunset} {...field} />
+                      <Input
+                        id="edit-sunsetting-to-input"
+                        placeholder="Enter Validator ID"
+                        disabled={!$enableSunset}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage>{errors.sunsettingTo?.message}</FormMessage>
                   </FormItem>

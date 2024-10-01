@@ -281,8 +281,8 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                   ) : (
                     <>
                       <Select onValueChange={handleSetSelectedPool} value={selectedPoolId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a verified email to display" />
+                        <SelectTrigger aria-label="Select a pool">
+                          <SelectValue placeholder="Select a pool" />
                         </SelectTrigger>
                         <SelectContent>
                           {stakerPoolsData
@@ -315,10 +315,15 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                     name="amountToUnstake"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount to Unstake</FormLabel>
+                        <FormLabel htmlFor="amount-to-unstake-input">Amount to Unstake</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Input className="pr-16" {...field} />
+                            <Input
+                              id="amount-to-unstake-input"
+                              className="pr-16"
+                              placeholder="0.000000"
+                              {...field}
+                            />
                             <Button
                               type="button"
                               size="sm"

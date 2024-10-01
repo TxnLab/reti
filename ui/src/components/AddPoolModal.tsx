@@ -484,11 +484,15 @@ export function AddPoolModal({
                       hidden: !showRewardTokenInfo,
                     })}
                   />
-                  <FormLabel className={cn({ 'text-muted-foreground/50': currentStep < 3 })}>
+                  <FormLabel
+                    htmlFor="link-pool-to-nfd-input"
+                    className={cn({ 'text-muted-foreground/50': currentStep < 3 })}
+                  >
                     Link Pool to NFD
                   </FormLabel>
                   <CollapsibleContent className="space-y-2">
                     <NfdLookup
+                      id="link-pool-to-nfd-input"
                       form={form}
                       name="nfdToLink"
                       nfd={nfdToLink}

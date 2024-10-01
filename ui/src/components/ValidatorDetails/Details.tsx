@@ -136,7 +136,7 @@ export function Details({ validator }: DetailsProps) {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="lg:col-span-3">
         <CardHeader>
-          <CardTitle>Validator Details</CardTitle>
+          <CardTitle as="h2">Validator Details</CardTitle>
         </CardHeader>
         <CardContent className="w-full">
           <div className="border-t border-foreground-muted">

@@ -203,9 +203,12 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
               name="nfdForInfo"
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
-                  <FormLabel>
+                  <FormLabel htmlFor="edit-nfd-for-info-input">
                     Associated NFD
-                    <InfoPopover className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0">
+                    <InfoPopover
+                      className="mx-1.5 relative top-0.5 sm:mx-1 sm:top-0"
+                      label="Associated NFD"
+                    >
                       NFD which the validator uses to describe their validator pool (optional)
                     </InfoPopover>
                   </FormLabel>
@@ -213,8 +216,9 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
                     <div className="flex-1 relative">
                       <FormControl>
                         <Input
+                          id="edit-nfd-for-info-input"
                           className={cn(isFetchingNfdForInfo || nfdForInfoAppId > 0 ? 'pr-10' : '')}
-                          placeholder=""
+                          placeholder="Enter NFD name"
                           autoComplete="new-password"
                           spellCheck="false"
                           {...field}

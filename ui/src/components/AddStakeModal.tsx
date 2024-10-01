@@ -529,11 +529,13 @@ export function AddStakeModal({
                 name="amountToStake"
                 render={({ field }) => (
                   <FormItem className="w-2/3">
-                    <FormLabel>Amount to Stake</FormLabel>
+                    <FormLabel htmlFor="amount-to-stake-input">Amount to Stake</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
+                          id="amount-to-stake-input"
                           className="pr-16"
+                          placeholder="0.000000"
                           {...field}
                           onChange={(e) => {
                             field.onChange(e) // Inform react-hook-form of the change

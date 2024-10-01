@@ -271,7 +271,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 </dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">
                   <div className="w-full mt-1">
-                    <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content flex items-center justify-between">
+                    <p className="text-tremor-default text-stone-500 dark:text-stone-400 flex items-center justify-between">
                       <span>
                         <AlgoDisplayAmount
                           amount={validator.state.totalAlgoStaked}
@@ -419,11 +419,11 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-start justify-between gap-x-2">
-            <span>Staking Details</span>
+          <CardTitle as="h2" className="flex items-start justify-between gap-x-2">
+            Staking Details
             {poolsInfo.length > 0 && (
               <Select value={selectedPool} onValueChange={handleSelectValueChange}>
-                <SelectTrigger className="-my-2.5 w-[120px]">
+                <SelectTrigger className="-my-2.5 w-[120px]" aria-label="Select a pool">
                   <SelectValue placeholder="Select a pool" />
                 </SelectTrigger>
                 <SelectContent>

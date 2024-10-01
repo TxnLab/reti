@@ -134,10 +134,11 @@ export function EditCommissionAccount({ validator }: EditCommissionAccountProps)
               name="validatorCommissionAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Commission account</FormLabel>
+                  <FormLabel htmlFor="commission-account-input">Commission account</FormLabel>
                   <div className="flex items-center gap-x-3">
                     <FormControl>
                       <Input
+                        id="commission-account-input"
                         className="font-mono"
                         placeholder=""
                         autoComplete="new-password"
