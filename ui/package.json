@@ -1,6 +1,6 @@
 {
   "name": "reti-ui",
-  "version": π,
+  "version": "0.10.1",
   "private": true,
   "type": "module",
   "engines": {
