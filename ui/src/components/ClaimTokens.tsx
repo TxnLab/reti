@@ -40,7 +40,7 @@ export function ClaimTokens({ validator, rewardTokenBalance }: ClaimTokensProps)
 
       toast.loading('Sign transactions to claim reward tokens...', { id: toastId })
 
-      await claimTokens(validator.pools, transactionSigner, activeAddress, authAddress)
+      await claimTokens(validator.pools, activeAddress, authAddress)
 
       toast.success(
         <div className="flex items-center gap-x-2">

@@ -5,8 +5,8 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { Account, getApplicationAddress } from 'algosdk'
 import { randomUUID } from 'crypto'
-import { StakedInfo, StakingPoolClient, ValidatorPoolKey } from '../contracts/clients_new/StakingPoolClient'
-import { PoolInfo, ValidatorConfig, ValidatorRegistryClient } from '../contracts/clients_new/ValidatorRegistryClient'
+import { StakedInfo, StakingPoolClient, ValidatorPoolKey } from '../contracts/clients/StakingPoolClient'
+import { PoolInfo, ValidatorConfig, ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
 
 export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ'
 
@@ -110,15 +110,15 @@ export async function addStakingPool(
     poolMbr: bigint,
     poolInitMbr: bigint,
 ) {
-    const suggestedParams = await context.algod.getTransactionParams().do()
-    consoleLogger.info(`addStakingPool: firstRound:${suggestedParams.firstRound}`)
+    // const suggestedParams = await context.algod.getTransactionParams().do()
+    // consoleLogger.info(`addStakingPool: firstRound:${suggestedParams.firstRound}`)
 
     // Before validator can add pools it needs to be funded
     try {
         // Now add a staking pool
         const addPoolResults = await validatorClient
             .newGroup()
-            .gas({ args: {}, note: randomUUID() })
+            .gas({ args: {}, note: '1' })
             .gas({ args: {}, note: '2' })
             .addPool({
                 args: {
@@ -132,6 +132,7 @@ export async function addStakingPool(
                 },
                 staticFee: AlgoAmount.MicroAlgos(2000),
                 sender: vldtrAcct.addr,
+                validityWindow: 100,
             })
             .send({ populateAppCallResources: true, suppressLog: true })
 
@@ -268,7 +269,7 @@ export async function addStake(
         let fees = AlgoAmount.MicroAlgos(240_000)
         const simulateResults = await validatorClient
             .newGroup()
-            .gas()
+            .gas({ args: {}, validityWindow: 200 })
             .addStake(
                 // This the actual send of stake to the ac
                 {
@@ -279,6 +280,7 @@ export async function addStake(
                     },
                     staticFee: fees,
                     sender: staker.addr,
+                    validityWindow: 200,
                 },
             )
             .simulate({ allowUnnamedResources: true, allowMoreLogging: true })

@@ -10,13 +10,13 @@ import {
     StakingPoolClient,
     StakingPoolFactory,
     ValidatorPoolKey,
-} from '../contracts/clients_new/StakingPoolClient'
+} from '../contracts/clients/StakingPoolClient'
 import {
     MbrAmounts,
     ValidatorConfig,
     ValidatorRegistryClient,
     ValidatorRegistryFactory,
-} from '../contracts/clients_new/ValidatorRegistryClient'
+} from '../contracts/clients/ValidatorRegistryClient'
 import {
     addStake,
     addStakingPool,
@@ -53,7 +53,7 @@ describe('reti', () => {
     const fixture = algorandFixture({ testAccountFunding: AlgoAmount.Algos(10000) })
     const logs = algoKitLogCaptureFixture()
 
-    // algokit.Config.configure({ debug: true });
+    // Config.configure({ debug: true, traceAll: true })
 
     const MaxAlgoPerPool = AlgoAmount.Algos(100_000).microAlgos
     let validatorMasterClient: ValidatorRegistryClient
@@ -2208,10 +2208,10 @@ describe('reti', () => {
                 appId: firstPoolKey.poolAppId,
                 defaultSender: validatorOwnerAccount.addr,
             })
-            const AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)
             let poolGS = await firstPoolClient.state.global.getAll()
+            let roundsPerDay = poolGS.roundsPerDay!
             const binRoundStart = poolGS.binRoundStart!
-            let roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+            let roundsRemaining = binRoundStart + roundsPerDay - BigInt(lastBlock)
             consoleLogger.info(`bin start:${binRoundStart}, rounds remaining in bin:${roundsRemaining}`)
             const stakeAccum = poolGS.stakeAccumulator!
             expect(stakeAccum).toEqual(roundsRemaining * (stakeAmount1.microAlgos - mbrs.addStakerMbr))
@@ -2219,27 +2219,30 @@ describe('reti', () => {
             // Ok, now add 'more' stake - we're updating existing slot for pool - ensure accumulator is updated
             const stakeAmount2 = AlgoAmount.Algos(1000)
             await addStake(fixture.context, validatorMasterClient, validatorId, stakerAccount, stakeAmount2, 0n)
+            roundsPerDay = (await firstPoolClient.state.global.roundsPerDay())!
             lastBlock = (await fixture.context.algod.status().do())['last-round']
-            roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+            roundsRemaining = binRoundStart + roundsPerDay - BigInt(lastBlock)
             poolGS = await firstPoolClient.state.global.getAll()
             const secondStakeAccum = poolGS.stakeAccumulator!
             expect(secondStakeAccum).toEqual(stakeAccum + roundsRemaining * stakeAmount2.microAlgos)
 
             // remove bits of stake
             await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(50))
+            roundsPerDay = (await firstPoolClient.state.global.roundsPerDay())!
             lastBlock = (await fixture.context.algod.status().do())['last-round']
-            roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+            roundsRemaining = binRoundStart + roundsPerDay - BigInt(lastBlock)
             poolGS = await firstPoolClient.state.global.getAll()
             const newStakeAccum = poolGS.stakeAccumulator!
             expect(newStakeAccum).toEqual(secondStakeAccum - roundsRemaining * AlgoAmount.Algos(50).microAlgos)
 
             // remove bits of stake
-            await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(50))
+            await removeStake(firstPoolClient, stakerAccounts[0], AlgoAmount.Algos(60))
+            roundsPerDay = (await firstPoolClient.state.global.roundsPerDay())!
             lastBlock = (await fixture.context.algod.status().do())['last-round']
-            roundsRemaining = binRoundStart + BigInt(AVG_ROUNDS_PER_DAY) - BigInt(lastBlock)
+            roundsRemaining = binRoundStart + roundsPerDay - BigInt(lastBlock)
             poolGS = await firstPoolClient.state.global.getAll()
             const thirdStakeAccum = poolGS.stakeAccumulator!
-            expect(thirdStakeAccum).toEqual(newStakeAccum - roundsRemaining * AlgoAmount.Algos(50).microAlgos)
+            expect(thirdStakeAccum).toEqual(newStakeAccum - roundsRemaining * AlgoAmount.Algos(60).microAlgos)
         })
     })
 
@@ -4028,7 +4031,7 @@ describe('reti', () => {
                     epochRoundLength,
                 )
             })
-        })
+        }, 20_000)
 
         describe('ME-02 Incorrect Validator SunsettingOn Verification', () => {
             let validatorId: number

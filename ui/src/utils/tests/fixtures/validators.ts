@@ -2,7 +2,7 @@ import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import {
   Constraints,
   NodeConfig,
-  PoolInfo,
+  LocalPoolInfo,
   Validator,
   ValidatorConfig,
   ValidatorState,
@@ -44,7 +44,7 @@ export const MOCK_VALIDATOR_1_STATE: ValidatorState = {
   rewardTokenHeldBack: 0n,
 }
 
-export const MOCK_VALIDATOR_1_POOLS: PoolInfo[] = [
+export const MOCK_VALIDATOR_1_POOLS: LocalPoolInfo[] = [
   {
     poolId: 1,
     poolAppId: 1010,
@@ -100,7 +100,7 @@ export const MOCK_VALIDATOR_2_STATE: ValidatorState = {
   rewardTokenHeldBack: 0n,
 }
 
-export const MOCK_VALIDATOR_2_POOLS: PoolInfo[] = [
+export const MOCK_VALIDATOR_2_POOLS: LocalPoolInfo[] = [
   {
     poolId: 1,
     poolAppId: 1020,

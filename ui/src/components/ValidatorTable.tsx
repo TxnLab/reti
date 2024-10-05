@@ -51,7 +51,7 @@ import { ValidatorInfoRow } from '@/components/ValidatorInfoRow'
 import { ValidatorRewards } from '@/components/ValidatorRewards'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { StakerValidatorData } from '@/interfaces/staking'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   calculateMaxStake,
@@ -70,6 +70,7 @@ import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAmount, formatAssetAmount } from '@/utils/format'
 import { globalFilterFn, sunsetFilter } from '@/utils/table'
 import { cn } from '@/utils/ui'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface ValidatorTableProps {
   validators: Validator[]
@@ -203,13 +204,13 @@ export function ValidatorTable({
           <div className="flex items-center gap-x-2 min-w-0 max-w-[10rem] xl:max-w-[16rem]">
             {isSunsetted(validator) ? (
               <Tooltip
-                content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+                content={`Sunset on ${dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')}`}
               >
                 <Ban className="h-5 w-5 text-muted-foreground transition-colors" />
               </Tooltip>
             ) : isSunsetting(validator) ? (
               <Tooltip
-                content={`Will sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+                content={`Will sunset on ${dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')}`}
               >
                 <Sunset className="h-5 w-5 text-muted-foreground transition-colors" />
               </Tooltip>
@@ -252,7 +253,7 @@ export function ValidatorTable({
       cell: ({ row }) => {
         const validator = row.original
 
-        if (validator.state.numPools === 0) return '--'
+        if (validator.state.numPools === 0n) return '--'
 
         const currentStakeAlgos = AlgoAmount.MicroAlgos(
           Number(validator.state.totalAlgoStaked),
@@ -300,7 +301,7 @@ export function ValidatorTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Avail. Rewards" />,
       cell: ({ row }) => {
         const validator = row.original
-        if (validator.state.numPools == 0) return '--'
+        if (validator.state.numPools == 0n) return '--'
 
         return <ValidatorRewards validator={validator} />
       },
@@ -336,7 +337,7 @@ export function ValidatorTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Fee" />,
       cell: ({ row }) => {
         const validator = row.original
-        const percent = validator.config.percentToValidator / 10000
+        const percent = Number(validator.config.percentToValidator) / 10000
         return `${percent}%`
       },
     },
@@ -352,7 +353,7 @@ export function ValidatorTable({
         const isDevelopment = process.env.NODE_ENV === 'development'
         const hasRewardToken = validator.config.rewardTokenId > 0
         const canSendRewardTokens = isDevelopment && canManage && hasRewardToken
-        const sendRewardTokensDisabled = validator.state.numPools === 0
+        const sendRewardTokensDisabled = validator.state.numPools === 0n
 
         const stakerValidatorData = stakesByValidator.find(
           (data) => data.validatorId === validator.id,

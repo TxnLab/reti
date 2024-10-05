@@ -42,7 +42,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { GatingType } from '@/constants/gating'
 import { StakerPoolData, StakerValidatorData } from '@/interfaces/staking'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
@@ -53,6 +53,7 @@ import {
 import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
 import { formatAlgoAmount, formatAmount } from '@/utils/format'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface AddStakeModalProps {
   validator: Validator | null
@@ -101,14 +102,14 @@ export function AddStakeModal({
     queryFn: () => fetchValueToVerify(validator, activeAddress, heldAssets),
     enabled: !!validator && !!accountInfoQuery.data,
   })
-  const valueToVerify = heldGatingAssetQuery.data || 0
+  const valueToVerify = heldGatingAssetQuery.data || 0n
 
   const isLoading = accountInfoQuery.isFetching || heldGatingAssetQuery.isFetching
 
   const hasGatingAccess = () => {
     if (!validator) return false
 
-    if (validator.config.entryGatingType === GatingType.None) {
+    if (validator.config.entryGatingType === BigInt(GatingType.None)) {
       return true
     }
 
@@ -116,7 +117,7 @@ export function AddStakeModal({
   }
 
   const mbrQuery = useQuery(mbrQueryOptions)
-  const stakerMbr = mbrQuery.data?.stakerMbr || 0
+  const addStakerMbr = mbrQuery.data?.addStakerMbr || 0n
 
   // @todo: make this a custom hook, call from higher up and pass down as prop
   const mbrRequiredQuery = useQuery({
@@ -125,7 +126,7 @@ export function AddStakeModal({
     enabled: !!activeAddress && isReady,
   })
   const mbrRequired = mbrRequiredQuery.data || false
-  const mbrAmount = mbrRequired ? stakerMbr : 0
+  const mbrAmount = mbrRequired ? addStakerMbr : 0n
 
   const stakerPoolsData = React.useMemo<StakerPoolData[]>(
     () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
@@ -137,7 +138,7 @@ export function AddStakeModal({
 
   const stakerMaximumStake = React.useMemo(() => {
     const estimatedFee = AlgoAmount.MicroAlgos(240_000).microAlgos
-    return Math.max(0, availableBalance - mbrAmount - estimatedFee)
+    return Math.max(0, availableBalance - Number(mbrAmount) - Number(estimatedFee))
   }, [availableBalance, mbrAmount])
 
   const maximumStake = Math.min(stakerMaximumStake, poolMaximumStake || stakerMaximumStake)
@@ -220,12 +221,12 @@ export function AddStakeModal({
           throw new Error('Invalid/missing data')
         }
         const { poolKey } = await findPoolForStaker(
-          validator.id,
-          amountToStake,
+          Number(validator.id),
+          BigInt(amountToStake),
           activeAddress,
           authAddress,
         )
-        setTargetPoolId(poolKey.poolId)
+        setTargetPoolId(Number(poolKey.poolId))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error(`Error fetching target pool: ${error.message}`)
@@ -290,7 +291,7 @@ export function AddStakeModal({
       }
 
       const amountToStake = AlgoAmount.Algos(Number(data.amountToStake)).microAlgos
-      const totalAmount = mbrRequired ? amountToStake + stakerMbr : amountToStake
+      const totalAmount = mbrRequired ? amountToStake + addStakerMbr : amountToStake
 
       if (!hasGatingAccess()) {
         throw new Error('Staker does not meet gating asset requirements')
@@ -299,7 +300,7 @@ export function AddStakeModal({
       toast.loading('Sign transactions to add stake...', { id: toastId })
 
       const poolKey = await addStake(
-        validator!.id,
+        Number(validator!.id),
         totalAmount,
         valueToVerify,
         validator!.config.rewardTokenId,
@@ -313,7 +314,7 @@ export function AddStakeModal({
           <ArrowUpRight className="h-5 w-5 text-foreground" />
           <span>
             Added <AlgoDisplayAmount amount={amountToStake} microalgos className="font-bold" /> to
-            Pool {poolKey.poolId} on Validator {poolKey.validatorId}
+            Pool {Number(poolKey.poolId)} on Validator {Number(poolKey.id)}
           </span>
         </div>,
         {
@@ -365,9 +366,9 @@ export function AddStakeModal({
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
     switch (entryGatingType) {
-      case GatingType.None:
+      case BigInt(GatingType.None):
         return 'None'
-      case GatingType.CreatorAccount:
+      case BigInt(GatingType.CreatorAccount):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -381,13 +382,13 @@ export function AddStakeModal({
             </a>
           </>
         )
-      case GatingType.AssetId:
+      case BigInt(GatingType.AssetId):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset ID</strong>
             <ul className="mt-1 list-none list-inside">
               {entryGatingAssets
-                .filter((assetId) => assetId !== 0)
+                .filter((assetId) => assetId !== 0n)
                 .map((assetId) => (
                   <li key={assetId}>
                     <a
@@ -396,28 +397,28 @@ export function AddStakeModal({
                       rel="noreferrer"
                       className="font-mono hover:underline"
                     >
-                      {assetId}
+                      {Number(assetId)}
                     </a>
                   </li>
                 ))}
             </ul>
           </>
         )
-      case GatingType.CreatorNfd:
+      case BigInt(GatingType.CreatorNfd):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
             <div>
-              <NfdThumbnail nameOrId={entryGatingAssets[0]} link />
+              <NfdThumbnail nameOrId={Number(entryGatingAssets[0])} link />
             </div>
           </>
         )
-      case GatingType.SegmentNfd:
+      case BigInt(GatingType.SegmentNfd):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
             <div className="flex">
-              <NfdThumbnail nameOrId={entryGatingAssets[0]} link />
+              <NfdThumbnail nameOrId={Number(entryGatingAssets[0])} link />
             </div>
           </>
         )
@@ -488,7 +489,7 @@ export function AddStakeModal({
           <div className="text-sm space-y-1 border-l-2 pl-4">
             {renderEntryGatingAsset()}
 
-            {![GatingType.None, GatingType.SegmentNfd].includes(entryGatingType) && (
+            {![GatingType.None, GatingType.SegmentNfd].includes(Number(entryGatingType)) && (
               <div className="pt-4">
                 <strong className="font-medium text-muted-foreground">Minimum Balance:</strong>{' '}
                 <span className="font-mono">{formatAmount(gatingAssetMinBalance.toString())}</span>
@@ -511,7 +512,9 @@ export function AddStakeModal({
     return (
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-left">Add Stake to Validator {validator?.id}</DialogTitle>
+          <DialogTitle className="text-left">
+            Add Stake to Validator {Number(validator?.id)}
+          </DialogTitle>
           <DialogDescription className="text-left">
             This will add ALGO stake to{' '}
             {!targetPoolId ? (
@@ -569,14 +572,14 @@ export function AddStakeModal({
                 )}
               />
 
-              {mbrRequired && stakerMbr && (
+              {mbrRequired && addStakerMbr !== 0n && (
                 <Alert className="mt-4">
                   <MessageCircleWarning className="h-5 w-5 -mt-1" />
                   <AlertTitle>Minimum balance requirement</AlertTitle>
                   <AlertDescription className="text-muted-foreground">
                     First time stakers must pay an additional{' '}
                     <AlgoDisplayAmount
-                      amount={stakerMbr}
+                      amount={Number(addStakerMbr)}
                       microalgos
                       className="font-mono text-foreground"
                     />{' '}

@@ -40,7 +40,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Nfd } from '@/interfaces/nfd'
-import { NodePoolAssignmentConfig, Validator, ValidatorPoolKey } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { BalanceChecker, InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
   findFirstAvailableNode,
@@ -53,6 +53,7 @@ import { ExplorerLink } from '@/utils/explorer'
 import { formatAlgoAmount } from '@/utils/format'
 import { isValidName } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
+import { NodePoolAssignmentConfig, ValidatorPoolKey } from '@/contracts/ValidatorRegistryClient'
 
 interface AddPoolModalProps {
   validator: Validator | null
@@ -91,7 +92,7 @@ export function AddPoolModal({
   const availableBalance = Math.max(0, amount - minBalance)
 
   const mbrQuery = useQuery(mbrQueryOptions)
-  const { poolMbr = 0, poolInitMbr = 0 } = mbrQuery.data || {}
+  const { addPoolMbr = 0n, poolInitMbr = 0n } = mbrQuery.data || {}
 
   const assignmentQuery = useQuery(poolAssignmentQueryOptions(validator?.id || '', !!validator))
   const poolAssignment = assignmentQuery.data || poolAssignmentProp
@@ -117,8 +118,8 @@ export function AddPoolModal({
       .refine((val) => val !== '', {
         message: 'Required field',
       })
-      .refine(() => availableBalance >= poolMbr, {
-        message: `Insufficient balance: ${formatAlgoAmount(poolMbr)} ALGO required`,
+      .refine(() => availableBalance >= addPoolMbr, {
+        message: `Insufficient balance: ${formatAlgoAmount(addPoolMbr)} ALGO required`,
       })
       .refine(
         (val) => {
@@ -151,7 +152,7 @@ export function AddPoolModal({
 
   React.useEffect(() => {
     if (validator !== null && currentStep == 0 && nodeNum !== '' && !errors.nodeNum) {
-      const isRewardsPool = validator.config.rewardTokenId !== 0 && validator.state.numPools === 0
+      const isRewardsPool = validator.config.rewardTokenId !== 0n && validator.state.numPools === 0n
       const numSteps = isRewardsPool ? 4 : 3
       setTotalSteps(numSteps)
       setCurrentStep(1)
@@ -197,19 +198,19 @@ export function AddPoolModal({
         throw new Error('No validator found')
       }
 
-      if (!poolMbr) {
+      if (!addPoolMbr) {
         throw new Error('No MBR data found')
       }
 
       // Required balance for step 1
-      const createPoolRequiredBalance = poolMbr + 1000 + 2000
+      const createPoolRequiredBalance = addPoolMbr + 1000n + 2000n
 
       // Required balance for step 2
       const mbrAmount =
-        validator.config.rewardTokenId !== 0 && validator.state.numPools === 0
-          ? poolInitMbr + 100_000
+        validator.config.rewardTokenId !== 0n && validator.state.numPools === 0n
+          ? poolInitMbr + 100_000n
           : poolInitMbr
-      const initStorageRequiredBalance = mbrAmount + 1000 + 3000
+      const initStorageRequiredBalance = mbrAmount + 1000n + 3000n
 
       // Check balance for both steps
       const requiredBalance = createPoolRequiredBalance + initStorageRequiredBalance
@@ -222,7 +223,7 @@ export function AddPoolModal({
       const stakingPoolKey = await addStakingPool(
         validator!.id,
         Number(data.nodeNum),
-        poolMbr,
+        addPoolMbr,
         transactionSigner,
         activeAddress,
       )
@@ -289,7 +290,7 @@ export function AddPoolModal({
       })
 
       const optInRewardToken =
-        validator.config.rewardTokenId !== 0 && validator.state.numPools === 0
+        validator.config.rewardTokenId !== 0n && validator.state.numPools === 0n
 
       setIsSigning(true)
 
@@ -407,7 +408,7 @@ export function AddPoolModal({
         <DialogHeader>
           <DialogTitle>Add a Pool</DialogTitle>
           <DialogDescription>
-            Create and fund a new staking pool for Validator {validator?.id}
+            Create and fund a new staking pool for Validator {Number(validator?.id)}
           </DialogDescription>
         </DialogHeader>
         <div>
@@ -437,7 +438,7 @@ export function AddPoolModal({
                           />
                           <FormDescription>
                             Select a node with an available slot (max:{' '}
-                            {validator?.config.poolsPerNode})
+                            {Number(validator?.config.poolsPerNode)})
                           </FormDescription>
                           <FormMessage>{errors.nodeNum?.message}</FormMessage>
                         </FormItem>

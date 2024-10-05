@@ -1,4 +1,3 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgorandClient } from '@algorandfoundation/algokit-utils'
 import { Account, secretKeyToMnemonic } from 'algosdk'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
@@ -8,8 +7,8 @@ import yargs from 'yargs'
 import prompts from 'prompts'
 import { AlgoClientConfig } from '@algorandfoundation/algokit-utils/types/network-client'
 import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
-import { StakingPoolClient } from '../contracts/clients/StakingPoolClient'
-import { ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
+import { StakingPoolFactory } from '../contracts/clients/StakingPoolClient'
+import { ValidatorRegistryFactory } from '../contracts/clients/ValidatorRegistryClient'
 
 function getNetworkConfig(network: string): [AlgoClientConfig, bigint, string] {
     let nfdRegistryAppID: bigint
@@ -134,78 +133,62 @@ async function main() {
     }
 
     // Generate staking pool template instance that we load into the validator registry instance's box storage
-    const poolClient = new StakingPoolClient(
-        {
-            sender: creatorAcct,
-            resolveBy: 'id',
-            id: 0,
-            deployTimeParams: {
-                nfdRegistryAppId: Number(registryAppID),
-            },
+    const stakingPoolFactory = algorand.client.getTypedAppFactory(StakingPoolFactory)
+    const { approvalProgramCompilationResult: approvalCompiled } = await stakingPoolFactory.appFactory.compile({
+        deployTimeParams: {
+            nfdRegistryAppId: Number(registryAppID),
         },
-        algorand.client.algod,
-    )
-    const { approvalCompiled } = await poolClient.appClient.compile()
-
+    })
     // first we have to deploy a staking pool contract instance for future use by the staking master contract which uses it as its
     // 'reference' instance when creating new staking pool contract instances.
-    const validatorClient = new ValidatorRegistryClient(
-        {
-            sender: creatorAcct,
-            resolveBy: 'id',
-            id: 0,
-            deployTimeParams: {
-                nfdRegistryAppId: Number(registryAppID),
-            },
+    const validatorFactory = algorand.client.getTypedAppFactory(ValidatorRegistryFactory, {
+        defaultSender: creatorAcct.addr,
+        deployTimeParams: {
+            nfdRegistryAppId: Number(registryAppID),
         },
-        algorand.client.algod,
-    )
+    })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     console.log(`creating application`)
     if (args.network === 'localnet') {
         console.log(`funding ${creatorAcct.addr}`)
-        await algokit.ensureFunded(
-            {
-                accountToFund: creatorAcct,
-                fundingSource: await algorand.account.localNetDispenser(),
-                minSpendingBalance: AlgoAmount.Algos(200),
-            },
-            algorand.client.algod,
+        await algorand.account.ensureFunded(
+            creatorAcct.addr,
+            await algorand.account.localNetDispenser(),
+            AlgoAmount.Algos(200),
         )
     }
-    const validatorApp = await validatorClient.create.createApplication({}, { schema: { extraPages: 3 } })
+    const validatorApp = await validatorFactory.send.create.createApplication({
+        args: [],
+        extraProgramPages: 3,
+    })
 
-    console.log(`Validator registry app id is:${validatorApp.appId}`)
-    console.log(`Validator Contract HASH is:${validatorApp.compiledApproval!.compiledHash}`)
+    console.log(`Validator registry app id is:${validatorApp.appClient.appId}`)
+    console.log(`Validator Contract HASH is:${validatorApp.result.compiledApproval!.compiledHash}`)
 
     // Fund the validator w/ 2 ALGO for contract mbr reqs.
-    await algokit.transferAlgos(
-        {
-            from: creatorAcct,
-            to: validatorApp.appAddress,
-            amount: AlgoAmount.Algos(2),
-        },
-        algorand.client.algod,
-    )
+    await algorand.send.payment({
+        sender: creatorAcct.addr,
+        receiver: validatorApp.result.appAddress,
+        amount: AlgoAmount.Algos(3),
+    })
 
     console.log(
-        `loading the ${approvalCompiled.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
+        `loading the ${approvalCompiled!.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
     )
 
     // Load the staking pool contract bytecode into the validator contract via box storage so it can later deploy
-    const composer = validatorClient
-        .compose()
-        .initStakingContract({ approvalProgramSize: approvalCompiled.compiledBase64ToBytes.length })
+    const composer = validatorApp.appClient.newGroup().initStakingContract({
+        args: { approvalProgramSize: approvalCompiled!.compiledBase64ToBytes.length },
+    })
 
     // load the StakingPool contract into box storage of the validator
     // call loadStakingContractData - chunking the data from approvalCompiled 2000 bytes at a time
-    for (let i = 0; i < approvalCompiled.compiledBase64ToBytes.length; i += 2000) {
+    for (let i = 0; i < approvalCompiled!.compiledBase64ToBytes.length; i += 2000) {
         composer.loadStakingContractData({
-            offset: i,
-            data: approvalCompiled.compiledBase64ToBytes.subarray(i, i + 2000),
+            args: { offset: i, data: approvalCompiled!.compiledBase64ToBytes.subarray(i, i + 2000) },
         })
     }
-    await composer.finalizeStakingContract({}).execute({ populateAppCallResources: true, suppressLog: true })
+    await composer.finalizeStakingContract().send({ populateAppCallResources: true, suppressLog: true })
 
     if (args.network === 'localnet') {
         // generate two dummy stakers - each w/ 100 million
@@ -223,12 +206,12 @@ async function main() {
         // Write the mnemonic to a .sandbox file in ../../nodemgr directory
         fs.writeFileSync(
             '../../nodemgr/.env.sandbox',
-            `ALGO_MNEMONIC_${creatorAcct.addr.substring(0, 4)}=${secretKeyToMnemonic(creatorAcct.sk)}\nRETI_APPID=${validatorApp.appId}\nALGO_MNEMONIC_${staker1.addr.substring(0, 4)}=${secretKeyToMnemonic(staker1.sk)}\nALGO_MNEMONIC_${staker2.addr.substring(0, 4)}=${secretKeyToMnemonic(staker2.sk)}\n`,
+            `ALGO_MNEMONIC_${creatorAcct.addr.substring(0, 4)}=${secretKeyToMnemonic(creatorAcct.sk)}\nRETI_APPID=${validatorApp.appClient.appId}\nALGO_MNEMONIC_${staker1.addr.substring(0, 4)}=${secretKeyToMnemonic(staker1.sk)}\nALGO_MNEMONIC_${staker2.addr.substring(0, 4)}=${secretKeyToMnemonic(staker2.sk)}\n`,
         )
         console.log('Modified .env.sandbox in nodemgr directory with these values for testing')
 
         // Create a .env.localnet file in the ui directory with the validator app id
-        createViteEnvFileForLocalnet(validatorApp.appId ?? args.id)
+        createViteEnvFileForLocalnet(validatorApp.appClient.appId ?? args.id)
     }
 }
 

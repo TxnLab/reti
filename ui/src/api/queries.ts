@@ -24,7 +24,7 @@ export const validatorsQueryOptions = (queryClient: QueryClient) =>
     retry: false,
   })
 
-export const validatorQueryOptions = (validatorId: number | string) =>
+export const validatorQueryOptions = (validatorId: bigint | string) =>
   queryOptions({
     queryKey: ['validator', String(validatorId)],
     queryFn: () => fetchValidator(validatorId),
@@ -32,7 +32,7 @@ export const validatorQueryOptions = (validatorId: number | string) =>
     retry: false,
   })
 
-export const poolAssignmentQueryOptions = (validatorId: number | string, enabled = true) =>
+export const poolAssignmentQueryOptions = (validatorId: bigint | string, enabled = true) =>
   queryOptions({
     queryKey: ['pool-assignments', String(validatorId)],
     queryFn: () => fetchNodePoolAssignments(validatorId),
@@ -111,7 +111,7 @@ export const validatorPoolsQueryOptions = (validatorId: number) =>
     enabled: !!validatorId,
   })
 
-export const stakedInfoQueryOptions = (poolAppId: number) =>
+export const stakedInfoQueryOptions = (poolAppId: bigint) =>
   queryOptions({
     queryKey: ['staked-info', poolAppId],
     queryFn: () => fetchStakedInfoForPool(poolAppId),
@@ -133,7 +133,7 @@ export const blockTimeQueryOptions = queryOptions({
   staleTime: 1000 * 60 * 30, // 30 mins
 })
 
-export const poolApyQueryOptions = (poolAppId: number, staleTime?: number) =>
+export const poolApyQueryOptions = (poolAppId: bigint, staleTime?: number) =>
   queryOptions({
     queryKey: ['pool-apy', poolAppId],
     queryFn: () => fetchPoolApy(poolAppId),
