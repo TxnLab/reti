@@ -5,7 +5,7 @@ import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
     ALGORAND_STAKING_BLOCK_DELAY,
     ASSET_HOLDING_FEE,
-    AVG_ROUNDS_PER_DAY,
+    APPROX_AVG_ROUNDS_PER_DAY,
     MAX_STAKERS_PER_POOL,
     MAX_VALIDATOR_SOFT_PCT_OF_ONLINE_1DECIMAL,
     MIN_ALGO_STAKE_PER_POOL,
@@ -64,7 +64,7 @@ export class StakingPool extends Contract {
     epochNumber = GlobalStateKey<uint64>({ key: 'epochNumber' })
 
     // Version of algod and reti node daemon this pool is connected to - updated automatically by node daemon
-    algodVer = GlobalStateKey<bytes>({ key: 'algodVer' })
+    algodVer = GlobalStateKey<string>({ key: 'algodVer' })
 
     // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
     stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' })
@@ -1019,21 +1019,26 @@ export class StakingPool extends Contract {
     }
 
     private setRoundsPerDay() {
-        this.roundsPerDay.value = AVG_ROUNDS_PER_DAY
         // While the average block times could be fetched from prior blocks, it isn't practical as current algorand clients
         // go out of their way to prevent users from even modifying the valid block ranges (particularly to set them 'backwards'
         // which calculating the average block time would require).
         // If implemented, an example implementation might look like:
-        // if (globals.round < 12) {
-        //     // must be start of dev/test? - just pick dummy val
-        //     this.roundsPerDay.value = AVG_ROUNDS_PER_DAY // approx 'daily' bins (60*60*24/2.8)
-        //     return
-        // }
-        // // get average block time - taking time delta between prior 10 blocks [block-11 : block-1]
-        // const avgBlockTimeTenths = blocks[globals.round - 1].timestamp - blocks[globals.round - 11].timestamp
-        // // dividing the diff by 10 would give us avg block time, but because we want block time as integer (with no decimals)
-        // // we can just take the time as is - thus 25 seconds that would become 2.5 - we leave as '25' - then honoring the
-        // // decimal later in final calcs.
-        // this.roundsPerDay.value = (24 * 60 * 60 * 10) / avgBlockTimeTenths
+        if (this.txn.firstValid < 12) {
+            // must be start of dev/test? - just pick dummy val
+            this.roundsPerDay.value = APPROX_AVG_ROUNDS_PER_DAY
+            return
+        }
+        // get average block time - taking time delta between prior 10 blocks [block-11 : block-1]
+        const avgBlockTimeTenths =
+            blocks[this.txn.firstValid - 1].timestamp - blocks[this.txn.firstValid - 11].timestamp
+        if (avgBlockTimeTenths === 0) {
+            // if block times are too close together (devmode?), just pick dummy val
+            this.roundsPerDay.value = APPROX_AVG_ROUNDS_PER_DAY
+            return
+        }
+        // dividing the diff by 10 would give us avg block time, but because we want block time as integer (with no decimals)
+        // we can just take the time as is - thus 25 seconds that would become 2.5 - we leave as '25' - then honoring the
+        // decimal later in final calcs.
+        this.roundsPerDay.value = (24 * 60 * 60 * 10) / avgBlockTimeTenths
     }
 }

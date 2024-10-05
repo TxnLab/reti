@@ -1,5 +1,4 @@
-import { Contract } from '@algorandfoundation/tealscript'
-// eslint-disable-next-line import/no-cycle
+import { Contract } from '@algorandfoundation/tealscript' // eslint-disable-next-line import/no-cycle
 import { StakedInfo, StakingPool } from './stakingPool.algo'
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
@@ -37,7 +36,7 @@ import {
     ValidatorIdType,
     ValidatorInfo,
     ValidatorPoolKey,
-} from './validatorConfigs.algo'
+} from './validatorConfigs.algo' // eslint-disable-next-line no-unused-vars
 
 // eslint-disable-next-line no-unused-vars
 /**
