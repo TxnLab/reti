@@ -248,7 +248,9 @@ export function isUnstakingDisabled(
     return true
   }
   const noPools = validator.state.numPools === 0n
-  const validatorHasStake = stakesByValidator.some((stake) => stake.validatorId === validator.id)
+  const validatorHasStake = stakesByValidator.some(
+    (stake) => stake.validatorId === BigInt(validator.id),
+  )
 
   return noPools || !validatorHasStake
 }
@@ -450,11 +452,11 @@ export function calculateMaxAvailableToStake(
  * @returns {number | null} Rewards eligibility percentage, or null if any input parameters are zero/undefined
  */
 export function calculateRewardEligibility(
-  epochRoundLength: number = 0,
+  epochRoundLength: bigint = 0n,
   lastPoolPayoutRound: bigint = 0n,
   entryRound: bigint = 0n,
 ): number | null {
-  if (epochRoundLength === 0 || lastPoolPayoutRound === 0n || entryRound === 0n) {
+  if (epochRoundLength === 0n || lastPoolPayoutRound === 0n || entryRound === 0n) {
     return null
   }
 
@@ -472,7 +474,7 @@ export function calculateRewardEligibility(
   const remainingRoundsInEpoch = Math.max(0, Number(nextPayoutRound - entryRound))
 
   // Calculate eligibility as a percentage of the epoch length
-  const eligibilePercent = (remainingRoundsInEpoch / epochRoundLength) * 100
+  const eligibilePercent = (remainingRoundsInEpoch / Number(epochRoundLength)) * 100
 
   // Ensure eligibility is within 0-100% range
   const rewardEligibility = Math.max(0, Math.min(eligibilePercent, 100))

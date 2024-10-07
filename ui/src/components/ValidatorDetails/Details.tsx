@@ -78,9 +78,9 @@ export function Details({ validator }: DetailsProps) {
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
     switch (entryGatingType) {
-      case GatingType.None:
+      case BigInt(GatingType.None):
         return 'None'
-      case GatingType.CreatorAccount:
+      case BigInt(GatingType.CreatorAccount):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -94,13 +94,13 @@ export function Details({ validator }: DetailsProps) {
             </a>
           </>
         )
-      case GatingType.AssetId:
+      case BigInt(GatingType.AssetId):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset(s)</strong>
             <ul className="mt-1 list-none">
               {entryGatingAssets
-                .filter((assetId) => assetId !== 0)
+                .filter((assetId) => assetId !== 0n)
                 .map((assetId, index) => (
                   <li key={assetId} className="leading-loose">
                     <DisplayAsset asset={validator.gatingAssets?.[index]} link />
@@ -109,7 +109,7 @@ export function Details({ validator }: DetailsProps) {
             </ul>
           </>
         )
-      case GatingType.CreatorNfd:
+      case BigInt(GatingType.CreatorNfd):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -118,7 +118,7 @@ export function Details({ validator }: DetailsProps) {
             </div>
           </>
         )
-      case GatingType.SegmentNfd:
+      case BigInt(GatingType.SegmentNfd):
         return (
           <>
             <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
@@ -245,7 +245,7 @@ export function Details({ validator }: DetailsProps) {
                   Commission Rate
                 </dt>
                 <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                  {`${validator.config.percentToValidator / 10000}%`}
+                  {`${Number(validator.config.percentToValidator) / 10000}%`}
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
@@ -253,7 +253,7 @@ export function Details({ validator }: DetailsProps) {
                   Pools Per Node
                 </dt>
                 <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                  {validator.config.poolsPerNode}
+                  {validator.config.poolsPerNode.toString()}
                 </dd>
               </div>
 
@@ -296,7 +296,7 @@ export function Details({ validator }: DetailsProps) {
                       Entry Gating
                     </dt>
                     <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                      {validator.config.entryGatingType === 0 ? (
+                      {validator.config.entryGatingType === 0n ? (
                         <span className="text-muted-foreground">--</span>
                       ) : (
                         <div className="text-sm">{renderEntryGating()}</div>
@@ -332,7 +332,7 @@ export function Details({ validator }: DetailsProps) {
                     Sunset Date
                   </dt>
                   <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                    {validator.config.sunsettingOn === 0 ? (
+                    {validator.config.sunsettingOn === 0n ? (
                       <span className="text-muted-foreground">--</span>
                     ) : (
                       dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')

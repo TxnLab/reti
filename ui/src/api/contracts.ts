@@ -49,36 +49,30 @@ const algodClient = ClientManager.getAlgodClient({
 })
 
 export function callGetNumValidators(validatorClient: ValidatorRegistryClient) {
-  return validatorClient
-    .newGroup()
-    .getNumValidators({
-      args: {},
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getNumValidators({
+    args: {},
+    populateAppCallResources: true,
+  })
 }
 
 export function callGetValidatorConfig(
   validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .getValidatorConfig({
-      args: { validatorId },
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getValidatorConfig({
+    args: { validatorId },
+    populateAppCallResources: true,
+  })
 }
 
 export function callGetValidatorState(
   validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .getValidatorState({
-      args: { validatorId },
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getValidatorState({
+    args: { validatorId },
+    populateAppCallResources: true,
+  })
 }
 
 async function processPool(pool: LocalPoolInfo): Promise<PoolData> {
@@ -148,7 +142,7 @@ async function setValidatorPoolMetrics(validator: Validator, queryClient?: Query
  * @return {Promise<Validator>} The validator object.
  */
 export async function fetchValidator(
-  validatorId: string | bigint,
+  validatorId: string | number,
   queryClient?: QueryClient,
 ): Promise<Validator> {
   try {
@@ -161,10 +155,10 @@ export async function fetchValidator(
       callGetNodePoolAssignments(Number(validatorId), validatorClient),
     ])
 
-    const Config = config.returns![0] as ValidatorConfig
-    const State = state.returns![0] as ValidatorCurState
-    const PoolsInfo = validatorPoolData.returns![0]
-    const NodePoolAssignment = nodePoolAssignments.returns![0]
+    const Config = config.return!
+    const State = state.return!
+    const PoolsInfo = validatorPoolData.return!
+    const NodePoolAssignment = nodePoolAssignments.return!
 
     if (!Config || !State || !PoolsInfo || !NodePoolAssignment) {
       throw new ValidatorNotFoundError(`Validator with id "${Number(validatorId)}" not found!`)
@@ -227,7 +221,7 @@ export async function fetchValidators(queryClient: QueryClient) {
     // App call to fetch total number of validators
     const numValidatorsResponse = await callGetNumValidators(validatorClient)
 
-    const numValidators = numValidatorsResponse.returns![0]!
+    const numValidators = numValidatorsResponse.return!
 
     if (!numValidators) {
       return []
@@ -240,7 +234,7 @@ export async function fetchValidators(queryClient: QueryClient) {
       const batchPromises = Array.from(
         { length: Math.min(batchSize, Number(numValidators) - i) },
         (_, index) => {
-          const validatorId = BigInt(i + index + 1)
+          const validatorId = i + index + 1
           return fetchValidator(validatorId, queryClient)
         },
       )
@@ -272,11 +266,8 @@ export async function addValidator(
   const validatorClient = await getValidatorClient(signer, activeAddress)
 
   const { addValidatorMbr } = (
-    await validatorClient
-      .newGroup()
-      .getMbrAmounts({ args: {} })
-      .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
-  ).returns![0]!
+    await validatorClient.send.getMbrAmounts({ args: {}, populateAppCallResources: true })
+  ).return!
 
   const payValidatorMbr = await validatorClient.appClient.createTransaction.fundAppAccount({
     sender: activeAddress,
@@ -337,10 +328,10 @@ export function callGetNodePoolAssignments(
   validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .getNodePoolAssignments({ args: { validatorId } })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getNodePoolAssignments({
+    args: { validatorId },
+    populateAppCallResources: true,
+  })
 }
 
 export async function fetchNodePoolAssignments(
@@ -349,7 +340,7 @@ export async function fetchNodePoolAssignments(
   try {
     const validatorClient = await getSimulateValidatorClient()
 
-    return (await callGetNodePoolAssignments(BigInt(validatorId), validatorClient)).returns![0]!
+    return (await callGetNodePoolAssignments(BigInt(validatorId), validatorClient)).return!
   } catch (error) {
     console.error(error)
     throw error
@@ -357,17 +348,14 @@ export async function fetchNodePoolAssignments(
 }
 
 export function callGetMbrAmounts(validatorClient: ValidatorRegistryClient) {
-  return validatorClient
-    .newGroup()
-    .getMbrAmounts({ args: {} })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getMbrAmounts({ args: {}, populateAppCallResources: true })
 }
 
 export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise<MbrAmounts> {
   try {
     const validatorClient = client || (await getSimulateValidatorClient())
 
-    return (await callGetMbrAmounts(validatorClient)).returns![0]!
+    return (await callGetMbrAmounts(validatorClient)).return!
   } catch (error) {
     console.error(error)
     throw error
@@ -452,19 +440,15 @@ export async function doesStakerNeedToPayMbr(
 ): Promise<boolean> {
   const validatorClient = client || (await getSimulateValidatorClient(activeAddress, authAddr))
 
-  const result = await validatorClient
-    .newGroup()
-    .doesStakerNeedToPayMbr({
-      args: {
-        staker: activeAddress,
-      },
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  const result = await validatorClient.send.doesStakerNeedToPayMbr({
+    args: { staker: activeAddress },
+    populateAppCallResources: true,
+  })
 
   if (result.returns?.[0] === undefined) {
     throw new Error('Error checking if staker needs to pay MBR')
   }
-  return result.returns![0]!
+  return result.return!
 }
 
 export async function findPoolForStaker(
@@ -615,12 +599,10 @@ export async function callFindPoolForStaker(
   amountToStake: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .findPoolForStaker({
-      args: { validatorId, staker, amountToStake },
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.findPoolForStaker({
+    args: { validatorId, staker, amountToStake },
+    populateAppCallResources: true,
+  })
 }
 
 export async function isNewStakerToValidator(
@@ -631,7 +613,7 @@ export async function isNewStakerToValidator(
   const validatorClient = await getSimulateValidatorClient()
   const result = await callFindPoolForStaker(validatorId, staker, minEntryStake, validatorClient)
 
-  const [_, isNewStaker] = result.returns![0]!
+  const [_, isNewStaker] = result.return!
 
   return isNewStaker
 }
@@ -640,12 +622,10 @@ export async function callGetStakedPoolsForAccount(
   staker: string,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .getStakedPoolsForAccount({
-      args: { staker },
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getStakedPoolsForAccount({
+    args: { staker },
+    populateAppCallResources: true,
+  })
 }
 
 export async function fetchStakedPoolsForAccount(staker: string): Promise<ValidatorPoolKey[]> {
@@ -653,7 +633,7 @@ export async function fetchStakedPoolsForAccount(staker: string): Promise<Valida
     const validatorClient = await getSimulateValidatorClient()
     const result = await callGetStakedPoolsForAccount(staker, validatorClient)
 
-    const stakedPools = result.returns![0]!
+    const stakedPools = result.return!
 
     // Filter out potential duplicates (temporary UI fix for duplicate staked pools bug)
     const uniqueStakedPools = Array.from(
@@ -673,12 +653,10 @@ export async function fetchStakedPoolsForAccount(staker: string): Promise<Valida
 }
 
 export async function callGetStakerInfo(staker: string, stakingPoolClient: StakingPoolClient) {
-  return stakingPoolClient
-    .newGroup()
-    .getStakerInfo({
-      args: { staker },
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return stakingPoolClient.send.getStakerInfo({
+    args: { staker },
+    populateAppCallResources: true,
+  })
 }
 
 export async function fetchStakerPoolData(
@@ -697,7 +675,7 @@ export async function fetchStakerPoolData(
 
     const result = await callGetStakerInfo(staker, stakingPoolClient)
 
-    const stakedInfo = result.returns![0]!
+    const stakedInfo = result.return!
 
     return {
       ...stakedInfo,
@@ -773,10 +751,8 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
 }
 
 export async function callGetProtocolConstraints(validatorClient: ValidatorRegistryClient) {
-  return validatorClient
-    .newGroup()
-    .getProtocolConstraints({ args: {} })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  // return validatorClient.send.getProtocolConstraints({ args: {}, populateAppCallResources: true })
+  return validatorClient.send.getProtocolConstraints({ args: {}, populateAppCallResources: true })
 }
 
 export async function fetchProtocolConstraints(
@@ -784,7 +760,7 @@ export async function fetchProtocolConstraints(
 ): Promise<Constraints> {
   try {
     const validatorClient = client || (await getSimulateValidatorClient())
-    return (await callGetProtocolConstraints(validatorClient)).returns![0]!
+    return (await callGetProtocolConstraints(validatorClient)).return!
   } catch (error) {
     console.error(error)
     throw error
@@ -943,10 +919,7 @@ export async function callGetPoolInfo(
   poolKey: ValidatorPoolKey,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .getPoolInfo({ args: { poolKey } })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getPoolInfo({ args: { poolKey }, populateAppCallResources: true })
 }
 
 export async function fetchPoolInfo(
@@ -957,7 +930,7 @@ export async function fetchPoolInfo(
     const validatorClient = client || (await getSimulateValidatorClient())
 
     const result = await callGetPoolInfo(poolKey, validatorClient)
-    const poolInfo = result.returns![0]!
+    const poolInfo = result.return!
 
     const stakingPoolClient = await getSimulateStakingPoolClient(poolKey.poolAppId)
     const poolAddress = stakingPoolClient.appAddress
@@ -979,13 +952,11 @@ export async function callGetPools(
   validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient
-    .newGroup()
-    .getPools({
-      args: { validatorId },
-      note: encodeCallParams('getPools', { validatorId }),
-    })
-    .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
+  return validatorClient.send.getPools({
+    args: { validatorId },
+    note: encodeCallParams('getPools', { validatorId }),
+    populateAppCallResources: true,
+  })
 }
 
 export async function fetchValidatorPools(
@@ -996,7 +967,7 @@ export async function fetchValidatorPools(
     const validatorClient = client || (await getSimulateValidatorClient())
 
     const result = await callGetPools(Number(validatorId), validatorClient)
-    const poolsInfo = result.returns![0]!
+    const poolsInfo = result.return!
 
     const poolAddresses: string[] = []
     const poolAlgodVersions: (string | undefined)[] = []
@@ -1005,7 +976,7 @@ export async function fetchValidatorPools(
       const stakingPoolClient = await getSimulateStakingPoolClient(poolInfo[0])
 
       poolAddresses.push(stakingPoolClient.appAddress)
-      poolAlgodVersions.push(await stakingPoolClient.state.global.algodVer())
+      poolAlgodVersions.push((await stakingPoolClient.state.global.algodVer()).asString())
     }
 
     return poolsInfo.map((poolInfo, i) => ({

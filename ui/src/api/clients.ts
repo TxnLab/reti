@@ -36,9 +36,9 @@ export async function getSimulateValidatorClient(
   senderAddr: string = FEE_SINK,
   authAddr?: string,
 ): Promise<ValidatorRegistryClient> {
-  algorandClient.setSigner(FEE_SINK, makeEmptyTransactionSigner())
   return algorandClient.client.getTypedAppClientById(ValidatorRegistryClient, {
     defaultSender: senderAddr,
+    defaultSigner: makeEmptyTransactionSigner(authAddr),
     appId: RETI_APP_ID,
   })
 }
@@ -60,9 +60,9 @@ export async function getSimulateStakingPoolClient(
   senderAddr: string = FEE_SINK,
   authAddr?: string,
 ): Promise<StakingPoolClient> {
-  algorandClient.setSigner(FEE_SINK, makeEmptyTransactionSigner())
   return algorandClient.client.getTypedAppClientById(StakingPoolClient, {
     defaultSender: senderAddr,
+    defaultSigner: makeEmptyTransactionSigner(authAddr),
     appId: poolAppId,
   })
 }

@@ -1,4 +1,5 @@
-import { Contract } from '@algorandfoundation/tealscript' // eslint-disable-next-line import/no-cycle
+import { Contract } from '@algorandfoundation/tealscript'
+// eslint-disable-next-line import/no-cycle
 import { StakedInfo, StakingPool } from './stakingPool.algo'
 import {
     ALGORAND_ACCOUNT_MIN_BALANCE,
@@ -36,7 +37,7 @@ import {
     ValidatorIdType,
     ValidatorInfo,
     ValidatorPoolKey,
-} from './validatorConfigs.algo' // eslint-disable-next-line no-unused-vars
+} from './validatorConfigs.algo'
 
 // eslint-disable-next-line no-unused-vars
 /**
@@ -112,6 +113,7 @@ export class ValidatorRegistry extends Contract {
      *  addStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)
      * ]
      */
+    @abi.readonly
     getMbrAmounts(): MbrAmounts {
         // Cost for creator of validator contract itself is (but not really our problem - it's a bootstrap issue only)
         // this.minBalanceForAccount(0, 0, 0, 0, 0, 4, 0)
@@ -142,6 +144,7 @@ export class ValidatorRegistry extends Contract {
     /**
      * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
      */
+    @abi.readonly
     getProtocolConstraints(): Constraints {
         return {
             epochPayoutRoundsMin: MIN_EPOCH_LENGTH,

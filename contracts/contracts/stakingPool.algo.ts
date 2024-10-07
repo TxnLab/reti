@@ -64,7 +64,7 @@ export class StakingPool extends Contract {
     epochNumber = GlobalStateKey<uint64>({ key: 'epochNumber' })
 
     // Version of algod and reti node daemon this pool is connected to - updated automatically by node daemon
-    algodVer = GlobalStateKey<string>({ key: 'algodVer' })
+    algodVer = GlobalStateKey<bytes>({ key: 'algodVer' })
 
     // Our 'ledger' of stakers, tracking each staker account and its balance, total rewards, and last entry time
     stakers = BoxKey<StaticArray<StakedInfo, typeof MAX_STAKERS_PER_POOL>>({ key: 'stakers' })

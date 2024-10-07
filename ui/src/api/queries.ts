@@ -24,7 +24,7 @@ export const validatorsQueryOptions = (queryClient: QueryClient) =>
     retry: false,
   })
 
-export const validatorQueryOptions = (validatorId: bigint | string) =>
+export const validatorQueryOptions = (validatorId: number | string) =>
   queryOptions({
     queryKey: ['validator', String(validatorId)],
     queryFn: () => fetchValidator(validatorId),
@@ -32,7 +32,7 @@ export const validatorQueryOptions = (validatorId: bigint | string) =>
     retry: false,
   })
 
-export const poolAssignmentQueryOptions = (validatorId: bigint | string, enabled = true) =>
+export const poolAssignmentQueryOptions = (validatorId: number | string, enabled = true) =>
   queryOptions({
     queryKey: ['pool-assignments', String(validatorId)],
     queryFn: () => fetchNodePoolAssignments(validatorId),
@@ -68,7 +68,7 @@ export const assetHoldingQueryOptions = (address: string | null) =>
   })
 
 export const nfdQueryOptions = (
-  nameOrId: string | number,
+  nameOrId: string | bigint,
   params: NfdGetNFDParams = { view: 'brief' },
   options: CacheRequestConfig = {},
 ) =>
@@ -135,7 +135,7 @@ export const blockTimeQueryOptions = queryOptions({
 
 export const poolApyQueryOptions = (poolAppId: bigint, staleTime?: number) =>
   queryOptions({
-    queryKey: ['pool-apy', poolAppId],
+    queryKey: ['pool-apy', Number(poolAppId)],
     queryFn: () => fetchPoolApy(poolAppId),
     enabled: !!poolAppId,
     staleTime: staleTime || 1000 * 60 * 60, // 1 hour

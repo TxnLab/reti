@@ -11,7 +11,7 @@
     },
     "license": "MIT",
     "dependencies": {
-        "@algorandfoundation/algokit-utils": "7.0.0-beta.8",
+        "@algorandfoundation/algokit-utils": "7.0.0-beta.10",
         "algosdk": "^2.9.0",
         "prompts": "^2.4.2",
         "yargs": "^17.7.2"

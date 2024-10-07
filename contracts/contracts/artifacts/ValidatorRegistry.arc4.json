@@ -55,6 +55,7 @@
     {
       "name": "getMbrAmounts",
       "desc": "Returns the MBR amounts needed for various actions:\n[\n addValidatorMbr: uint64 - mbr needed to add a new validator - paid to validator contract\n addPoolMbr: uint64 - mbr needed to add a new pool - paid to validator\n poolInitMbr: uint64 - mbr needed to initStorage() of pool - paid to pool itself\n addStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)\n]",
+      "readonly": true,
       "args": [],
       "returns": {
         "type": "(uint64,uint64,uint64,uint64)"
@@ -63,6 +64,7 @@
     {
       "name": "getProtocolConstraints",
       "desc": "Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.",
+      "readonly": true,
       "args": [],
       "returns": {
         "type": "(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)"

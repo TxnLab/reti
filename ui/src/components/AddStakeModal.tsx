@@ -129,7 +129,7 @@ export function AddStakeModal({
   const mbrAmount = mbrRequired ? addStakerMbr : 0n
 
   const stakerPoolsData = React.useMemo<StakerPoolData[]>(
-    () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
+    () => stakesByValidator.find((data) => Number(data.validatorId) === validator?.id)?.pools || [],
     [stakesByValidator, validator],
   )
   const minimumStake = stakerPoolsData.length === 0 ? Number(validator?.config.minEntryStake) : 0
@@ -162,7 +162,11 @@ export function AddStakeModal({
         },
       )
       .superRefine((val, ctx) => {
-        const algoAmount = parseFloat(val)
+        let parsedFloat = parseFloat(val)
+        if (isNaN(parsedFloat)) {
+          parsedFloat = 0
+        }
+        const algoAmount = BigInt(parsedFloat)
         const amountToStake = AlgoAmount.Algos(algoAmount).microAlgos
 
         if (validator) {
@@ -409,7 +413,7 @@ export function AddStakeModal({
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
             <div>
-              <NfdThumbnail nameOrId={Number(entryGatingAssets[0])} link />
+              <NfdThumbnail nameOrId={entryGatingAssets[0]} link />
             </div>
           </>
         )
@@ -418,7 +422,7 @@ export function AddStakeModal({
           <>
             <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
             <div className="flex">
-              <NfdThumbnail nameOrId={Number(entryGatingAssets[0])} link />
+              <NfdThumbnail nameOrId={entryGatingAssets[0]} link />
             </div>
           </>
         )
