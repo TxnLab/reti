@@ -5,8 +5,18 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { Account, getApplicationAddress } from 'algosdk'
 import { randomUUID } from 'crypto'
-import { StakedInfo, StakingPoolClient, ValidatorPoolKey } from '../contracts/clients/StakingPoolClient'
-import { PoolInfo, ValidatorConfig, ValidatorRegistryClient } from '../contracts/clients/ValidatorRegistryClient'
+import {
+    StakedInfo,
+    StakedInfoFromTuple,
+    StakingPoolClient,
+    ValidatorPoolKey,
+} from '../contracts/clients/StakingPoolClient'
+import {
+    PoolInfo,
+    PoolInfoFromTuple,
+    ValidatorConfig,
+    ValidatorRegistryClient,
+} from '../contracts/clients/ValidatorRegistryClient'
 
 export const ALGORAND_ZERO_ADDRESS_STRING = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ'
 
@@ -21,18 +31,18 @@ const DefaultValidatorConfig: ValidatorConfig = {
     owner: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     manager: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     nfdForInfo: 0n,
-    entryGatingType: BigInt(GATING_TYPE_NONE),
+    entryGatingType: GATING_TYPE_NONE,
     entryGatingAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     entryGatingAssets: [0n, 0n, 0n, 0n],
     gatingAssetMinBalance: 0n,
     rewardTokenId: 0n,
     rewardPerPayout: 0n,
-    epochRoundLength: BigInt(1), // minimum allowed
-    percentToValidator: BigInt(10000), // 1.0000%
+    epochRoundLength: 1, // minimum allowed
+    percentToValidator: 10000, // 1.0000%
     validatorCommissionAddress: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ',
     minEntryStake: BigInt(AlgoAmount.Algos(1000).microAlgos),
     maxAlgoPerPool: 0n, // float w/ online caps
-    poolsPerNode: 3n,
+    poolsPerNode: 3,
     sunsettingOn: 0n,
     sunsettingTo: 0n,
 }
@@ -46,16 +56,7 @@ export function createValidatorConfig(inputConfig: Partial<ValidatorConfig>): Va
 
 export async function getStakeInfoFromBoxValue(stakeClient: StakingPoolClient) {
     const data = await stakeClient.state.box.stakers()
-    return data!.map(
-        (s) =>
-            ({
-                account: s[0],
-                balance: s[1],
-                totalRewarded: s[2],
-                rewardTokenBalance: s[3],
-                entryRound: s[4],
-            }) satisfies StakedInfo,
-    )
+    return data!.map((si) => StakedInfoFromTuple(si))
 }
 
 export async function getProtocolConstraints(validatorClient: ValidatorRegistryClient) {
@@ -97,7 +98,7 @@ export async function addValidator(
 }
 
 export async function getValidatorState(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    return (await validatorClient.send.getValidatorState({ args: [validatorId], populateAppCallResources: true }))
+    return (await validatorClient.send.getValidatorState({ args: { validatorId }, populateAppCallResources: true }))
         .return!
 }
 
@@ -173,21 +174,15 @@ export async function getPoolInfo(validatorClient: ValidatorRegistryClient, pool
 }
 
 export async function getPools(validatorClient: ValidatorRegistryClient, validatorId: number): Promise<PoolInfo[]> {
-    return (
-        await validatorClient
-            .newGroup()
-            .getPools({ args: [validatorId] })
-            .simulate({ allowUnnamedResources: true })
-    ).returns[0]!.map(
-        (poolInfo) =>
-            ({ poolAppId: poolInfo[0], totalStakers: poolInfo[1], totalAlgoStaked: poolInfo[2] }) satisfies PoolInfo,
+    return (await validatorClient.send.getPools({ args: { validatorId } })).return!.map((poolInfo) =>
+        PoolInfoFromTuple(poolInfo),
     )
 }
 
 export async function getCurMaxStakePerPool(validatorClient: ValidatorRegistryClient, validatorId: number) {
     return (
         await validatorClient.send.getCurMaxStakePerPool({
-            args: [validatorId],
+            args: { validatorId },
             populateAppCallResources: true,
         })
     ).return!
@@ -219,7 +214,7 @@ export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Acco
 }
 
 export async function getTokenPayoutRatio(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    return (await validatorClient.send.getTokenPayoutRatio({ args: [validatorId], populateAppCallResources: true }))
+    return (await validatorClient.send.getTokenPayoutRatio({ args: { validatorId }, populateAppCallResources: true }))
         .return!
 }
 
