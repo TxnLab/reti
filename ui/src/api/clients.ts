@@ -1,16 +1,10 @@
-import { TransactionSignerAccount } from '@algorandfoundation/algokit-utils/types/account'
-import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import algosdk from 'algosdk'
 import { FEE_SINK } from '@/constants/accounts'
 import { StakingPoolClient, StakingPoolFactory } from '@/contracts/StakingPoolClient'
-import {
-  ValidatorRegistryClient,
-  ValidatorRegistryFactory,
-} from '@/contracts/ValidatorRegistryClient'
+import { ValidatorRegistryClient } from '@/contracts/ValidatorRegistryClient'
 import { makeEmptyTransactionSigner } from '@/lib/makeEmptyTransactionSigner'
 import { getRetiAppIdFromViteEnvironment } from '@/utils/env'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
-import { ParamsCache } from '@/utils/paramsCache'
 import { AlgorandClient } from '@algorandfoundation/algokit-utils'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
@@ -21,6 +15,7 @@ const RETI_APP_ID = BigInt(getRetiAppIdFromViteEnvironment())
 export function getStakingPoolFactory(): [AlgorandClient, StakingPoolFactory] {
   return [algorandClient, new StakingPoolFactory({ algorand: algorandClient })]
 }
+
 export async function getValidatorClient(
   signer: algosdk.TransactionSigner,
   activeAddress: string,

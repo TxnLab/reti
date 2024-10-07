@@ -255,7 +255,12 @@ export async function addValidator(
 ) {
   const validatorClient = await getValidatorClient(signer, activeAddress)
 
-  const { addValidatorMbr } = (await validatorClient.send.getMbrAmounts({ args: {} })).return!
+  const { addValidatorMbr } = (
+    await validatorClient.send.getMbrAmounts({
+      args: {},
+      signer: makeEmptyTransactionSigner(authAddr),
+    })
+  ).return!
 
   const payValidatorMbr = await validatorClient.appClient.createTransaction.fundAppAccount({
     sender: activeAddress,

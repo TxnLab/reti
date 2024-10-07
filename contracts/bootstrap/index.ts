@@ -134,7 +134,7 @@ async function main() {
 
     // Generate staking pool template instance that we load into the validator registry instance's box storage
     const stakingPoolFactory = algorand.client.getTypedAppFactory(StakingPoolFactory)
-    const { approvalProgramCompilationResult: approvalCompiled } = await stakingPoolFactory.appFactory.compile({
+    const { compiledApproval } = await stakingPoolFactory.appFactory.compile({
         deployTimeParams: {
             nfdRegistryAppId: Number(registryAppID),
         },
@@ -173,19 +173,19 @@ async function main() {
     })
 
     console.log(
-        `loading the ${approvalCompiled!.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
+        `loading the ${compiledApproval!.compiledBase64ToBytes.length} bytes of the staking contract into the validator contracts box storage`,
     )
 
     // Load the staking pool contract bytecode into the validator contract via box storage so it can later deploy
     const composer = validatorApp.appClient.newGroup().initStakingContract({
-        args: { approvalProgramSize: approvalCompiled!.compiledBase64ToBytes.length },
+        args: { approvalProgramSize: compiledApproval!.compiledBase64ToBytes.length },
     })
 
     // load the StakingPool contract into box storage of the validator
-    // call loadStakingContractData - chunking the data from approvalCompiled 2000 bytes at a time
-    for (let i = 0; i < approvalCompiled!.compiledBase64ToBytes.length; i += 2000) {
+    // call loadStakingContractData - chunking the data from compiledApproval 2000 bytes at a time
+    for (let i = 0; i < compiledApproval!.compiledBase64ToBytes.length; i += 2000) {
         composer.loadStakingContractData({
-            args: { offset: i, data: approvalCompiled!.compiledBase64ToBytes.subarray(i, i + 2000) },
+            args: { offset: i, data: compiledApproval!.compiledBase64ToBytes.subarray(i, i + 2000) },
         })
     }
     await composer.finalizeStakingContract().send({ populateAppCallResources: true, suppressLog: true })
