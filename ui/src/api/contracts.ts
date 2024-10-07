@@ -969,27 +969,32 @@ export async function fetchValidatorPools(
   }
 }
 
-export async function claimTokens(pools: PoolInfo[], activeAddress: string, authAddr?: string) {
+export async function claimTokens(
+  pools: PoolInfo[],
+  signer: algosdk.TransactionSigner,
+  activeAddress: string,
+  authAddr?: string,
+) {
   const [algorand, stakingFactory] = getStakingPoolFactory()
 
   const feeComposer = algorand.newGroup()
-  const simulateSigner = makeEmptyTransactionSigner(authAddr)
+  const simSigner = makeEmptyTransactionSigner(authAddr)
 
   for (const pool of pools) {
     const client = stakingFactory.getAppClientById({
       appId: pool.poolAppId,
       defaultSender: activeAddress,
+      defaultSigner: simSigner,
     })
-    const signer = simulateSigner
     feeComposer
       .addAppCallMethodCall(
-        await client.params.gas({ args: [], note: '1', staticFee: (0).microAlgo(), signer }),
+        await client.params.gas({ args: [], note: '1', staticFee: (0).microAlgo() }),
       )
       .addAppCallMethodCall(
-        await client.params.gas({ args: [], note: '2', staticFee: (0).microAlgo(), signer }),
+        await client.params.gas({ args: [], note: '2', staticFee: (0).microAlgo() }),
       )
       .addAppCallMethodCall(
-        await client.params.claimTokens({ args: {}, staticFee: (240_000).microAlgo(), signer }),
+        await client.params.claimTokens({ args: {}, staticFee: (240_000).microAlgo() }),
       )
   }
 
@@ -1013,6 +1018,7 @@ export async function claimTokens(pools: PoolInfo[], activeAddress: string, auth
       appId: pool.poolAppId,
       // Assumes this address was registered already with the AlgorandClient and the use-wallet signer
       defaultSender: activeAddress,
+      defaultSigner: signer,
     })
     composer
       .addAppCallMethodCall(

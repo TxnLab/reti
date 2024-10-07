@@ -5,12 +5,7 @@ import { LogicError } from '@algorandfoundation/algokit-utils/types/logic-error'
 import { AlgorandTestAutomationContext } from '@algorandfoundation/algokit-utils/types/testing'
 import { Account, getApplicationAddress } from 'algosdk'
 import { randomUUID } from 'crypto'
-import {
-    StakedInfo,
-    StakedInfoFromTuple,
-    StakingPoolClient,
-    ValidatorPoolKey,
-} from '../contracts/clients/StakingPoolClient'
+import { StakedInfoFromTuple, StakingPoolClient, ValidatorPoolKey } from '../contracts/clients/StakingPoolClient'
 import {
     PoolInfo,
     PoolInfoFromTuple,
@@ -60,7 +55,7 @@ export async function getStakeInfoFromBoxValue(stakeClient: StakingPoolClient) {
 }
 
 export async function getProtocolConstraints(validatorClient: ValidatorRegistryClient) {
-    return (await validatorClient.newGroup().getProtocolConstraints().simulate()).returns[0]!
+    return (await validatorClient.send.getProtocolConstraints()).return!
 }
 
 export async function addValidator(
@@ -98,8 +93,7 @@ export async function addValidator(
 }
 
 export async function getValidatorState(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    return (await validatorClient.send.getValidatorState({ args: { validatorId }, populateAppCallResources: true }))
-        .return!
+    return (await validatorClient.send.getValidatorState({ args: { validatorId } })).return!
 }
 
 export async function addStakingPool(
@@ -111,9 +105,6 @@ export async function addStakingPool(
     poolMbr: bigint,
     poolInitMbr: bigint,
 ) {
-    // const suggestedParams = await context.algod.getTransactionParams().do()
-    // consoleLogger.info(`addStakingPool: firstRound:${suggestedParams.firstRound}`)
-
     // Before validator can add pools it needs to be funded
     try {
         // Now add a staking pool
@@ -170,7 +161,7 @@ export async function addStakingPool(
 }
 
 export async function getPoolInfo(validatorClient: ValidatorRegistryClient, poolKey: ValidatorPoolKey) {
-    return (await validatorClient.send.getPoolInfo({ args: [poolKey], populateAppCallResources: true })).return!
+    return (await validatorClient.send.getPoolInfo({ args: { poolKey } })).return!
 }
 
 export async function getPools(validatorClient: ValidatorRegistryClient, validatorId: number): Promise<PoolInfo[]> {
@@ -180,22 +171,14 @@ export async function getPools(validatorClient: ValidatorRegistryClient, validat
 }
 
 export async function getCurMaxStakePerPool(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    return (
-        await validatorClient.send.getCurMaxStakePerPool({
-            args: { validatorId },
-            populateAppCallResources: true,
-        })
-    ).return!
+    return (await validatorClient.send.getCurMaxStakePerPool({ args: { validatorId } })).return!
 }
 
 export async function getStakedPoolsForAccount(
     validatorClient: ValidatorRegistryClient,
     stakerAccount: Account,
 ): Promise<ValidatorPoolKey[]> {
-    const results = await validatorClient.send.getStakedPoolsForAccount({
-        args: { staker: stakerAccount.addr },
-        populateAppCallResources: true,
-    })
+    const results = await validatorClient.send.getStakedPoolsForAccount({ args: { staker: stakerAccount.addr } })
 
     const retPoolKeys: ValidatorPoolKey[] = []
     results.return!.forEach((poolKey) => {
@@ -205,17 +188,11 @@ export async function getStakedPoolsForAccount(
 }
 
 export async function getStakerInfo(stakeClient: StakingPoolClient, staker: Account) {
-    return (
-        await stakeClient.send.getStakerInfo({
-            args: { staker: staker.addr },
-            populateAppCallResources: true,
-        })
-    ).return!
+    return (await stakeClient.send.getStakerInfo({ args: { staker: staker.addr } })).return!
 }
 
 export async function getTokenPayoutRatio(validatorClient: ValidatorRegistryClient, validatorId: number) {
-    return (await validatorClient.send.getTokenPayoutRatio({ args: { validatorId }, populateAppCallResources: true }))
-        .return!
+    return (await validatorClient.send.getTokenPayoutRatio({ args: { validatorId } })).return!
 }
 
 export async function addStake(
