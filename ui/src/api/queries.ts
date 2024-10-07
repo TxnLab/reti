@@ -113,7 +113,7 @@ export const validatorPoolsQueryOptions = (validatorId: number) =>
 
 export const stakedInfoQueryOptions = (poolAppId: number) =>
   queryOptions({
-    queryKey: ['staked-info', poolAppId],
+    queryKey: ['staked-info', poolAppId.toString()],
     queryFn: () => fetchStakedInfoForPool(BigInt(poolAppId)),
     enabled: !!poolAppId,
   })
@@ -135,7 +135,7 @@ export const blockTimeQueryOptions = queryOptions({
 
 export const poolApyQueryOptions = (poolAppId: bigint, staleTime?: number) =>
   queryOptions({
-    queryKey: ['pool-apy', Number(poolAppId)],
+    queryKey: ['pool-apy', poolAppId.toString()],
     queryFn: () => fetchPoolApy(BigInt(poolAppId)),
     enabled: !!poolAppId,
     staleTime: staleTime || 1000 * 60 * 60, // 1 hour
