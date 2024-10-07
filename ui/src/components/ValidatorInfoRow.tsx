@@ -1,6 +1,7 @@
 import { DisplayAsset } from '@/components/DisplayAsset'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 import { useBlockTime } from '@/hooks/useBlockTime'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { calculateMaxStakers } from '@/utils/contracts'
 import { formatDuration } from '@/utils/dayjs'
 import { formatAmount, formatAssetAmount } from '@/utils/format'
@@ -42,7 +43,7 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
     <div
       className={cn(
         'grid gap-5 py-4 px-5 lg:pl-12 lg:py-5',
-        validator.config.rewardTokenId === 0 ? 'grid-cols-2' : 'grid-cols-3',
+        validator.config.rewardTokenId === 0n ? 'grid-cols-2' : 'grid-cols-3',
       )}
     >
       <div className="grid gap-5 grid-cols-2">
@@ -50,7 +51,8 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
           <h4 className="text-sm font-medium text-muted-foreground">Pools / Max</h4>
           <p className="text-sm">
             <span className="whitespace-nowrap">
-              {validator.state.numPools} / {validator.config.poolsPerNode * constraints.maxNodes}
+              {validator.state.numPools} /{' '}
+              {validator.config.poolsPerNode * Number(constraints.maxNodes)}
             </span>
           </p>
         </div>
@@ -82,7 +84,7 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
       </div>
 
       <div
-        className={cn('grid gap-5 grid-cols-2', { hidden: validator.config.rewardTokenId === 0 })}
+        className={cn('grid gap-5 grid-cols-2', { hidden: validator.config.rewardTokenId === 0n })}
       >
         <div>
           <h4 className="text-sm font-medium text-muted-foreground">Reward Token</h4>

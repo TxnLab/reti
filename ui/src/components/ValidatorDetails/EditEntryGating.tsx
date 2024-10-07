@@ -68,12 +68,12 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
 
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
   const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<bigint>(
-    entryGatingType === BigInt(GatingType.CreatorNfd) ? entryGatingAssets[0] : 0n,
+    entryGatingType === GatingType.CreatorNfd ? entryGatingAssets[0] : 0n,
   )
 
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
   const [nfdParentAppId, setNfdParentAppId] = React.useState<bigint>(
-    entryGatingType === BigInt(GatingType.SegmentNfd) ? entryGatingAssets[0] : 0n,
+    entryGatingType === GatingType.SegmentNfd ? entryGatingAssets[0] : 0n,
   )
 
   const nfdCreatorQuery = useQuery(nfdQueryOptions(nfdCreatorAppId))
@@ -107,7 +107,7 @@ export function EditEntryGating({ validator }: EditEntryGatingProps) {
     entryGatingType: String(entryGatingType),
     entryGatingAddress: entryGatingAddress,
     entryGatingAssets:
-      entryGatingType === BigInt(GatingType.AssetId)
+      entryGatingType === GatingType.AssetId
         ? entryGatingAssets
             .filter((assetId) => assetId > 0)
             .map((assetId) => ({ value: String(assetId) }))

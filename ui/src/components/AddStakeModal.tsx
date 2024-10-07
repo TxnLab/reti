@@ -109,7 +109,7 @@ export function AddStakeModal({
   const hasGatingAccess = () => {
     if (!validator) return false
 
-    if (validator.config.entryGatingType === BigInt(GatingType.None)) {
+    if (validator.config.entryGatingType === GatingType.None) {
       return true
     }
 
@@ -370,9 +370,9 @@ export function AddStakeModal({
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
     switch (entryGatingType) {
-      case BigInt(GatingType.None):
+      case GatingType.None:
         return 'None'
-      case BigInt(GatingType.CreatorAccount):
+      case GatingType.CreatorAccount:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -386,7 +386,7 @@ export function AddStakeModal({
             </a>
           </>
         )
-      case BigInt(GatingType.AssetId):
+      case GatingType.AssetId:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset ID</strong>
@@ -408,7 +408,7 @@ export function AddStakeModal({
             </ul>
           </>
         )
-      case BigInt(GatingType.CreatorNfd):
+      case GatingType.CreatorNfd:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -417,7 +417,7 @@ export function AddStakeModal({
             </div>
           </>
         )
-      case BigInt(GatingType.SegmentNfd):
+      case GatingType.SegmentNfd:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}

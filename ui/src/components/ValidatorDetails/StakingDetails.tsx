@@ -66,7 +66,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
   const poolData =
     validator?.pools.map((pool, index) => ({
       name: `Pool ${index + 1}`,
-      value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
+      value: convertFromBaseUnits(pool.totalAlgoStaked || 1n, 6),
     })) || []
 
   const { stakersChartData, poolsInfo, isLoading, errorMessage } = useStakersChartData({
@@ -78,7 +78,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
 
   // Set poolApyQuery staleTime to epoch length in ms
   const blockTime = useBlockTime()
-  const staleTime = Number(validator.config.epochRoundLength) * blockTime.ms
+  const staleTime = validator.config.epochRoundLength * blockTime.ms
 
   // Fetch APY for selected pool (setting poolAppId to 0 disables query)
   const poolApyQuery = useQuery(poolApyQueryOptions(selectedPoolInfo?.poolAppId || 0n, staleTime))
@@ -245,7 +245,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
               <div className="py-4 grid grid-cols-2 gap-4">
                 <dt className="text-sm font-medium leading-6 text-muted-foreground">Total Pools</dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">
-                  {Number(validator.state.numPools)}
+                  {validator.state.numPools}
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-2 gap-4">
@@ -263,7 +263,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                   Total Stakers
                 </dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">
-                  {Number(validator.state.totalStakers)}
+                  {validator.state.totalStakers.toString()}
                 </dd>
               </div>
               <div className="py-4">
@@ -370,7 +370,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
-                {Number(selectedPoolInfo.totalStakers)}
+                {selectedPoolInfo.totalStakers.toString()}
               </dd>
             </div>
 

@@ -26,12 +26,10 @@ import { Constraints, NodePoolAssignmentConfig } from '@/contracts/ValidatorRegi
  */
 export function processNodePoolAssignment(
   nodes: NodePoolAssignmentConfig,
-  poolsPerNode: bigint,
+  poolsPerNode: number,
 ): NodeInfo[] {
   return nodes.nodes.map((nodeConfig, index) => {
-    const availableSlots = nodeConfig[0].filter(
-      (slot, i) => i < Number(poolsPerNode) && slot === 0n,
-    ).length
+    const availableSlots = nodeConfig[0].filter((slot, i) => i < poolsPerNode && slot === 0n).length
 
     return {
       index: index + 1,
@@ -64,7 +62,7 @@ export function validatorHasAvailableSlots(
  */
 export function findFirstAvailableNode(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
-  poolsPerNode: bigint,
+  poolsPerNode: number,
 ): number | null {
   for (let nodeIndex = 0; nodeIndex < nodePoolAssignmentConfig.nodes.length; nodeIndex++) {
     const slotIndex = nodePoolAssignmentConfig.nodes[nodeIndex][0].indexOf(0n)
@@ -177,7 +175,7 @@ export function transformEntryGatingAssets(
  * @returns {bigint} Maximum total stake
  */
 export function calculateMaxStake(validator: Validator, constraints?: Constraints): bigint {
-  if (validator.state.numPools === 0n || !constraints) {
+  if (validator.state.numPools === 0 || !constraints) {
     return BigInt(0)
   }
 
@@ -194,11 +192,11 @@ export function calculateMaxStake(validator: Validator, constraints?: Constraint
  * Calculate the maximum number of stakers based on the validator's configuration and protocol constraints
  * @param {Validator} validator - Validator object
  * @param {Constraints} constraints - Protocol constraints object
- * @returns {bigint} Maximum number of stakers
+ * @returns {number} Maximum number of stakers
  */
-export function calculateMaxStakers(validator: Validator, constraints?: Constraints): bigint {
-  const maxStakersPerPool = constraints?.maxStakersPerPool || 0n
-  const maxStakers = maxStakersPerPool * BigInt(validator.state.numPools)
+export function calculateMaxStakers(validator: Validator, constraints?: Constraints): number {
+  const maxStakersPerPool = Number(constraints?.maxStakersPerPool || 0)
+  const maxStakers = maxStakersPerPool * validator.state.numPools
 
   return maxStakers
 }
@@ -220,7 +218,7 @@ export function isStakingDisabled(
   }
   const { numPools, totalStakers, totalAlgoStaked } = validator.state
 
-  const noPools = numPools === 0n
+  const noPools = numPools === 0
 
   const maxStake = calculateMaxStake(validator, constraints)
   const maxStakeReached = Number(totalAlgoStaked) >= Number(maxStake)
@@ -247,7 +245,7 @@ export function isUnstakingDisabled(
   if (!activeAddress) {
     return true
   }
-  const noPools = validator.state.numPools === 0n
+  const noPools = validator.state.numPools === 0
   const validatorHasStake = stakesByValidator.some(
     (stake) => stake.validatorId === BigInt(validator.id),
   )
@@ -270,7 +268,7 @@ export function isAddingPoolDisabled(
   if (!activeAddress || !constraints) {
     return true
   }
-  const maxNodes = constraints.maxNodes
+  const maxNodes = Number(constraints.maxNodes)
   const { numPools } = validator.state
   const { poolsPerNode } = validator.config
 
@@ -342,7 +340,7 @@ export async function fetchValueToVerify(
   const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
   const minBalance = validator.config.gatingAssetMinBalance
 
-  if (entryGatingType === BigInt(GatingType.CreatorAccount)) {
+  if (entryGatingType === GatingType.CreatorAccount) {
     const creatorAddress = entryGatingAddress
     const accountInfo = await fetchAccountInformation(creatorAddress)
 
@@ -352,12 +350,12 @@ export async function fetchValueToVerify(
     }
   }
 
-  if (entryGatingType === BigInt(GatingType.AssetId)) {
+  if (entryGatingType === GatingType.AssetId) {
     const assetIds = entryGatingAssets.filter((asset) => asset !== 0n)
     return findValueToVerify(heldAssets, assetIds, minBalance)
   }
 
-  if (entryGatingType === BigInt(GatingType.CreatorNfd)) {
+  if (entryGatingType === GatingType.CreatorNfd) {
     const nfdAppId = entryGatingAssets[0]
     const nfd = await fetchNfd(nfdAppId, { view: 'tiny' })
     const addresses = nfd.caAlgo || []
@@ -373,7 +371,7 @@ export async function fetchValueToVerify(
     return findValueToVerify(heldAssets, assetIds, minBalance)
   }
 
-  if (entryGatingType === BigInt(GatingType.SegmentNfd)) {
+  if (entryGatingType === GatingType.SegmentNfd) {
     const parentAppID = entryGatingAssets[0]
 
     try {
@@ -452,11 +450,11 @@ export function calculateMaxAvailableToStake(
  * @returns {number | null} Rewards eligibility percentage, or null if any input parameters are zero/undefined
  */
 export function calculateRewardEligibility(
-  epochRoundLength: bigint = 0n,
+  epochRoundLength: number = 0,
   lastPoolPayoutRound: bigint = 0n,
   entryRound: bigint = 0n,
 ): number | null {
-  if (epochRoundLength === 0n || lastPoolPayoutRound === 0n || entryRound === 0n) {
+  if (epochRoundLength === 0 || lastPoolPayoutRound === 0n || entryRound === 0n) {
     return null
   }
 
@@ -474,7 +472,7 @@ export function calculateRewardEligibility(
   const remainingRoundsInEpoch = Math.max(0, Number(nextPayoutRound - entryRound))
 
   // Calculate eligibility as a percentage of the epoch length
-  const eligibilePercent = (remainingRoundsInEpoch / Number(epochRoundLength)) * 100
+  const eligibilePercent = (remainingRoundsInEpoch / epochRoundLength) * 100
 
   // Ensure eligibility is within 0-100% range
   const rewardEligibility = Math.max(0, Math.min(eligibilePercent, 100))
@@ -639,8 +637,8 @@ export function calculateValidatorPoolMetrics(
 
   // Calculate APY only for pools with non-zero balance
   const nonZeroBalancePools = poolsData.filter((data) => data.balance > 0n)
-  const totalApy = nonZeroBalancePools.reduce((sum: bigint, data) => sum + (data.apy || 0n), 0n)
-  const apy = nonZeroBalancePools.length > 0 ? Number(totalApy) / nonZeroBalancePools.length : 0
+  const totalApy = nonZeroBalancePools.reduce((sum, data) => sum + (data.apy || 0), 0)
+  const apy = nonZeroBalancePools.length > 0 ? totalApy / nonZeroBalancePools.length : 0
 
   return { rewardsBalance, roundsSinceLastPayout, apy }
 }

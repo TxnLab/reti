@@ -152,7 +152,7 @@ export function AddPoolModal({
 
   React.useEffect(() => {
     if (validator !== null && currentStep == 0 && nodeNum !== '' && !errors.nodeNum) {
-      const isRewardsPool = validator.config.rewardTokenId !== 0n && validator.state.numPools === 0n
+      const isRewardsPool = validator.config.rewardTokenId !== 0n && validator.state.numPools === 0
       const numSteps = isRewardsPool ? 4 : 3
       setTotalSteps(numSteps)
       setCurrentStep(1)
@@ -207,7 +207,7 @@ export function AddPoolModal({
 
       // Required balance for step 2
       const mbrAmount =
-        validator.config.rewardTokenId !== 0n && validator.state.numPools === 0n
+        validator.config.rewardTokenId !== 0n && validator.state.numPools === 0
           ? poolInitMbr + 100_000n
           : poolInitMbr
       const initStorageRequiredBalance = mbrAmount + 1000n + 3000n
@@ -221,7 +221,7 @@ export function AddPoolModal({
       setIsSigning(true)
 
       const stakingPoolKey = await addStakingPool(
-        validator!.id,
+        BigInt(validator!.id),
         Number(data.nodeNum),
         addPoolMbr,
         transactionSigner,
@@ -290,7 +290,7 @@ export function AddPoolModal({
       })
 
       const optInRewardToken =
-        validator.config.rewardTokenId !== 0n && validator.state.numPools === 0n
+        validator.config.rewardTokenId !== 0n && validator.state.numPools === 0
 
       setIsSigning(true)
 

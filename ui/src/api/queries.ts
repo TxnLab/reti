@@ -68,7 +68,7 @@ export const assetHoldingQueryOptions = (address: string | null) =>
   })
 
 export const nfdQueryOptions = (
-  nameOrId: string | bigint,
+  nameOrId: string | number,
   params: NfdGetNFDParams = { view: 'brief' },
   options: CacheRequestConfig = {},
 ) =>
@@ -111,10 +111,10 @@ export const validatorPoolsQueryOptions = (validatorId: number) =>
     enabled: !!validatorId,
   })
 
-export const stakedInfoQueryOptions = (poolAppId: bigint) =>
+export const stakedInfoQueryOptions = (poolAppId: number) =>
   queryOptions({
     queryKey: ['staked-info', poolAppId],
-    queryFn: () => fetchStakedInfoForPool(poolAppId),
+    queryFn: () => fetchStakedInfoForPool(BigInt(poolAppId)),
     enabled: !!poolAppId,
   })
 
@@ -136,7 +136,7 @@ export const blockTimeQueryOptions = queryOptions({
 export const poolApyQueryOptions = (poolAppId: bigint, staleTime?: number) =>
   queryOptions({
     queryKey: ['pool-apy', Number(poolAppId)],
-    queryFn: () => fetchPoolApy(poolAppId),
+    queryFn: () => fetchPoolApy(BigInt(poolAppId)),
     enabled: !!poolAppId,
     staleTime: staleTime || 1000 * 60 * 60, // 1 hour
   })

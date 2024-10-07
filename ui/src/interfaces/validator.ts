@@ -18,7 +18,7 @@ export type ValidatorConfigInput = Omit<
 export interface LocalPoolInfo {
   poolId: bigint
   poolAppId: bigint
-  totalStakers: bigint
+  totalStakers: number
   totalAlgoStaked: bigint
   poolAddress?: string
   algodVersion?: string
@@ -60,5 +60,5 @@ export interface FindPoolForStakerResponse {
 export type PoolData = {
   balance: bigint
   lastPayout?: bigint
-  apy?: bigint
+  apy?: number
 }

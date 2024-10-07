@@ -29,7 +29,7 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
 
   const hasSlots = React.useMemo(() => {
     return poolAssignment
-      ? validatorHasAvailableSlots(poolAssignment, Number(validator.config.poolsPerNode))
+      ? validatorHasAvailableSlots(poolAssignment, validator.config.poolsPerNode)
       : false
   }, [poolAssignment, validator.config.poolsPerNode])
 
@@ -38,7 +38,7 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
   const totalStakers = validator.state.totalStakers
   const maxStakers = calculateMaxStakers(validator, constraints)
   const { poolsPerNode } = validator.config
-  const maxNodes = constraints.maxNodes
+  const maxNodes = Number(constraints.maxNodes)
 
   return (
     <>

@@ -337,7 +337,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       )
 
       // Fetch validator data
-      const newData = await fetchValidator(BigInt(validatorId!))
+      const newData = await fetchValidator(validatorId)
 
       // Seed/update query cache with new data
       setValidatorQueriesData(queryClient, newData)

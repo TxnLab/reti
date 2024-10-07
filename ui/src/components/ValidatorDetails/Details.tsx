@@ -78,9 +78,9 @@ export function Details({ validator }: DetailsProps) {
     const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
 
     switch (entryGatingType) {
-      case BigInt(GatingType.None):
+      case GatingType.None:
         return 'None'
-      case BigInt(GatingType.CreatorAccount):
+      case GatingType.CreatorAccount:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -94,7 +94,7 @@ export function Details({ validator }: DetailsProps) {
             </a>
           </>
         )
-      case BigInt(GatingType.AssetId):
+      case GatingType.AssetId:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset(s)</strong>
@@ -109,7 +109,7 @@ export function Details({ validator }: DetailsProps) {
             </ul>
           </>
         )
-      case BigInt(GatingType.CreatorNfd):
+      case GatingType.CreatorNfd:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Asset creator</strong>{' '}
@@ -118,7 +118,7 @@ export function Details({ validator }: DetailsProps) {
             </div>
           </>
         )
-      case BigInt(GatingType.SegmentNfd):
+      case GatingType.SegmentNfd:
         return (
           <>
             <strong className="font-medium text-muted-foreground">Segment of</strong>{' '}
@@ -296,7 +296,7 @@ export function Details({ validator }: DetailsProps) {
                       Entry Gating
                     </dt>
                     <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                      {validator.config.entryGatingType === 0n ? (
+                      {validator.config.entryGatingType === 0 ? (
                         <span className="text-muted-foreground">--</span>
                       ) : (
                         <div className="text-sm">{renderEntryGating()}</div>

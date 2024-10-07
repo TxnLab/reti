@@ -51,7 +51,6 @@ const algodClient = ClientManager.getAlgodClient({
 export function callGetNumValidators(validatorClient: ValidatorRegistryClient) {
   return validatorClient.send.getNumValidators({
     args: {},
-    populateAppCallResources: true,
   })
 }
 
@@ -61,7 +60,6 @@ export function callGetValidatorConfig(
 ) {
   return validatorClient.send.getValidatorConfig({
     args: { validatorId },
-    populateAppCallResources: true,
   })
 }
 
@@ -69,10 +67,7 @@ export function callGetValidatorState(
   validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient.send.getValidatorState({
-    args: { validatorId },
-    populateAppCallResources: true,
-  })
+  return validatorClient.send.getValidatorState({ args: { validatorId } })
 }
 
 async function processPool(pool: LocalPoolInfo): Promise<PoolData> {
@@ -86,7 +81,7 @@ async function processPool(pool: LocalPoolInfo): Promise<PoolData> {
 
   const lastPayout = stakingPoolGS.lastPayout
   const ewma = stakingPoolGS.weightedMovingAverage
-  const apy = ewma ? ewma / 10000n : undefined
+  const apy = ewma ? Number(ewma) / 10000 : undefined
 
   return {
     balance: BigInt(poolBalance),
@@ -164,7 +159,7 @@ export async function fetchValidator(
       throw new ValidatorNotFoundError(`Validator with id "${Number(validatorId)}" not found!`)
     }
     const convertedPools: LocalPoolInfo[] = PoolsInfo.map(
-      (poolInfo: [bigint, bigint, bigint], i: number) => ({
+      (poolInfo: [bigint, number, bigint], i: number) => ({
         poolId: BigInt(i + 1),
         poolAppId: poolInfo[0],
         totalStakers: poolInfo[1],
@@ -186,7 +181,7 @@ export async function fetchValidator(
       validator.rewardToken = rewardToken
     }
 
-    if (validator.config.entryGatingType === BigInt(GatingType.AssetId)) {
+    if (validator.config.entryGatingType === GatingType.AssetId) {
       const gatingAssets = await Promise.all(
         validator.config.entryGatingAssets.map(async (assetId) => {
           if (assetId > 0) {
@@ -265,9 +260,7 @@ export async function addValidator(
 ) {
   const validatorClient = await getValidatorClient(signer, activeAddress)
 
-  const { addValidatorMbr } = (
-    await validatorClient.send.getMbrAmounts({ args: {}, populateAppCallResources: true })
-  ).return!
+  const { addValidatorMbr } = (await validatorClient.send.getMbrAmounts({ args: {} })).return!
 
   const payValidatorMbr = await validatorClient.appClient.createTransaction.fundAppAccount({
     sender: activeAddress,
@@ -279,7 +272,7 @@ export async function addValidator(
   const requiredBalance = Number(payValidatorMbr.amount) + payValidatorMbr.fee + 1000
   await BalanceChecker.check(activeAddress, requiredBalance, 'Add validator')
 
-  const entryGatingType = BigInt(values.entryGatingType) || 0n
+  const entryGatingType = Number(values.entryGatingType || 0)
   const entryGatingAddress = values.entryGatingAddress || ALGORAND_ZERO_ADDRESS_STRING
   const entryGatingAssets = new Array(4).fill(0n) as EntryGatingAssets
 
@@ -298,12 +291,12 @@ export async function addValidator(
     gatingAssetMinBalance: BigInt(values.gatingAssetMinBalance || 0),
     rewardTokenId: BigInt(values.rewardTokenId) || 0n,
     rewardPerPayout: BigInt(values.rewardPerPayout) || 0n,
-    epochRoundLength: BigInt(values.epochRoundLength),
-    percentToValidator: BigInt(values.percentToValidator) * 10000n,
+    epochRoundLength: Number(values.epochRoundLength),
+    percentToValidator: Number(values.percentToValidator) * 10000,
     validatorCommissionAddress: values.validatorCommissionAddress,
     minEntryStake: AlgoAmount.Algos(BigInt(values.minEntryStake)).microAlgos,
     maxAlgoPerPool: 0n,
-    poolsPerNode: BigInt(values.poolsPerNode),
+    poolsPerNode: Number(values.poolsPerNode),
     sunsettingOn: 0n,
     sunsettingTo: 0n,
   }
@@ -319,19 +312,14 @@ export async function addValidator(
     })
     .send({ populateAppCallResources: true })
 
-  const validatorId = result.returns![0]
-
-  return validatorId
+  return Number(result.returns![0])
 }
 
 export function callGetNodePoolAssignments(
   validatorId: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient.send.getNodePoolAssignments({
-    args: { validatorId },
-    populateAppCallResources: true,
-  })
+  return validatorClient.send.getNodePoolAssignments({ args: { validatorId } })
 }
 
 export async function fetchNodePoolAssignments(
@@ -348,7 +336,7 @@ export async function fetchNodePoolAssignments(
 }
 
 export function callGetMbrAmounts(validatorClient: ValidatorRegistryClient) {
-  return validatorClient.send.getMbrAmounts({ args: {}, populateAppCallResources: true })
+  return validatorClient.send.getMbrAmounts({ args: {} })
 }
 
 export async function fetchMbrAmounts(client?: ValidatorRegistryClient): Promise<MbrAmounts> {
@@ -442,7 +430,6 @@ export async function doesStakerNeedToPayMbr(
 
   const result = await validatorClient.send.doesStakerNeedToPayMbr({
     args: { staker: activeAddress },
-    populateAppCallResources: true,
   })
 
   if (result.returns?.[0] === undefined) {
@@ -599,10 +586,7 @@ export async function callFindPoolForStaker(
   amountToStake: number | bigint,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient.send.findPoolForStaker({
-    args: { validatorId, staker, amountToStake },
-    populateAppCallResources: true,
-  })
+  return validatorClient.send.findPoolForStaker({ args: { validatorId, staker, amountToStake } })
 }
 
 export async function isNewStakerToValidator(
@@ -622,10 +606,7 @@ export async function callGetStakedPoolsForAccount(
   staker: string,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient.send.getStakedPoolsForAccount({
-    args: { staker },
-    populateAppCallResources: true,
-  })
+  return validatorClient.send.getStakedPoolsForAccount({ args: { staker } })
 }
 
 export async function fetchStakedPoolsForAccount(staker: string): Promise<ValidatorPoolKey[]> {
@@ -653,10 +634,7 @@ export async function fetchStakedPoolsForAccount(staker: string): Promise<Valida
 }
 
 export async function callGetStakerInfo(staker: string, stakingPoolClient: StakingPoolClient) {
-  return stakingPoolClient.send.getStakerInfo({
-    args: { staker },
-    populateAppCallResources: true,
-  })
+  return stakingPoolClient.send.getStakerInfo({ args: { staker } })
 }
 
 export async function fetchStakerPoolData(
@@ -751,8 +729,7 @@ export async function fetchStakerValidatorData(staker: string): Promise<StakerVa
 }
 
 export async function callGetProtocolConstraints(validatorClient: ValidatorRegistryClient) {
-  // return validatorClient.send.getProtocolConstraints({ args: {}, populateAppCallResources: true })
-  return validatorClient.send.getProtocolConstraints({ args: {}, populateAppCallResources: true })
+  return validatorClient.send.getProtocolConstraints({ args: {} })
 }
 
 export async function fetchProtocolConstraints(
@@ -919,7 +896,7 @@ export async function callGetPoolInfo(
   poolKey: ValidatorPoolKey,
   validatorClient: ValidatorRegistryClient,
 ) {
-  return validatorClient.send.getPoolInfo({ args: { poolKey }, populateAppCallResources: true })
+  return validatorClient.send.getPoolInfo({ args: { poolKey } })
 }
 
 export async function fetchPoolInfo(
@@ -955,7 +932,6 @@ export async function callGetPools(
   return validatorClient.send.getPools({
     args: { validatorId },
     note: encodeCallParams('getPools', { validatorId }),
-    populateAppCallResources: true,
   })
 }
 
