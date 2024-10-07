@@ -253,7 +253,7 @@ export function ValidatorTable({
       cell: ({ row }) => {
         const validator = row.original
 
-        if (validator.state.numPools === 0n) return '--'
+        if (validator.state.numPools === 0) return '--'
 
         const currentStakeAlgos = AlgoAmount.MicroAlgos(
           Number(validator.state.totalAlgoStaked),
@@ -301,7 +301,7 @@ export function ValidatorTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Avail. Rewards" />,
       cell: ({ row }) => {
         const validator = row.original
-        if (validator.state.numPools == 0n) return '--'
+        if (validator.state.numPools == 0) return '--'
 
         return <ValidatorRewards validator={validator} />
       },
@@ -353,10 +353,10 @@ export function ValidatorTable({
         const isDevelopment = process.env.NODE_ENV === 'development'
         const hasRewardToken = validator.config.rewardTokenId > 0
         const canSendRewardTokens = isDevelopment && canManage && hasRewardToken
-        const sendRewardTokensDisabled = validator.state.numPools === 0n
+        const sendRewardTokensDisabled = validator.state.numPools === 0
 
         const stakerValidatorData = stakesByValidator.find(
-          (data) => data.validatorId === validator.id,
+          (data) => data.validatorId === BigInt(validator.id),
         )
         const stakerPoolData = stakerValidatorData?.pools
         const canSimulateEpoch = isDevelopment && canManage && !!stakerPoolData

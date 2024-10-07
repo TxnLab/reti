@@ -66,7 +66,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
   const poolData =
     validator?.pools.map((pool, index) => ({
       name: `Pool ${index + 1}`,
-      value: convertFromBaseUnits(pool.totalAlgoStaked || 1n, 6),
+      value: convertFromBaseUnits(Number(pool.totalAlgoStaked || 1n), 6),
     })) || []
 
   const { stakersChartData, poolsInfo, isLoading, errorMessage } = useStakersChartData({

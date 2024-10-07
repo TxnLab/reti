@@ -7,13 +7,7 @@ import { Indicator } from '@/constants/indicator'
 import { Asset, AssetHolding } from '@/interfaces/algod'
 import { NfdSearchV2Params } from '@/interfaces/nfd'
 import { StakerValidatorData } from '@/interfaces/staking'
-import {
-  EntryGatingAssets,
-  NodeInfo,
-  PoolData,
-  LocalPoolInfo,
-  Validator,
-} from '@/interfaces/validator'
+import { LocalPoolInfo, NodeInfo, PoolData, Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { convertToBaseUnits, roundToFirstNonZeroDecimal, roundToWholeAlgos } from '@/utils/format'
 import { Constraints, NodePoolAssignmentConfig } from '@/contracts/ValidatorRegistryClient'

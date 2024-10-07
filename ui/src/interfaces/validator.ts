@@ -9,6 +9,7 @@ import {
 } from '@/contracts/ValidatorRegistryClient'
 
 export type EntryGatingAssets = [bigint, bigint, bigint, bigint]
+// export type EntryGatingAssets = bigint[]
 
 export type ValidatorConfigInput = Omit<
   ToStringTypes<ValidatorConfig>,
@@ -23,6 +24,11 @@ export interface LocalPoolInfo {
   poolAddress?: string
   algodVersion?: string
 }
+
+export interface NodeConfig {
+  poolAppIds: bigint[]
+}
+// export type NodeConfig = [bigint, ...bigint[]]
 
 export type NodeInfo = {
   index: number
@@ -49,13 +55,6 @@ export interface FindPoolForStakerResponse {
   isNewStakerToProtocol: boolean
 }
 
-// export interface MbrAmounts {
-//   validatorMbr: number
-//   poolMbr: number
-//   poolInitMbr: number
-//   stakerMbr: number
-// }
-//
 // Used for calculating validator metrics
 export type PoolData = {
   balance: bigint

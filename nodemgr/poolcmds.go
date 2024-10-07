@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/types"
@@ -335,8 +336,15 @@ func PoolLedger(ctx context.Context, command *cli.Command) error {
 	floatApr, _, _ := new(big.Float).Parse(apr.String(), 10)
 	floatApr.Quo(floatApr, big.NewFloat(10000.0))
 	fmt.Fprintf(tw, "APR %%: %s\t\n", floatApr.String())
-	fmt.Fprintf(tw, "Last Epoch: %d\t\n", lastPayout-(lastPayout%uint64(config.EpochRoundLength)))
-	fmt.Fprintf(tw, "Next Payout: %d\t\n", adjustedEpoch)
+	fmt.Fprintf(tw, "Last Epoch Start: %d\t\n", lastPayout-(lastPayout%uint64(config.EpochRoundLength)))
+	fmt.Fprintf(tw, "Last Payout: %d\t\n", lastPayout-(lastPayout%uint64(config.EpochRoundLength)))
+	fmt.Fprintf(tw, "Current round: %d\t\n", params.FirstRoundValid)
+	fmt.Fprintf(tw, "Next Planned Payout: %d\t\n", nextEpoch)
+	if adjustedEpoch != nextEpoch {
+		fmt.Fprintf(tw, "Next possible payout: %d\t\n", adjustedEpoch)
+	}
+	blockTime, _ := algo.CalcBlockTimes(ctx, App.algoClient, 10)
+	fmt.Fprintf(tw, "in approx: %s\t\n", (time.Duration(adjustedEpoch-uint64(params.FirstRoundValid)) * blockTime).Round(time.Second))
 	if nextEpoch < uint64(params.FirstRoundValid) {
 		fmt.Fprintf(tw, "Missed payout by: %d\t\n", uint64(params.FirstRoundValid)-nextEpoch)
 	}

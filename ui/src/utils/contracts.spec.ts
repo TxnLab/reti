@@ -77,7 +77,7 @@ describe('calculateMaxStake', () => {
       state: {
         ...MOCK_VALIDATOR_1.state,
         numPools: 0,
-        totalStakers: 0,
+        totalStakers: 0n,
         totalAlgoStaked: 0n,
       },
     }
@@ -152,7 +152,7 @@ describe('isStakingDisabled', () => {
       ...MOCK_VALIDATOR_1,
       state: {
         ...MOCK_VALIDATOR_1.state,
-        totalStakers: 400, // Assuming this exceeds the maxStakersPerPool * numPools
+        totalStakers: 400n, // Assuming this exceeds the maxStakersPerPool * numPools
       },
     }
     expect(isStakingDisabled(activeAddress, validator, constraints)).toBe(true)
@@ -185,7 +185,7 @@ describe('isStakingDisabled', () => {
       ...MOCK_VALIDATOR_1,
       config: {
         ...MOCK_VALIDATOR_1.config,
-        sunsettingOn: Math.floor(Date.now() / 1000) - 10, // 10 seconds in the past
+        sunsettingOn: BigInt(Math.floor(Date.now() / 1000) - 10), // 10 seconds in the past
       },
     }
     expect(isStakingDisabled(activeAddress, sunsettedValidator, constraints)).toBe(true)
@@ -196,7 +196,7 @@ describe('isStakingDisabled', () => {
       ...MOCK_VALIDATOR_1,
       config: {
         ...MOCK_VALIDATOR_1.config,
-        sunsettingOn: 0, // Not sunsetted
+        sunsettingOn: 0n, // Not sunsetted
       },
     }
     expect(isStakingDisabled(activeAddress, normalValidator, constraints)).toBe(false)
@@ -210,7 +210,7 @@ describe('isUnstakingDisabled', () => {
 
   const stakesWithValidator = [
     {
-      validatorId: 1,
+      validatorId: 1n,
       balance: 1000n,
       totalRewarded: 0n,
       rewardTokenBalance: 0n,
@@ -222,7 +222,7 @@ describe('isUnstakingDisabled', () => {
 
   const stakesWithoutValidator = [
     {
-      validatorId: 2,
+      validatorId: 2n,
       balance: 1000n,
       totalRewarded: 0n,
       rewardTokenBalance: 0n,

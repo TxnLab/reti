@@ -1,10 +1,10 @@
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import algosdk from 'algosdk'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
-import { StakedInfo } from '@/interfaces/staking'
 import { LAST_ROUND } from '@/utils/tests/constants'
 import { ACCOUNT_1, ACCOUNT_2 } from '@/utils/tests/fixtures/accounts'
 import { createStaticArray } from '@/utils/tests/utils'
+import { StakedInfo } from '@/contracts/StakingPoolClient'
 
 export const DEFAULT_STAKED_INFO: StakedInfo = {
   account: ALGORAND_ZERO_ADDRESS_STRING,

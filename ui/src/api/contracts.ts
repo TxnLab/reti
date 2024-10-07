@@ -1,6 +1,5 @@
 import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
-import { ClientManager } from '@algorandfoundation/algokit-utils/types/client-manager'
 import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
 import { fetchAccountBalance, fetchAsset, isOptedInToAsset } from '@/api/algod'
@@ -14,14 +13,18 @@ import {
 import { fetchNfd } from '@/api/nfd'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { GatingType } from '@/constants/gating'
-import { StakedInfo, StakingPoolClient, ValidatorPoolKey } from '@/contracts/StakingPoolClient'
+import {
+  StakedInfo,
+  StakedInfoFromTuple,
+  StakingPoolClient,
+  ValidatorPoolKey,
+} from '@/contracts/StakingPoolClient'
 import {
   Constraints,
   MbrAmounts,
   NodePoolAssignmentConfig,
   PoolInfo,
   ValidatorConfig,
-  ValidatorCurState,
   ValidatorRegistryClient,
 } from '@/contracts/ValidatorRegistryClient'
 import { Asset } from '@/interfaces/algod'
@@ -37,16 +40,8 @@ import {
 import { makeEmptyTransactionSigner } from '@/lib/makeEmptyTransactionSigner'
 import { BalanceChecker } from '@/utils/balanceChecker'
 import { calculateValidatorPoolMetrics } from '@/utils/contracts'
-import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { ParamsCache } from '@/utils/paramsCache'
 import { encodeCallParams } from '@/utils/tests/abi'
-
-const algodConfig = getAlgodConfigFromViteEnvironment()
-const algodClient = ClientManager.getAlgodClient({
-  server: algodConfig.server,
-  port: algodConfig.port,
-  token: algodConfig.token,
-})
 
 export function callGetNumValidators(validatorClient: ValidatorRegistryClient) {
   return validatorClient.send.getNumValidators({
@@ -1037,16 +1032,9 @@ export async function fetchStakedInfoForPool(poolAppId: bigint): Promise<StakedI
   try {
     const stakingPoolClient = await getSimulateStakingPoolClient(poolAppId)
     const stakers = await stakingPoolClient.state.box.stakers()
-    return stakers!.map(
-      (s): StakedInfo =>
-        ({
-          account: s[0],
-          balance: s[1],
-          totalRewarded: s[2],
-          rewardTokenBalance: s[3],
-          entryRound: s[4],
-        }) satisfies StakedInfo,
-    )
+    return stakers!
+      .map((s): StakedInfo => StakedInfoFromTuple(s))
+      .filter((staker) => staker.account !== ALGORAND_ZERO_ADDRESS_STRING)
   } catch (error) {
     console.error(error)
     throw error
@@ -1090,7 +1078,7 @@ export async function changeValidatorSunsetInfo(
 
 export async function changeValidatorNfd(
   validatorId: number | bigint,
-  nfdAppId: number,
+  nfdAppId: bigint,
   nfdName: string,
   signer: algosdk.TransactionSigner,
   activeAddress: string,

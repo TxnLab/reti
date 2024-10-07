@@ -222,7 +222,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
       )
 
       // Refetch validator data
-      const newData = await fetchValidator(BigInt(validator!.id))
+      const newData = await fetchValidator(validator!.id)
 
       // Seed/update query cache with new data
       setValidatorQueriesData(queryClient, newData)

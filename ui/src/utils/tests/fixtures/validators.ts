@@ -7,8 +7,12 @@ import {
   ACCOUNT_4,
   ACCOUNT_5,
 } from '@/utils/tests/fixtures/accounts'
-import { createStaticArray } from '@/utils/tests/utils'
-import { ValidatorConfig, ValidatorCurState } from '@/contracts/ValidatorRegistryClient'
+import {
+  Constraints,
+  NodePoolAssignmentConfig,
+  ValidatorConfig,
+  ValidatorCurState,
+} from '@/contracts/ValidatorRegistryClient'
 
 export const MOCK_VALIDATOR_1_CONFIG: ValidatorConfig = {
   id: 1n,
@@ -57,14 +61,9 @@ export const MOCK_VALIDATOR_1_POOLS: LocalPoolInfo[] = [
   },
 ]
 
-export const MOCK_VALIDATOR_1_POOL_ASSIGNMENT: NodeConfig[] = createStaticArray<NodeConfig>(
-  [
-    [70000000000000n, 0n, 0n],
-    [2000000000000n, 0n, 0n],
-  ],
-  [0n, 0n, 0n],
-  8,
-)
+export const MOCK_VALIDATOR_1_POOL_ASSIGNMENT: NodePoolAssignmentConfig = {
+  nodes: [[[70000000000000n, 0n, 0n]], [[2000000000000n, 0n, 0n]], [[0n, 0n, 0n]]],
+}
 
 export const MOCK_VALIDATOR_2_CONFIG: ValidatorConfig = {
   id: 2n,
@@ -105,16 +104,14 @@ export const MOCK_VALIDATOR_2_POOLS: LocalPoolInfo[] = [
   },
 ]
 
-export const MOCK_VALIDATOR_2_POOL_ASSIGNMENT: NodeConfig[] = createStaticArray<NodeConfig>(
-  [[1000n, 0n, 0n]],
-  [0n, 0n, 0n],
-  8,
-)
+export const MOCK_VALIDATOR_2_POOL_ASSIGNMENT: NodePoolAssignmentConfig = {
+  nodes: [[[1000n, 0n, 0n]], [[0n, 0n, 0n]]],
+}
 
 const { id: validator1Id, ...validator1Config } = MOCK_VALIDATOR_1_CONFIG
 
 export const MOCK_VALIDATOR_1: Validator = {
-  id: BigInt(validator1Id),
+  id: Number(validator1Id),
   config: validator1Config,
   state: MOCK_VALIDATOR_1_STATE,
   pools: MOCK_VALIDATOR_1_POOLS,
@@ -124,7 +121,7 @@ export const MOCK_VALIDATOR_1: Validator = {
 const { id: validator2Id, ...validator2Config } = MOCK_VALIDATOR_2_CONFIG
 
 export const MOCK_VALIDATOR_2: Validator = {
-  id: BigInt(validator1Id),
+  id: Number(validator1Id),
   config: validator2Config,
   state: MOCK_VALIDATOR_2_STATE,
   pools: MOCK_VALIDATOR_2_POOLS,
@@ -132,15 +129,15 @@ export const MOCK_VALIDATOR_2: Validator = {
 }
 
 export const MOCK_CONSTRAINTS: Constraints = {
-  payoutRoundsMin: 1,
-  payoutRoundsMax: 1000000,
-  commissionPctMin: 0,
-  commissionPctMax: 1000000,
+  epochPayoutRoundsMin: 1n,
+  epochPayoutRoundsMax: 1000000n,
+  minPctToValidatorWFourDecimals: 0n,
+  maxPctToValidatorWFourDecimals: 1000000n,
   minEntryStake: 1000000n,
   maxAlgoPerPool: 70000000000000n,
   maxAlgoPerValidator: 300000000000000n,
   amtConsideredSaturated: 200000000000000n,
-  maxNodes: 8,
-  maxPoolsPerNode: 3,
-  maxStakersPerPool: 200,
+  maxNodes: 8n,
+  maxPoolsPerNode: 3n,
+  maxStakersPerPool: 200n,
 }

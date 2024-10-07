@@ -165,7 +165,7 @@ export type ValidatorConfig = {
   nfdForInfo: uint64,
   entryGatingType: uint8,
   entryGatingAddress: address,
-  entryGatingAssets: uint64[],
+  entryGatingAssets: [uint64,uint64,uint64,uint64],
   gatingAssetMinBalance: uint64,
   rewardTokenId: uint64,
   rewardPerPayout: uint64,
@@ -1291,8 +1291,8 @@ export abstract class ValidatorRegistryParamsFactory {
    *
   * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
   The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
-  
-  
+
+
   [ ONLY OWNER OR MANAGER CAN call ]
 
    *
@@ -1331,8 +1331,8 @@ export abstract class ValidatorRegistryParamsFactory {
   It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
   their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
   during the epoch updates across pools)
-  
-  
+
+
   Multiple pools will call us via pool 1 (pool2-pool1-validator, etc.) so don't assert on pool1 calling multiple
   times in same epoch.  Just return.
 
@@ -1464,22 +1464,22 @@ export class ValidatorRegistryFactory {
       appSpec: APP_SPEC,
     })
   }
-  
+
   /** The name of the app (from the ARC-32 / ARC-56 app spec or override). */
   public get appName() {
     return this.appFactory.appName
   }
-  
+
   /** The ARC-56 app spec being used */
   get appSpec() {
     return APP_SPEC
   }
-  
+
   /** A reference to the underlying `AlgorandClient` this app factory is using. */
   public get algorand(): AlgorandClientInterface {
     return this.appFactory.algorand
   }
-  
+
   /**
    * Returns a new `AppClient` client for an app instance of the given ID.
    *
@@ -1491,7 +1491,7 @@ export class ValidatorRegistryFactory {
   public getAppClientById(params: AppFactoryAppClientParams) {
     return new ValidatorRegistryClient(this.appFactory.getAppClientById(params))
   }
-  
+
   /**
    * Returns a new `AppClient` client, resolving the app by creator address and name
    * using AlgoKit app deployment semantics (i.e. looking for the app creation transaction note).
@@ -1613,7 +1613,7 @@ export class ValidatorRegistryClient {
       appSpec: APP_SPEC,
     })
   }
-  
+
   /**
    * Checks for decode errors on the given return value and maps the return value to the return type for the given method
    * @returns The typed return value or undefined if there was no value
@@ -1621,7 +1621,7 @@ export class ValidatorRegistryClient {
   decodeReturnValue<TSignature extends ValidatorRegistryNonVoidMethodSignatures>(method: TSignature, returnValue: ABIReturn | undefined) {
     return returnValue !== undefined ? getArc56ReturnValue<MethodReturn<TSignature>>(returnValue, this.appClient.getABIMethod(method), APP_SPEC.structs) : undefined
   }
-  
+
   /**
    * Returns a new `ValidatorRegistryClient` client, resolving the app by creator address and name
    * using AlgoKit app deployment semantics (i.e. looking for the app creation transaction note).
@@ -1630,7 +1630,7 @@ export class ValidatorRegistryClient {
   public static async fromCreatorAndName(params: Omit<ResolveAppClientByCreatorAndName, 'appSpec'>): Promise<ValidatorRegistryClient> {
     return new ValidatorRegistryClient(await AppClient.fromCreatorAndName({...params, appSpec: APP_SPEC}))
   }
-  
+
   /**
    * Returns an `ValidatorRegistryClient` instance for the current network based on
    * pre-determined network-specific app IDs specified in the ARC-56 app spec.
@@ -1643,27 +1643,27 @@ export class ValidatorRegistryClient {
   ): Promise<ValidatorRegistryClient> {
     return new ValidatorRegistryClient(await AppClient.fromNetwork({...params, appSpec: APP_SPEC}))
   }
-  
+
   /** The ID of the app instance this client is linked to. */
   public get appId() {
     return this.appClient.appId
   }
-  
+
   /** The app address of the app instance this client is linked to. */
   public get appAddress() {
     return this.appClient.appAddress
   }
-  
+
   /** The name of the app. */
   public get appName() {
     return this.appClient.appName
   }
-  
+
   /** The ARC-56 app spec being used */
   public get appSpec() {
     return this.appClient.appSpec
   }
-  
+
   /** A reference to the underlying `AlgorandClient` this app client is using. */
   public get algorand(): AlgorandClientInterface {
     return this.appClient.algorand
@@ -1727,7 +1727,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getMbrAmounts()(uint64,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Returns the MBR amounts needed for various actions:
@@ -1748,7 +1748,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getProtocolConstraints()(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
@@ -1762,7 +1762,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNumValidators()uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Returns the current number of validators
@@ -1776,7 +1776,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -1788,7 +1788,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorState(uint64)(uint16,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -1800,7 +1800,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorOwnerAndManager(uint64)(address,address)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -1812,7 +1812,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPools(uint64)(uint64,uint16,uint64)[]` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Return list of all pools for this validator.
@@ -1826,7 +1826,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPoolAppId(uint64,uint64)uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or
@@ -1843,7 +1843,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPoolInfo((uint64,uint64,uint64))(uint64,uint16,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -1855,7 +1855,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getCurMaxStakePerPool(uint64)uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Calculate the maximum stake per pool for a given validator.
@@ -1872,7 +1872,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `doesStakerNeedToPayMBR(address)bool` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
@@ -1886,7 +1886,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Retrieves the staked pools for an account.
@@ -1900,7 +1900,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getTokenPayoutRatio(uint64)(uint64[24],uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token
@@ -1916,7 +1916,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNodePoolAssignments(uint64)((uint64[3])[8])` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -1928,7 +1928,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNFDRegistryID()uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2027,8 +2027,8 @@ export class ValidatorRegistryClient {
      *
     * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
     The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
-    
-    
+
+
     [ ONLY OWNER OR MANAGER CAN call ]
 
      *
@@ -2061,8 +2061,8 @@ export class ValidatorRegistryClient {
     It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
     their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
     during the epoch updates across pools)
-    
-    
+
+
     Multiple pools will call us via pool 1 (pool2-pool1-validator, etc.) so don't assert on pool1 calling multiple
     times in same epoch.  Just return.
 
@@ -2107,7 +2107,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool,bool)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Finds the pool for a staker based on the provided validator id, staker address, and amount to stake.
@@ -2218,7 +2218,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getMbrAmounts()(uint64,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Returns the MBR amounts needed for various actions:
@@ -2239,7 +2239,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getProtocolConstraints()(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
@@ -2253,7 +2253,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNumValidators()uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Returns the current number of validators
@@ -2267,7 +2267,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2279,7 +2279,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorState(uint64)(uint16,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2291,7 +2291,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorOwnerAndManager(uint64)(address,address)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2303,7 +2303,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPools(uint64)(uint64,uint16,uint64)[]` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Return list of all pools for this validator.
@@ -2317,7 +2317,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPoolAppId(uint64,uint64)uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or
@@ -2334,7 +2334,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPoolInfo((uint64,uint64,uint64))(uint64,uint16,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2346,7 +2346,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getCurMaxStakePerPool(uint64)uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Calculate the maximum stake per pool for a given validator.
@@ -2363,7 +2363,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `doesStakerNeedToPayMBR(address)bool` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
@@ -2377,7 +2377,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Retrieves the staked pools for an account.
@@ -2391,7 +2391,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getTokenPayoutRatio(uint64)(uint64[24],uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token
@@ -2407,7 +2407,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNodePoolAssignments(uint64)((uint64[3])[8])` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2419,7 +2419,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNFDRegistryID()uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2518,8 +2518,8 @@ export class ValidatorRegistryClient {
      *
     * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
     The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
-    
-    
+
+
     [ ONLY OWNER OR MANAGER CAN call ]
 
      *
@@ -2552,8 +2552,8 @@ export class ValidatorRegistryClient {
     It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
     their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
     during the epoch updates across pools)
-    
-    
+
+
     Multiple pools will call us via pool 1 (pool2-pool1-validator, etc.) so don't assert on pool1 calling multiple
     times in same epoch.  Just return.
 
@@ -2598,7 +2598,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool,bool)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Finds the pool for a staker based on the provided validator id, staker address, and amount to stake.
@@ -2713,7 +2713,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getMbrAmounts()(uint64,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Returns the MBR amounts needed for various actions:
@@ -2735,7 +2735,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getProtocolConstraints()(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
@@ -2750,7 +2750,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNumValidators()uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Returns the current number of validators
@@ -2765,7 +2765,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2778,7 +2778,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorState(uint64)(uint16,uint64,uint64,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2791,7 +2791,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getValidatorOwnerAndManager(uint64)(address,address)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2804,7 +2804,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPools(uint64)(uint64,uint16,uint64)[]` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Return list of all pools for this validator.
@@ -2819,7 +2819,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPoolAppId(uint64,uint64)uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or
@@ -2837,7 +2837,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getPoolInfo((uint64,uint64,uint64))(uint64,uint16,uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2850,7 +2850,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getCurMaxStakePerPool(uint64)uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Calculate the maximum stake per pool for a given validator.
@@ -2868,7 +2868,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `doesStakerNeedToPayMBR(address)bool` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
@@ -2883,7 +2883,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * Retrieves the staked pools for an account.
@@ -2898,7 +2898,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getTokenPayoutRatio(uint64)(uint64[24],uint64)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token
@@ -2915,7 +2915,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNodePoolAssignments(uint64)((uint64[3])[8])` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -2928,7 +2928,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `getNFDRegistryID()uint64` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
      * @param params The params for the smart contract call
@@ -3034,8 +3034,8 @@ export class ValidatorRegistryClient {
      *
     * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
     The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
-    
-    
+
+
     [ ONLY OWNER OR MANAGER CAN call ]
 
      *
@@ -3070,8 +3070,8 @@ export class ValidatorRegistryClient {
     It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
     their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
     during the epoch updates across pools)
-    
-    
+
+
     Multiple pools will call us via pool 1 (pool2-pool1-validator, etc.) so don't assert on pool1 calling multiple
     times in same epoch.  Just return.
 
@@ -3119,7 +3119,7 @@ export class ValidatorRegistryClient {
 
     /**
      * Makes a call to the ValidatorRegistry smart contract using the `findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool,bool)` ABI method.
-     * 
+     *
      * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
      *
     * Finds the pool for a staker based on the provided validator id, staker address, and amount to stake.
@@ -3177,7 +3177,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getMbrAmounts()(uint64,uint64,uint64,uint64)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
   * Returns the MBR amounts needed for various actions:
@@ -3199,7 +3199,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getProtocolConstraints()(uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64,uint64)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
@@ -3214,7 +3214,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getNumValidators()uint64` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * Returns the current number of validators
@@ -3229,7 +3229,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getValidatorConfig(uint64)(uint64,address,address,uint64,uint8,address,uint64[4],uint64,uint64,uint64,uint32,uint32,address,uint64,uint64,uint8,uint64,uint64)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * @param params The params for the smart contract call
@@ -3242,7 +3242,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getValidatorState(uint64)(uint16,uint64,uint64,uint64)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * @param params The params for the smart contract call
@@ -3255,7 +3255,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getValidatorOwnerAndManager(uint64)(address,address)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * @param params The params for the smart contract call
@@ -3268,7 +3268,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getPools(uint64)(uint64,uint16,uint64)[]` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * Return list of all pools for this validator.
@@ -3283,7 +3283,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getPoolAppId(uint64,uint64)uint64` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
   * getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or
@@ -3301,7 +3301,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getPoolInfo((uint64,uint64,uint64))(uint64,uint16,uint64)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * @param params The params for the smart contract call
@@ -3314,7 +3314,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getCurMaxStakePerPool(uint64)uint64` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
   * Calculate the maximum stake per pool for a given validator.
@@ -3332,7 +3332,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `doesStakerNeedToPayMBR(address)bool` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
@@ -3347,7 +3347,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getStakedPoolsForAccount(address)(uint64,uint64,uint64)[]` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * Retrieves the staked pools for an account.
@@ -3362,7 +3362,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getTokenPayoutRatio(uint64)(uint64[24],uint64)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
   * Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token
@@ -3379,7 +3379,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getNodePoolAssignments(uint64)((uint64[3])[8])` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * @param params The params for the smart contract call
@@ -3392,7 +3392,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `getNFDRegistryID()uint64` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
    * @param params The params for the smart contract call
@@ -3405,7 +3405,7 @@ export class ValidatorRegistryClient {
 
   /**
    * Makes a readonly (simulated) call to the ValidatorRegistry smart contract using the `findPoolForStaker(uint64,address,uint64)((uint64,uint64,uint64),bool,bool)` ABI method.
-   * 
+   *
    * This method is a readonly method; calling it with onComplete of NoOp will result in a simulated transaction rather than a real transaction.
    *
   * Finds the pool for a staker based on the provided validator id, staker address, and amount to stake.
@@ -4100,8 +4100,8 @@ export type ValidatorRegistryComposer<TReturns extends [...any[]] = []> = {
    *
   * Adds a new pool to a validator's pool set, returning the 'key' to reference the pool in the future for staking, etc.
   The caller must pay the cost of the validators MBR increase as well as the MBR that will be needed for the pool itself.
-  
-  
+
+
   [ ONLY OWNER OR MANAGER CAN call ]
 
    *
@@ -4132,8 +4132,8 @@ export type ValidatorRegistryComposer<TReturns extends [...any[]] = []> = {
   It would be 60/40% in the poolPctOfWhole values.  The token reward payouts then use these values instead of
   their 'current' stake which changes as part of the payouts themselves (and people could be changing stake
   during the epoch updates across pools)
-  
-  
+
+
   Multiple pools will call us via pool 1 (pool2-pool1-validator, etc.) so don't assert on pool1 calling multiple
   times in same epoch.  Just return.
 
