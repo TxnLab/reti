@@ -162,6 +162,9 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 		return err
 	}
 
+	// reduce validity window - good practice - but also required by the reti contracts to have smaller validity window so accessing prior blocks works
+	params.LastRoundValid = params.FirstRoundValid + 100
+
 	getAtc := func(feesToUse uint64) (transaction.AtomicTransactionComposer, error) {
 		atc := transaction.AtomicTransactionComposer{}
 		gasMethod, _ := r.poolContract.GetMethodByName("gas")
