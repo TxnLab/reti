@@ -283,7 +283,7 @@ func (r *Reti) EpochBalanceUpdate(poolID int, poolAppID uint64, caller types.Add
 	return nil
 }
 
-func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, needsIncentiveFeePaid bool, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
+func (r *Reti) GoOnline(poolAppID uint64, caller types.Address, votePK []byte, selectionPK []byte, stateProofPK []byte, voteFirst uint64, voteLast uint64, voteKeyDilution uint64) error {
 	var (
 		err         error
 		poolAddress        = crypto.GetApplicationAddress(poolAppID).String()

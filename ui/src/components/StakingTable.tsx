@@ -89,7 +89,7 @@ export function StakingTable({
       accessorFn: (row) => row.validatorId,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
-        const validator = validators.find((v) => BigInt(v.id) === row.original.validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === BigInt(row.original.validatorId))
 
         if (!validator) {
           return 'Unknown Validator'
@@ -159,7 +159,7 @@ export function StakingTable({
       accessorKey: 'rewardTokenBalance',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Token Balance" />,
       cell: ({ row }) => {
-        const validator = validators.find((v) => BigInt(v.id) === row.original.validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === BigInt(row.original.validatorId))
         if (!validator?.rewardToken) {
           return <span className="text-muted-foreground">--</span>
         }
