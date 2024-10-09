@@ -44,7 +44,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
   const { nfdForInfo } = validator.config
 
   const [isFetchingNfdForInfo, setIsFetchingNfdForInfo] = React.useState(false)
-  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(nfdForInfo)
+  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<bigint>(nfdForInfo)
 
   const { transactionSigner, activeAddress } = useWallet()
   const queryClient = useQueryClient()
@@ -89,7 +89,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
 
       // If we have an app id, clear error if it exists
       form.clearErrors('nfdForInfo')
-      setNfdForInfoAppId(nfd.appID!)
+      setNfdForInfoAppId(BigInt(nfd.appID!))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       let message: string
@@ -125,11 +125,11 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
   const showPrimaryMintNfd = (
     name: string,
     isFetching: boolean,
-    appId: number,
+    appId: bigint,
     errorMessage?: string,
   ) => {
     return (
-      !isFetching && appId === 0 && errorMessage === 'NFD app ID not found' && isValidName(name)
+      !isFetching && appId === 0n && errorMessage === 'NFD app ID not found' && isValidName(name)
     )
   }
 
@@ -224,7 +224,7 @@ export function EditNfdForInfo({ validator }: EditNfdForInfoProps) {
                           {...field}
                           onChange={(e) => {
                             field.onChange(e) // Inform react-hook-form of the change
-                            setNfdForInfoAppId(0) // Reset NFD app ID
+                            setNfdForInfoAppId(0n) // Reset NFD app ID
                             setIsFetchingNfdForInfo(true) // Set fetching state
                             debouncedNfdForInfoCheck(e.target.value) // Perform debounced validation
                           }}

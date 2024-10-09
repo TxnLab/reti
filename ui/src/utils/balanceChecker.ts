@@ -52,10 +52,10 @@ export class BalanceChecker {
 
   public static async check(
     address: string,
-    requiredBalance: number,
+    requiredBalance: bigint | number,
     action?: string,
   ): Promise<void> {
     const checker = new BalanceChecker(address)
-    await checker.checkAccountBalance(requiredBalance, action)
+    await checker.checkAccountBalance(Number(requiredBalance), action)
   }
 }

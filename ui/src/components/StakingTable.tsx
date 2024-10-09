@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/table'
 import { UnstakeModal } from '@/components/UnstakeModal'
 import { StakerValidatorData } from '@/interfaces/staking'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import {
   calculateRewardEligibility,
@@ -55,6 +55,7 @@ import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { formatAssetAmount } from '@/utils/format'
 import { globalFilterFn } from '@/utils/table'
 import { cn } from '@/utils/ui'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface StakingTableProps {
   validators: Validator[]
@@ -88,7 +89,7 @@ export function StakingTable({
       accessorFn: (row) => row.validatorId,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Validator" />,
       cell: ({ row }) => {
-        const validator = validators.find((v) => v.id === row.original.validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === BigInt(row.original.validatorId))
 
         if (!validator) {
           return 'Unknown Validator'
@@ -99,13 +100,13 @@ export function StakingTable({
           <div className="flex items-center gap-x-2">
             {isSunsetted(validator) ? (
               <Tooltip
-                content={`Sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+                content={`Sunset on ${dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')}`}
               >
                 <Ban className="h-5 w-5 text-muted-foreground transition-colors" />
               </Tooltip>
             ) : isSunsetting(validator) ? (
               <Tooltip
-                content={`Will sunset on ${dayjs.unix(validator.config.sunsettingOn).format('ll')}`}
+                content={`Will sunset on ${dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')}`}
               >
                 <Sunset className="h-5 w-5 text-muted-foreground transition-colors" />
               </Tooltip>
@@ -158,7 +159,7 @@ export function StakingTable({
       accessorKey: 'rewardTokenBalance',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Token Balance" />,
       cell: ({ row }) => {
-        const validator = validators.find((v) => v.id === row.original.validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === BigInt(row.original.validatorId))
         if (!validator?.rewardToken) {
           return <span className="text-muted-foreground">--</span>
         }
@@ -176,7 +177,7 @@ export function StakingTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Reward Eligibility" />,
       cell: ({ row }) => {
         const stakerValidatorData = row.original
-        const validator = validators.find((v) => v.id === stakerValidatorData.validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === stakerValidatorData.validatorId)
         const { epochRoundLength } = validator?.config || {}
 
         const allPoolsEligibility = stakerValidatorData.pools.map((poolData) => {
@@ -201,7 +202,7 @@ export function StakingTable({
       id: 'actions',
       cell: ({ row }) => {
         const validatorId = row.original.validatorId
-        const validator = validators.find((v) => v.id === validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === validatorId)
 
         if (!validator || !activeAddress) return null
 

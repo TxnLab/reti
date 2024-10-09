@@ -38,7 +38,6 @@ import { Separator } from '@/components/ui/separator'
 import { GatingType } from '@/constants/gating'
 import { useBlockTime } from '@/hooks/useBlockTime'
 import { Asset } from '@/interfaces/algod'
-import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
@@ -52,6 +51,7 @@ import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
 import { entryGatingRefinement, rewardTokenRefinement, validatorSchemas } from '@/utils/validation'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -60,11 +60,11 @@ interface AddValidatorFormProps {
 }
 
 export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
-  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(0)
+  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<bigint>(0n)
   const [isFetchingNfdForInfo, setIsFetchingNfdForInfo] = React.useState(false)
-  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(0)
+  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<bigint>(0n)
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
-  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
+  const [nfdParentAppId, setNfdParentAppId] = React.useState<bigint>(0n)
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
   const [rewardToken, setRewardToken] = React.useState<Asset | null>(null)
   const [isFetchingRewardToken, setIsFetchingRewardToken] = React.useState(false)
@@ -189,7 +189,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const fetchNfdAppId = async (
     value: string,
     field: keyof FormValues,
-    setValue: React.Dispatch<React.SetStateAction<number>>,
+    setValue: React.Dispatch<React.SetStateAction<bigint>>,
     setFetching: React.Dispatch<React.SetStateAction<boolean>>,
   ) => {
     try {
@@ -201,7 +201,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       // If we have an app id, clear error if it exists
       form.clearErrors(field)
-      setValue(nfd.appID!)
+      setValue(BigInt(nfd.appID!))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       let message: string
@@ -258,11 +258,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const showPrimaryMintNfd = (
     name: string,
     isFetching: boolean,
-    appId: number,
+    appId: bigint,
     errorMessage?: string,
   ) => {
     return (
-      !isFetching && appId === 0 && errorMessage === 'NFD app ID not found' && isValidName(name)
+      !isFetching && appId === 0n && errorMessage === 'NFD app ID not found' && isValidName(name)
     )
   }
 
@@ -328,7 +328,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       toast.success(
         <div className="flex items-center gap-x-2">
           <MonitorCheck className="h-5 w-5 text-foreground" />
-          <span>Validator {validatorId} created!</span>
+          <span>Validator {Number(validatorId)} created!</span>
         </div>,
         {
           id: toastId,
@@ -647,13 +647,14 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Array.from({ length: constraints.maxPoolsPerNode }, (_, i) => i + 1).map(
-                            (number) => (
-                              <SelectItem key={number} value={String(number)}>
-                                {number}
-                              </SelectItem>
-                            ),
-                          )}
+                          {Array.from(
+                            { length: Number(constraints.maxPoolsPerNode) },
+                            (_, i) => i + 1,
+                          ).map((number) => (
+                            <SelectItem key={number} value={String(number)}>
+                              {number}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -687,7 +688,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                             {...field}
                             onChange={(e) => {
                               field.onChange(e) // Inform react-hook-form of the change
-                              setNfdForInfoAppId(0) // Reset NFD app ID
+                              setNfdForInfoAppId(0n) // Reset NFD app ID
                               setIsFetchingNfdForInfo(true) // Set fetching state
                               debouncedNfdForInfoCheck(e.target.value) // Perform debounced validation
                             }}
@@ -967,7 +968,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           {...field}
                           onChange={(e) => {
                             field.onChange(e) // Inform react-hook-form of the change
-                            setNfdCreatorAppId(0) // Reset NFD app ID
+                            setNfdCreatorAppId(0n) // Reset NFD app ID
                             setIsFetchingNfdCreator(true) // Set fetching state
                             debouncedNfdCreatorCheck(e.target.value) // Perform debounced validation
                           }}
@@ -1032,7 +1033,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                             {...field}
                             onChange={(e) => {
                               field.onChange(e) // Inform react-hook-form of the change
-                              setNfdParentAppId(0) // Reset NFD app ID
+                              setNfdParentAppId(0n) // Reset NFD app ID
                               setIsFetchingNfdParent(true) // Set fetching state
                               debouncedNfdParentCheck(e.target.value) // Perform debounced validation
                             }}

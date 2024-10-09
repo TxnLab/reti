@@ -52,7 +52,7 @@ export function EditSunsettingInfo({ validator }: EditSunsettingInfoProps) {
   const { sunsettingOn, sunsettingTo } = validator.config
   const defaultValues = {
     enableSunset: sunsettingOn > 0,
-    sunsettingOn: sunsettingOn > 0 ? dayjs.unix(sunsettingOn).toDate() : undefined,
+    sunsettingOn: sunsettingOn > 0 ? dayjs.unix(Number(sunsettingOn)).toDate() : undefined,
     sunsettingTo: String(sunsettingTo || ''),
   }
 

@@ -2,7 +2,8 @@ import { Details } from '@/components/ValidatorDetails/Details'
 import { Highlights } from '@/components/ValidatorDetails/Highlights'
 import { StakingDetails } from '@/components/ValidatorDetails/StakingDetails'
 import { StakerValidatorData } from '@/interfaces/staking'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface ValidatorDetailsProps {
   validator: Validator

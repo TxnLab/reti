@@ -7,8 +7,9 @@ import { AddPoolModal } from '@/components/AddPoolModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { calculateMaxStakers, validatorHasAvailableSlots } from '@/utils/contracts'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface HighlightsProps {
   validator: Validator
@@ -37,7 +38,7 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
   const totalStakers = validator.state.totalStakers
   const maxStakers = calculateMaxStakers(validator, constraints)
   const { poolsPerNode } = validator.config
-  const maxNodes = constraints.maxNodes
+  const maxNodes = Number(constraints.maxNodes)
 
   return (
     <>
@@ -70,7 +71,8 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
-              {totalStakers} <span className="text-muted-foreground">/ {maxStakers}</span>
+              {totalStakers.toString()}{' '}
+              <span className="text-muted-foreground">/ {maxStakers.toString()}</span>
             </div>
           </CardContent>
         </Card>
@@ -89,8 +91,10 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-x-2 text-2xl font-bold lg:text-xl xl:text-2xl">
-              {validator.state.numPools}{' '}
-              <span className="text-muted-foreground">/ {poolsPerNode * maxNodes}</span>
+              {validator.state.numPools.toString()}{' '}
+              <span className="text-muted-foreground">
+                / {(poolsPerNode * maxNodes).toString()}
+              </span>
               {canAddPool && (
                 <Button
                   variant="ghost"
@@ -113,7 +117,7 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
-              {`${validator.config.percentToValidator / 10000}%`}
+              {`${Number(validator.config.percentToValidator) / 10000}%`}
             </div>
           </CardContent>
         </Card>

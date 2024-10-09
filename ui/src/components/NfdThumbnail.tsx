@@ -14,7 +14,7 @@ type NfdThumbnailProps = (
     }
   | {
       nfd?: never
-      nameOrId: string | number
+      nameOrId: string | bigint
     }
 ) & {
   link?: boolean
