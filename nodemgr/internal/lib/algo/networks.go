@@ -87,7 +87,7 @@ func getDefaults(network string) NetworkConfig {
 		cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
 		cfg.NodeURL = "https://betanet-api.algonode.cloud"
 	case "fnet":
-		cfg.RetiAppID = 3221
+		cfg.RetiAppID = 639070
 		cfg.NFDAPIUrl = "https://api.betanet.nf.domains"
 		cfg.NodeURL = "https://fnet-api.4160.nodely.dev"
 	case "sandbox":
