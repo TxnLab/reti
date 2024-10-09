@@ -38,9 +38,9 @@ export async function fetchAccountBalance(
   return availableBalance ? accountInfo.amount - accountInfo['min-balance'] : accountInfo.amount
 }
 
-export async function fetchAsset(assetId: number): Promise<Asset> {
+export async function fetchAsset(assetId: bigint | number): Promise<Asset> {
   try {
-    const asset = await algodClient.getAssetByID(assetId).do()
+    const asset = await algodClient.getAssetByID(Number(assetId)).do()
     return asset as Asset
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
@@ -101,9 +101,9 @@ export async function fetchAccountAssetInformation(
   }
 }
 
-export async function isOptedInToAsset(address: string | null, assetId: number): Promise<boolean> {
+export async function isOptedInToAsset(address: string | null, assetId: bigint): Promise<boolean> {
   try {
-    await fetchAccountAssetInformation(address, assetId)
+    await fetchAccountAssetInformation(address, Number(assetId))
     return true
   } catch (error: unknown) {
     if (error instanceof AlgodHttpError && error.response.status === 404) {

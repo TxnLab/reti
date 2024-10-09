@@ -149,9 +149,9 @@ export function EditRewardPerPayout({ validator }: EditRewardPerPayoutProps) {
               name="rewardPerPayout"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount per payout</FormLabel>
+                  <FormLabel htmlFor="edit-reward-per-payout-input">Amount per payout</FormLabel>
                   <FormControl>
-                    <Input placeholder="" {...field} />
+                    <Input id="edit-reward-per-payout-input" placeholder="0.000000" {...field} />
                   </FormControl>
                   <FormDescription>Enter amount in whole units (not base units)</FormDescription>
                   <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>

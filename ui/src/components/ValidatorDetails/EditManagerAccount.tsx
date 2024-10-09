@@ -126,12 +126,13 @@ export function EditManagerAccount({ validator }: EditManagerAccountProps) {
               name="manager"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Manager account</FormLabel>
+                  <FormLabel htmlFor="edit-manager-input">Manager account</FormLabel>
                   <div className="flex items-center gap-x-3">
                     <FormControl>
                       <Input
-                        className="font-mono"
-                        placeholder=""
+                        id="edit-manager-input"
+                        className="font-mono placeholder:font-sans"
+                        placeholder="Enter new manager account address"
                         autoComplete="new-password"
                         spellCheck="false"
                         {...field}

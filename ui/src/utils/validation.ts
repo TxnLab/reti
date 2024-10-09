@@ -4,9 +4,9 @@ import { RefinementCtx, z } from 'zod'
 import { ALGORAND_ZERO_ADDRESS_STRING } from '@/constants/accounts'
 import { GatingType } from '@/constants/gating'
 import { Asset } from '@/interfaces/algod'
-import { Constraints } from '@/interfaces/validator'
 import { convertToBaseUnits } from '@/utils/format'
 import { isValidName, isValidRoot } from '@/utils/nfd'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 /**
  * Validator schema definitions for form validation
@@ -99,25 +99,25 @@ export const validatorSchemas = {
       })
       .superRefine((val, ctx) => {
         const minutes = Number(val)
-        const { payoutRoundsMin, payoutRoundsMax } = constraints
+        const { epochPayoutRoundsMin, epochPayoutRoundsMax } = constraints
 
-        if (minutes < payoutRoundsMin) {
+        if (minutes < epochPayoutRoundsMin) {
           ctx.addIssue({
             code: z.ZodIssueCode.too_small,
-            minimum: payoutRoundsMin,
+            minimum: epochPayoutRoundsMin,
             type: 'number',
             inclusive: true,
-            message: `Epoch length must be at least ${payoutRoundsMin} minute${payoutRoundsMin === 1 ? '' : 's'}`,
+            message: `Epoch length must be at least ${epochPayoutRoundsMin} minute${epochPayoutRoundsMin === 1n ? '' : 's'}`,
           })
         }
 
-        if (minutes > payoutRoundsMax) {
+        if (minutes > epochPayoutRoundsMax) {
           ctx.addIssue({
             code: z.ZodIssueCode.too_big,
-            maximum: payoutRoundsMax,
+            maximum: epochPayoutRoundsMax,
             type: 'number',
             inclusive: true,
-            message: `Epoch length cannot exceed ${payoutRoundsMax} minutes`,
+            message: `Epoch length cannot exceed ${epochPayoutRoundsMax} minutes`,
           })
         }
       })
@@ -143,25 +143,25 @@ export const validatorSchemas = {
         }
 
         const percentMultiplied = percent * 10000
-        const { commissionPctMin, commissionPctMax } = constraints
+        const { minPctToValidatorWFourDecimals, maxPctToValidatorWFourDecimals } = constraints
 
-        if (percentMultiplied < commissionPctMin) {
+        if (percentMultiplied < minPctToValidatorWFourDecimals) {
           ctx.addIssue({
             code: z.ZodIssueCode.too_small,
-            minimum: commissionPctMin,
+            minimum: minPctToValidatorWFourDecimals,
             type: 'number',
             inclusive: true,
-            message: `Must be at least ${commissionPctMin / 10000} percent`,
+            message: `Must be at least ${Number(minPctToValidatorWFourDecimals) / 10000} percent`,
           })
         }
 
-        if (percentMultiplied > commissionPctMax) {
+        if (percentMultiplied > maxPctToValidatorWFourDecimals) {
           ctx.addIssue({
             code: z.ZodIssueCode.too_big,
-            maximum: commissionPctMax,
+            maximum: maxPctToValidatorWFourDecimals,
             type: 'number',
             inclusive: true,
-            message: `Cannot exceed ${commissionPctMax / 10000} percent`,
+            message: `Cannot exceed ${Number(maxPctToValidatorWFourDecimals) / 10000} percent`,
           })
         }
       })

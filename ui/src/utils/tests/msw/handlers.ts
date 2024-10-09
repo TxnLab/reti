@@ -123,9 +123,7 @@ const handlers = [
         const callParams = JSON.parse(note) as MethodCallParams
 
         /* Construct mock response */
-        const methods = ValidatorRegistrySpec.contract.methods.map(
-          (method) => new ABIMethod(method),
-        )
+        const methods = ValidatorRegistrySpec.methods.map((method) => new ABIMethod(method))
         const method = getMethodByName(methods, callParams.method)
         if (!method) {
           throw new Error('Method not found')

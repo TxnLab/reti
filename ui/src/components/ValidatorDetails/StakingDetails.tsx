@@ -28,7 +28,7 @@ import { PoolsChart } from '@/components/ValidatorDetails/PoolsChart'
 import { useBlockTime } from '@/hooks/useBlockTime'
 import { useStakersChartData } from '@/hooks/useStakersChartData'
 import { StakerValidatorData } from '@/interfaces/staking'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import {
   isMigrationSet,
   isStakingDisabled,
@@ -42,6 +42,7 @@ import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
 import { convertFromBaseUnits, roundToFirstNonZeroDecimal } from '@/utils/format'
 import { cn } from '@/utils/ui'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface StakingDetailsProps {
   validator: Validator
@@ -80,7 +81,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
   const staleTime = validator.config.epochRoundLength * blockTime.ms
 
   // Fetch APY for selected pool (setting poolAppId to 0 disables query)
-  const poolApyQuery = useQuery(poolApyQueryOptions(selectedPoolInfo?.poolAppId || 0, staleTime))
+  const poolApyQuery = useQuery(poolApyQueryOptions(selectedPoolInfo?.poolAppId || 0n, staleTime))
   const selectedPoolApy = poolApyQuery.data
 
   const poolNfdQuery = useQuery(
@@ -262,7 +263,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                   Total Stakers
                 </dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">
-                  {validator.state.totalStakers}
+                  {validator.state.totalStakers.toString()}
                 </dd>
               </div>
               <div className="py-4">
@@ -271,7 +272,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 </dt>
                 <dd className="flex items-center gap-x-2 text-sm leading-6">
                   <div className="w-full mt-1">
-                    <p className="text-tremor-default text-tremor-content dark:text-dark-tremor-content flex items-center justify-between">
+                    <p className="text-tremor-default text-stone-500 dark:text-stone-400 flex items-center justify-between">
                       <span>
                         <AlgoDisplayAmount
                           amount={validator.state.totalAlgoStaked}
@@ -369,7 +370,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
             <div className="py-4 grid grid-cols-2 gap-4">
               <dt className="text-sm font-medium leading-6 text-muted-foreground">Stakers</dt>
               <dd className="flex items-center gap-x-2 text-sm leading-6">
-                {selectedPoolInfo.totalStakers}
+                {selectedPoolInfo.totalStakers.toString()}
               </dd>
             </div>
 
@@ -419,11 +420,11 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-start justify-between gap-x-2">
-            <span>Staking Details</span>
+          <CardTitle as="h2" className="flex items-start justify-between gap-x-2">
+            Staking Details
             {poolsInfo.length > 0 && (
               <Select value={selectedPool} onValueChange={handleSelectValueChange}>
-                <SelectTrigger className="-my-2.5 w-[120px]">
+                <SelectTrigger className="-my-2.5 w-[120px]" aria-label="Select a pool">
                   <SelectValue placeholder="Select a pool" />
                 </SelectTrigger>
                 <SelectContent>
@@ -468,8 +469,8 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                   <AlertDescription className="max-w-[60ch]">
                     Adding stake{' '}
                     {isSunsetted(validator) ? 'was disabled as of' : 'will be disabled on'}{' '}
-                    {dayjs.unix(validator.config.sunsettingOn).format('ll')}. Stakers may still
-                    withdraw stake and rewards.
+                    {dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')}. Stakers may
+                    still withdraw stake and rewards.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -486,7 +487,7 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                         params={{ validatorId: String(validator.config.sunsettingTo) }}
                         className="whitespace-nowrap font-semibold link"
                       >
-                        Validator {validator.config.sunsettingTo}
+                        Validator {Number(validator.config.sunsettingTo)}
                       </Link>
                       .
                     </AlertDescription>

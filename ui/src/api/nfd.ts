@@ -11,7 +11,7 @@ import {
 import axios from '@/lib/axios'
 
 export async function fetchNfd(
-  nameOrID: string | number,
+  nameOrID: string | bigint | number,
   params?: NfdGetNFDParams,
   options?: CacheRequestConfig,
 ): Promise<Nfd> {

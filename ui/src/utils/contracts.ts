@@ -6,134 +6,11 @@ import { GatingType } from '@/constants/gating'
 import { Indicator } from '@/constants/indicator'
 import { Asset, AssetHolding } from '@/interfaces/algod'
 import { NfdSearchV2Params } from '@/interfaces/nfd'
-import { StakedInfo, StakerValidatorData } from '@/interfaces/staking'
-import {
-  Constraints,
-  EntryGatingAssets,
-  NodeInfo,
-  NodePoolAssignmentConfig,
-  PoolData,
-  PoolInfo,
-  RawNodePoolAssignmentConfig,
-  RawPoolsInfo,
-  RawValidatorConfig,
-  RawValidatorState,
-  Validator,
-  ValidatorConfig,
-  ValidatorState,
-} from '@/interfaces/validator'
+import { StakerValidatorData } from '@/interfaces/staking'
+import { LocalPoolInfo, NodeInfo, PoolData, Validator } from '@/interfaces/validator'
 import { dayjs } from '@/utils/dayjs'
 import { convertToBaseUnits, roundToFirstNonZeroDecimal, roundToWholeAlgos } from '@/utils/format'
-
-/**
- * Transform raw validator configuration data (from `callGetValidatorConfig`) into a structured object
- * @param {RawValidatorConfig} rawConfig - Raw validator configuration data
- * @returns {ValidatorConfig} Structured validator configuration object
- */
-export function transformValidatorConfig(rawConfig: RawValidatorConfig): ValidatorConfig {
-  return {
-    id: Number(rawConfig[0]),
-    owner: rawConfig[1],
-    manager: rawConfig[2],
-    nfdForInfo: Number(rawConfig[3]),
-    entryGatingType: Number(rawConfig[4]),
-    entryGatingAddress: rawConfig[5],
-    entryGatingAssets: rawConfig[6].map((asset) => Number(asset)) as EntryGatingAssets,
-    gatingAssetMinBalance: rawConfig[7],
-    rewardTokenId: Number(rawConfig[8]),
-    rewardPerPayout: rawConfig[9],
-    epochRoundLength: Number(rawConfig[10]),
-    percentToValidator: Number(rawConfig[11]),
-    validatorCommissionAddress: rawConfig[12],
-    minEntryStake: rawConfig[13],
-    maxAlgoPerPool: rawConfig[14],
-    poolsPerNode: Number(rawConfig[15]),
-    sunsettingOn: Number(rawConfig[16]),
-    sunsettingTo: Number(rawConfig[17]),
-  }
-}
-
-/**
- * Transform raw validator state data (from `callGetValidatorState`) into a structured object
- * @param {RawValidatorState} rawState - Raw validator state data
- * @returns {ValidatorState} Structured validator state object
- */
-export function transformValidatorState(rawState: RawValidatorState): ValidatorState {
-  return {
-    numPools: Number(rawState[0]),
-    totalStakers: Number(rawState[1]),
-    totalAlgoStaked: rawState[2],
-    rewardTokenHeldBack: rawState[3],
-  }
-}
-
-/**
- * Transform raw staking pool data (from `callGetPools`) into structured objects
- * @param {RawPoolsInfo} rawPoolsInfo - Raw staking pool data
- * @returns {PoolInfo[]} Structured pool info objects
- */
-export function transformPoolsInfo(rawPoolsInfo: RawPoolsInfo): PoolInfo[] {
-  return rawPoolsInfo.map((poolInfo, i) => ({
-    poolId: i + 1,
-    poolAppId: Number(poolInfo[0]),
-    totalStakers: Number(poolInfo[1]),
-    totalAlgoStaked: poolInfo[2],
-  }))
-}
-
-/**
- * Transform raw node pool assignment configuration data (from `callGetNodePoolAssignments`) into a flat array
- * @param {RawNodePoolAssignmentConfig} rawConfig - Raw node pool assignment configuration data
- * @returns {NodePoolAssignmentConfig} Flattened array of `NodeConfig` objects
- */
-export function transformNodePoolAssignment(
-  rawConfig: RawNodePoolAssignmentConfig,
-): NodePoolAssignmentConfig {
-  return rawConfig[0].flat()
-}
-
-/**
- * Transform raw validator data from multiple ABI method calls into a structured `Validator` object
- * @param {RawValidatorConfig} rawConfig - Raw validator configuration data
- * @param {RawValidatorState} rawState - Raw validator state data
- * @param {RawPoolsInfo} rawPoolsInfo - Raw staking pool data
- * @param {RawNodePoolAssignmentConfig} rawNodePoolAssignment - Raw node pool assignment configuration data
- * @returns {Validator} Structured validator object
- */
-export function transformValidatorData(
-  rawConfig: RawValidatorConfig,
-  rawState: RawValidatorState,
-  rawPoolsInfo: RawPoolsInfo,
-  rawNodePoolAssignment: RawNodePoolAssignmentConfig,
-): Validator {
-  const { id, ...config } = transformValidatorConfig(rawConfig)
-  const state = transformValidatorState(rawState)
-  const pools = transformPoolsInfo(rawPoolsInfo)
-  const nodePoolAssignment = transformNodePoolAssignment(rawNodePoolAssignment)
-
-  return {
-    id,
-    config,
-    state,
-    pools,
-    nodePoolAssignment,
-  }
-}
-
-/**
- * Transform raw staked info byte data from box storage into a structured `StakedInfo` object
- * @param {Uint8Array} data - Raw staked info data (in a 64-byte chunk)
- * @returns {StakedInfo} Structured staked info object
- */
-export function transformStakedInfo(data: Uint8Array): StakedInfo {
-  return {
-    account: algosdk.encodeAddress(data.slice(0, 32)),
-    balance: algosdk.bytesToBigInt(data.slice(32, 40)),
-    totalRewarded: algosdk.bytesToBigInt(data.slice(40, 48)),
-    rewardTokenBalance: algosdk.bytesToBigInt(data.slice(48, 56)),
-    entryRound: algosdk.bytesToBigInt(data.slice(56, 64)),
-  }
-}
+import { Constraints, NodePoolAssignmentConfig } from '@/contracts/ValidatorRegistryClient'
 
 /**
  * Process node pool assignment configuration data into an array with each node's available slot count
@@ -145,10 +22,8 @@ export function processNodePoolAssignment(
   nodes: NodePoolAssignmentConfig,
   poolsPerNode: number,
 ): NodeInfo[] {
-  return nodes.map((nodeConfig, index) => {
-    const availableSlots = nodeConfig.filter(
-      (slot, i) => i < poolsPerNode && slot === BigInt(0),
-    ).length
+  return nodes.nodes.map((nodeConfig, index) => {
+    const availableSlots = nodeConfig[0].filter((slot, i) => i < poolsPerNode && slot === 0n).length
 
     return {
       index: index + 1,
@@ -167,8 +42,8 @@ export function validatorHasAvailableSlots(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
   poolsPerNode: number,
 ): boolean {
-  return nodePoolAssignmentConfig.some((nodeConfig) => {
-    const slotIndex = nodeConfig.indexOf(BigInt(0))
+  return nodePoolAssignmentConfig.nodes.some((nodeConfig) => {
+    const slotIndex = nodeConfig[0].indexOf(0n)
     return slotIndex !== -1 && slotIndex < poolsPerNode
   })
 }
@@ -183,8 +58,8 @@ export function findFirstAvailableNode(
   nodePoolAssignmentConfig: NodePoolAssignmentConfig,
   poolsPerNode: number,
 ): number | null {
-  for (let nodeIndex = 0; nodeIndex < nodePoolAssignmentConfig.length; nodeIndex++) {
-    const slotIndex = nodePoolAssignmentConfig[nodeIndex].indexOf(BigInt(0))
+  for (let nodeIndex = 0; nodeIndex < nodePoolAssignmentConfig.nodes.length; nodeIndex++) {
+    const slotIndex = nodePoolAssignmentConfig.nodes[nodeIndex][0].indexOf(0n)
     if (slotIndex !== -1 && slotIndex < poolsPerNode) {
       return nodeIndex + 1
     }
@@ -247,8 +122,8 @@ export function transformEntryGatingAssets(
   assetIds: Array<{ value: string }>,
   assets: Array<Asset | null>,
   minBalance: string,
-  nfdCreatorAppId: number,
-  nfdParentAppId: number,
+  nfdCreatorAppId: bigint,
+  nfdParentAppId: bigint,
 ): TransformedGatingAssets {
   const fixedLengthArray: string[] = new Array(4).fill('0')
 
@@ -314,7 +189,7 @@ export function calculateMaxStake(validator: Validator, constraints?: Constraint
  * @returns {number} Maximum number of stakers
  */
 export function calculateMaxStakers(validator: Validator, constraints?: Constraints): number {
-  const maxStakersPerPool = constraints?.maxStakersPerPool || 0
+  const maxStakersPerPool = Number(constraints?.maxStakersPerPool || 0)
   const maxStakers = maxStakersPerPool * validator.state.numPools
 
   return maxStakers
@@ -342,8 +217,8 @@ export function isStakingDisabled(
   const maxStake = calculateMaxStake(validator, constraints)
   const maxStakeReached = Number(totalAlgoStaked) >= Number(maxStake)
 
-  const maxStakersPerPool = constraints?.maxStakersPerPool || 0
-  const maxStakers = maxStakersPerPool * numPools
+  const maxStakersPerPool = constraints?.maxStakersPerPool || 0n
+  const maxStakers = maxStakersPerPool * BigInt(numPools)
   const maxStakersReached = totalStakers >= maxStakers
 
   return noPools || maxStakersReached || maxStakeReached || isSunsetted(validator)
@@ -365,7 +240,9 @@ export function isUnstakingDisabled(
     return true
   }
   const noPools = validator.state.numPools === 0
-  const validatorHasStake = stakesByValidator.some((stake) => stake.validatorId === validator.id)
+  const validatorHasStake = stakesByValidator.some(
+    (stake) => stake.validatorId === BigInt(validator.id),
+  )
 
   return noPools || !validatorHasStake
 }
@@ -385,7 +262,7 @@ export function isAddingPoolDisabled(
   if (!activeAddress || !constraints) {
     return true
   }
-  const maxNodes = constraints.maxNodes
+  const maxNodes = Number(constraints.maxNodes)
   const { numPools } = validator.state
   const { poolsPerNode } = validator.config
 
@@ -410,7 +287,7 @@ export function isSunsetting(validator: Validator): boolean {
  */
 export function isSunsetted(validator: Validator): boolean {
   return validator.config.sunsettingOn > 0
-    ? dayjs.unix(validator.config.sunsettingOn).isBefore(dayjs())
+    ? dayjs.unix(Number(validator.config.sunsettingOn)).isBefore(dayjs())
     : false
 }
 
@@ -449,26 +326,26 @@ export async function fetchValueToVerify(
   validator: Validator | null,
   activeAddress: string | null,
   heldAssets: AssetHolding[],
-): Promise<number> {
+): Promise<bigint> {
   if (!validator || !activeAddress) {
     throw new Error('Validator or active address not found')
   }
 
   const { entryGatingType, entryGatingAddress, entryGatingAssets } = validator.config
-  const minBalance = Number(validator.config.gatingAssetMinBalance)
+  const minBalance = validator.config.gatingAssetMinBalance
 
   if (entryGatingType === GatingType.CreatorAccount) {
     const creatorAddress = entryGatingAddress
     const accountInfo = await fetchAccountInformation(creatorAddress)
 
     if (accountInfo['created-assets']) {
-      const assetIds = accountInfo['created-assets'].map((asset) => asset.index)
+      const assetIds = accountInfo['created-assets'].map((asset) => BigInt(asset.index))
       return findValueToVerify(heldAssets, assetIds, minBalance)
     }
   }
 
   if (entryGatingType === GatingType.AssetId) {
-    const assetIds = entryGatingAssets.filter((asset) => asset !== 0)
+    const assetIds = entryGatingAssets.filter((asset) => asset !== 0n)
     return findValueToVerify(heldAssets, assetIds, minBalance)
   }
 
@@ -483,7 +360,7 @@ export async function fetchValueToVerify(
       .map((accountInfo) => accountInfo['created-assets'])
       .flat()
       .filter((asset) => !!asset)
-      .map((asset) => asset!.index)
+      .map((asset) => BigInt(asset!.index))
 
     return findValueToVerify(heldAssets, assetIds, minBalance)
   }
@@ -501,16 +378,16 @@ export async function fetchValueToVerify(
       }
       const result = await fetchNfdSearch(params, { cache: false })
       if (result.nfds.length === 0) {
-        return 0
+        return 0n
       }
-      return result.nfds[0].appID!
+      return BigInt(result.nfds[0].appID!)
     } catch (error) {
       console.error('Error fetching data:', error)
       throw error
     }
   }
 
-  return 0
+  return 0n
 }
 
 /**
@@ -522,13 +399,13 @@ export async function fetchValueToVerify(
  */
 export function findValueToVerify(
   heldAssets: AssetHolding[],
-  gatingAssets: number[],
-  minBalance: number,
-): number {
+  gatingAssets: bigint[],
+  minBalance: bigint,
+): bigint {
   const asset = heldAssets.find(
-    (asset) => gatingAssets.includes(asset['asset-id']) && asset.amount >= minBalance,
+    (asset) => gatingAssets.includes(BigInt(asset['asset-id'])) && asset.amount >= minBalance,
   )
-  return asset?.['asset-id'] || 0
+  return BigInt(asset?.['asset-id'] || 0n)
 }
 
 /**
@@ -621,7 +498,7 @@ export function setValidatorQueriesData(queryClient: QueryClient, data: Validato
   })
 
   queryClient.setQueryData<Validator>(['validator', String(id)], data)
-  queryClient.setQueryData<PoolInfo[]>(['pools-info', String(id)], pools)
+  queryClient.setQueryData<LocalPoolInfo[]>(['pools-info', String(id)], pools)
   queryClient.setQueryData<NodePoolAssignmentConfig>(
     ['pool-assignments', String(id)],
     nodePoolAssignment,
@@ -639,7 +516,7 @@ export async function fetchRemainingRewardsBalance(validator: Validator): Promis
   const poolAppId = validator.pools[0].poolAppId
   const poolAddress = algosdk.getApplicationAddress(poolAppId)
 
-  const accountAssetInfo = await fetchAccountAssetInformation(poolAddress, rewardTokenId)
+  const accountAssetInfo = await fetchAccountAssetInformation(poolAddress, Number(rewardTokenId))
   const rewardTokenAmount = BigInt(accountAssetInfo['asset-holding'].amount)
 
   const remainingBalance = rewardTokenAmount - rewardTokenHeldBack

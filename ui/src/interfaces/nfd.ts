@@ -179,7 +179,7 @@ export type NfdSearchV2Params = {
   /**
    * The parent NFD Application ID to find. Used for fetching segments of an NFD
    */
-  parentAppID?: number
+  parentAppID?: bigint | number
   /**
    * Length of NFD
    */

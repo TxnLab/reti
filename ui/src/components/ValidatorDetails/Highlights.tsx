@@ -7,8 +7,9 @@ import { AddPoolModal } from '@/components/AddPoolModal'
 import { AlgoDisplayAmount } from '@/components/AlgoDisplayAmount'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Constraints, Validator } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { calculateMaxStakers, validatorHasAvailableSlots } from '@/utils/contracts'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 interface HighlightsProps {
   validator: Validator
@@ -37,14 +38,16 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
   const totalStakers = validator.state.totalStakers
   const maxStakers = calculateMaxStakers(validator, constraints)
   const { poolsPerNode } = validator.config
-  const maxNodes = constraints.maxNodes
+  const maxNodes = Number(constraints.maxNodes)
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Staked</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Total Staked
+            </CardTitle>
             <Coins className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -61,18 +64,23 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stakers</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Stakers
+            </CardTitle>
             <Users className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
-              {totalStakers} <span className="text-muted-foreground">/ {maxStakers}</span>
+              {totalStakers.toString()}{' '}
+              <span className="text-muted-foreground">/ {maxStakers.toString()}</span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pools</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Pools
+            </CardTitle>
             <svg
               viewBox="0 0 576 512"
               className="h-5 w-5 text-muted-foreground"
@@ -83,8 +91,10 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-x-2 text-2xl font-bold lg:text-xl xl:text-2xl">
-              {validator.state.numPools}{' '}
-              <span className="text-muted-foreground">/ {poolsPerNode * maxNodes}</span>
+              {validator.state.numPools.toString()}{' '}
+              <span className="text-muted-foreground">
+                / {(poolsPerNode * maxNodes).toString()}
+              </span>
               {canAddPool && (
                 <Button
                   variant="ghost"
@@ -100,12 +110,14 @@ export function Highlights({ validator, constraints }: HighlightsProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Commission</CardTitle>
+            <CardTitle as="h2" className="text-sm font-medium">
+              Commission
+            </CardTitle>
             <Percent className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold lg:text-xl xl:text-2xl">
-              {`${validator.config.percentToValidator / 10000}%`}
+              {`${Number(validator.config.percentToValidator) / 10000}%`}
             </div>
           </CardContent>
         </Card>

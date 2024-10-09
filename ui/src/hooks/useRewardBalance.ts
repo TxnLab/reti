@@ -7,7 +7,7 @@ export function useRewardBalance(validator: Validator) {
   const { rewardTokenId } = validator.config
 
   const blockTime = useBlockTime()
-  const staleTime = validator.config.epochRoundLength * blockTime.ms
+  const staleTime = Number(validator.config.epochRoundLength) * blockTime.ms
 
   return useQuery({
     queryKey: ['reward-balance', validator.id],

@@ -860,6 +860,7 @@ func (r *Reti) AddStakingPool(nodeNum uint64) (*ValidatorPoolKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	params.LastRoundValid = params.FirstRoundValid + 100
 
 	managerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
@@ -1076,6 +1077,7 @@ func (r *Reti) AddStake(validatorId uint64, staker types.Address, amount uint64,
 	if err != nil {
 		return nil, err
 	}
+	params.LastRoundValid = params.FirstRoundValid + 100
 
 	// first determine how much we might have to add in MBR if this is a first-time staker
 	mbrs, err := r.getMbrAmounts(staker)
@@ -1206,6 +1208,7 @@ func (r *Reti) RemoveStake(poolKey ValidatorPoolKey, signer types.Address, stake
 	if err != nil {
 		return err
 	}
+	params.LastRoundValid = params.FirstRoundValid + 100
 
 	extraApps := []uint64{}
 	extraAssets := []uint64{}

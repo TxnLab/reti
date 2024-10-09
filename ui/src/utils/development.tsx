@@ -11,12 +11,13 @@ import { fetchAccountInformation, fetchAsset } from '@/api/algod'
 import { epochBalanceUpdate } from '@/api/contracts'
 import { StakerPoolData } from '@/interfaces/staking'
 import { ToStringTypes } from '@/interfaces/utils'
-import { Validator, ValidatorConfig } from '@/interfaces/validator'
+import { Validator } from '@/interfaces/validator'
 import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import { convertToStringTypes } from '@/utils/convert'
 import { convertToBaseUnits, formatAssetAmount } from '@/utils/format'
 import { getAlgodConfigFromViteEnvironment } from '@/utils/network/getAlgoClientConfigs'
 import { ParamsCache } from '@/utils/paramsCache'
+import { ValidatorConfig } from '@/contracts/ValidatorRegistryClient'
 
 const algodConfig = getAlgodConfigFromViteEnvironment()
 
@@ -202,7 +203,7 @@ export async function simulateEpoch(
 
     // Calculate the number of rounds to simulate an epoch
     const { epochRoundLength } = validator.config
-    const numRounds = Math.ceil(320 + epochRoundLength + epochRoundLength / 2)
+    const numRounds = Math.ceil(320 + Number(epochRoundLength) + Number(epochRoundLength) / 2)
 
     // Pass promise to toast.promise to handle loading, success, and error states
     const incrementPromise = incrementRoundNumberBy(numRounds)
@@ -272,7 +273,7 @@ export async function sendRewardTokensToPool(
     const assetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       from: activeAddress,
       to: poolAddress,
-      assetIndex: tokenId,
+      assetIndex: Number(tokenId),
       amount: convertToBaseUnits(rewardTokenAmount, 6),
       suggestedParams,
     })
@@ -281,7 +282,7 @@ export async function sendRewardTokensToPool(
     await atc.execute(algodClient, 4)
 
     const poolAccountInfo = await fetchAccountInformation(poolAddress)
-    const assetHolding = poolAccountInfo.assets?.find((a) => a['asset-id'] === tokenId)
+    const assetHolding = poolAccountInfo.assets?.find((a) => a['asset-id'] === Number(tokenId))
 
     const balanceStr = formatAssetAmount(asset, assetHolding?.amount || 0)
     const balanceMsg = assetHolding?.amount ? `${balanceStr} ${unitName}` : 'unknown'

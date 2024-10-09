@@ -18,6 +18,7 @@ interface AssetLookupProps<
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   form: UseFormReturn<TFieldValues>
+  id: string
   name: TName
   asset: Asset | null
   setAsset: (asset: Asset | null) => void
@@ -33,6 +34,7 @@ export function AssetLookup<
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 >({
   form,
+  id,
   name,
   asset,
   setAsset,
@@ -100,7 +102,7 @@ export function AssetLookup<
 
   const renderLabel = () => {
     if (typeof label === 'string') {
-      return <FormLabel>{label}</FormLabel>
+      return <FormLabel htmlFor={id}>{label}</FormLabel>
     }
 
     if (label) {
@@ -121,9 +123,11 @@ export function AssetLookup<
             <div className="flex-1 relative">
               <FormControl>
                 <Input
+                  id={id}
                   className={cn(isFetching || asset ? 'pr-28' : '')}
                   autoComplete="new-password"
                   spellCheck="false"
+                  placeholder="Enter asset ID"
                   {...field}
                   onChange={(e) => {
                     field.onChange(e) // Inform react-hook-form of the change

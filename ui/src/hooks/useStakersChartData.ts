@@ -1,8 +1,8 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { stakedInfoQueryOptions, validatorPoolsQueryOptions } from '@/api/queries'
-import { StakedInfo } from '@/interfaces/staking'
 import { ExplorerLink } from '@/utils/explorer'
+import { StakedInfo } from '@/contracts/StakingPoolClient'
 
 interface UseChartDataProps {
   selectedPool: string

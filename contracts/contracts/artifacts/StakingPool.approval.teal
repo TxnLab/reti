@@ -4321,10 +4321,69 @@ checkIfBinClosed:
 setRoundsPerDay:
 	proto 0 0
 
-	// contracts/stakingPool.algo.ts:1022
-	// this.roundsPerDay.value = AVG_ROUNDS_PER_DAY
+	// Push empty bytes after the frame pointer to reserve space for local variables
+	byte 0x
+
+	// *if51_condition
+	// contracts/stakingPool.algo.ts:1026
+	// this.txn.firstValid < 12
+	txn FirstValid
+	int 12
+	<
+	bz *if51_end
+
+	// *if51_consequent
+	// contracts/stakingPool.algo.ts:1028
+	// this.roundsPerDay.value = APPROX_AVG_ROUNDS_PER_DAY
 	byte 0x726f756e6473506572446179 // "roundsPerDay"
 	int 30857
+	app_global_put
+
+	// contracts/stakingPool.algo.ts:1029
+	// return
+	retsub
+
+*if51_end:
+	// contracts/stakingPool.algo.ts:1032
+	// avgBlockTimeTenths =
+	//             blocks[this.txn.firstValid - 1].timestamp - blocks[this.txn.firstValid - 11].timestamp
+	txn FirstValid
+	int 1
+	-
+	block BlkTimestamp
+	txn FirstValid
+	int 11
+	-
+	block BlkTimestamp
+	-
+	frame_bury 0 // avgBlockTimeTenths: uint64
+
+	// *if52_condition
+	// contracts/stakingPool.algo.ts:1034
+	// avgBlockTimeTenths === 0
+	frame_dig 0 // avgBlockTimeTenths: uint64
+	int 0
+	==
+	bz *if52_end
+
+	// *if52_consequent
+	// contracts/stakingPool.algo.ts:1036
+	// this.roundsPerDay.value = APPROX_AVG_ROUNDS_PER_DAY
+	byte 0x726f756e6473506572446179 // "roundsPerDay"
+	int 30857
+	app_global_put
+
+	// contracts/stakingPool.algo.ts:1037
+	// return
+	retsub
+
+*if52_end:
+	// contracts/stakingPool.algo.ts:1042
+	// this.roundsPerDay.value = (24 * 60 * 60 * 10) / avgBlockTimeTenths
+	byte 0x726f756e6473506572446179 // "roundsPerDay"
+	int 864000
+	frame_dig 0 // avgBlockTimeTenths: uint64
+	/
 	app_global_put
 	retsub
 

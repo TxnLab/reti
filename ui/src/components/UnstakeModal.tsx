@@ -60,7 +60,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
   }, [validator])
 
   const stakerPoolsData = React.useMemo<StakerPoolData[]>(
-    () => stakesByValidator.find((data) => data.validatorId === validator?.id)?.pools || [],
+    () => stakesByValidator.find((data) => Number(data.validatorId) === validator?.id)?.pools || [],
     [stakesByValidator, validator],
   )
 
@@ -94,15 +94,19 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         },
       )
       .superRefine((val, ctx) => {
-        const algoAmount = parseFloat(val)
-        const amountToUnstake = AlgoAmount.Algos(algoAmount).microAlgos
+        let parsedFloat = parseFloat(val)
+        if (isNaN(parsedFloat)) {
+          parsedFloat = 0
+        }
+        const algoAmount = BigInt(parsedFloat)
+        const amountToUnstake = AlgoAmount.Algos(Number(algoAmount)).microAlgos
         const stakerPoolData = stakerPoolsData.find(
-          (p) => p.poolKey.poolId === Number(selectedPoolId),
+          (p) => p.poolKey.poolId === BigInt(selectedPoolId),
         )
 
         if (stakerPoolData && validator) {
-          const currentBalance = Number(stakerPoolData.balance)
-          const minimumStake = Number(validator.config.minEntryStake)
+          const currentBalance = stakerPoolData.balance
+          const minimumStake = validator.config.minEntryStake
 
           if (amountToUnstake > currentBalance) {
             ctx.addIssue({
@@ -160,7 +164,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
   const handleSetMaxAmount = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
 
-    const pool = stakerPoolsData.find((p) => p.poolKey.poolId === Number(selectedPoolId))
+    const pool = stakerPoolsData.find((p) => Number(p.poolKey.poolId) === Number(selectedPoolId))
 
     if (!pool) {
       return
@@ -184,7 +188,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         throw new Error('No active address')
       }
 
-      const pool = stakerPoolsData.find((p) => p.poolKey.poolId === Number(selectedPoolId))
+      const pool = stakerPoolsData.find((p) => Number(p.poolKey.poolId) === Number(selectedPoolId))
 
       if (!pool) {
         throw new Error('Invalid pool')
@@ -196,7 +200,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
 
       await removeStake(
         pool.poolKey.poolAppId,
-        amountToUnstake,
+        Number(amountToUnstake),
         validator!.config.rewardTokenId,
         transactionSigner,
         activeAddress,
@@ -208,7 +212,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
           <ArrowDownLeft className="h-5 w-5 text-foreground" />
           <span>
             Removed <AlgoDisplayAmount amount={amountToUnstake} microalgos className="font-bold" />{' '}
-            from Pool {pool.poolKey.poolId} on Validator {pool.poolKey.validatorId}
+            from Pool {pool.poolKey.poolId.toString()} on Validator {pool.poolKey.id.toString()}
           </span>
         </div>,
         {
@@ -281,8 +285,8 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                   ) : (
                     <>
                       <Select onValueChange={handleSetSelectedPool} value={selectedPoolId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a verified email to display" />
+                        <SelectTrigger aria-label="Select a pool">
+                          <SelectValue placeholder="Select a pool" />
                         </SelectTrigger>
                         <SelectContent>
                           {stakerPoolsData
@@ -293,7 +297,7 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                                 value={pool.poolKey.poolId.toString()}
                               >
                                 <span className="inline-flex items-center gap-x-2">
-                                  <span className="font-mono">{pool.poolKey.poolId}</span>
+                                  <span className="font-mono">{Number(pool.poolKey.poolId)}</span>
                                   <span className="text-muted-foreground">-</span>
                                   <AlgoDisplayAmount
                                     amount={pool.balance}
@@ -315,10 +319,15 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
                     name="amountToUnstake"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount to Unstake</FormLabel>
+                        <FormLabel htmlFor="amount-to-unstake-input">Amount to Unstake</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Input className="pr-16" {...field} />
+                            <Input
+                              id="amount-to-unstake-input"
+                              className="pr-16"
+                              placeholder="0.000000"
+                              {...field}
+                            />
                             <Button
                               type="button"
                               size="sm"

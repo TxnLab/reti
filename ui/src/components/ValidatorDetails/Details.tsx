@@ -100,7 +100,7 @@ export function Details({ validator }: DetailsProps) {
             <strong className="font-medium text-muted-foreground">Asset(s)</strong>
             <ul className="mt-1 list-none">
               {entryGatingAssets
-                .filter((assetId) => assetId !== 0)
+                .filter((assetId) => assetId !== 0n)
                 .map((assetId, index) => (
                   <li key={assetId} className="leading-loose">
                     <DisplayAsset asset={validator.gatingAssets?.[index]} link />
@@ -136,7 +136,7 @@ export function Details({ validator }: DetailsProps) {
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="lg:col-span-3">
         <CardHeader>
-          <CardTitle>Validator Details</CardTitle>
+          <CardTitle as="h2">Validator Details</CardTitle>
         </CardHeader>
         <CardContent className="w-full">
           <div className="border-t border-foreground-muted">
@@ -245,7 +245,7 @@ export function Details({ validator }: DetailsProps) {
                   Commission Rate
                 </dt>
                 <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                  {`${validator.config.percentToValidator / 10000}%`}
+                  {`${Number(validator.config.percentToValidator) / 10000}%`}
                 </dd>
               </div>
               <div className="py-4 grid grid-cols-[2fr_3fr] gap-4 xl:grid-cols-2">
@@ -253,7 +253,7 @@ export function Details({ validator }: DetailsProps) {
                   Pools Per Node
                 </dt>
                 <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                  {validator.config.poolsPerNode}
+                  {validator.config.poolsPerNode.toString()}
                 </dd>
               </div>
 
@@ -332,7 +332,7 @@ export function Details({ validator }: DetailsProps) {
                     Sunset Date
                   </dt>
                   <dd className="flex items-center justify-between gap-x-2 text-sm leading-normal">
-                    {validator.config.sunsettingOn === 0 ? (
+                    {validator.config.sunsettingOn === 0n ? (
                       <span className="text-muted-foreground">--</span>
                     ) : (
                       dayjs.unix(Number(validator.config.sunsettingOn)).format('ll')

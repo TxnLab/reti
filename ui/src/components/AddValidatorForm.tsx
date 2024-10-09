@@ -38,7 +38,6 @@ import { Separator } from '@/components/ui/separator'
 import { GatingType } from '@/constants/gating'
 import { useBlockTime } from '@/hooks/useBlockTime'
 import { Asset } from '@/interfaces/algod'
-import { Constraints } from '@/interfaces/validator'
 import { useAuthAddress } from '@/providers/AuthAddressProvider'
 import { InsufficientBalanceError } from '@/utils/balanceChecker'
 import {
@@ -52,6 +51,7 @@ import { getNfdAppFromViteEnvironment } from '@/utils/network/getNfdConfig'
 import { isValidName, trimExtension } from '@/utils/nfd'
 import { cn } from '@/utils/ui'
 import { entryGatingRefinement, rewardTokenRefinement, validatorSchemas } from '@/utils/validation'
+import { Constraints } from '@/contracts/ValidatorRegistryClient'
 
 const nfdAppUrl = getNfdAppFromViteEnvironment()
 
@@ -60,11 +60,11 @@ interface AddValidatorFormProps {
 }
 
 export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
-  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<number>(0)
+  const [nfdForInfoAppId, setNfdForInfoAppId] = React.useState<bigint>(0n)
   const [isFetchingNfdForInfo, setIsFetchingNfdForInfo] = React.useState(false)
-  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<number>(0)
+  const [nfdCreatorAppId, setNfdCreatorAppId] = React.useState<bigint>(0n)
   const [isFetchingNfdCreator, setIsFetchingNfdCreator] = React.useState(false)
-  const [nfdParentAppId, setNfdParentAppId] = React.useState<number>(0)
+  const [nfdParentAppId, setNfdParentAppId] = React.useState<bigint>(0n)
   const [isFetchingNfdParent, setIsFetchingNfdParent] = React.useState(false)
   const [rewardToken, setRewardToken] = React.useState<Asset | null>(null)
   const [isFetchingRewardToken, setIsFetchingRewardToken] = React.useState(false)
@@ -189,7 +189,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const fetchNfdAppId = async (
     value: string,
     field: keyof FormValues,
-    setValue: React.Dispatch<React.SetStateAction<number>>,
+    setValue: React.Dispatch<React.SetStateAction<bigint>>,
     setFetching: React.Dispatch<React.SetStateAction<boolean>>,
   ) => {
     try {
@@ -201,7 +201,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
 
       // If we have an app id, clear error if it exists
       form.clearErrors(field)
-      setValue(nfd.appID!)
+      setValue(BigInt(nfd.appID!))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       let message: string
@@ -258,11 +258,11 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
   const showPrimaryMintNfd = (
     name: string,
     isFetching: boolean,
-    appId: number,
+    appId: bigint,
     errorMessage?: string,
   ) => {
     return (
-      !isFetching && appId === 0 && errorMessage === 'NFD app ID not found' && isValidName(name)
+      !isFetching && appId === 0n && errorMessage === 'NFD app ID not found' && isValidName(name)
     )
   }
 
@@ -328,7 +328,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
       toast.success(
         <div className="flex items-center gap-x-2">
           <MonitorCheck className="h-5 w-5 text-foreground" />
-          <span>Validator {validatorId} created!</span>
+          <span>Validator {Number(validatorId)} created!</span>
         </div>,
         {
           id: toastId,
@@ -375,9 +375,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="owner"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel htmlFor="owner-input">
                       Owner account
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Owner account">
                         Account that controls config (cold wallet recommended)
                       </InfoPopover>
                       <span className="text-primary">*</span>
@@ -385,14 +385,16 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <div className="flex items-center gap-x-3">
                       <FormControl>
                         <Input
-                          className="font-mono"
-                          placeholder=""
+                          id="owner-input"
+                          className="font-mono placeholder:font-sans"
+                          placeholder="Enter owner account address"
                           autoComplete="new-password"
                           spellCheck="false"
                           {...field}
                         />
                       </FormControl>
                       <Button
+                        type="button"
                         size="sm"
                         variant="outline"
                         onClick={(e) => {
@@ -400,7 +402,10 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           form.setValue('owner', activeAddress!, { shouldValidate: true })
                         }}
                       >
-                        <WalletMinimal className="hidden mr-2 h-4 w-4 opacity-75 sm:inline" />
+                        <WalletMinimal
+                          className="hidden mr-2 h-4 w-4 opacity-75 sm:inline"
+                          aria-hidden="true"
+                        />
                         Autofill
                       </Button>
                     </div>
@@ -414,9 +419,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="manager"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel htmlFor="manager-input">
                       Manager account
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Manager account">
                         Account that triggers payouts and keyreg transactions (must sign
                         transactions)
                       </InfoPopover>
@@ -425,14 +430,16 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <div className="flex items-center gap-x-3">
                       <FormControl>
                         <Input
-                          className="font-mono"
-                          placeholder=""
+                          id="manager-input"
+                          className="font-mono placeholder:font-sans"
+                          placeholder="Enter manager account address"
                           autoComplete="new-password"
                           spellCheck="false"
                           {...field}
                         />
                       </FormControl>
                       <Button
+                        type="button"
                         size="sm"
                         variant="outline"
                         onClick={(e) => {
@@ -440,7 +447,10 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           form.setValue('manager', activeAddress!, { shouldValidate: true })
                         }}
                       >
-                        <WalletMinimal className="hidden mr-2 h-4 w-4 opacity-75 sm:inline" />
+                        <WalletMinimal
+                          className="hidden mr-2 h-4 w-4 opacity-75 sm:inline"
+                          aria-hidden="true"
+                        />
                         Autofill
                       </Button>
                     </div>
@@ -454,9 +464,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="validatorCommissionAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel htmlFor="commission-input">
                       Commission account
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Commission account">
                         Account that receives validator commission payments
                       </InfoPopover>
                       <span className="text-primary">*</span>
@@ -464,14 +474,16 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <div className="flex items-center gap-x-3">
                       <FormControl>
                         <Input
-                          className="font-mono"
-                          placeholder=""
+                          id="commission-input"
+                          className="font-mono placeholder:font-sans"
+                          placeholder="Enter commission account address"
                           autoComplete="new-password"
                           spellCheck="false"
                           {...field}
                         />
                       </FormControl>
                       <Button
+                        type="button"
                         size="sm"
                         variant="outline"
                         onClick={(e) => {
@@ -481,7 +493,10 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                           })
                         }}
                       >
-                        <WalletMinimal className="hidden mr-2 h-4 w-4 opacity-75 sm:inline" />
+                        <WalletMinimal
+                          className="hidden mr-2 h-4 w-4 opacity-75 sm:inline"
+                          aria-hidden="true"
+                        />
                         Autofill
                       </Button>
                     </div>
@@ -498,9 +513,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="minEntryStake"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel htmlFor="min-entry-stake-input">
                       Minimum entry stake
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Minimum entry stake">
                         Minimum stake required to enter a pool
                       </InfoPopover>
                       <span className="text-primary">*</span>
@@ -508,9 +523,18 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <div className="relative">
                         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                          <AlgoSymbol verticalOffset={1} className="text-muted-foreground" />
+                          <AlgoSymbol
+                            verticalOffset={1}
+                            className="text-muted-foreground"
+                            aria-hidden="true"
+                          />
                         </div>
-                        <Input className="pl-7" placeholder="1000" {...field} />
+                        <Input
+                          id="min-entry-stake-input"
+                          className="pl-7"
+                          placeholder="0.000000"
+                          {...field}
+                        />
                       </div>
                     </FormControl>
                     <FormMessage>{errors.minEntryStake?.message}</FormMessage>
@@ -523,9 +547,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="epochRoundLength"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel htmlFor="epoch-length-input">
                       Epoch length
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Epoch length">
                         Frequency of rewards payouts, in blocks. If a timeframe is selected, it will
                         be converted to blocks based on the current average block time (approx.{' '}
                         {blockTime.secs} seconds).
@@ -535,13 +559,17 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <div className="flex items-center">
                         <Input
+                          id="epoch-length-input"
                           className="rounded-r-none rounded-l-md focus:z-[2]"
-                          placeholder=""
+                          placeholder={`Enter ${epochTimeframe}`}
                           {...field}
                         />
                         <Select value={epochTimeframe} onValueChange={setEpochTimeframe}>
                           <FormControl>
-                            <SelectTrigger className="w-[11rem] rounded-r-md rounded-l-none -ml-px">
+                            <SelectTrigger
+                              className="w-[11rem] rounded-r-md rounded-l-none -ml-px"
+                              aria-label="Select timeframe"
+                            >
                               <SelectValue placeholder="Select timeframe" />
                             </SelectTrigger>
                           </FormControl>
@@ -584,15 +612,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="percentToValidator"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel htmlFor="commission-percent-input">
                       Commission percent
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Commission percent">
                         Payout percentage w/ up to four decimals (e.g., 5.0001)
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="5.0000" {...field} />
+                      <Input id="commission-percent-input" placeholder="0.0000" {...field} />
                     </FormControl>
                     <FormMessage>{errors.percentToValidator?.message}</FormMessage>
                   </FormItem>
@@ -606,7 +634,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                   <FormItem>
                     <FormLabel>
                       Pools per node
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Pools per node">
                         Number of pools to allow per node (max of 3 is recommended)
                       </InfoPopover>
                       <span className="text-primary">*</span>
@@ -614,18 +642,19 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormControl>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger aria-label="Select number of pools">
                             <SelectValue placeholder="Select number of pools" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Array.from({ length: constraints.maxPoolsPerNode }, (_, i) => i + 1).map(
-                            (number) => (
-                              <SelectItem key={number} value={String(number)}>
-                                {number}
-                              </SelectItem>
-                            ),
-                          )}
+                          {Array.from(
+                            { length: Number(constraints.maxPoolsPerNode) },
+                            (_, i) => i + 1,
+                          ).map((number) => (
+                            <SelectItem key={number} value={String(number)}>
+                              {number}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -639,9 +668,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="nfdForInfo"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>
+                    <FormLabel htmlFor="nfd-for-info-input">
                       Associated NFD
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Associated NFD">
                         NFD which the validator uses to describe their validator pool (optional)
                       </InfoPopover>
                     </FormLabel>
@@ -649,16 +678,17 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       <div className="flex-1 relative">
                         <FormControl>
                           <Input
+                            id="nfd-for-info-input"
                             className={cn(
                               isFetchingNfdForInfo || nfdForInfoAppId > 0 ? 'pr-10' : '',
                             )}
-                            placeholder=""
+                            placeholder="Enter NFD name"
                             autoComplete="new-password"
                             spellCheck="false"
                             {...field}
                             onChange={(e) => {
                               field.onChange(e) // Inform react-hook-form of the change
-                              setNfdForInfoAppId(0) // Reset NFD app ID
+                              setNfdForInfoAppId(0n) // Reset NFD app ID
                               setIsFetchingNfdForInfo(true) // Set fetching state
                               debouncedNfdForInfoCheck(e.target.value) // Perform debounced validation
                             }}
@@ -738,6 +768,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
               </p>
               <AssetLookup
                 form={form}
+                id="reward-token-input"
                 name="rewardTokenId"
                 label="Asset ID"
                 asset={rewardToken}
@@ -752,9 +783,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="rewardPerPayout"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount per payout</FormLabel>
+                    <FormLabel htmlFor="reward-per-payout-input">Amount per payout</FormLabel>
                     <FormControl>
-                      <Input placeholder="" {...field} />
+                      <Input id="reward-per-payout-input" placeholder="0.0" {...field} />
                     </FormControl>
                     <FormDescription>Enter amount in whole units (not base units)</FormDescription>
                     <FormMessage>{errors.rewardPerPayout?.message}</FormMessage>
@@ -775,7 +806,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                   <FormItem>
                     <FormLabel>
                       Gating type
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Gating type">
                         Require stakers to hold a qualified asset to enter pool (optional)
                       </InfoPopover>
                     </FormLabel>
@@ -804,7 +835,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                         }}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger aria-label="Select asset gating type">
                             <SelectValue placeholder="Select asset gating type" />
                           </SelectTrigger>
                         </FormControl>
@@ -831,15 +862,19 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="entryGatingAddress"
                 render={({ field }) => (
                   <FormItem className={cn({ hidden: !showCreatorAddressField })}>
-                    <FormLabel>
+                    <FormLabel htmlFor="gating-address-input">
                       Asset creator account
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Asset creator account">
                         Must hold asset created by this account to enter pool
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="" {...field} />
+                      <Input
+                        id="gating-address-input"
+                        placeholder="Enter creator account address"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage>{errors.entryGatingAddress?.message}</FormMessage>
                   </FormItem>
@@ -851,12 +886,16 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                   <div key={field.id} className="flex items-end">
                     <AssetLookup
                       form={form}
+                      id={`gating-asset-${index}-input`}
                       name={`entryGatingAssets.${index}.value`}
                       className="flex-1"
                       label={
-                        <FormLabel className={cn(index !== 0 && 'sr-only')}>
+                        <FormLabel
+                          htmlFor={`gating-asset-${index}-input`}
+                          className={cn(index !== 0 && 'sr-only')}
+                        >
                           Asset ID
-                          <InfoPopover className={infoPopoverClassName}>
+                          <InfoPopover className={infoPopoverClassName} label="Asset ID">
                             Must hold asset with this ID to enter pool
                           </InfoPopover>
                           <span className="text-primary">*</span>
@@ -911,9 +950,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="entryGatingNfdCreator"
                 render={({ field }) => (
                   <FormItem className={cn({ hidden: !showCreatorNfdField })}>
-                    <FormLabel>
+                    <FormLabel htmlFor="gating-nfd-creator-input">
                       Asset creator NFD
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Asset creator NFD">
                         Must hold asset created by an account linked to this NFD to enter pool
                       </InfoPopover>
                       <span className="text-primary">*</span>
@@ -921,14 +960,15 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <div className="relative">
                       <FormControl>
                         <Input
+                          id="gating-nfd-creator-input"
                           className={cn(isFetchingNfdCreator || nfdCreatorAppId > 0 ? 'pr-10' : '')}
-                          placeholder=""
+                          placeholder="Enter NFD name"
                           autoComplete="new-password"
                           spellCheck="false"
                           {...field}
                           onChange={(e) => {
                             field.onChange(e) // Inform react-hook-form of the change
-                            setNfdCreatorAppId(0) // Reset NFD app ID
+                            setNfdCreatorAppId(0n) // Reset NFD app ID
                             setIsFetchingNfdCreator(true) // Set fetching state
                             debouncedNfdCreatorCheck(e.target.value) // Perform debounced validation
                           }}
@@ -971,9 +1011,9 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                 name="entryGatingNfdParent"
                 render={({ field }) => (
                   <FormItem className={cn({ hidden: !showParentNfdField })}>
-                    <FormLabel>
+                    <FormLabel htmlFor="gating-nfd-parent-input">
                       Root/parent NFD
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Root/parent NFD">
                         Must hold a segment of this root/parent NFD to enter pool
                       </InfoPopover>
                       <span className="text-primary">*</span>
@@ -982,17 +1022,18 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                       <div className="flex-1 relative">
                         <FormControl>
                           <Input
+                            id="gating-nfd-parent-input"
                             className={cn(
                               '',
                               isFetchingNfdParent || nfdParentAppId > 0 ? 'pr-10' : '',
                             )}
-                            placeholder=""
+                            placeholder="Enter NFD name"
                             autoComplete="new-password"
                             spellCheck="false"
                             {...field}
                             onChange={(e) => {
                               field.onChange(e) // Inform react-hook-form of the change
-                              setNfdParentAppId(0) // Reset NFD app ID
+                              setNfdParentAppId(0n) // Reset NFD app ID
                               setIsFetchingNfdParent(true) // Set fetching state
                               debouncedNfdParentCheck(e.target.value) // Perform debounced validation
                             }}
@@ -1069,14 +1110,14 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                   <FormItem
                     className={cn('sm:col-start-2 sm:col-end-3', { hidden: !showMinBalanceField })}
                   >
-                    <FormLabel>
+                    <FormLabel htmlFor="gating-asset-min-balance-input">
                       Minimum balance
-                      <InfoPopover className={infoPopoverClassName}>
+                      <InfoPopover className={infoPopoverClassName} label="Minimum balance">
                         Optional minimum required balance of the entry gating asset.
                       </InfoPopover>
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input id="gating-asset-min-balance-input" placeholder="0.0" {...field} />
                     </FormControl>
                     <FormDescription>No minimum if left blank</FormDescription>
                     <FormMessage>{errors.gatingAssetMinBalance?.message}</FormMessage>

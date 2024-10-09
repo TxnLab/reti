@@ -113,6 +113,7 @@ export class ValidatorRegistry extends Contract {
      *  addStakerMbr: uint64 - mbr staker needs to add to first staking payment (stays w/ validator)
      * ]
      */
+    @abi.readonly
     getMbrAmounts(): MbrAmounts {
         // Cost for creator of validator contract itself is (but not really our problem - it's a bootstrap issue only)
         // this.minBalanceForAccount(0, 0, 0, 0, 0, 4, 0)
@@ -143,6 +144,7 @@ export class ValidatorRegistry extends Contract {
     /**
      * Returns the protocol constraints so that UIs can limit what users specify for validator configuration parameters.
      */
+    @abi.readonly
     getProtocolConstraints(): Constraints {
         return {
             epochPayoutRoundsMin: MIN_EPOCH_LENGTH,
@@ -162,22 +164,22 @@ export class ValidatorRegistry extends Contract {
     /**
      * Returns the current number of validators
      */
-    // @abi.readonly
+    @abi.readonly
     getNumValidators(): uint64 {
         return this.numValidators.value
     }
 
-    // @abi.readonly
+    @abi.readonly
     getValidatorConfig(validatorId: ValidatorIdType): ValidatorConfig {
         return this.validatorList(validatorId).value.config
     }
 
-    // @abi.readonly
+    @abi.readonly
     getValidatorState(validatorId: ValidatorIdType): ValidatorCurState {
         return this.validatorList(validatorId).value.state
     }
 
-    // @abi.readonly
+    @abi.readonly
     getValidatorOwnerAndManager(validatorId: ValidatorIdType): [Address, Address] {
         return [
             this.validatorList(validatorId).value.config.owner,
@@ -185,13 +187,13 @@ export class ValidatorRegistry extends Contract {
         ]
     }
 
-    // @abi.readonly
     /**
      * Return list of all pools for this validator.
      * @param {uint64} validatorId
      * @return {PoolInfo[]} - array of pools
      * Not callable from other contracts because >1K return but can be called w/ simulate which bumps log returns
      */
+    @abi.readonly
     getPools(validatorId: ValidatorIdType): PoolInfo[] {
         const retData: PoolInfo[] = []
         const poolSet = clone(this.validatorList(validatorId).value.pools)
@@ -205,10 +207,12 @@ export class ValidatorRegistry extends Contract {
         return retData
     }
 
-    // @abi.readonly
-    // getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or
-    // want to get staker list for an account.  The staking pool also uses it to get the app id of staking pool 1
-    // (which contains reward tokens if being used) so that the amount available can be determined.
+    /**
+     * getPoolAppId is useful for callers to determine app to call for removing stake if they don't have staking or
+     * want to get staker list for an account.  The staking pool also uses it to get the app id of staking pool 1
+     * (which contains reward tokens if being used) so that the amount available can be determined.
+     */
+    @abi.readonly
     getPoolAppId(validatorId: uint64, poolId: uint64): uint64 {
         assert(
             poolId !== 0 && poolId <= this.validatorList(validatorId).value.pools.length,
@@ -217,7 +221,7 @@ export class ValidatorRegistry extends Contract {
         return this.validatorList(validatorId).value.pools[poolId - 1].poolAppId
     }
 
-    // @abi.readonly
+    @abi.readonly
     getPoolInfo(poolKey: ValidatorPoolKey): PoolInfo {
         return this.validatorList(poolKey.id).value.pools[poolKey.poolId - 1]
     }
@@ -229,6 +233,7 @@ export class ValidatorRegistry extends Contract {
      *
      * @param {ValidatorIdType} validatorId - The id of the validator.
      */
+    @abi.readonly
     getCurMaxStakePerPool(validatorId: ValidatorIdType): uint64 {
         const numPools = this.validatorList(validatorId).value.state.numPools as uint64
         const hardMaxDividedBetweenPools = this.maxAllowedStake() / numPools
@@ -242,11 +247,11 @@ export class ValidatorRegistry extends Contract {
         return maxPerPool
     }
 
-    // @abi.readonly
     /**
      * Helper callers can call w/ simulate to determine if 'AddStaker' MBR should be included w/ staking amount
      * @param staker
      */
+    @abi.readonly
     doesStakerNeedToPayMBR(staker: Address): boolean {
         return !this.stakerPoolSet(staker).exists
     }
@@ -257,6 +262,7 @@ export class ValidatorRegistry extends Contract {
      * @param {Address} staker - The account to retrieve staked pools for.
      * @return {ValidatorPoolKey[]} - The array of staked pools for the account.
      */
+    @abi.readonly
     getStakedPoolsForAccount(staker: Address): ValidatorPoolKey[] {
         if (!this.stakerPoolSet(staker).exists) {
             return []
@@ -271,7 +277,6 @@ export class ValidatorRegistry extends Contract {
         return retData
     }
 
-    // @abi.readonly
     /**
      * Retrieves the token payout ratio for a given validator - returning the pool ratios of whole so that token
      * payouts across pools can be based on a stable snaphost of stake.
@@ -279,17 +284,19 @@ export class ValidatorRegistry extends Contract {
      * @param {ValidatorIdType} validatorId - The id of the validator.
      * @return {PoolTokenPayoutRatio} - The token payout ratio for the validator.
      */
+    @abi.readonly
     getTokenPayoutRatio(validatorId: ValidatorIdType): PoolTokenPayoutRatio {
         return this.validatorList(validatorId).value.tokenPayoutRatio
     }
 
-    // @abi.readonly
+    @abi.readonly
     getNodePoolAssignments(validatorId: uint64): NodePoolAssignmentConfig {
         assert(this.validatorList(validatorId).exists, "the specified validator id doesn't exist")
 
         return this.validatorList(validatorId).value.nodePoolAssignments
     }
 
+    @abi.readonly
     getNFDRegistryID(): uint64 {
         return this.nfdRegistryAppId
     }
@@ -786,6 +793,7 @@ export class ValidatorRegistry extends Contract {
      * @returns {ValidatorPoolKey, boolean, boolean} - The pool for the staker, true/false on whether the staker is 'new'
      * to this VALIDATOR, and true/false if staker is new to the protocol.
      */
+    @abi.readonly
     findPoolForStaker(
         validatorId: ValidatorIdType,
         staker: Address,

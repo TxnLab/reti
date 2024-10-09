@@ -34,4 +34,4 @@ export const MAX_EPOCH_LENGTH = 1000000 // 1 million rounds or.. just over a mon
 export const MAX_POOLS_PER_STAKER = 6
 
 export const ALGORAND_STAKING_BLOCK_DELAY = 320 // # of blocks until algorand sees online balance changes in staking
-export const AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)
+export const APPROX_AVG_ROUNDS_PER_DAY = 30857 // approx 'daily' rounds for APR bins (60*60*24/2.8)

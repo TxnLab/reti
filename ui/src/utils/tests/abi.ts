@@ -1,6 +1,6 @@
 import { ABIValue } from 'algosdk'
-import { StakingPoolSig } from '@/contracts/StakingPoolClient'
-import { ValidatorRegistrySig } from '@/contracts/ValidatorRegistryClient'
+import { StakingPoolSignatures } from '@/contracts/StakingPoolClient'
+import { ValidatorRegistrySignatures } from '@/contracts/ValidatorRegistryClient'
 
 export interface MethodCallParams {
   method: string
@@ -18,7 +18,7 @@ export interface MethodCallParams {
  * encodeCallParams('getPools', { validatorId: 1 })
  */
 export function encodeCallParams(
-  method: ValidatorRegistrySig | StakingPoolSig,
+  method: ValidatorRegistrySignatures | StakingPoolSignatures,
   args: MethodCallParams['args'],
 ): Uint8Array {
   const methodName = method.split('(', 1)[0]

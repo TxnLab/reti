@@ -25,6 +25,7 @@ interface NfdLookupProps<
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 > {
   form: UseFormReturn<TFieldValues>
+  id: string
   name: TName
   nfd: Nfd | null
   setNfd: (nfd: Nfd | null) => void
@@ -42,6 +43,7 @@ export function NfdLookup<
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
 >({
   form,
+  id,
   name,
   nfd,
   setNfd,
@@ -143,6 +145,7 @@ export function NfdLookup<
             <div className="flex-1 relative">
               <FormControl>
                 <Input
+                  id={id}
                   className={cn(isFetchingNfd || nfd ? 'pr-10' : '')}
                   placeholder=""
                   autoComplete="new-password"

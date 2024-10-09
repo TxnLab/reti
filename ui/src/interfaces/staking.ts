@@ -1,12 +1,4 @@
-import { ValidatorPoolKey } from './validator'
-
-export interface StakedInfo {
-  account: string
-  balance: bigint
-  totalRewarded: bigint
-  rewardTokenBalance: bigint
-  entryRound: bigint
-}
+import { StakedInfo, ValidatorPoolKey } from '@/contracts/StakingPoolClient'
 
 export interface StakerPoolData extends StakedInfo {
   poolKey: ValidatorPoolKey
@@ -14,7 +6,7 @@ export interface StakerPoolData extends StakedInfo {
 }
 
 export interface StakerValidatorData {
-  validatorId: number
+  validatorId: bigint
   balance: bigint
   totalRewarded: bigint
   rewardTokenBalance: bigint

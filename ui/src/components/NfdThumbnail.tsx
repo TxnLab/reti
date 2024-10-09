@@ -14,7 +14,7 @@ type NfdThumbnailProps = (
     }
   | {
       nfd?: never
-      nameOrId: string | number
+      nameOrId: string | bigint
     }
 ) & {
   link?: boolean
@@ -48,7 +48,7 @@ const NfdThumbnailBase = React.memo(
     const renderChildren = () => (
       <>
         <div className="flex-shrink-0">
-          <NfdAvatar nfd={nfd} className="h-6 w-6" />
+          <NfdAvatar nfd={nfd} className="h-6 w-6" alt="" />
         </div>
         <div className={cn({ truncate })}>{nfd.name}</div>
       </>

@@ -23,8 +23,8 @@ import { Nfd } from '@/interfaces/nfd'
 import { isValidName } from '@/utils/nfd'
 
 interface LinkPoolToNfdModalProps {
-  poolId: number
-  poolAppId: number
+  poolId: bigint
+  poolAppId: bigint
   disabled?: boolean
   className?: string
 }
@@ -132,12 +132,18 @@ export function LinkPoolToNfdModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Link Pool to NFD</DialogTitle>
-          <DialogDescription>Link the Pool {poolId} contract account to an NFD</DialogDescription>
+          <DialogDescription>
+            Link the Pool {Number(poolId)} contract account to an NFD
+          </DialogDescription>
         </DialogHeader>
         <div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleLinkNfd)}>
+              <label htmlFor="link-pool-to-nfd-input" className="sr-only">
+                NFD Name
+              </label>
               <NfdLookup
+                id="link-pool-to-nfd-input"
                 form={form}
                 name="nfdName"
                 nfd={nfd}
