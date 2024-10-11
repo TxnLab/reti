@@ -54,6 +54,10 @@
         "rangeStrategy": "pin"
       },
       {
+        "matchPackageNames": ["vitest", "@vitest/**"],
+        "groupName": "Vitest"
+      },
+      {
         "matchDepTypes": [
           "optionalDependencies",
           "peerDependencies",
