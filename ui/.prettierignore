@@ -2,6 +2,7 @@ node_modules
 dist
 build
 coverage
+public
 **/generated/types.d.ts
 **/generated/types.ts
 .idea
