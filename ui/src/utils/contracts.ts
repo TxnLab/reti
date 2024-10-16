@@ -241,7 +241,7 @@ export function isUnstakingDisabled(
   }
   const noPools = validator.state.numPools === 0
   const validatorHasStake = stakesByValidator.some(
-    (stake) => stake.validatorId === BigInt(validator.id),
+    (stake) => BigInt(stake.validatorId) === BigInt(validator.id),
   )
 
   return noPools || !validatorHasStake

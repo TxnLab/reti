@@ -177,7 +177,9 @@ export function StakingTable({
       header: ({ column }) => <DataTableColumnHeader column={column} title="Reward Eligibility" />,
       cell: ({ row }) => {
         const stakerValidatorData = row.original
-        const validator = validators.find((v) => BigInt(v.id) === stakerValidatorData.validatorId)
+        const validator = validators.find(
+          (v) => BigInt(v.id) === BigInt(stakerValidatorData.validatorId),
+        )
         const { epochRoundLength } = validator?.config || {}
 
         const allPoolsEligibility = stakerValidatorData.pools.map((poolData) => {
@@ -202,7 +204,7 @@ export function StakingTable({
       id: 'actions',
       cell: ({ row }) => {
         const validatorId = row.original.validatorId
-        const validator = validators.find((v) => BigInt(v.id) === validatorId)
+        const validator = validators.find((v) => BigInt(v.id) === BigInt(validatorId))
 
         if (!validator || !activeAddress) return null
 
