@@ -943,12 +943,21 @@ func (r *Reti) MovePoolToNode(poolAppId uint64, nodeNum uint64) error {
 
 	atc := transaction.AtomicTransactionComposer{}
 	misc.Infof(r.Logger, "trying to move pool app id:%d to node number:%d", poolAppId, nodeNum)
+	gasMethod, _ := r.validatorContract.GetMethodByName("gas")
 	movePoolMethod, _ := r.validatorContract.GetMethodByName("movePoolToNode")
 
 	// pay for go offline call as well
 	params.FlatFee = true
 	params.Fee = types.MicroAlgos(max(uint64(params.MinFee), 1000) + (2 * params.MinFee))
 
+	atc.AddMethodCall(transaction.AddMethodCallParams{
+		AppID:           r.RetiAppId,
+		Method:          gasMethod,
+		SuggestedParams: params,
+		OnComplete:      types.NoOpOC,
+		Sender:          managerAddr,
+		Signer:          algo.SignWithAccountForATC(r.signer, managerAddr.String()),
+	})
 	atc.AddMethodCall(transaction.AddMethodCallParams{
 		AppID:  r.RetiAppId,
 		Method: movePoolMethod,
