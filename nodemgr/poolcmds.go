@@ -418,10 +418,14 @@ func PayoutPool(ctx context.Context, command *cli.Command) error {
 func OfflinePool(ctx context.Context, command *cli.Command) error {
 	var info = App.retiClient.Info()
 	poolID := command.Uint("pool")
-	if int(poolID) >= len(info.Pools) {
+	if int(poolID) > len(info.Pools) {
 		return fmt.Errorf("pool num:%d not valid for pool id", poolID)
 	}
 	signerAddr, _ := types.DecodeAddress(info.Config.Manager)
 
-	return App.retiClient.GoOffline(info.Pools[poolID-1].PoolAppId, signerAddr)
+	err := App.retiClient.GoOffline(info.Pools[poolID-1].PoolAppId, signerAddr)
+	if err == nil {
+		misc.Infof(App.logger, "Pool %d, app id:%d is now offline", poolID, info.Pools[poolID-1].PoolAppId)
+	}
+	return err
 }

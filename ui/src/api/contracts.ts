@@ -502,7 +502,7 @@ export async function addStake(
 
   const simulateComposer = simulateValidatorClient
     .newGroup()
-    .gas({ args: {}, validityWindow: 200 })
+    .gas({ args: {} })
     .addStake(
       // This the actual send of stake to the ac
       {
@@ -535,9 +535,12 @@ export async function addStake(
 
   stakeTransferPayment.group = undefined
 
-  // @todo: switch to Joe's new method(s)
   const feeAmount = AlgoAmount.MicroAlgos(
-    3000 + 1000 * ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+    1000 *
+      Math.floor(
+        ((simulateResults.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
+      ) -
+      1000, // subtract back out the opcodes added from the gas call(s) which were paid as part of their normal fees,
   )
 
   let requiredBalance =
@@ -545,7 +548,7 @@ export async function addStake(
 
   const composer = validatorClient
     .newGroup()
-    .gas({ args: [], staticFee: AlgoAmount.MicroAlgos(0) })
+    .gas({ args: [] })
     .addStake({
       args: {
         // --
@@ -555,7 +558,7 @@ export async function addStake(
         validatorId,
         valueToVerify,
       },
-      staticFee: feeAmount,
+      extraFee: feeAmount,
     })
 
   if (needsOptInTxn) {
@@ -788,12 +791,12 @@ export async function removeStake(
     allowUnnamedResources: true,
   })
 
-  // @todo: switch to Joe's new method(s)
   const feeAmount = AlgoAmount.MicroAlgos(
     1000 *
       Math.floor(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
-      ),
+      ) -
+      2000, // subtract back out the opcodes added from the two gas calls which were paid as part of their normal fees,
   )
 
   let requiredBalance = feeAmount.microAlgos
@@ -802,11 +805,11 @@ export async function removeStake(
 
   const composer = stakingPoolClient
     .newGroup()
-    .gas({ args: [], note: '1', staticFee: AlgoAmount.MicroAlgos(0) })
-    .gas({ args: [], note: '2', staticFee: AlgoAmount.MicroAlgos(0) })
+    .gas({ args: [], note: '1' })
+    .gas({ args: [], note: '2' })
     .removeStake({
       args: { staker: activeAddress, amountToUnstake },
-      staticFee: feeAmount,
+      extraFee: feeAmount,
     })
 
   if (needsOptInTxn) {
@@ -869,9 +872,12 @@ export async function epochBalanceUpdate(
       })
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
 
-    // @todo: switch to Joe's new method(s)
     const feeAmount = AlgoAmount.MicroAlgos(
-      3000 + 1000 * ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) / 700),
+      1000 *
+        Math.floor(
+          ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
+        ) -
+        2000, // subtract back out the opcodes added from the gas call(s) which were paid as part of their normal fees,
     )
 
     // Check balance
@@ -882,9 +888,9 @@ export async function epochBalanceUpdate(
 
     await stakingPoolClient
       .newGroup()
-      .gas({ args: [], note: '1', staticFee: AlgoAmount.MicroAlgos(0) })
-      .gas({ args: [], note: '2', staticFee: AlgoAmount.MicroAlgos(0) })
-      .epochBalanceUpdate({ args: {}, staticFee: feeAmount })
+      .gas({ args: [], note: '1' })
+      .gas({ args: [], note: '2' })
+      .epochBalanceUpdate({ args: {}, extraFee: feeAmount })
       .send({ populateAppCallResources: true })
   } catch (error) {
     console.error(error)
@@ -1003,12 +1009,12 @@ export async function claimTokens(
     allowUnnamedResources: true,
   })
 
-  // @todo: switch to Joe's new method(s)
   const feeAmount = AlgoAmount.MicroAlgos(
     1000 *
       Math.floor(
         ((simulateResult.simulateResponse.txnGroups[0].appBudgetAdded as number) + 699) / 700,
-      ),
+      ) -
+      2000, // subtract back out the opcodes added from the gas call(s) which were paid as part of their normal fees,
   )
 
   const composer = algorand.newGroup()
@@ -1021,13 +1027,9 @@ export async function claimTokens(
       defaultSigner: signer,
     })
     composer
-      .addAppCallMethodCall(
-        await client.params.gas({ args: [], note: '1', staticFee: (0).microAlgo() }),
-      )
-      .addAppCallMethodCall(
-        await client.params.gas({ args: [], note: '2', staticFee: (0).microAlgo() }),
-      )
-      .addAppCallMethodCall(await client.params.claimTokens({ args: {}, staticFee: feeAmount }))
+      .addAppCallMethodCall(await client.params.gas({ args: [], note: '1' }))
+      .addAppCallMethodCall(await client.params.gas({ args: [], note: '2' }))
+      .addAppCallMethodCall(await client.params.claimTokens({ args: {}, extraFee: feeAmount }))
   }
 
   await composer.send({ populateAppCallResources: true })
@@ -1211,7 +1213,7 @@ export async function linkPoolToNfd(
       .newGroup()
       .addTransaction(payBoxStorageMbrTxn)
       .addTransaction(updateNfdAppCall)
-      .linkToNfd({ args: { nfdAppId, nfdName }, staticFee: feeAmount })
+      .linkToNfd({ args: { nfdAppId, nfdName }, extraFee: feeAmount })
       .send({ populateAppCallResources: true })
   } catch (error) {
     console.error(error)
