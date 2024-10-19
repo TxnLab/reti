@@ -270,7 +270,7 @@ func DefineValidator() error {
 		return err
 	}
 
-	config.PercentToValidator, err = getInt("Enter the payout percentage to the validator (in four decimals, ie: 5% = 50000)", 50000, 0, 1000000)
+	config.PercentToValidator, err = getInt("Enter the commission percentage to the validator (in four decimals, ie: 5% = 50000)", 50000, 0, 1000000)
 	if err != nil {
 		return err
 	}

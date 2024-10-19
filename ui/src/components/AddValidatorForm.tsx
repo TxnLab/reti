@@ -422,8 +422,8 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormLabel htmlFor="manager-input">
                       Manager account
                       <InfoPopover className={infoPopoverClassName} label="Manager account">
-                        Account that triggers payouts and keyreg transactions (must sign
-                        transactions)
+                        Account that must be available to Node Daemon that triggers payouts and
+                        keyreg transactions ('new' hot wallet)
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
@@ -615,7 +615,7 @@ export function AddValidatorForm({ constraints }: AddValidatorFormProps) {
                     <FormLabel htmlFor="commission-percent-input">
                       Commission percent
                       <InfoPopover className={infoPopoverClassName} label="Commission percent">
-                        Payout percentage w/ up to four decimals (e.g., 5.0001)
+                        Commission percentage per-Epoch w/ up to four decimals (e.g., 5.0001)
                       </InfoPopover>
                       <span className="text-primary">*</span>
                     </FormLabel>
