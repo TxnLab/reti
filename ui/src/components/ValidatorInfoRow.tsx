@@ -62,7 +62,8 @@ export function ValidatorInfoRow({ validator, constraints }: ValidatorInfoRowPro
             <span className="whitespace-nowrap">
               {validator.state.numPools > 0 ? (
                 <>
-                  {validator.state.totalStakers} / {calculateMaxStakers(validator, constraints)}
+                  {validator.state.totalStakers.toString()} /{' '}
+                  {calculateMaxStakers(validator, constraints)}
                 </>
               ) : (
                 <>--</>
