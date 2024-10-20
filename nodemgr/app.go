@@ -202,7 +202,7 @@ func (ac *RetiApp) initClients(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if ac.retiAppID == 0 {
-		return fmt.Errorf("the id of the Reti Validator contract must be set using either -id or RETI_APPID env var!")
+		return fmt.Errorf("the id of the Reti Validator contract must be set using either -retiid or RETI_APPID env var!")
 	}
 
 	// This will load and initialize mnemonics from the environment - and handles all 'local' signing for the app

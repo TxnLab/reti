@@ -11,8 +11,8 @@ importers:
   contracts:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 7.0.0-beta.14
-        version: 7.0.0-beta.14(algosdk@2.9.0)
+        specifier: 7.0.0-beta.16
+        version: 7.0.0-beta.16(algosdk@2.9.0)
       algosdk:
         specifier: 2.9.0
         version: 2.9.0
@@ -21,8 +21,8 @@ importers:
         specifier: 4.0.0-beta.5
         version: 4.0.0-beta.5
       '@algorandfoundation/tealscript':
-        specifier: 0.103.0
-        version: 0.103.0
+        specifier: 0.103.2
+        version: 0.103.2
       '@joe-p/algokit-generate-component':
         specifier: 0.2.1
         version: 0.2.1(chokidar@3.6.0)
@@ -63,8 +63,8 @@ importers:
   contracts/bootstrap:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 7.0.0-beta.14
-        version: 7.0.0-beta.14(algosdk@2.9.0)
+        specifier: 7.0.0-beta.16
+        version: 7.0.0-beta.16(algosdk@2.9.0)
       algosdk:
         specifier: 2.9.0
         version: 2.9.0
@@ -94,8 +94,8 @@ importers:
   ui:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 7.0.0-beta.14
-        version: 7.0.0-beta.14(algosdk@2.9.0)
+        specifier: 7.0.0-beta.16
+        version: 7.0.0-beta.16(algosdk@2.9.0)
       '@blockshake/defly-connect':
         specifier: 1.1.6
         version: 1.1.6(algosdk@2.9.0)
@@ -351,14 +351,14 @@ packages:
     engines: {node: '>=18.0'}
     hasBin: true
 
-  '@algorandfoundation/algokit-utils@7.0.0-beta.14':
-    resolution: {integrity: sha512-gnDHE6UZhKj4UH8p/GweymO1lavHcStFk59fD0OwCyYvmr18keIoxRNLWhkbuPChh0kN30f9l5+5kWRvNqRXBQ==}
+  '@algorandfoundation/algokit-utils@7.0.0-beta.16':
+    resolution: {integrity: sha512-5Xm4hkPL607ISzh2QFLPDN4TiRKrAvv+sdeVKF56idmIh8V5DIhHBeQeKj0r3oBNMUYL+0tIMa8zy9ZEDs8EnA==}
     engines: {node: '>=18.0'}
     peerDependencies:
       algosdk: ^2.7.0
 
-  '@algorandfoundation/tealscript@0.103.0':
-    resolution: {integrity: sha512-l6W+Z1/FHYX0UL6RFSScWdFsfNygX+ei/Lw1IVO+fBQOpSW01RqT2mHPyBghDpvw9cHOX5wVcuUVWpe6R+ew4A==}
+  '@algorandfoundation/tealscript@0.103.2':
+    resolution: {integrity: sha512-KIEtNzkgoZt242X1cd8PrEtOh+06CiHd7suqxwIjraGeqf9QvGhwihZRzxohjVAZ6ktA7sydDC8f3e5NMBM36Q==}
     hasBin: true
 
   '@alloc/quick-lru@5.2.0':
@@ -5167,19 +5167,19 @@ snapshots:
 
   '@algorandfoundation/algokit-client-generator@4.0.0-beta.5':
     dependencies:
-      '@algorandfoundation/algokit-utils': 7.0.0-beta.14(algosdk@2.9.0)
+      '@algorandfoundation/algokit-utils': 7.0.0-beta.16(algosdk@2.9.0)
       algosdk: 2.9.0
       chalk: 4.1.2
       change-case: 4.1.2
       commander: 11.1.0
       jsonschema: 1.4.1
 
-  '@algorandfoundation/algokit-utils@7.0.0-beta.14(algosdk@2.9.0)':
+  '@algorandfoundation/algokit-utils@7.0.0-beta.16(algosdk@2.9.0)':
     dependencies:
       algosdk: 2.9.0
       buffer: 6.0.3
 
-  '@algorandfoundation/tealscript@0.103.0':
+  '@algorandfoundation/tealscript@0.103.2':
     dependencies:
       '@microsoft/tsdoc': 0.14.2
       '@playwright/test': 1.48.0
