@@ -11,15 +11,19 @@ import { version } from './package.json'
  * This plugin replaces the `__APP_VERSION__` placeholder in the `public/version.json` file
  */
 const replaceVersionPlugin = () => {
+  let outDir
   return {
     name: 'replace-version-in-json',
     apply: 'build',
     enforce: 'pre',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
     generateBundle() {
       const filePath = path.resolve(__dirname, 'public/version.json')
       const content = fs.readFileSync(filePath, 'utf-8')
       const updatedContent = content.replace('__APP_VERSION__', version)
-      const newFilePath = path.resolve(__dirname, 'dist/version.json')
+      const newFilePath = path.resolve(outDir, 'version.json')
       fs.writeFileSync(newFilePath, updatedContent, 'utf-8')
     },
   }
