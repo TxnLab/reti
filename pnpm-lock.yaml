@@ -58,7 +58,7 @@ importers:
         version: 5.6.3
       vitest:
         specifier: 2.1.2
-        version: 2.1.2(@types/node@22.7.5)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3))
+        version: 2.1.2(@types/node@22.7.5)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3))
 
   contracts/bootstrap:
     dependencies:
@@ -294,7 +294,7 @@ importers:
         version: 4.3.2(vite@5.4.8(@types/node@20.16.11))
       '@vitest/coverage-v8':
         specifier: 2.1.2
-        version: 2.1.2(vitest@2.1.2(@types/node@20.16.11)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3)))
+        version: 2.1.2(vitest@2.1.2(@types/node@20.16.11)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3)))
       algo-msgpack-with-bigint:
         specifier: 2.1.1
         version: 2.1.1
@@ -311,8 +311,8 @@ importers:
         specifier: 5.2.1
         version: 5.2.1(eslint-config-prettier@9.1.0(eslint@8.57.1))(eslint@8.57.1)(prettier@3.3.3)
       jsdom:
-        specifier: 24.1.3
-        version: 24.1.3
+        specifier: 25.0.1
+        version: 25.0.1
       msw:
         specifier: 2.4.9
         version: 2.4.9(typescript@5.6.3)
@@ -339,7 +339,7 @@ importers:
         version: 5.4.8(@types/node@20.16.11)
       vitest:
         specifier: 2.1.2
-        version: 2.1.2(@types/node@20.16.11)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3))
+        version: 2.1.2(@types/node@20.16.11)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3))
 
 packages:
 
@@ -3534,8 +3534,8 @@ packages:
     resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
     hasBin: true
 
-  jsdom@24.1.3:
-    resolution: {integrity: sha512-MyL55p3Ut3cXbeBEG7Hcv0mVM8pp8PBNWxRqchZnSfAiES1v1mRnMeFfaHWIPULpwsYfvO+ZmMZz5tGCnjzDUQ==}
+  jsdom@25.0.1:
+    resolution: {integrity: sha512-8i7LzZj7BF8uplX+ZyOlIz86V6TAsSs+np6m1kpW9u0JWi4z/1t+FzcK1aek+ybTnAC4KhBL4uXCNT0wcUIeCw==}
     engines: {node: '>=18'}
     peerDependencies:
       canvas: ^2.11.2
@@ -4651,6 +4651,13 @@ packages:
     resolution: {integrity: sha512-n1cw8k1k0x4pgA2+9XrOkFydTerNcJ1zWCO5Nn9scWHTD+5tp8dghT2x1uduQePZTZgd3Tupf+x9BxJjeJi77Q==}
     engines: {node: '>=14.0.0'}
 
+  tldts-core@6.1.52:
+    resolution: {integrity: sha512-j4OxQI5rc1Ve/4m/9o2WhWSC4jGc4uVbCINdOEJRAraCi0YqTqgMcxUx7DbmuP0G3PCixoof/RZB0Q5Kh9tagw==}
+
+  tldts@6.1.52:
+    resolution: {integrity: sha512-fgrDJXDjbAverY6XnIt0lNfv8A0cf7maTEaZxNykLGsLG7XP+5xhjBTrt/ieAsFjAlZ+G5nmXomLcZDkxXnDzw==}
+    hasBin: true
+
   to-fast-properties@2.0.0:
     resolution: {integrity: sha512-/OaKK0xYrs3DmxRYqL/yDc+FxFUVYhDlXMhRmv3z915w2HF1tnN1omB354j8VUGO/hbRzyD6Y3sA7v7GS/ceog==}
     engines: {node: '>=4'}
@@ -4665,6 +4672,10 @@ packages:
   tough-cookie@4.1.4:
     resolution: {integrity: sha512-Loo5UUvLD9ScZ6jh8beX1T6sO1w2/MpCRpEP7V280GKMVUQ0Jzar2U3UJPsrdbziLEMMhu3Ujnq//rhiFuIeag==}
     engines: {node: '>=6'}
+
+  tough-cookie@5.0.0:
+    resolution: {integrity: sha512-FRKsF7cz96xIIeMZ82ehjC3xW2E+O2+v11udrDYewUbszngYhsGa8z6YUMMzO9QJZzzyd0nGGXnML/TReX6W8Q==}
+    engines: {node: '>=16'}
 
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
@@ -6849,7 +6860,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@2.1.2(vitest@2.1.2(@types/node@20.16.11)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3)))':
+  '@vitest/coverage-v8@2.1.2(vitest@2.1.2(@types/node@20.16.11)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3)))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -6863,7 +6874,7 @@ snapshots:
       std-env: 3.7.0
       test-exclude: 7.0.1
       tinyrainbow: 1.2.0
-      vitest: 2.1.2(@types/node@20.16.11)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3))
+      vitest: 2.1.2(@types/node@20.16.11)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3))
     transitivePeerDependencies:
       - supports-color
 
@@ -8769,7 +8780,7 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  jsdom@24.1.3:
+  jsdom@25.0.1:
     dependencies:
       cssstyle: 4.1.0
       data-urls: 5.0.0
@@ -8784,7 +8795,7 @@ snapshots:
       rrweb-cssom: 0.7.1
       saxes: 6.0.0
       symbol-tree: 3.2.4
-      tough-cookie: 4.1.4
+      tough-cookie: 5.0.0
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 7.0.0
       whatwg-encoding: 3.1.1
@@ -9972,6 +9983,12 @@ snapshots:
 
   tinyspy@3.0.2: {}
 
+  tldts-core@6.1.52: {}
+
+  tldts@6.1.52:
+    dependencies:
+      tldts-core: 6.1.52
+
   to-fast-properties@2.0.0: {}
 
   to-regex-range@5.0.1:
@@ -9986,6 +10003,10 @@ snapshots:
       punycode: 2.3.1
       universalify: 0.2.0
       url-parse: 1.5.10
+
+  tough-cookie@5.0.0:
+    dependencies:
+      tldts: 6.1.52
 
   tr46@0.0.3: {}
 
@@ -10301,7 +10322,7 @@ snapshots:
       '@types/node': 22.7.5
       fsevents: 2.3.3
 
-  vitest@2.1.2(@types/node@20.16.11)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3)):
+  vitest@2.1.2(@types/node@20.16.11)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3)):
     dependencies:
       '@vitest/expect': 2.1.2
       '@vitest/mocker': 2.1.2(@vitest/spy@2.1.2)(msw@2.4.9(typescript@5.6.3))(vite@5.4.8(@types/node@20.16.11))
@@ -10324,7 +10345,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.16.11
-      jsdom: 24.1.3
+      jsdom: 25.0.1
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -10336,7 +10357,7 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@2.1.2(@types/node@22.7.5)(jsdom@24.1.3)(msw@2.4.9(typescript@5.6.3)):
+  vitest@2.1.2(@types/node@22.7.5)(jsdom@25.0.1)(msw@2.4.9(typescript@5.6.3)):
     dependencies:
       '@vitest/expect': 2.1.2
       '@vitest/mocker': 2.1.2(@vitest/spy@2.1.2)(msw@2.4.9(typescript@5.6.3))(vite@5.4.8(@types/node@22.7.5))
@@ -10359,7 +10380,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.7.5
-      jsdom: 24.1.3
+      jsdom: 25.0.1
     transitivePeerDependencies:
       - less
       - lightningcss
