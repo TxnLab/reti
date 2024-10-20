@@ -63,8 +63,8 @@ importers:
   contracts/bootstrap:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 7.0.0-beta.14
-        version: 7.0.0-beta.14(algosdk@2.9.0)
+        specifier: 7.0.0-beta.16
+        version: 7.0.0-beta.16(algosdk@2.9.0)
       algosdk:
         specifier: 2.9.0
         version: 2.9.0
@@ -94,8 +94,8 @@ importers:
   ui:
     dependencies:
       '@algorandfoundation/algokit-utils':
-        specifier: 7.0.0-beta.14
-        version: 7.0.0-beta.14(algosdk@2.9.0)
+        specifier: 7.0.0-beta.16
+        version: 7.0.0-beta.16(algosdk@2.9.0)
       '@blockshake/defly-connect':
         specifier: 1.1.6
         version: 1.1.6(algosdk@2.9.0)
@@ -350,12 +350,6 @@ packages:
     resolution: {integrity: sha512-XV0HX0ZNgKrqaVE3HDkZ6LmzdR3NW0zJP/lh661TA7KeONGvFOlaAM6HZ0d7nbL0rLsuIZAKJ6ZAvG89bCW1Hw==}
     engines: {node: '>=18.0'}
     hasBin: true
-
-  '@algorandfoundation/algokit-utils@7.0.0-beta.14':
-    resolution: {integrity: sha512-gnDHE6UZhKj4UH8p/GweymO1lavHcStFk59fD0OwCyYvmr18keIoxRNLWhkbuPChh0kN30f9l5+5kWRvNqRXBQ==}
-    engines: {node: '>=18.0'}
-    peerDependencies:
-      algosdk: ^2.7.0
 
   '@algorandfoundation/algokit-utils@7.0.0-beta.16':
     resolution: {integrity: sha512-5Xm4hkPL607ISzh2QFLPDN4TiRKrAvv+sdeVKF56idmIh8V5DIhHBeQeKj0r3oBNMUYL+0tIMa8zy9ZEDs8EnA==}
@@ -5179,11 +5173,6 @@ snapshots:
       change-case: 4.1.2
       commander: 11.1.0
       jsonschema: 1.4.1
-
-  '@algorandfoundation/algokit-utils@7.0.0-beta.14(algosdk@2.9.0)':
-    dependencies:
-      algosdk: 2.9.0
-      buffer: 6.0.3
 
   '@algorandfoundation/algokit-utils@7.0.0-beta.16(algosdk@2.9.0)':
     dependencies:
