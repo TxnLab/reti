@@ -17,12 +17,12 @@
         "prettier:fix": "npx prettier --write ."
     },
     "dependencies": {
-        "@algorandfoundation/algokit-utils": "7.0.0-beta.14",
+        "@algorandfoundation/algokit-utils": "7.0.0-beta.16",
         "algosdk": "2.9.0"
     },
     "devDependencies": {
         "@algorandfoundation/algokit-client-generator": "4.0.0-beta.5",
-        "@algorandfoundation/tealscript": "0.103.0",
+        "@algorandfoundation/tealscript": "0.103.2",
         "@joe-p/algokit-generate-component": "0.2.1",
         "@typescript-eslint/eslint-plugin": "8.8.1",
         "@typescript-eslint/parser": "8.8.1",
