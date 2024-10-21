@@ -8,7 +8,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/mailgun/holster/v4 v4.20.3
 	github.com/manifoldco/promptui v0.9.0
-	github.com/prometheus/client_golang v1.20.4
+	github.com/prometheus/client_golang v1.20.5
 	github.com/ssgreg/repeat v1.5.1
 	github.com/urfave/cli/v3 v3.0.0-alpha9.1
 	golang.org/x/crypto v0.28.0
