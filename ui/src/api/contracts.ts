@@ -525,7 +525,7 @@ export async function addStake(
       suggestedParams,
     })
 
-    simulateComposer.addTransaction(rewardTokenOptInTxn)
+    simulateComposer.addTransaction(rewardTokenOptInTxn, makeEmptyTransactionSigner(authAddr))
   }
 
   const simulateResults = await simulateComposer.simulate({
@@ -553,7 +553,7 @@ export async function addStake(
       args: {
         // --
         // This the actual send of stake to the validator contract (which then sends to the staking pool)
-        stakedAmountPayment: stakeTransferPayment,
+        stakedAmountPayment: { txn: stakeTransferPayment, signer },
         // --
         validatorId,
         valueToVerify,
@@ -783,7 +783,7 @@ export async function removeStake(
       suggestedParams,
     })
 
-    simulateComposer.addTransaction(rewardTokenOptInTxn)
+    simulateComposer.addTransaction(rewardTokenOptInTxn, makeEmptyTransactionSigner(authAddr))
   }
 
   const simulateResult = await simulateComposer.simulate({
