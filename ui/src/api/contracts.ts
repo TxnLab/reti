@@ -1,4 +1,3 @@
-import * as algokit from '@algorandfoundation/algokit-utils'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { QueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
