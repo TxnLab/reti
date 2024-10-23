@@ -71,16 +71,17 @@ func (d *Daemon) start(ctx context.Context, wg *sync.WaitGroup, cancel context.C
 
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		info := App.retiClient.Info()
 		if info.Config.EntryGatingType == reti.GatingTypeNone {
 			return
 		}
-		defer wg.Done()
 		d.StakerEvictor(ctx)
 	}()
 
 	wg.Add(1)
 	go func() {
+		defer d.logger.Info("Exiting HTTP server")
 		defer wg.Done()
 		http.Handle("/ready", isReady())
 		http.Handle("/metrics", promhttp.Handler())

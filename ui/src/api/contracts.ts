@@ -1189,13 +1189,11 @@ export async function linkPoolToNfd(
       appIndex: nfdAppId,
       from: activeAddress,
       suggestedParams: await ParamsCache.getSuggestedParams(),
-      ...algokit.getAppArgsForTransaction({
-        appArgs: [
-          new TextEncoder().encode('update_field'),
-          new TextEncoder().encode('u.cav.algo.a'),
-          algosdk.decodeAddress(poolAppAddress).publicKey,
-        ],
-      }),
+      appArgs: [
+        new TextEncoder().encode('update_field'),
+        new TextEncoder().encode('u.cav.algo.a'),
+        algosdk.decodeAddress(poolAppAddress).publicKey,
+      ],
     })
 
     // Check balance
