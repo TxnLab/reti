@@ -42,7 +42,7 @@ import { ellipseAddressJsx } from '@/utils/ellipseAddress'
 import { ExplorerLink } from '@/utils/explorer'
 import { convertFromBaseUnits, roundToFirstNonZeroDecimal } from '@/utils/format'
 import { cn } from '@/utils/ui'
-import { Constraints } from '@/contracts/ValidatorRegistryClient'
+import { Constraints, NodePoolAssignmentConfig } from '@/contracts/ValidatorRegistryClient'
 
 interface StakingDetailsProps {
   validator: Validator
@@ -233,6 +233,17 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
     )
   }
 
+  function nodeNumForPoolId(poolAppId: bigint, poolAssignments: NodePoolAssignmentConfig) {
+    for (let nodeIndex = 0; nodeIndex < poolAssignments.nodes.length; nodeIndex++) {
+      for (let poolIndex = 0; poolIndex < poolAssignments.nodes[nodeIndex][0].length; poolIndex++) {
+        if (poolAssignments.nodes[nodeIndex][0][poolIndex] === poolAppId) {
+          return nodeIndex + 1
+        }
+      }
+    }
+    return undefined
+  }
+
   const renderPoolInfo = () => {
     if (!selectedPoolInfo) {
       return (
@@ -342,6 +353,15 @@ export function StakingDetails({ validator, constraints, stakesByValidator }: St
                 ) : (
                   <span className="text-muted-foreground">--</span>
                 )}
+              </dd>
+            </div>
+
+            <div className="py-4 grid grid-cols-2 gap-4">
+              <dt className="text-sm font-medium leading-6 text-muted-foreground">Node Number</dt>
+              <dd className="flex items-center gap-x-2 text-sm">
+                <span className="font-mono">
+                  {nodeNumForPoolId(selectedPoolInfo.poolAppId, validator.nodePoolAssignment)}
+                </span>
               </dd>
             </div>
 
