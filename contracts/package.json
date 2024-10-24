@@ -22,10 +22,10 @@
     },
     "devDependencies": {
         "@algorandfoundation/algokit-client-generator": "4.0.0-beta.5",
-        "@algorandfoundation/tealscript": "0.103.2",
+        "@algorandfoundation/tealscript": "0.104.0",
         "@joe-p/algokit-generate-component": "0.2.1",
-        "@typescript-eslint/eslint-plugin": "8.8.1",
-        "@typescript-eslint/parser": "8.8.1",
+        "@typescript-eslint/eslint-plugin": "8.10.0",
+        "@typescript-eslint/parser": "8.10.0",
         "eslint": "8.57.1",
         "eslint-config-airbnb-base": "15.0.0",
         "eslint-config-airbnb-typescript": "18.0.0",
