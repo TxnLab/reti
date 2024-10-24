@@ -162,11 +162,10 @@ export function AddStakeModal({
         },
       )
       .superRefine((val, ctx) => {
-        let parsedFloat = parseFloat(val)
-        if (isNaN(parsedFloat)) {
-          parsedFloat = 0
+        let algoAmount = parseFloat(val)
+        if (isNaN(algoAmount)) {
+          algoAmount = 0
         }
-        const algoAmount = BigInt(parsedFloat)
         const amountToStake = AlgoAmount.Algos(algoAmount).microAlgos
 
         if (validator) {

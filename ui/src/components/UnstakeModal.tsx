@@ -94,14 +94,13 @@ export function UnstakeModal({ validator, setValidator, stakesByValidator }: Uns
         },
       )
       .superRefine((val, ctx) => {
-        let parsedFloat = parseFloat(val)
-        if (isNaN(parsedFloat)) {
-          parsedFloat = 0
+        let algoAmount = parseFloat(val)
+        if (isNaN(algoAmount)) {
+          algoAmount = 0
         }
-        const algoAmount = BigInt(parsedFloat)
-        const amountToUnstake = AlgoAmount.Algos(Number(algoAmount)).microAlgos
+        const amountToUnstake = AlgoAmount.Algos(algoAmount).microAlgos
         const stakerPoolData = stakerPoolsData.find(
-          (p) => p.poolKey.poolId === BigInt(selectedPoolId),
+          (p) => BigInt(p.poolKey.poolId) === BigInt(selectedPoolId),
         )
 
         if (stakerPoolData && validator) {

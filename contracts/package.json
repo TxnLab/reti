@@ -1,6 +1,6 @@
 {
     "name": "reti-contracts",
-    "version": "0.11.5",
+    "version": "0.11.6",
     "license": "MIT",
     "scripts": {
         "generate-client": "pnpx @algorandfoundation/algokit-client-generator@4.0.0-beta.5 generate -a contracts/artifacts/StakingPool.arc56_draft.json -o contracts/clients/StakingPoolClient.ts && pnpx @algorandfoundation/algokit-client-generator@4.0.0-beta.5 generate -a contracts/artifacts/ValidatorRegistry.arc56_draft.json -o contracts/clients/ValidatorRegistryClient.ts && ./update_contract_artifacts.sh",
